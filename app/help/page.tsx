@@ -46,7 +46,7 @@ const TOPICS = [
     slug: 'messaging', category: 'Messaging', icon: MessageSquare,
     items: [
       { q: 'Do you support WhatsApp and SMS?', a: 'Yes. Once your provider keys are connected, you can send attendance alerts, fee reminders, and notices to parents and staff via WhatsApp or SMS, with a full delivery log.' },
-      { q: 'Can I send messages in Urdu?', a: 'Yes — the interface and messaging both support Urdu alongside English.' },
+      { q: 'Can I send messages in a language other than English?', a: 'Message text is free-form, so you can type and send a notice in any language. The dashboard interface itself is English only.' },
       { q: 'What if a message fails to deliver?', a: 'Failed deliveries are flagged in the message log so you know immediately, rather than assuming a notice reached a parent when it didn’t.' },
       { q: 'Can I message a single class instead of the whole institution?', a: 'Yes — you can target a message to a specific class or section, or send it institution-wide.' },
     ],

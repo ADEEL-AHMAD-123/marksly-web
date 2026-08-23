@@ -86,7 +86,7 @@ export function FeatureVisual({ kind }: { kind: VisualKind }) {
             {['9:00', '10:00', '11:00', '12:00'].map((t) => (
               <div key={t} className="text-muted-foreground">{t}</div>
             ))}
-            {['Math', 'Urdu', 'Science', 'Break'].map((s, i) => (
+            {['Math', 'English', 'Science', 'Break'].map((s, i) => (
               <div
                 key={s}
                 className={`rounded-md py-2.5 ${i === 0 ? 'bg-accent text-accent-foreground' : 'bg-muted text-foreground/80'}`}

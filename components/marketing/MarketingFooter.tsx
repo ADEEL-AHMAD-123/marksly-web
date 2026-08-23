@@ -9,7 +9,7 @@ export function MarketingFooter() {
           <div className="col-span-2 sm:col-span-1">
             <Logo size={28} />
             <p className="mt-3 text-sm text-sidebar-muted">
-              School &amp; campus management software built for Pakistan.
+              School &amp; campus management software for academies, schools, colleges and universities.
             </p>
           </div>
           <div>
@@ -39,7 +39,7 @@ export function MarketingFooter() {
         </div>
         <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-sidebar-border pt-6 text-xs text-sidebar-muted sm:flex-row">
           <p>© {new Date().getFullYear()} Marksly · marksly.pk</p>
-          <p>Made for schools, colleges and academies across Pakistan.</p>
+          <p>Made for schools, colleges and academies.</p>
         </div>
       </div>
     </footer>

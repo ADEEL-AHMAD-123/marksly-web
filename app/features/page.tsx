@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   GraduationCap, CalendarCheck, Wallet, FileText, CalendarClock,
-  CreditCard, MessageSquare, BarChart2, ShieldCheck, ArrowRight, Globe, Check,
-  Settings, Users2, Bell,
+  CreditCard, MessageSquare, BarChart2, ShieldCheck, ArrowRight, Check,
+  Settings, Users2, Bell, Headphones,
 } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
@@ -14,7 +14,7 @@ import { FeatureVisual, type VisualKind } from '@/components/marketing/FeatureVi
 export const metadata: Metadata = {
   title: 'Features — Everything Your Institution Needs',
   description:
-    'Explore Marksly’s features in detail: attendance, exams & results, timetable, fees & invoices, student records, parent messaging, ID cards, and live reports — built for schools, colleges and academies in Pakistan.',
+    'Explore Marksly’s features in detail: attendance, exams & results, timetable, fees & invoices, student records, parent messaging, ID cards, and live reports — built for schools, colleges and academies.',
   alternates: { canonical: '/features' },
 };
 
@@ -59,10 +59,10 @@ const FEATURES: Feature[] = [
   },
   {
     slug: 'timetable', icon: CalendarClock, title: 'Timetable',
-    desc: 'Build weekly schedules per section in minutes, with attendance built into every period.',
+    desc: 'Build weekly schedules per section in minutes — every teacher sees exactly what they’re teaching, and when.',
     bullets: [
       'Weekly schedules built per class and section',
-      'Teachers see "teaching now" with one-tap attendance',
+      'Teachers see "Teaching now" on their dashboard, with a quick link to mark attendance',
       'Changes reflect instantly for every teacher',
       'No clashing periods across sections',
     ],
@@ -95,7 +95,7 @@ const FEATURES: Feature[] = [
     desc: 'Attendance alerts, fee reminders and notices, sent via WhatsApp or SMS — where parents already are.',
     bullets: [
       'Attendance alerts and fee reminders',
-      'Sent via WhatsApp or SMS, in Urdu or English',
+      'Sent to a single class, a section, or the whole institution',
       'Full delivery log per message',
       'Sent automatically or on demand',
     ],
@@ -133,8 +133,8 @@ const HOW_IT_WORKS = [
 
 const PAKISTAN = [
   { icon: Wallet, title: 'Local payments', desc: 'JazzCash, EasyPaisa, bank transfer and challans — the methods your families already use.' },
-  { icon: MessageSquare, title: 'WhatsApp & SMS', desc: 'Reach every parent where they already are, in Urdu or English.' },
-  { icon: Globe, title: 'Urdu & English', desc: 'A familiar experience for staff and parents, on any connection.' },
+  { icon: MessageSquare, title: 'WhatsApp & SMS', desc: 'Reach every parent where they already are.' },
+  { icon: Headphones, title: 'Real human support', desc: 'Reach a real person by WhatsApp or email — not a ticket queue.' },
   { icon: ShieldCheck, title: 'Secure & multi-tenant', desc: 'Each institution’s data is isolated and protected, with role-based access throughout.' },
 ];
 
@@ -223,14 +223,14 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* ── Built for Pakistan ───────────────────────────────────────── */}
+      {/* ── Made to fit how your institution already runs ────────────── */}
       <section className="relative overflow-hidden bg-sidebar py-14 text-sidebar-foreground sm:py-20">
         <div aria-hidden className="pointer-events-none absolute left-0 top-0 h-full w-1/3 bg-accent opacity-[0.06] blur-3xl" />
         <div className="relative mx-auto max-w-6xl px-5">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-semibold uppercase tracking-wide text-accent">Made for Pakistan</p>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Built for Pakistan</h2>
-            <p className="mt-3 text-sm text-sidebar-muted sm:text-base">The payment methods, languages and channels your families actually use.</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent">Made to fit</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Built around how you already work</h2>
+            <p className="mt-3 text-sm text-sidebar-muted sm:text-base">The payment methods and channels your families actually use.</p>
           </div>
           <div className="mt-8 grid grid-cols-1 gap-4 sm:mt-12 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
             {PAKISTAN.map((f) => (

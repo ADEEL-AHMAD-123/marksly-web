@@ -9,7 +9,7 @@ import { BLOG_POSTS } from './posts';
 export const metadata: Metadata = {
   title: 'Blog',
   description:
-    'Practical guides on running a school or academy in Pakistan — attendance, fee collection, parent communication, and more.',
+    'Practical guides on running a school or academy — attendance, fee collection, parent communication, and more.',
   alternates: { canonical: '/blog' },
 };
 
@@ -23,7 +23,7 @@ export default function BlogIndexPage() {
       <PageHero
         eyebrow="Blog"
         title="Practical guides for your institution"
-        description="Straightforward, no-fluff guidance on running a school or academy in Pakistan."
+        description="Straightforward, no-fluff guidance on running a school or academy."
       />
 
       <section className="pb-20">

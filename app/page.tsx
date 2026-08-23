@@ -8,11 +8,12 @@ import {
 import { buttonVariants } from '@/components/ui/button-variants';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
+import { GrowthPlanCard } from '@/components/marketing/GrowthPlanCard';
 
 export const metadata: Metadata = {
-  title: 'Marksly — School & Campus Management Software for Pakistan',
+  title: 'Marksly — School & Campus Management Software',
   description:
-    'Marksly is an all-in-one management system for academies, schools, colleges and universities in Pakistan — students, attendance, fees, exams, timetable, ID cards and parent messaging in one place.',
+    'Marksly is an all-in-one management system for academies, schools, colleges and universities — students, attendance, fees, exams, timetable, ID cards and parent messaging in one place.',
   alternates: { canonical: '/' },
 };
 
@@ -33,8 +34,8 @@ const JSON_LD = {
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
       description:
-        'All-in-one school and campus management software for academies, schools, colleges and universities in Pakistan — students, attendance, fees, exams, timetable, ID cards and parent messaging.',
-      offers: { '@type': 'Offer', price: '0', priceCurrency: 'PKR', description: 'Free Starter plan for up to 50 students' },
+        'All-in-one school and campus management software for academies, schools, colleges and universities — students, attendance, fees, exams, timetable, ID cards and parent messaging.',
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'PKR', description: 'Free plan for up to 50 students' },
       url: 'https://marksly.pk',
     },
   ],
@@ -67,7 +68,7 @@ const COLLEGES = [
 ];
 
 const DIFFERENTIATORS = [
-  { n: '01', icon: Globe2, title: 'Actually built for Pakistan', desc: 'Urdu UI, local payment rails, and BISE-format results — not a global template with a translation bolted on.' },
+  { n: '01', icon: Globe2, title: 'Built for how schools actually run', desc: 'Local payment rails and WhatsApp/SMS built in — not a global template with a translation bolted on.' },
   { n: '02', icon: Zap, title: 'Set up in minutes, not weeks', desc: 'No implementation team, no onboarding calls required. Create your institution and start using it today.' },
   { n: '03', icon: ShieldCheck, title: 'Your data, isolated and safe', desc: 'Every institution runs in its own isolated space, with role-based access controlling exactly who sees what.' },
 ];
@@ -123,7 +124,7 @@ export default function LandingPage() {
           {/* Left: copy */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-              Marksly for Pakistan
+              Marksly for schools & colleges
             </p>
             <h1 className="mt-4 text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl sm:leading-[1.05] md:text-6xl">
               The operating system<br className="hidden sm:block" /> for your <span className="text-primary">institution</span>
@@ -146,7 +147,7 @@ export default function LandingPage() {
               {[
                 { value: 'Free', label: 'up to 50 students' },
                 { value: '<10 min', label: 'to get started' },
-                { value: 'اردو', label: '+ English, both ways' },
+                { value: '24/7', label: 'access, from any device' },
               ].map((s, i) => (
                 <div key={s.label} className={i > 0 ? 'sm:border-l sm:border-border sm:pl-8' : ''}>
                   <p className="text-lg font-bold text-primary sm:text-xl">{s.value}</p>
@@ -224,7 +225,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-5 py-14 sm:py-16">
           <div className="mx-auto max-w-xl text-center">
             <p className="text-xs font-semibold uppercase tracking-wide text-accent">Why Marksly</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">Built differently, for Pakistan</h2>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">Built differently, on purpose</h2>
           </div>
 
           {/* connected roadmap — numbered nodes linked by a line, read left-to-right
@@ -361,7 +362,7 @@ export default function LandingPage() {
       {/* ── Trust — institutions using Marksly, as a marquee ─────────────── */}
       <section className="border-y border-border bg-[hsl(36,26%,92%)] pb-16 pt-20 sm:pb-20 sm:pt-24">
         <div className="mx-auto max-w-6xl px-5 text-center">
-          <p className="text-xs font-semibold uppercase tracking-wide text-accent">Trusted across Pakistan</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-accent">Trusted by real institutions</p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">Schools and colleges running on Marksly</h2>
         </div>
 
@@ -412,18 +413,7 @@ export default function LandingPage() {
               View pricing <ArrowRight aria-hidden size={18} />
             </Link>
           </div>
-          <div className="rounded-2xl border border-sidebar-border bg-sidebar-accent/40 p-5 text-left sm:p-6">
-            <span className="inline-block rounded-full bg-accent px-3 py-1 text-xs font-bold uppercase tracking-wide text-accent-foreground">Most popular</span>
-            <p className="mt-4 text-sm text-sidebar-muted">Growth plan</p>
-            <p className="text-2xl font-bold sm:text-3xl">Rs 2,500<span className="text-sm font-normal text-sidebar-muted sm:text-base">/mo</span></p>
-            <ul className="mt-4 space-y-2 text-[13px] sm:text-sm">
-              {['Up to 300 students', 'Timetable & ID cards', 'SMS & WhatsApp messaging', 'Reports & analytics'].map((f) => (
-                <li key={f} className="flex items-center gap-2">
-                  <Check aria-hidden size={14} className="shrink-0 text-accent" /> {f}
-                </li>
-              ))}
-            </ul>
-          </div>
+          <GrowthPlanCard />
         </div>
       </section>
 
@@ -444,7 +434,7 @@ export default function LandingPage() {
 
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-8 px-5 text-center sm:gap-10 lg:grid-cols-[1.2fr_1fr] lg:text-left">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Join institutions across Pakistan</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Join institutions already on Marksly</p>
             <h2 className="mt-3 text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
               Your institution, running on one system — starting today
             </h2>

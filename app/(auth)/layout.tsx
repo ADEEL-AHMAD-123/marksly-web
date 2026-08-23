@@ -1,10 +1,10 @@
-import { MessageCircle, Wallet, Globe } from 'lucide-react';
+import { CalendarCheck, FileText, ShieldCheck } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 
 const FEATURES = [
-  { icon: MessageCircle, title: 'WhatsApp-native', desc: 'Reach every parent where they already are.' },
-  { icon: Wallet, title: 'Local payments', desc: 'JazzCash, EasyPaisa & bank challans, built in.' },
-  { icon: Globe, title: 'Urdu & offline', desc: 'A full Urdu experience on any connection.' },
+  { icon: CalendarCheck, title: 'Attendance in seconds', desc: 'Teachers mark it, admins see live rates instantly.' },
+  { icon: FileText, title: 'Exams, graded automatically', desc: 'Marks entry on a fast grid, results published in one click.' },
+  { icon: ShieldCheck, title: 'Your data, isolated and safe', desc: 'Every institution runs in its own protected space.' },
 ];
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -33,11 +33,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         {/* Headline + features */}
         <div className="relative max-w-md">
           <h2 className="text-3xl font-bold leading-[1.15] xl:text-[2.6rem]">
-            Run your entire institution, beautifully.
+            One system for your whole institution.
           </h2>
           <p className="mt-4 text-sidebar-muted">
-            From academies to universities — manage admissions, attendance, fees,
-            results and parent communication in one platform.
+            From academies to universities — manage attendance, exams, fees,
+            timetable and parent communication in one platform.
           </p>
 
           <ul className="mt-9 space-y-5">
@@ -55,22 +55,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </ul>
         </div>
 
-        {/* Testimonial */}
-        <figure className="relative rounded-2xl border border-sidebar-border bg-sidebar-accent p-5">
-          <blockquote className="text-sm leading-relaxed">
-            “We collected three months of pending fees in our first week — parents
-            just pay from their phones now.”
-          </blockquote>
-          <figcaption className="mt-4 flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-sidebar-active text-xs font-semibold text-sidebar-active-foreground">
-              FR
-            </span>
-            <div>
-              <p className="text-sm font-medium">Farhan Rashid</p>
-              <p className="text-xs text-sidebar-muted">Director, Iqra Academy · Lahore</p>
-            </div>
-          </figcaption>
-        </figure>
+        {/* Honest trust note — no fabricated quote; real institutions are
+             already shown, with real logos, on the homepage's trust section */}
+        <div className="relative rounded-2xl border border-sidebar-border bg-sidebar-accent p-5">
+          <p className="text-sm leading-relaxed text-sidebar-foreground">
+            No card required to start. Set up your institution and see it running in minutes.
+          </p>
+        </div>
       </aside>
 
       {/* ── Form panel ──────────────────────────────────────────── */}

@@ -8,17 +8,17 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 const SITE_URL = 'https://marksly.pk';
 const DEFAULT_DESCRIPTION =
-  'Marksly is the complete school management platform for academies, schools, colleges and universities in Pakistan — students, attendance, fees, exams, timetable, ID cards and WhatsApp/SMS parent messaging in one place.';
+  'Marksly is the complete school management platform for academies, schools, colleges and universities — students, attendance, fees, exams, timetable, ID cards and WhatsApp/SMS parent messaging in one place.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     template: '%s | Marksly',
-    default: 'Marksly — School & Campus Management Software for Pakistan',
+    default: 'Marksly — School & Campus Management Software',
   },
   description: DEFAULT_DESCRIPTION,
   keywords: [
-    'school management software Pakistan', 'education ERP Pakistan', 'academy software',
+    'school management software', 'education ERP', 'academy software',
     'college management system', 'student attendance software', 'school fee management software',
     'Marksly',
   ],
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     type: 'website',
     siteName: 'Marksly',
     url: SITE_URL,
-    title: 'Marksly — School & Campus Management Software for Pakistan',
+    title: 'Marksly — School & Campus Management Software',
     description: DEFAULT_DESCRIPTION,
     locale: 'en_PK',
     images: [
@@ -35,13 +35,13 @@ export const metadata: Metadata = {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Marksly — School & Campus Management Software for Pakistan',
+        alt: 'Marksly — School & Campus Management Software',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Marksly — School & Campus Management Software for Pakistan',
+    title: 'Marksly — School & Campus Management Software',
     description: DEFAULT_DESCRIPTION,
     images: ['/og-image.png'],
   },

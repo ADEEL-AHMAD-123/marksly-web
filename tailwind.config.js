@@ -87,7 +87,6 @@ module.exports = {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        urdu: ['Noto Nastaliq Urdu', 'serif'],
       },
       borderRadius: {
         lg: 'var(--radius)',
