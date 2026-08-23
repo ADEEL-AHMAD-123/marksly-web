@@ -116,14 +116,18 @@ export const feesApi = baseApi.injectEndpoints({
       },
       providesTags: [{ type: 'Fees', id: 'INVOICES' }],
     }),
+    // Both of these create brand-new invoices — a parent's "fees due" view
+    // (portalApi's myFees/childFees/myChildren, which provide the bare
+    // 'Fees' tag) needs to see those the moment they're generated, not just
+    // the admin-facing invoice list.
     generateInvoices: builder.mutation<ApiObject<{ created: number; skipped: number }>, GenerateBody>({
       query: (body) => ({ url: '/fees/invoices/generate', method: 'POST', body }),
-      invalidatesTags: [{ type: 'Fees', id: 'INVOICES' }, { type: 'Fees', id: 'SUMMARY' }],
+      invalidatesTags: [{ type: 'Fees', id: 'INVOICES' }, { type: 'Fees', id: 'SUMMARY' }, 'Fees'],
     }),
 
     runBilling: builder.mutation<ApiObject<{ created: number; skipped: number; structures: number }>, { month: number; year: number }>({
       query: (body) => ({ url: '/fees/invoices/run-billing', method: 'POST', body }),
-      invalidatesTags: [{ type: 'Fees', id: 'INVOICES' }, { type: 'Fees', id: 'SUMMARY' }],
+      invalidatesTags: [{ type: 'Fees', id: 'INVOICES' }, { type: 'Fees', id: 'SUMMARY' }, 'Fees'],
     }),
 
     getInvoiceDetail: builder.query<ApiObject<InvoiceDetail>, string>({
@@ -132,19 +136,28 @@ export const feesApi = baseApi.injectEndpoints({
     }),
     adjustInvoice: builder.mutation<ApiObject<unknown>, AdjustBody>({
       query: ({ invoiceId, ...body }) => ({ url: `/fees/invoices/${invoiceId}/adjust`, method: 'POST', body }),
+      // Also invalidate the bare 'Fees' tag — RTK Query only matches
+      // invalidation by exact {type, id}, so without this the student/parent
+      // portal's myFees/childFees/myChildren (which provide the bare tag,
+      // no id) would never refresh after an admin adjusts an invoice here.
       invalidatesTags: (_r, _e, { invoiceId }) => [
         { type: 'Fees', id: 'INVOICES' },
         { type: 'Fees', id: 'SUMMARY' },
         { type: 'Fees', id: `INVOICE-${invoiceId}` },
+        'Fees',
       ],
     }),
 
     recordPayment: builder.mutation<ApiObject<unknown>, PaymentBody>({
       query: (body) => ({ url: '/fees/payments', method: 'POST', body }),
+      // Same as adjustInvoice above — a parent's cached "fees due" view
+      // needs the bare 'Fees' tag invalidated too, not just the specific
+      // admin-facing cache entries.
       invalidatesTags: (_r, _e, { invoiceId }) => [
         { type: 'Fees', id: 'INVOICES' },
         { type: 'Fees', id: 'SUMMARY' },
         { type: 'Fees', id: `INVOICE-${invoiceId}` },
+        'Fees',
       ],
     }),
 

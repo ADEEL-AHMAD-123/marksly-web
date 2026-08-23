@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { Send, CheckCircle2 } from 'lucide-react';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import en from 'react-phone-number-input/locale/en.json';
 import { useSubmitContactMutation } from '@/store/api/contactApi';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -15,7 +17,14 @@ const schema = z.object({
   name: z.string().trim().min(2, 'Enter your name'),
   email: z.string().trim().email('Enter a valid email'),
   institution: z.string().trim().max(150).optional(),
-  phone: z.string().trim().max(20).optional(),
+  // Optional here (unlike registration) — a visitor reaching out shouldn't
+  // be blocked from sending a message just because they left phone blank,
+  // but if they do fill it in it should still come out in a usable format.
+  phone: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || isValidPhoneNumber(v), 'Enter a valid phone number'),
   message: z.string().trim().min(10, 'Tell us a bit more (10+ characters)'),
   website: z.string().max(0).optional(), // honeypot
 });
@@ -33,6 +42,7 @@ export function ContactForm() {
   const [submitContact, { isLoading }] = useSubmitContactMutation();
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -103,7 +113,23 @@ export function ContactForm() {
         </div>
         <div>
           <Label htmlFor="phone">Phone <span className="font-normal text-muted-foreground">(optional)</span></Label>
-          <input id="phone" placeholder="03XX-XXXXXXX" className={cn('mt-1.5', fieldCls())} {...register('phone')} />
+          <Controller
+            control={control}
+            name="phone"
+            render={({ field }) => (
+              <PhoneInput
+                id="phone"
+                international
+                labels={en}
+                defaultCountry="PK"
+                value={field.value}
+                onChange={(v) => field.onChange(v ?? '')}
+                placeholder="300 1234567"
+                className={cn('mt-1.5', errors.phone && 'PhoneInput-danger')}
+              />
+            )}
+          />
+          {errors.phone && <p className="mt-1 text-xs text-danger">{errors.phone.message}</p>}
         </div>
       </div>
 

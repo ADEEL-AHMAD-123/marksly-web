@@ -62,6 +62,16 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
 export const baseApi = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
+  // Tag invalidation (see the `invalidatesTags`/`providesTags` throughout
+  // this folder) only ever fires within the SAME browser session that
+  // triggered the mutation — it cannot and does not reach a different
+  // user's already-open tab. A parent viewing their child's attendance and
+  // a teacher marking it are two different sessions entirely, so the only
+  // way the parent's cached (but stale) view ever updates without a manual
+  // reload is by refetching on focus/reconnect. Requires
+  // `setupListeners(store.dispatch)` in store/index.ts to actually work.
+  refetchOnFocus: true,
+  refetchOnReconnect: true,
   tagTypes: [
     'Auth',
     'Students',

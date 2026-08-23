@@ -32,6 +32,7 @@ interface RegisterRequest {
   firstName: string;
   lastName: string;
   phone: string;
+  country: string;
   email: string;
   password: string;
   city?: string;

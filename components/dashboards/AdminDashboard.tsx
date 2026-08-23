@@ -374,6 +374,8 @@ function TodaysAttendanceCard({
                         {s.sectionName}
                         {s.marked ? (
                           <span className="text-muted-foreground">· {s.present}/{s.present + s.absent + s.late + s.leave}</span>
+                        ) : s.periodsScheduled > 0 ? (
+                          <span>· {s.periodsMarked}/{s.periodsScheduled} periods</span>
                         ) : (
                           <span>· not marked</span>
                         )}

@@ -71,9 +71,13 @@ export const classesApi = baseApi.injectEndpoints({
       invalidatesTags: [{ type: 'Classes', id: 'LIST' }],
     }),
 
+    // Bare 'Classes' too — this is exactly where a section's teacherId gets
+    // (re)assigned, and portalApi's myClasses (teacher portal) provides the
+    // bare tag, not a specific id, so a teacher's own class list wouldn't
+    // pick up a new section assignment without it.
     updateClass: builder.mutation<ApiObject<ClassItem>, { id: string; body: UpdateClassBody }>({
       query: ({ id, body }) => ({ url: `/classes/${id}`, method: 'PATCH', body }),
-      invalidatesTags: [{ type: 'Classes', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Classes', id: 'LIST' }, 'Classes'],
     }),
   }),
 });

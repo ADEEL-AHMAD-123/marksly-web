@@ -20,11 +20,15 @@ export const reportsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getReports: builder.query<ApiObject<ReportsData>, void>({
       query: () => '/reports/dashboard',
-      // Bare (id-less) tags act as a wildcard subscription — this refetches
-      // whenever ANY mutation invalidates a tag of these types (attendance
-      // marked, a fee recorded, exam results saved, a student added, etc.),
-      // regardless of the specific id each mutation invalidates. Previously
-      // this had no tags at all, so the dashboard never refreshed on its own.
+      // Bare (id-less) tags only refetch when a mutation explicitly
+      // invalidates that SAME bare tag — RTK Query matches {type, id}
+      // exactly, so a mutation that only invalidates e.g. {type: 'Fees',
+      // id: 'INVOICES'} will NOT refresh a query that provides bare 'Fees'.
+      // Every mutation that should be reflected here (attendance marks, fee
+      // payments, exam publishing, student CRUD) has been checked to make
+      // sure it also invalidates the matching bare tag — see the comments
+      // next to those invalidatesTags in attendanceApi/feesApi/examsApi/
+      // studentsApi/academicYearsApi.
       providesTags: ['Students', 'Attendance', 'Fees', 'Exams', 'Results'],
     }),
   }),

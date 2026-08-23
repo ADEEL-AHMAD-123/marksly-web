@@ -31,7 +31,7 @@ export function TeachNowCard() {
             </div>
             <p className="mt-2 text-lg font-semibold text-foreground">{active.subject ?? 'Class'} — {active.className} {active.section}</p>
             {active.room && <p className="text-sm text-muted-foreground">Room {active.room}</p>}
-            <Link href="/teacher/attendance" className={`${buttonVariants({ size: 'sm' })} mt-3`}>
+            <Link href={`/teacher/attendance?period=${active.id}`} className={`${buttonVariants({ size: 'sm' })} mt-3`}>
               Mark attendance <ArrowRight size={15} />
             </Link>
           </div>

@@ -6,6 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { X, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import en from 'react-phone-number-input/locale/en.json';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +25,14 @@ import {
 const schema = z.object({
   firstName: z.string().min(1, 'Required'),
   lastName: z.string().min(1, 'Required'),
-  phone: z.string().min(10, 'Enter a valid phone number'),
+  // Editing an existing student whose phone predates this country-aware
+  // input may still hold a legacy local-format value — only enforce strict
+  // E.164 validation once it looks like it went through the new field
+  // (starts with "+"), same relaxation as the profile settings form.
+  phone: z
+    .string()
+    .min(1, 'Enter a valid phone number')
+    .refine((v) => !v.startsWith('+') || isValidPhoneNumber(v), 'Enter a valid phone number'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   rollNumber: z.string().min(1, 'Required'),
   admissionNumber: z.string().min(1, 'Required'),
@@ -32,7 +41,14 @@ const schema = z.object({
   gender: z.enum(['male', 'female', 'other'], {
     errorMap: () => ({ message: 'Select gender' }),
   }),
-  parentPhone: z.string().optional(),
+  // Guardian phone is what the absentee-report WhatsApp links (see
+  // AttendanceReportView.tsx) actually message — capturing it in E.164 up
+  // front means those links work without any later phone-normalization
+  // guesswork.
+  parentPhone: z
+    .string()
+    .optional()
+    .refine((v) => !v || isValidPhoneNumber(v), 'Enter a valid phone number'),
   parentName: z.string().optional(),
 });
 
@@ -157,7 +173,23 @@ export function StudentFormDrawer({ open, onClose, student }: Props) {
 
             <div>
               <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" type="tel" dir="ltr" placeholder="0300 1234567" {...register('phone')} />
+              <Controller
+                control={control}
+                name="phone"
+                render={({ field }) => (
+                  <PhoneInput
+                    id="phone"
+                    international
+                    labels={en}
+                    defaultCountry="PK"
+                    countryCallingCodeEditable={false}
+                    value={field.value}
+                    onChange={(v) => field.onChange(v ?? '')}
+                    placeholder="300 1234567"
+                    className={errors.phone ? 'PhoneInput-danger' : undefined}
+                  />
+                )}
+              />
               {errors.phone && <p className="mt-1 text-xs text-danger">{errors.phone.message}</p>}
             </div>
 
@@ -250,7 +282,24 @@ export function StudentFormDrawer({ open, onClose, student }: Props) {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor="parentPhone">Parent phone</Label>
-                      <Input id="parentPhone" type="tel" dir="ltr" placeholder="0300 1234567" {...register('parentPhone')} />
+                      <Controller
+                        control={control}
+                        name="parentPhone"
+                        render={({ field }) => (
+                          <PhoneInput
+                            id="parentPhone"
+                            international
+                            labels={en}
+                            defaultCountry="PK"
+                            countryCallingCodeEditable={false}
+                            value={field.value}
+                            onChange={(v) => field.onChange(v ?? '')}
+                            placeholder="300 1234567"
+                            className={errors.parentPhone ? 'PhoneInput-danger' : undefined}
+                          />
+                        )}
+                      />
+                      {errors.parentPhone && <p className="mt-1 text-xs text-danger">{errors.parentPhone.message}</p>}
                     </div>
                     <div>
                       <Label htmlFor="parentName">Parent name</Label>

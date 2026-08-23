@@ -41,7 +41,10 @@ export const academicYearsApi = baseApi.injectEndpoints({
     }),
     promoteStudents: builder.mutation<ApiObject<{ moved: number; graduated: number }>, PromoteBody>({
       query: (body) => ({ url: '/academic-years/promote', method: 'POST', body }),
-      invalidatesTags: [{ type: 'Students', id: 'LIST' }, { type: 'Students', id: 'STATS' }],
+      // Bare 'Students' too — a promoted/graduated student's class changes
+      // here, and portalApi's myChildren (parent portal) provides the bare
+      // tag, not a specific id, so it would otherwise show a stale class.
+      invalidatesTags: [{ type: 'Students', id: 'LIST' }, { type: 'Students', id: 'STATS' }, 'Students'],
     }),
   }),
 });

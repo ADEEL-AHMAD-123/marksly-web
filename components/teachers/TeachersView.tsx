@@ -1,13 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   Plus, X, Users, AlertCircle, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import en from 'react-phone-number-input/locale/en.json';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -178,14 +180,17 @@ export function TeachersView() {
 const schema = z.object({
   firstName: z.string().min(1, 'Required'),
   lastName: z.string().min(1, 'Required'),
-  phone: z.string().min(10, 'Enter a valid phone number'),
+  phone: z
+    .string()
+    .min(1, 'Enter a valid phone number')
+    .refine((v) => isValidPhoneNumber(v), 'Enter a valid phone number'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
 });
 type TeacherForm = z.infer<typeof schema>;
 
 function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [createUser, { isLoading }] = useCreateUserMutation();
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<TeacherForm>({
+  const { register, control, handleSubmit, reset, formState: { errors } } = useForm<TeacherForm>({
     resolver: zodResolver(schema),
     defaultValues: { firstName: '', lastName: '', phone: '', email: '' },
   });
@@ -224,7 +229,23 @@ function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => voi
             </div>
             <div>
               <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" type="tel" dir="ltr" placeholder="0300 1234567" {...register('phone')} />
+              <Controller
+                control={control}
+                name="phone"
+                render={({ field }) => (
+                  <PhoneInput
+                    id="phone"
+                    international
+                    labels={en}
+                    defaultCountry="PK"
+                    countryCallingCodeEditable={false}
+                    value={field.value}
+                    onChange={(v) => field.onChange(v ?? '')}
+                    placeholder="300 1234567"
+                    className={errors.phone ? 'PhoneInput-danger' : undefined}
+                  />
+                )}
+              />
               {errors.phone && <p className="mt-1 text-xs text-danger">{errors.phone.message}</p>}
             </div>
             <div>

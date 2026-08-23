@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
-  CalendarCheck, CheckCheck, AlertCircle, Users, Info,
+  CalendarCheck, CheckCheck, AlertCircle, Users, Info, Clock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
@@ -16,14 +17,16 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { useGetClassesQuery } from '@/store/api/classesApi';
-import { useMyClassesQuery } from '@/store/api/portalApi';
+import { useGetTimetableQuery } from '@/store/api/timetableApi';
 import {
+  useGetMyPeriodsQuery,
   useGetRosterQuery,
   useMarkAttendanceMutation,
   type AttendanceStatus,
 } from '@/store/api/attendanceApi';
 import { useAppSelector } from '@/store/hooks';
 import { cn, getInitials } from '@/lib/utils';
+import { AttendanceReportView } from './AttendanceReportView';
 
 const STATUSES: { key: AttendanceStatus; label: string; active: string }[] = [
   { key: 'present', label: 'Present', active: 'bg-success text-success-foreground' },
@@ -33,38 +36,123 @@ const STATUSES: { key: AttendanceStatus; label: string; active: string }[] = [
 ];
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
+const dayOfWeekOf = (date: string) => new Date(`${date}T12:00:00.000Z`).getUTCDay();
+
+interface PeriodOption {
+  periodId: string;
+  classId: string | null;
+  className: string | null;
+  sectionId: string | null;
+  sectionName: string | null;
+  subject: string | null;
+  startTime: string;
+  endTime: string;
+  marked?: boolean;
+}
 
 export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
   const role = useAppSelector((s) => s.auth.user?.role);
   const isTeacher = role === 'teacher';
+  const searchParams = useSearchParams();
+  const linkedPeriodId = searchParams.get('period') ?? '';
 
-  // Teachers only see their own assigned classes/sections; admins see all.
+  const [date, setDate] = useState(todayStr());
+  const [periodId, setPeriodId] = useState(linkedPeriodId);
+  const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
+
+  // ─── Teacher flow: pick from the periods on their own timetable today ────
+  // `isLoading` (not `isFetching`) on purpose — now that the app refetches
+  // on window focus (see baseApi.ts), `isFetching` would flip true on every
+  // background refocus-triggered revalidation too, flashing the period
+  // picker back to a skeleton and discarding the teacher's already-visible
+  // selection mid-task. `isLoading` only covers the genuine first load.
+  const { data: myPeriodsRes, isLoading: loadingMyPeriods } = useGetMyPeriodsQuery(
+    { date },
+    { skip: !isTeacher }
+  );
+  const myPeriods: PeriodOption[] = useMemo(
+    () => (isTeacher ? myPeriodsRes?.data ?? [] : []),
+    [isTeacher, myPeriodsRes]
+  );
+
+  // ─── Admin/staff flow: pick class → section → then a period from that
+  // section's timetable for the selected date's day of week ────────────────
   const { data: allClassesRes } = useGetClassesQuery(undefined, { skip: isTeacher });
-  const { data: myClassesRes } = useMyClassesQuery(undefined, { skip: !isTeacher });
-
   const classes = useMemo<{ id: string; name: string; sections: { id: string; name: string }[] }[]>(() => {
-    const src: any[] = isTeacher ? myClassesRes?.data ?? [] : allClassesRes?.data ?? [];
+    const src: any[] = allClassesRes?.data ?? [];
     return src.map((c) => ({
       id: c.id,
       name: c.name,
       sections: (c.sections ?? []).map((s: any) => ({ id: s.id, name: s.name })),
     }));
-  }, [isTeacher, myClassesRes, allClassesRes]);
+  }, [allClassesRes]);
 
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
-  const [date, setDate] = useState(todayStr());
-  const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
-
   const sections = useMemo(
     () => classes.find((c) => c.id === classId)?.sections ?? [],
     [classes, classId]
   );
 
-  const ready = !!classId && !!sectionId;
-  const { data: rosterRes, isFetching, isError, refetch } = useGetRosterQuery(
-    { classId, sectionId, date },
-    { skip: !ready }
+  const { data: timetableRes, isLoading: loadingTimetable } = useGetTimetableQuery(
+    { classId, sectionId },
+    { skip: isTeacher || !classId || !sectionId }
+  );
+  const adminPeriods: PeriodOption[] = useMemo(() => {
+    if (isTeacher) return [];
+    const dow = dayOfWeekOf(date);
+    return (timetableRes?.data ?? [])
+      .filter((e) => e.dayOfWeek === dow)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime))
+      .map((e) => ({
+        periodId: e.id,
+        classId: e.classId,
+        className: e.className,
+        sectionId: e.sectionId,
+        sectionName: e.section,
+        subject: e.subject,
+        startTime: e.startTime,
+        endTime: e.endTime,
+      }));
+  }, [isTeacher, timetableRes, date]);
+
+  const periods = isTeacher ? myPeriods : adminPeriods;
+  const loadingPeriods = isTeacher ? loadingMyPeriods : loadingTimetable;
+
+  // Reset the chosen period whenever the underlying period list changes
+  // (new date, or admin changed class/section) so a stale periodId from a
+  // different day/section can't be submitted against the new roster. Skips
+  // the very first render so a `?period=` deep link from "Teaching now"
+  // survives instead of being cleared immediately.
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    setPeriodId('');
+  }, [date, classId, sectionId, isTeacher]);
+
+  const ready = !!periodId;
+  // `isLoading`, not `isFetching` — same reasoning as loadingMyPeriods
+  // above, but higher stakes here: a background refocus-refetch mid-way
+  // through marking attendance would otherwise blow the whole roster away
+  // to a skeleton (the teacher's local `statuses` selections survive
+  // underneath thanks to RTK Query's structural sharing keeping `roster`
+  // referentially stable when the data hasn't actually changed, but the UI
+  // would still visibly flash and re-render, which is disorienting mid-tap).
+  const { data: rosterRes, isLoading, isError, refetch } = useGetRosterQuery(
+    { periodId, date },
+    // refetchOnFocus off here specifically: if attendance for this exact
+    // period genuinely changed server-side between focus events (e.g. an
+    // admin corrected it) while this teacher has unsaved taps in progress,
+    // an auto-refetch would silently overwrite their in-progress marks with
+    // server truth. Everywhere else in the app benefits from the global
+    // refetchOnFocus (see baseApi.ts); this one screen is where "someone's
+    // actively editing, don't yank the rug" outweighs "stay perfectly
+    // fresh." The explicit Retry button (isError branch) still works via
+    // manual refetch() regardless.
+    { skip: !ready, refetchOnFocus: false }
   );
   const roster = rosterRes?.data;
   const [markAttendance, { isLoading: saving }] = useMarkAttendanceMutation();
@@ -98,42 +186,76 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
       status: statuses[s.studentId] ?? 'present',
     }));
     try {
-      await markAttendance({ classId, sectionId, date, records }).unwrap();
+      await markAttendance({ periodId, date, records }).unwrap();
       toast.success('Attendance saved');
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not save attendance');
     }
   };
 
+  const selectedPeriod = periods.find((p) => p.periodId === periodId);
+  const [tab, setTab] = useState<'mark' | 'report'>('mark');
+
   return (
     <div className="space-y-6">
-      <PageHeader title={title} description="Mark and review daily attendance." />
+      <PageHeader title={title} description={tab === 'mark' ? 'Mark attendance for a specific period.' : 'Absent, late and leave students, with guardian contact details.'} />
 
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setTab('mark')}
+          className={cn(
+            'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+            tab === 'mark' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary'
+          )}
+        >
+          Mark attendance
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('report')}
+          className={cn(
+            'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+            tab === 'report' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary'
+          )}
+        >
+          Absentee report
+        </button>
+      </div>
+
+      {tab === 'report' ? (
+        <AttendanceReportView />
+      ) : (
+        <>
       {/* Controls */}
       <Card className="p-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div>
-            <Label>Class</Label>
-            <Select value={classId} onValueChange={(v) => { setClassId(v); setSectionId(''); }}>
-              <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
-              <SelectContent>
-                {classes.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Section</Label>
-            <Select value={sectionId} onValueChange={setSectionId} disabled={!classId}>
-              <SelectTrigger><SelectValue placeholder="Section" /></SelectTrigger>
-              <SelectContent>
-                {sections.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className={cn('grid grid-cols-1 gap-3', !isTeacher && 'sm:grid-cols-3')}>
+          {!isTeacher && (
+            <>
+              <div>
+                <Label>Class</Label>
+                <Select value={classId} onValueChange={(v) => { setClassId(v); setSectionId(''); }}>
+                  <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                  <SelectContent>
+                    {classes.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Section</Label>
+                <Select value={sectionId} onValueChange={setSectionId} disabled={!classId}>
+                  <SelectTrigger><SelectValue placeholder="Section" /></SelectTrigger>
+                  <SelectContent>
+                    {sections.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
           <div>
             <Label htmlFor="date">Date</Label>
             <input
@@ -146,9 +268,49 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
             />
           </div>
         </div>
+
+        {/* Period picker — the actual class/period being taken, e.g. Maths, Class 5-B, 9:00–9:45 */}
+        {(isTeacher || (classId && sectionId)) && (
+          <div className="mt-4">
+            <Label>Period</Label>
+            {loadingPeriods ? (
+              <Skeleton className="mt-1.5 h-10 w-full" />
+            ) : periods.length === 0 ? (
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                No periods scheduled {isTeacher ? 'for you' : 'for this section'} on this day.
+              </p>
+            ) : (
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {periods.map((p) => (
+                  <button
+                    key={p.periodId}
+                    type="button"
+                    onClick={() => setPeriodId(p.periodId)}
+                    className={cn(
+                      'flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors',
+                      periodId === p.periodId
+                        ? 'border-primary bg-primary-soft text-primary-soft-foreground'
+                        : 'border-input bg-card text-foreground hover:bg-secondary'
+                    )}
+                  >
+                    <Clock size={14} className="shrink-0 opacity-70" />
+                    <span>
+                      <span className="font-medium">{p.subject ?? 'Period'}</span>
+                      {isTeacher && p.className && (
+                        <span className="text-muted-foreground"> · {p.className}{p.sectionName ? `-${p.sectionName}` : ''}</span>
+                      )}
+                      <span className="text-muted-foreground"> · {p.startTime}–{p.endTime}</span>
+                    </span>
+                    {'marked' in p && p.marked && <Badge variant="success" className="ml-1">Marked</Badge>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </Card>
 
-      {classes.length === 0 ? (
+      {!isTeacher && classes.length === 0 ? (
         <Card>
           <EmptyState
             icon={Users}
@@ -160,8 +322,10 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
         <Card>
           <EmptyState
             icon={CalendarCheck}
-            title="Select a class and section"
-            description="Choose a class, section and date to load the student roster."
+            title="Select a period"
+            description={isTeacher
+              ? 'Pick the class and time you\'re currently teaching to take attendance for it.'
+              : 'Choose a class, section, date and period to load the student roster.'}
           />
         </Card>
       ) : isError ? (
@@ -173,7 +337,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
             action={<Button variant="secondary" size="sm" onClick={() => refetch()}>Retry</Button>}
           />
         </Card>
-      ) : isFetching || !roster ? (
+      ) : isLoading || !roster ? (
         <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>
       ) : roster.students.length === 0 ? (
         <Card>
@@ -184,6 +348,11 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
           {/* Summary + quick actions */}
           <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-2">
+              {selectedPeriod && (
+                <Badge variant="neutral">
+                  {roster.subject ?? selectedPeriod.subject ?? 'Period'} · {roster.startTime}–{roster.endTime}
+                </Badge>
+              )}
               {roster.alreadyMarked && (
                 <Badge variant="primary" className="gap-1"><Info size={12} /> Already marked</Badge>
               )}
@@ -241,6 +410,8 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
           <div className="flex justify-end">
             <Button loading={saving} onClick={save}>Save attendance</Button>
           </div>
+        </>
+      )}
         </>
       )}
     </div>

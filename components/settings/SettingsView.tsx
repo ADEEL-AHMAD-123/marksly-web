@@ -1,11 +1,13 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useEffect } from 'react';
 import { Check, Palette, Landmark } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import en from 'react-phone-number-input/locale/en.json';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,7 +53,14 @@ const profileSchema = z.object({
   firstName: z.string().min(1, 'Required'),
   lastName: z.string().min(1, 'Required'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
-  phone: z.string().min(10, 'Enter a valid phone number'),
+  // Accounts created before the country-aware phone input (see
+  // register/page.tsx) may still hold a legacy local-format number here —
+  // don't hard-fail validation on those until the person actually edits
+  // this field; only re-validate strictly once they've typed a new value.
+  phone: z
+    .string()
+    .min(10, 'Enter a valid phone number')
+    .refine((v) => !v.startsWith('+') || isValidPhoneNumber(v), 'Enter a valid phone number'),
 });
 type ProfileForm = z.infer<typeof profileSchema>;
 
@@ -60,7 +69,7 @@ function ProfileTab() {
   const dispatch = useAppDispatch();
   const [updateProfile, { isLoading }] = useUpdateProfileMutation();
 
-  const { register, handleSubmit, formState: { errors } } = useForm<ProfileForm>({
+  const { register, control, handleSubmit, formState: { errors } } = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       firstName: user?.firstName ?? '',
@@ -102,7 +111,21 @@ function ProfileTab() {
           </div>
           <div>
             <Label htmlFor="phone">Phone</Label>
-            <Input id="phone" type="tel" dir="ltr" {...register('phone')} />
+            <Controller
+              control={control}
+              name="phone"
+              render={({ field }) => (
+                <PhoneInput
+                  id="phone"
+                  international
+                  labels={en}
+                  defaultCountry="PK"
+                  value={field.value}
+                  onChange={(v) => field.onChange(v ?? '')}
+                  className={cn(errors.phone && 'PhoneInput-danger')}
+                />
+              )}
+            />
             {errors.phone && <p className="mt-1 text-xs text-danger">{errors.phone.message}</p>}
           </div>
           <div>

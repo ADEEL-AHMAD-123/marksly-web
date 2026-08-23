@@ -29,7 +29,13 @@ function gradeFor(pct: number): string {
 type MarksState = Record<string, Record<string, string>>; // studentId -> subject -> value
 
 export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () => void }) {
-  const { data, isLoading } = useGetExamResultsQuery(examId);
+  // refetchOnFocus off here too, same reasoning as AttendanceView's roster
+  // query: this screen holds unsaved typed marks in local state seeded from
+  // this query, and a background refetch that returns genuinely different
+  // data (not just a same-data no-op protected by structural sharing) would
+  // silently wipe whatever the teacher was mid-typing when they switched
+  // tabs and back.
+  const { data, isLoading } = useGetExamResultsQuery(examId, { refetchOnFocus: false });
   const [saveResults, { isLoading: saving }] = useSaveExamResultsMutation();
   const [publishExam, { isLoading: publishing }] = usePublishExamMutation();
   const [marks, setMarks] = useState<MarksState>({});

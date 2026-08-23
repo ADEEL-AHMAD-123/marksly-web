@@ -25,16 +25,23 @@ export function AttendanceHistory({ data, isLoading }: { data?: AttendanceData; 
         <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-success-soft text-success"><CalendarCheck size={24} /></span>
       </Card>
       <Card>
-        <CardHeader><CardTitle>Recent days</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Recent periods</CardTitle></CardHeader>
         <CardContent>
           {data.records.length === 0 ? (
             <EmptyState icon={CalendarCheck} title="No attendance recorded yet" />
           ) : (
             <ul className="divide-y divide-border">
               {data.records.map((r, i) => (
-                <li key={i} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
-                  <span className="text-sm text-foreground">{formatDate(r.date)}</span>
-                  <Badge variant={attBadge[r.status]} className="capitalize">{r.status}</Badge>
+                <li key={i} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                  <div className="min-w-0">
+                    <p className="text-sm text-foreground">{formatDate(r.date)}</p>
+                    {(r.subject || r.startTime) && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {r.subject ?? 'Class'}{r.startTime ? ` · ${r.startTime}${r.endTime ? `–${r.endTime}` : ''}` : ''}
+                      </p>
+                    )}
+                  </div>
+                  <Badge variant={attBadge[r.status]} className="shrink-0 capitalize">{r.status}</Badge>
                 </li>
               ))}
             </ul>

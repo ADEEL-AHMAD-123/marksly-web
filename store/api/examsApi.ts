@@ -73,7 +73,10 @@ export const examsApi = baseApi.injectEndpoints({
     }),
     createExam: builder.mutation<ApiObject<{ id: string }>, CreateExamBody>({
       query: (body) => ({ url: '/exams', method: 'POST', body }),
-      invalidatesTags: [{ type: 'Exams', id: 'LIST' }],
+      // Bare 'Exams' too — reportsApi's getReports (admin dashboard)
+      // provides the bare tag and would otherwise never refetch when a new
+      // exam is created.
+      invalidatesTags: [{ type: 'Exams', id: 'LIST' }, 'Exams'],
     }),
     getExamResults: builder.query<ApiObject<ResultsRoster>, string>({
       query: (examId) => `/exams/${examId}/results`,
@@ -81,14 +84,28 @@ export const examsApi = baseApi.injectEndpoints({
     }),
     saveExamResults: builder.mutation<ApiObject<{ saved: number }>, SaveResultsBody>({
       query: ({ examId, records }) => ({ url: `/exams/${examId}/results`, method: 'POST', body: { records } }),
+      // Also invalidate bare 'Results' — report.service.ts's
+      // gradeDistribution() counts every entered result regardless of
+      // whether the exam has been published, so the admin reports
+      // dashboard should reflect marks the moment they're saved, not just
+      // when the exam is later published. (Safe for the student/parent
+      // portal too — myResults/childResults still gate on `exam.published`
+      // server-side, so this only triggers a no-op refetch for them until
+      // publish actually happens.)
       invalidatesTags: (_r, _e, { examId }) => [
         { type: 'Results', id: examId },
         { type: 'Exams', id: 'LIST' },
+        'Results',
       ],
     }),
     publishExam: builder.mutation<ApiObject<unknown>, string>({
       query: (examId) => ({ url: `/exams/${examId}/publish`, method: 'POST' }),
-      invalidatesTags: (_r, _e, id) => [{ type: 'Results', id }, { type: 'Exams', id: 'LIST' }],
+      // Also invalidate the bare 'Results' tag — this is the exact moment a
+      // student/parent should see new results, but portalApi's
+      // myResults/childResults provide the bare tag (no id), which RTK
+      // Query's exact {type, id} matching won't invalidate from `{type:
+      // 'Results', id: examId}` alone.
+      invalidatesTags: (_r, _e, id) => [{ type: 'Results', id }, { type: 'Exams', id: 'LIST' }, 'Results'],
     }),
   }),
 });

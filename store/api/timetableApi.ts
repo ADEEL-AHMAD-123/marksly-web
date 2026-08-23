@@ -52,10 +52,24 @@ export const timetableApi = baseApi.injectEndpoints({
       query: (id) => ({ url: `/timetable/${id}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Classes', id: 'TIMETABLE' }],
     }),
-    // Teacher / student self-service
-    myTeacherTimetable: builder.query<ApiArray<TimetableEntry>, void>({ query: () => '/me/teacher/timetable' }),
-    teachNow: builder.query<ApiObject<TeachNow>, void>({ query: () => '/me/teacher/now' }),
-    myStudentTimetable: builder.query<ApiArray<TimetableEntry>, void>({ query: () => '/me/student/timetable' }),
+    // Teacher / student self-service — these previously had no
+    // providesTags at all, so an admin editing the timetable (createEntry/
+    // deleteEntry, which invalidate {Classes, 'TIMETABLE'}) never refreshed
+    // a teacher's "Teaching now" card or a student's own timetable; they'd
+    // only update on the next full page reload. Tagging them the same as
+    // getTimetable fixes that.
+    myTeacherTimetable: builder.query<ApiArray<TimetableEntry>, void>({
+      query: () => '/me/teacher/timetable',
+      providesTags: [{ type: 'Classes', id: 'TIMETABLE' }],
+    }),
+    teachNow: builder.query<ApiObject<TeachNow>, void>({
+      query: () => '/me/teacher/now',
+      providesTags: [{ type: 'Classes', id: 'TIMETABLE' }],
+    }),
+    myStudentTimetable: builder.query<ApiArray<TimetableEntry>, void>({
+      query: () => '/me/student/timetable',
+      providesTags: [{ type: 'Classes', id: 'TIMETABLE' }],
+    }),
   }),
 });
 

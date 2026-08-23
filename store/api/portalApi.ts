@@ -2,10 +2,19 @@ import { baseApi } from './baseApi';
 
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'leave';
 
+export interface AttendanceRecord {
+  date: string;
+  status: AttendanceStatus;
+  note?: string;
+  subject?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+}
+
 export interface AttendanceData {
   rate: number;
   total: number;
-  records: { date: string; status: AttendanceStatus }[];
+  records: AttendanceRecord[];
 }
 
 export interface ResultItem {

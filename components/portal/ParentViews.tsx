@@ -104,9 +104,14 @@ export function ParentScopedView({ kind }: { kind: Kind }) {
             </div>
           </Card>
 
-          {kind === 'attendance' && <AttendanceHistory data={att.data?.data} isLoading={att.isFetching || !sel} />}
-          {kind === 'results' && <ResultsList data={res.data?.data} isLoading={res.isFetching || !sel} />}
-          {kind === 'fees' && <FeesList data={fee.data?.data} isLoading={fee.isFetching || !sel} />}
+          {/* `isLoading`, not `isFetching` — with refetchOnFocus now on
+              (see baseApi.ts), `isFetching` would flip true every time this
+              tab regains focus and flash the whole card back to a skeleton
+              even though the data underneath hasn't changed. `isLoading`
+              still covers switching to a child we haven't fetched yet. */}
+          {kind === 'attendance' && <AttendanceHistory data={att.data?.data} isLoading={att.isLoading || !sel} />}
+          {kind === 'results' && <ResultsList data={res.data?.data} isLoading={res.isLoading || !sel} />}
+          {kind === 'fees' && <FeesList data={fee.data?.data} isLoading={fee.isLoading || !sel} />}
         </>
       )}
     </div>

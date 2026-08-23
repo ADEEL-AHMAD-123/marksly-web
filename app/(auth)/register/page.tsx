@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import en from 'react-phone-number-input/locale/en.json';
 import {
-  Eye, EyeOff, Building2, User, Phone, Mail, Lock, AlertCircle, Check, MailCheck,
+  Eye, EyeOff, Building2, User, Mail, Lock, AlertCircle, Check, MailCheck,
 } from 'lucide-react';
 import { useRegisterMutation, useResendVerificationMutation } from '@/store/api/authApi';
 import toast from 'react-hot-toast';
@@ -24,7 +26,11 @@ const schema = z.object({
   }),
   firstName: z.string().min(1, 'Required'),
   lastName: z.string().min(1, 'Required'),
-  phone: z.string().min(10, 'Enter a valid phone number'),
+  country: z.string().length(2, 'Select a country'),
+  phone: z
+    .string()
+    .min(1, 'Enter a valid phone number')
+    .refine((v) => isValidPhoneNumber(v), 'Enter a valid phone number'),
   email: z.string().email('Enter a valid email'),
   password: z
     .string()
@@ -60,8 +66,9 @@ export default function RegisterPage() {
     control,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
-  } = useForm<Form>({ resolver: zodResolver(schema), mode: 'onTouched' });
+  } = useForm<Form>({ resolver: zodResolver(schema), mode: 'onTouched', defaultValues: { country: 'PK' } });
 
   const password = watch('password') || '';
   const rules = [
@@ -199,14 +206,32 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        {/* Phone */}
+        {/* Country + phone — the country selector doubles as the phone
+            field's dialing-code prefix, so picking a country and entering a
+            number happens in one motion instead of two disconnected fields. */}
         <div>
-          <Label htmlFor="phone">Phone number</Label>
-          <div className="relative">
-            <Phone size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input id="phone" {...register('phone')} type="tel" inputMode="tel" autoComplete="tel" dir="ltr" placeholder="0300 1234567" aria-invalid={!!errors.phone} className={fieldCls(!!errors.phone)} />
-          </div>
+          <Label htmlFor="phone">Country &amp; phone number</Label>
+          <Controller
+            control={control}
+            name="phone"
+            render={({ field }) => (
+              <PhoneInput
+                id="phone"
+                international
+                labels={en}
+                defaultCountry="PK"
+                countryCallingCodeEditable={false}
+                value={field.value}
+                onChange={(v) => field.onChange(v ?? '')}
+                onCountryChange={(c) => setValue('country', c ?? '', { shouldValidate: true })}
+                placeholder="300 1234567"
+                autoComplete="tel"
+                className={cn(errors.phone && 'PhoneInput-danger')}
+              />
+            )}
+          />
           {errors.phone && <p className="mt-1.5 text-xs text-danger">{errors.phone.message}</p>}
+          {errors.country && !errors.phone && <p className="mt-1.5 text-xs text-danger">{errors.country.message}</p>}
         </div>
 
         {/* Email */}

@@ -130,11 +130,20 @@ export const studentsApi = baseApi.injectEndpoints({
       providesTags: (_r, _e, id) => [{ type: 'Students', id }],
     }),
 
+    // Every mutation below also invalidates the bare 'Students' tag (in
+    // addition to the specific LIST/STATS/id ones) because portalApi's
+    // myChildren and reportsApi's getReports both provide the bare tag —
+    // RTK Query only matches invalidation by exact {type, id}, so without
+    // this a parent's children list (e.g. right after their new child is
+    // created here with a linked guardian phone) or the admin reports page
+    // would never refresh. See the same fix applied to attendanceApi,
+    // feesApi and examsApi.
     createStudent: builder.mutation<ApiObject<StudentListItem>, CreateStudentBody>({
       query: (body) => ({ url: '/students', method: 'POST', body }),
       invalidatesTags: [
         { type: 'Students', id: 'LIST' },
         { type: 'Students', id: 'STATS' },
+        'Students',
       ],
     }),
 
@@ -147,6 +156,7 @@ export const studentsApi = baseApi.injectEndpoints({
         { type: 'Students', id },
         { type: 'Students', id: 'LIST' },
         { type: 'Students', id: 'STATS' },
+        'Students',
       ],
     }),
 
@@ -155,6 +165,7 @@ export const studentsApi = baseApi.injectEndpoints({
       invalidatesTags: [
         { type: 'Students', id: 'LIST' },
         { type: 'Students', id: 'STATS' },
+        'Students',
       ],
     }),
 
@@ -163,6 +174,7 @@ export const studentsApi = baseApi.injectEndpoints({
       invalidatesTags: [
         { type: 'Students', id: 'LIST' },
         { type: 'Students', id: 'STATS' },
+        'Students',
       ],
     }),
 
