@@ -30,13 +30,16 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       publishedTime: post.date,
       modifiedTime: post.modifiedDate ?? post.date,
       authors: [post.author ?? 'Marksly'],
-      images: [{ url: '/og-image.png', width: 1200, height: 630, alt: post.title }],
+      // No explicit `images` here — Next.js auto-detects the sibling
+      // opengraph-image.tsx route (generates a unique per-post image from
+      // the title/description instead of the one generic /og-image.png
+      // every post used to share, so shares of different articles no
+      // longer look visually identical).
     },
     twitter: {
       card: 'summary_large_image',
       title: post.title,
       description: post.description,
-      images: ['/og-image.png'],
     },
   };
 }
@@ -65,7 +68,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       logo: { '@type': 'ImageObject', url: `${SITE_URL}/og-image.png` },
     },
     mainEntityOfPage: { '@type': 'WebPage', '@id': `${SITE_URL}/blog/${post.slug}` },
-    image: [`${SITE_URL}/og-image.png`],
+    image: [`${SITE_URL}/blog/${post.slug}/opengraph-image`],
   };
 
   // BreadcrumbList — lets Google show Home > Blog > Post Title in the
