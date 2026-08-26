@@ -13,10 +13,10 @@ import { cn } from '@/lib/utils';
 import { useResetPasswordMutation } from '@/store/api/authApi';
 import { getErrorMessage, getErrorCode, getErrorDetails } from '@/lib/get-error-message';
 
-// Same phone-shared-across-institutions ambiguity as login (see that
-// page's comment) — resetPassword() can return this once the OTP itself
-// has already proven phone ownership, asking which institution's password
-// this reset applies to instead of guessing.
+// Same email-shared-across-institutions ambiguity as login (see that
+// page's comment) — resetPassword() can return this once the reset link
+// itself has already proven email ownership, asking which institution's
+// password this reset applies to instead of guessing.
 interface AmbiguousAccountOption {
   institutionId: string;
   institutionName: string;
@@ -26,7 +26,6 @@ interface AmbiguousAccountOption {
 // Password rule matches register/page.tsx's schema for consistency.
 const schema = z
   .object({
-    otp: z.string().min(4, 'Enter the code we sent you'),
     newPassword: z
       .string()
       .min(8, 'At least 8 characters')
@@ -43,7 +42,7 @@ type Form = z.infer<typeof schema>;
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const phone = searchParams.get('phone') || '';
+  const token = searchParams.get('token') || '';
 
   const [formError, setFormError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -57,8 +56,8 @@ function ResetPasswordForm() {
     formState: { errors },
   } = useForm<Form>({ resolver: zodResolver(schema), mode: 'onTouched' });
 
-  const completeReset = async (data: { otp: string; newPassword: string; institutionId?: string }) => {
-    await resetPassword({ phone, otp: data.otp, newPassword: data.newPassword, institutionId: data.institutionId }).unwrap();
+  const completeReset = async (data: { newPassword: string; institutionId?: string }) => {
+    await resetPassword({ token, newPassword: data.newPassword, institutionId: data.institutionId }).unwrap();
     setDone(true);
     setTimeout(() => router.push('/login'), 1800);
   };
@@ -66,8 +65,8 @@ function ResetPasswordForm() {
   const onSubmit = async (data: Form) => {
     setFormError(null);
     setAccountOptions(null);
-    if (!phone) {
-      setFormError('Missing phone number — please start over.');
+    if (!token) {
+      setFormError('Missing reset link — please start over.');
       return;
     }
     try {
@@ -80,7 +79,7 @@ function ResetPasswordForm() {
           return;
         }
       }
-      setFormError(getErrorMessage(e, 'That code is invalid or has expired. Please request a new one.'));
+      setFormError(getErrorMessage(e, 'This reset link is invalid or has expired. Please request a new one.'));
     }
   };
 
@@ -90,19 +89,19 @@ function ResetPasswordForm() {
       await completeReset({ ...getValues(), institutionId });
     } catch (e: any) {
       setAccountOptions(null);
-      setFormError(getErrorMessage(e, 'That code is invalid or has expired. Please request a new one.'));
+      setFormError(getErrorMessage(e, 'This reset link is invalid or has expired. Please request a new one.'));
     }
   };
 
-  if (!phone) {
+  if (!token) {
     return (
       <div className="text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-danger-soft text-danger">
           <AlertCircle size={28} />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Session expired</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Invalid reset link</h1>
         <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
-          We couldn&apos;t find a phone number for this reset. Please start over.
+          This link is missing its reset token. Please request a new one.
         </p>
         <Link
           href="/forgot-password"
@@ -120,7 +119,7 @@ function ResetPasswordForm() {
         <div className="mb-7">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Which institution?</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            This phone number is linked to more than one institution. Pick the one you're resetting the password for.
+            This email is linked to more than one institution. Pick the one you&apos;re resetting the password for.
           </p>
         </div>
 
@@ -183,10 +182,9 @@ function ResetPasswordForm() {
   return (
     <div>
       <div className="mb-7">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Enter reset code</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Set a new password</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          We sent a code via SMS to <span className="font-medium text-foreground" dir="ltr">{phone}</span>.
-          Enter it below with your new password.
+          Choose a new password for your account.
         </p>
       </div>
 
@@ -202,32 +200,13 @@ function ResetPasswordForm() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <div>
-          <Label htmlFor="otp">Reset code</Label>
-          <input
-            id="otp"
-            {...register('otp')}
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            autoFocus
-            dir="ltr"
-            placeholder="123456"
-            aria-invalid={!!errors.otp}
-            className={cn(
-              'h-11 w-full rounded-lg border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              errors.otp ? 'border-danger' : 'border-input'
-            )}
-          />
-          {errors.otp && <p className="mt-1.5 text-xs text-danger">{errors.otp.message}</p>}
-        </div>
-
-        <div>
           <Label htmlFor="newPassword">New password</Label>
           <input
             id="newPassword"
             {...register('newPassword')}
             type="password"
             autoComplete="new-password"
+            autoFocus
             aria-invalid={!!errors.newPassword}
             className={cn(
               'h-11 w-full rounded-lg border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',

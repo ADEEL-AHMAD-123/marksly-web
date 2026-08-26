@@ -2,37 +2,34 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
-import en from 'react-phone-number-input/locale/en.json';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Mail, MailCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useForgotPasswordMutation } from '@/store/api/authApi';
 import { getErrorMessage } from '@/lib/get-error-message';
 
-// Same country-aware PhoneInput as login/register, for the same reason —
-// whatever's typed needs to normalize to E.164 the same way the stored
-// account phone does, or the backend lookup silently finds nobody.
+// Password reset is email-based, not phone/SMS — see auth.service.ts's
+// forgotPassword() comment: there was never an actual SMS provider wired
+// up behind the old OTP flow, so it was silently non-functional for real
+// users. Email reuses the already-working Resend infrastructure (the same
+// one that sends the verification email).
 const schema = z.object({
-  phone: z
-    .string()
-    .min(1, 'Enter a valid phone number')
-    .refine((v) => isValidPhoneNumber(v), 'Enter a valid phone number'),
+  email: z.string().email('Enter a valid email address'),
 });
 type Form = z.infer<typeof schema>;
 
 export default function ForgotPasswordPage() {
-  const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [sentTo, setSentTo] = useState('');
   const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
 
   const {
-    control,
+    register,
     handleSubmit,
     formState: { errors },
   } = useForm<Form>({ resolver: zodResolver(schema), mode: 'onTouched' });
@@ -40,22 +37,44 @@ export default function ForgotPasswordPage() {
   const onSubmit = async (data: Form) => {
     setFormError(null);
     try {
-      await forgotPassword({ phone: data.phone }).unwrap();
+      await forgotPassword({ email: data.email }).unwrap();
       // Deliberately doesn't reveal whether the account exists (the backend
       // returns the same generic success either way, see auth.service.ts's
-      // forgotPassword()) — always proceed to the code-entry step.
-      router.push(`/forgot-password/reset?phone=${encodeURIComponent(data.phone)}`);
+      // forgotPassword()) — always show the same "check your email" screen.
+      setSentTo(data.email);
+      setSent(true);
     } catch (e: any) {
-      setFormError(getErrorMessage(e, 'Could not send the reset code. Please check your number and try again.'));
+      setFormError(getErrorMessage(e, 'Could not send the reset link. Please try again.'));
     }
   };
+
+  if (sent) {
+    return (
+      <div className="text-center">
+        <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-primary-soft-foreground">
+          <MailCheck size={26} />
+        </span>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Check your email</h1>
+        <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
+          If an account exists for <span className="font-medium text-foreground">{sentTo}</span>, we&apos;ve sent a
+          password reset link. It expires in 1 hour and can only be used once.
+        </p>
+        <Link
+          href="/login"
+          className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+        >
+          <ArrowLeft size={15} /> Back to sign in
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="mb-7">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Forgot password?</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Enter your phone number and we&apos;ll send a reset code via SMS.
+          Enter your account email and we&apos;ll send you a link to reset your password.
         </p>
       </div>
 
@@ -71,31 +90,32 @@ export default function ForgotPasswordPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <div>
-          <Label htmlFor="phone">Phone number</Label>
-          <Controller
-            control={control}
-            name="phone"
-            render={({ field }) => (
-              <PhoneInput
-                id="phone"
-                international
-                labels={en}
-                defaultCountry="PK"
-                countryCallingCodeEditable={false}
-                value={field.value}
-                onChange={(v) => field.onChange(v ?? '')}
-                placeholder="300 1234567"
-                autoComplete="tel"
-                autoFocus
-                className={cn(errors.phone && 'PhoneInput-danger')}
-              />
-            )}
-          />
-          {errors.phone && <p className="mt-1.5 text-xs text-danger">{errors.phone.message}</p>}
+          <Label htmlFor="email">Email address</Label>
+          <div className="relative">
+            <Mail
+              size={17}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+            <input
+              id="email"
+              {...register('email')}
+              type="email"
+              autoComplete="email"
+              autoFocus
+              dir="ltr"
+              placeholder="you@institute.pk"
+              aria-invalid={!!errors.email}
+              className={cn(
+                'h-11 w-full rounded-lg border bg-card pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                errors.email ? 'border-danger' : 'border-input'
+              )}
+            />
+          </div>
+          {errors.email && <p className="mt-1.5 text-xs text-danger">{errors.email.message}</p>}
         </div>
 
         <Button type="submit" loading={isLoading} className="w-full" size="lg">
-          {isLoading ? 'Sending…' : 'Send reset code'}
+          {isLoading ? 'Sending…' : 'Send reset link'}
         </Button>
       </form>
 
