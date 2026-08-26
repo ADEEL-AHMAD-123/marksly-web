@@ -11,7 +11,9 @@ import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { PageHero } from '@/components/marketing/PageHero';
 import { FeatureVisual, type VisualKind } from '@/components/marketing/FeatureVisual';
 
-const TITLE = 'Features — Everything Your Institution Needs';
+// Matches the "X — Marksly ..." pattern used by /pricing's title, rather
+// than relying solely on the root layout's "%s | Marksly" template suffix.
+const TITLE = 'Features — Marksly School & Campus Management Software';
 // Kept under ~160 chars — Bing Webmaster Tools flags longer descriptions as
 // an error, and both Google/Bing truncate them in the search snippet anyway.
 const DESCRIPTION =
@@ -23,6 +25,15 @@ export const metadata: Metadata = {
   alternates: { canonical: '/features' },
   openGraph: { type: 'website', url: '/features', title: TITLE, description: DESCRIPTION },
   twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION },
+};
+
+const BREADCRUMB_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://marksly.pk/' },
+    { '@type': 'ListItem', position: 2, name: 'Features', item: 'https://marksly.pk/features' },
+  ],
 };
 
 // Every module gets the same documentation-style treatment: icon, title,
@@ -148,6 +159,9 @@ const PAKISTAN = [
 export default function FeaturesPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_JSON_LD) }} />
+
       <MarketingHeader active="/features" />
 
       <PageHero

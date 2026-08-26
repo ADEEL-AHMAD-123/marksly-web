@@ -17,6 +17,15 @@ export const metadata: Metadata = {
   twitter: { card: 'summary_large_image', title: `${TITLE} | Marksly`, description: DESCRIPTION },
 };
 
+const BREADCRUMB_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://marksly.pk/' },
+    { '@type': 'ListItem', position: 2, name: 'Contact', item: 'https://marksly.pk/contact' },
+  ],
+};
+
 const CHANNELS = [
   {
     icon: Mail,
@@ -37,6 +46,9 @@ const CHANNELS = [
 export default function ContactPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_JSON_LD) }} />
+
       <MarketingHeader active="/contact" />
 
       <PageHero

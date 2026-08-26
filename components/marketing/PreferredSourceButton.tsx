@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Google Search "Preferred Sources" button — lets a reader mark marksly.pk
  * as a preferred source so our articles get a "preferred" badge in Top

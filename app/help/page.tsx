@@ -74,9 +74,38 @@ const TOPICS = [
   },
 ];
 
+// FAQPage structured data — flattens every Q&A actually rendered below into
+// one list. Same rule as /pricing's FAQ_JSON_LD: never list a question here
+// that isn't visible on the page, and vice versa.
+const FAQ_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: TOPICS.flatMap((section) =>
+    section.items.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    }))
+  ),
+};
+
+const BREADCRUMB_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://marksly.pk/' },
+    { '@type': 'ListItem', position: 2, name: 'Help Center', item: 'https://marksly.pk/help' },
+  ],
+};
+
 export default function HelpPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSON_LD) }} />
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_JSON_LD) }} />
+
       <MarketingHeader active="/help" />
 
       <PageHero

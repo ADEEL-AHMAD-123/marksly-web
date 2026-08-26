@@ -18,11 +18,23 @@ export const metadata: Metadata = {
   twitter: { card: 'summary_large_image', title: `${TITLE} | Marksly`, description: DESCRIPTION },
 };
 
+const BREADCRUMB_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://marksly.pk/' },
+    { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://marksly.pk/blog' },
+  ],
+};
+
 export default function BlogIndexPage() {
   const posts = [...BLOG_POSTS].sort((a, b) => (a.date < b.date ? 1 : -1));
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_JSON_LD) }} />
+
       <MarketingHeader active="/blog" />
 
       <PageHero
