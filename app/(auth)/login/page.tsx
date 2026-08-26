@@ -8,7 +8,7 @@ import { z } from 'zod';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import en from 'react-phone-number-input/locale/en.json';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Lock, AlertCircle, MailWarning } from 'lucide-react';
+import { Eye, EyeOff, Lock, AlertCircle, MailWarning, Building2, ChevronRight } from 'lucide-react';
 import { useLoginMutation, useResendVerificationMutation } from '@/store/api/authApi';
 import { useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/slices/authSlice';
@@ -17,7 +17,19 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { roleHome } from '@/lib/role-routes';
-import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
+import { getErrorMessage, getErrorCode, getErrorDetails } from '@/lib/get-error-message';
+
+// Same phone can legitimately belong to accounts at more than one
+// institution (e.g. a parent with kids at two different schools) — phone
+// is only unique PER institution, not globally (see user.model.ts). When
+// that same phone + password combination matches more than one account,
+// the backend can't guess which one you meant and returns this instead of
+// silently picking one (see auth.service.ts's login()).
+interface AmbiguousAccountOption {
+  institutionId: string;
+  institutionName: string;
+  role: string;
+}
 
 // Registration (and every other phone-collecting form — StudentFormDrawer,
 // AddTeacherDrawer, etc.) stores phone numbers in E.164 via this same
@@ -46,6 +58,7 @@ export default function LoginPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [needsVerification, setNeedsVerification] = useState(false);
   const [resendEmail, setResendEmail] = useState('');
+  const [accountOptions, setAccountOptions] = useState<AmbiguousAccountOption[] | null>(null);
   const [login, { isLoading }] = useLoginMutation();
   const [resendVerification, { isLoading: resending }] = useResendVerificationMutation();
 
@@ -53,26 +66,49 @@ export default function LoginPage() {
     register,
     control,
     handleSubmit,
+    getValues,
     formState: { errors },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     mode: 'onTouched',
   });
 
+  const completeLogin = async (data: LoginForm & { institutionId?: string }) => {
+    const result = await login(data).unwrap();
+    dispatch(setCredentials({ user: result.data.user, accessToken: result.data.accessToken }));
+    toast.success(`Welcome back, ${result.data.user.firstName}!`);
+    router.push(roleHome(result.data.user.role));
+  };
+
   const onSubmit = async (data: LoginForm) => {
     setFormError(null);
     setNeedsVerification(false);
+    setAccountOptions(null);
     try {
-      const result = await login(data).unwrap();
-      dispatch(setCredentials({ user: result.data.user, accessToken: result.data.accessToken }));
-      toast.success(`Welcome back, ${result.data.user.firstName}!`);
-      router.push(roleHome(result.data.user.role));
+      await completeLogin(data);
     } catch (error: any) {
       if (getErrorCode(error) === 'EMAIL_NOT_VERIFIED') {
         setNeedsVerification(true);
         setFormError(getErrorMessage(error, 'Please verify your email before logging in.'));
         return;
       }
+      if (getErrorCode(error) === 'MULTIPLE_ACCOUNTS') {
+        const details = getErrorDetails<{ institutions: AmbiguousAccountOption[] }>(error);
+        if (details?.institutions?.length) {
+          setAccountOptions(details.institutions);
+          return;
+        }
+      }
+      setFormError(getErrorMessage(error, 'That phone number and password don’t match — please check and try again.'));
+    }
+  };
+
+  const onSelectInstitution = async (institutionId: string) => {
+    setFormError(null);
+    try {
+      await completeLogin({ ...getValues(), institutionId });
+    } catch (error: any) {
+      setAccountOptions(null);
       setFormError(getErrorMessage(error, 'That phone number and password don’t match — please check and try again.'));
     }
   };
@@ -89,6 +125,58 @@ export default function LoginPage() {
       toast.error(getErrorMessage(error, 'Could not resend the email. Please try again in a moment.'));
     }
   };
+
+  if (accountOptions) {
+    return (
+      <div>
+        <div className="mb-7">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Which institution?</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            This phone number and password match more than one account. Pick the one you want to sign in to.
+          </p>
+        </div>
+
+        {formError && (
+          <div
+            role="alert"
+            className="mb-5 flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger-soft px-3.5 py-3 text-sm text-danger"
+          >
+            <AlertCircle size={17} className="mt-0.5 shrink-0" />
+            <span>{formError}</span>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {accountOptions.map((opt) => (
+            <button
+              key={opt.institutionId}
+              type="button"
+              disabled={isLoading}
+              onClick={() => onSelectInstitution(opt.institutionId)}
+              className="flex w-full items-center gap-3 rounded-lg border border-input bg-card px-4 py-3 text-left transition-colors hover:border-primary hover:bg-primary-soft disabled:opacity-60"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                <Building2 size={17} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-foreground">{opt.institutionName}</span>
+                <span className="block text-xs capitalize text-muted-foreground">{opt.role}</span>
+              </span>
+              <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setAccountOptions(null)}
+          className="mt-6 text-sm font-medium text-primary hover:underline"
+        >
+          Use a different phone number or password
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>

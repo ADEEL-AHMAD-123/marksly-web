@@ -29,3 +29,10 @@ export function getErrorMessage(error: unknown, fallback: string): string {
 export function getErrorCode(error: unknown): string | undefined {
   return (error as any)?.data?.error?.code;
 }
+
+/** Pulls the backend's structured error `details` payload, if present —
+ *  e.g. login()'s MULTIPLE_ACCOUNTS error attaches the list of
+ *  institutions to choose from here (see AppError's optional 4th arg). */
+export function getErrorDetails<T = unknown>(error: unknown): T | undefined {
+  return (error as any)?.data?.error?.details;
+}

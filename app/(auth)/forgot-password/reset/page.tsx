@@ -6,12 +6,22 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, AlertCircle, CheckCircle2, Building2, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useResetPasswordMutation } from '@/store/api/authApi';
-import { getErrorMessage } from '@/lib/get-error-message';
+import { getErrorMessage, getErrorCode, getErrorDetails } from '@/lib/get-error-message';
+
+// Same phone-shared-across-institutions ambiguity as login (see that
+// page's comment) — resetPassword() can return this once the OTP itself
+// has already proven phone ownership, asking which institution's password
+// this reset applies to instead of guessing.
+interface AmbiguousAccountOption {
+  institutionId: string;
+  institutionName: string;
+  role: string;
+}
 
 // Password rule matches register/page.tsx's schema for consistency.
 const schema = z
@@ -37,25 +47,49 @@ function ResetPasswordForm() {
 
   const [formError, setFormError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [accountOptions, setAccountOptions] = useState<AmbiguousAccountOption[] | null>(null);
   const [resetPassword, { isLoading }] = useResetPasswordMutation();
 
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors },
   } = useForm<Form>({ resolver: zodResolver(schema), mode: 'onTouched' });
 
+  const completeReset = async (data: { otp: string; newPassword: string; institutionId?: string }) => {
+    await resetPassword({ phone, otp: data.otp, newPassword: data.newPassword, institutionId: data.institutionId }).unwrap();
+    setDone(true);
+    setTimeout(() => router.push('/login'), 1800);
+  };
+
   const onSubmit = async (data: Form) => {
     setFormError(null);
+    setAccountOptions(null);
     if (!phone) {
       setFormError('Missing phone number — please start over.');
       return;
     }
     try {
-      await resetPassword({ phone, otp: data.otp, newPassword: data.newPassword }).unwrap();
-      setDone(true);
-      setTimeout(() => router.push('/login'), 1800);
+      await completeReset(data);
     } catch (e: any) {
+      if (getErrorCode(e) === 'MULTIPLE_ACCOUNTS') {
+        const details = getErrorDetails<{ institutions: AmbiguousAccountOption[] }>(e);
+        if (details?.institutions?.length) {
+          setAccountOptions(details.institutions);
+          return;
+        }
+      }
+      setFormError(getErrorMessage(e, 'That code is invalid or has expired. Please request a new one.'));
+    }
+  };
+
+  const onSelectInstitution = async (institutionId: string) => {
+    setFormError(null);
+    try {
+      await completeReset({ ...getValues(), institutionId });
+    } catch (e: any) {
+      setAccountOptions(null);
       setFormError(getErrorMessage(e, 'That code is invalid or has expired. Please request a new one.'));
     }
   };
@@ -76,6 +110,58 @@ function ResetPasswordForm() {
         >
           <ArrowLeft size={15} /> Back to forgot password
         </Link>
+      </div>
+    );
+  }
+
+  if (accountOptions) {
+    return (
+      <div>
+        <div className="mb-7">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Which institution?</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            This phone number is linked to more than one institution. Pick the one you're resetting the password for.
+          </p>
+        </div>
+
+        {formError && (
+          <div
+            role="alert"
+            className="mb-5 flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger-soft px-3.5 py-3 text-sm text-danger"
+          >
+            <AlertCircle size={17} className="mt-0.5 shrink-0" />
+            <span>{formError}</span>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {accountOptions.map((opt) => (
+            <button
+              key={opt.institutionId}
+              type="button"
+              disabled={isLoading}
+              onClick={() => onSelectInstitution(opt.institutionId)}
+              className="flex w-full items-center gap-3 rounded-lg border border-input bg-card px-4 py-3 text-left transition-colors hover:border-primary hover:bg-primary-soft disabled:opacity-60"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                <Building2 size={17} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-foreground">{opt.institutionName}</span>
+                <span className="block text-xs capitalize text-muted-foreground">{opt.role}</span>
+              </span>
+              <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setAccountOptions(null)}
+          className="mt-6 text-sm font-medium text-primary hover:underline"
+        >
+          Back
+        </button>
       </div>
     );
   }
