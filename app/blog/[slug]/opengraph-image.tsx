@@ -1,7 +1,12 @@
 import { ImageResponse } from 'next/og';
 import { getPostBySlug, BLOG_POSTS } from '../posts';
 
-export const runtime = 'edge';
+// No `export const runtime = 'edge'` here — Next.js doesn't allow combining
+// the edge runtime with `generateStaticParams` on an image-metadata route
+// (it needs Node to pre-render each slug's image at build time), and broke
+// the Vercel build with "Page ... cannot use both `runtime = 'edge'` and
+// `generateStaticParams`." The default (Node.js) runtime works fine for
+// `ImageResponse` and is what static generation actually needs here.
 export const alt = 'Marksly';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
