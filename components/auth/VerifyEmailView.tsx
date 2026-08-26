@@ -121,16 +121,21 @@ export function VerifyEmailView() {
         </p>
       ) : (
         <div className="mx-auto mt-6 max-w-xs">
-          <div className="flex gap-2">
+          {/* Stacks vertically below the `sm` breakpoint so the email field
+              never gets squeezed down to a handful of visible characters
+              next to the button on a narrow phone — this card's own inner
+              padding plus the page's outer padding leaves very little room
+              for a side-by-side input+button at ~360px device widths. */}
+          <div className="flex flex-col gap-2 sm:flex-row">
             <input
               type="email"
               value={resendEmail}
               onChange={(e) => setResendEmail(e.target.value)}
               placeholder="Your registered email"
               dir="ltr"
-              className="h-10 flex-1 rounded-lg border border-input bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-10 min-w-0 flex-1 rounded-lg border border-input bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            <Button type="button" loading={resending} onClick={onResend}>Resend</Button>
+            <Button type="button" loading={resending} onClick={onResend} className="w-full sm:w-auto">Resend</Button>
           </div>
           {resendError && <p className="mt-2 text-xs text-danger">{resendError}</p>}
         </div>

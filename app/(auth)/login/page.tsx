@@ -119,15 +119,18 @@ export default function LoginPage() {
             <span>{formError}</span>
           </div>
           <div className="flex gap-2">
+            {/* min-w-0 is needed on a flex child input — without it, the
+                browser's default min-width:auto can push this wider than
+                its flex-basis and overflow the card on a narrow phone. */}
             <input
               type="email"
               value={resendEmail}
               onChange={(e) => setResendEmail(e.target.value)}
               placeholder="Your registered email"
               dir="ltr"
-              className="h-9 flex-1 rounded-md border border-warning/30 bg-card px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-9 min-w-0 flex-1 rounded-md border border-warning/30 bg-card px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            <Button type="button" size="sm" variant="secondary" loading={resending} onClick={onResend}>
+            <Button type="button" size="sm" variant="secondary" loading={resending} onClick={onResend} className="shrink-0">
               Resend
             </Button>
           </div>
