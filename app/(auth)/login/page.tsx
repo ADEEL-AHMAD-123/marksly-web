@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { roleHome } from '@/lib/role-routes';
+import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
 
 // Registration (and every other phone-collecting form — StudentFormDrawer,
 // AddTeacherDrawer, etc.) stores phone numbers in E.164 via this same
@@ -67,17 +68,12 @@ export default function LoginPage() {
       toast.success(`Welcome back, ${result.data.user.firstName}!`);
       router.push(roleHome(result.data.user.role));
     } catch (error: any) {
-      if (error?.data?.error?.code === 'EMAIL_NOT_VERIFIED') {
+      if (getErrorCode(error) === 'EMAIL_NOT_VERIFIED') {
         setNeedsVerification(true);
-        setFormError(error.data.error.message);
+        setFormError(getErrorMessage(error, 'Please verify your email before logging in.'));
         return;
       }
-      const message =
-        error?.data?.error?.message ||
-        (error?.status === 'FETCH_ERROR'
-          ? 'Cannot reach the server. Please try again.'
-          : 'Invalid phone number or password.');
-      setFormError(message);
+      setFormError(getErrorMessage(error, 'That phone number and password don’t match — please check and try again.'));
     }
   };
 
@@ -86,8 +82,11 @@ export default function LoginPage() {
     try {
       await resendVerification({ email: resendEmail.trim() }).unwrap();
       toast.success('Verification email sent — check your inbox.');
-    } catch {
-      toast.error('Could not resend the email. Please try again in a moment.');
+    } catch (error: any) {
+      // Show the real reason (e.g. rate-limited) instead of always claiming
+      // a generic failure — a throttled user deserves to know why nothing
+      // arrived rather than being told to "try again in a moment" forever.
+      toast.error(getErrorMessage(error, 'Could not resend the email. Please try again in a moment.'));
     }
   };
 

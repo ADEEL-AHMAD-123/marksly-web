@@ -18,23 +18,28 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/get-error-message';
 
+// Wording here is kept identical to the backend's registerSchema
+// (auth.validator.ts) — client-side validation should never surprise a user
+// with different phrasing than what a slow network / server round-trip
+// might show for the same rule.
 const schema = z.object({
   institutionName: z.string().min(2, 'Institution name is required'),
   institutionType: z.enum(['academy', 'school', 'college', 'university'], {
     errorMap: () => ({ message: 'Select an institution type' }),
   }),
-  firstName: z.string().min(1, 'Required'),
-  lastName: z.string().min(1, 'Required'),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
   country: z.string().length(2, 'Select a country'),
   phone: z
     .string()
     .min(1, 'Enter a valid phone number')
     .refine((v) => isValidPhoneNumber(v), 'Enter a valid phone number'),
-  email: z.string().email('Enter a valid email'),
+  email: z.string().email('Enter a valid email address'),
   password: z
     .string()
-    .min(8, 'At least 8 characters')
+    .min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Add an uppercase letter')
     .regex(/[0-9]/, 'Add a number'),
 });
@@ -83,12 +88,7 @@ export default function RegisterPage() {
       const result = await registerInstitution(data).unwrap();
       setRegisteredEmail(result.data.email);
     } catch (error: any) {
-      setFormError(
-        error?.data?.error?.message ||
-          (error?.status === 'FETCH_ERROR'
-            ? 'Cannot reach the server. Please try again.'
-            : 'Could not create your account. Please try again.')
-      );
+      setFormError(getErrorMessage(error, 'Could not create your account. Please try again.'));
     }
   };
 
@@ -97,8 +97,8 @@ export default function RegisterPage() {
     try {
       await resendVerification({ email: registeredEmail }).unwrap();
       toast.success('Verification email sent again — check your inbox.');
-    } catch {
-      toast.error('Could not resend the email. Please try again in a moment.');
+    } catch (error: any) {
+      toast.error(getErrorMessage(error, 'Could not resend the email. Please try again in a moment.'));
     }
   };
 

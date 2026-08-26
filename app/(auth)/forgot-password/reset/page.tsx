@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useResetPasswordMutation } from '@/store/api/authApi';
+import { getErrorMessage } from '@/lib/get-error-message';
 
 // Password rule matches register/page.tsx's schema for consistency.
 const schema = z
@@ -55,7 +56,7 @@ function ResetPasswordForm() {
       setDone(true);
       setTimeout(() => router.push('/login'), 1800);
     } catch (e: any) {
-      setFormError(e?.data?.error?.message || 'Invalid or expired code. Please try again.');
+      setFormError(getErrorMessage(e, 'That code is invalid or has expired. Please request a new one.'));
     }
   };
 

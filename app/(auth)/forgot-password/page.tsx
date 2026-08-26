@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useForgotPasswordMutation } from '@/store/api/authApi';
+import { getErrorMessage } from '@/lib/get-error-message';
 
 // Same country-aware PhoneInput as login/register, for the same reason —
 // whatever's typed needs to normalize to E.164 the same way the stored
@@ -45,7 +46,7 @@ export default function ForgotPasswordPage() {
       // forgotPassword()) — always proceed to the code-entry step.
       router.push(`/forgot-password/reset?phone=${encodeURIComponent(data.phone)}`);
     } catch (e: any) {
-      setFormError(e?.data?.error?.message || 'Something went wrong. Please try again.');
+      setFormError(getErrorMessage(e, 'Could not send the reset code. Please check your number and try again.'));
     }
   };
 
