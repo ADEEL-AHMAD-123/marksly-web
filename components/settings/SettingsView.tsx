@@ -56,7 +56,9 @@ export function SettingsView() {
 const profileSchema = z.object({
   firstName: z.string().min(1, 'Required'),
   lastName: z.string().min(1, 'Required'),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  // Required — email is mandatory system-wide (the only working
+  // self-service password-recovery path), so it can no longer be cleared.
+  email: z.string().email('Enter a valid email address'),
   // Accounts created before the country-aware phone input (see
   // register/page.tsx) may still hold a legacy local-format number here —
   // don't hard-fail validation on those until the person actually edits
@@ -85,7 +87,7 @@ function ProfileTab() {
 
   const onSubmit = async (values: ProfileForm) => {
     try {
-      const res = await updateProfile({ ...values, email: values.email || undefined }).unwrap();
+      const res = await updateProfile(values).unwrap();
       dispatch(updateUser(res.data));
       toast.success('Profile updated');
     } catch (e: any) {

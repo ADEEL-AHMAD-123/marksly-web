@@ -22,7 +22,7 @@ export interface CreateUserBody {
   firstName: string;
   lastName: string;
   phone: string;
-  email?: string;
+  email: string;
   password?: string;
   role: ManageableRole;
 }

@@ -8,6 +8,7 @@ export interface StudentListItem {
   firstName: string;
   lastName: string;
   phone: string | null;
+  email: string | null;
   profilePhoto: string | null;
   className: string | null;
   section: string | null;
@@ -56,7 +57,7 @@ export interface CreateStudentBody {
   firstName: string;
   lastName: string;
   phone: string;
-  email?: string;
+  email: string;
   password?: string;
   rollNumber: string;
   admissionNumber: string;
@@ -72,6 +73,7 @@ export interface CreateStudentBody {
   guardianIds?: string[];
   parentPhone?: string;
   parentName?: string;
+  parentEmail?: string;
 }
 
 export interface BulkImportResult {

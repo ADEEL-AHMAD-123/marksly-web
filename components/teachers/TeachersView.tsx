@@ -185,7 +185,9 @@ const schema = z.object({
     .string()
     .min(1, 'Enter a valid phone number')
     .refine((v) => isValidPhoneNumber(v), 'Enter a valid phone number'),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  // Required — email is the only working self-service password-recovery
+  // path (see auth.service.ts's forgotPassword()).
+  email: z.string().email('Enter a valid email address'),
 });
 type TeacherForm = z.infer<typeof schema>;
 
@@ -199,7 +201,7 @@ function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 
   const onSubmit = async (values: TeacherForm) => {
     try {
-      const res = await createUser({ ...values, email: values.email || undefined, role: 'teacher' }).unwrap();
+      const res = await createUser({ ...values, role: 'teacher' }).unwrap();
       toast.success('Teacher added');
       reset();
       onClose();
@@ -208,7 +210,7 @@ function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => voi
           name: `${values.firstName} ${values.lastName}`,
           phone: values.phone,
           tempPassword: res.data.tempPassword,
-          emailed: !!values.email,
+          emailed: true,
         });
       }
     } catch (e: any) {
@@ -260,7 +262,7 @@ function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => voi
               {errors.phone && <p className="mt-1 text-xs text-danger">{errors.phone.message}</p>}
             </div>
             <div>
-              <Label htmlFor="email">Email (optional)</Label>
+              <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" dir="ltr" {...register('email')} />
               {errors.email && <p className="mt-1 text-xs text-danger">{errors.email.message}</p>}
             </div>

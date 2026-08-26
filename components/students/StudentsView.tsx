@@ -278,8 +278,8 @@ export function StudentsView() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         title="Import Students"
-        columns={['firstName', 'lastName', 'phone', 'email', 'rollNumber', 'admissionNumber', 'class', 'section', 'gender', 'guardianPhone', 'guardianName']}
-        sample={['Ali', 'Khan', '03001234567', 'ali@example.com', 'STD-2001', 'ADM-2001', 'Grade 5', 'A', 'male', '03009998888', 'Imran Khan']}
+        columns={['firstName', 'lastName', 'phone', 'email', 'rollNumber', 'admissionNumber', 'class', 'section', 'gender', 'guardianPhone', 'guardianName', 'guardianEmail']}
+        sample={['Ali', 'Khan', '03001234567', 'ali@example.com', 'STD-2001', 'ADM-2001', 'Grade 5', 'A', 'male', '03009998888', 'Imran Khan', 'imran@example.com']}
         filename="students-template.csv"
         onImport={async (csv) => (await bulkImport({ csv }).unwrap()).data}
       />

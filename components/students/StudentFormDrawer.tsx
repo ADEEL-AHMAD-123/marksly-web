@@ -34,7 +34,9 @@ const schema = z.object({
     .string()
     .min(1, 'Enter a valid phone number')
     .refine((v) => !v.startsWith('+') || isValidPhoneNumber(v), 'Enter a valid phone number'),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  // Required — email is the only working self-service password-recovery
+  // path (see auth.service.ts's forgotPassword()).
+  email: z.string().email('Enter a valid email address'),
   rollNumber: z.string().min(1, 'Required'),
   admissionNumber: z.string().min(1, 'Required'),
   classId: z.string().min(1, 'Select a class'),
@@ -51,6 +53,13 @@ const schema = z.object({
     .optional()
     .refine((v) => !v || isValidPhoneNumber(v), 'Enter a valid phone number'),
   parentName: z.string().optional(),
+  // Only actually required when a NEW guardian is being created (i.e.
+  // parentPhone is set) — matches createStudentSchema's refine() on the
+  // backend. Linking to an existing guardian doesn't need this at all.
+  parentEmail: z.string().email('Enter a valid email address').optional().or(z.literal('')),
+}).refine((d) => !d.parentPhone || !!d.parentEmail, {
+  message: 'Guardian email is required when adding a guardian',
+  path: ['parentEmail'],
 });
 
 type Form = z.infer<typeof schema>;
@@ -93,7 +102,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
     defaultValues: {
       firstName: '', lastName: '', phone: '', email: '',
       rollNumber: '', admissionNumber: '', classId: '', sectionId: '', gender: 'male',
-      parentPhone: '', parentName: '',
+      parentPhone: '', parentName: '', parentEmail: '',
     },
   });
 
@@ -113,7 +122,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         firstName: student.firstName,
         lastName: student.lastName,
         phone: student.phone ?? '',
-        email: '',
+        email: student.email ?? '',
         rollNumber: student.rollNumber,
         admissionNumber: student.admissionNumber,
         classId: cls?.id ?? '',
@@ -130,7 +139,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         firstName: '', lastName: '', phone: '', email: '',
         rollNumber: '', admissionNumber: '',
         classId: onlyClass?.id ?? '', sectionId: onlySection?.id ?? '', gender: 'male',
-        parentPhone: '', parentName: '',
+        parentPhone: '', parentName: '', parentEmail: '',
       });
     }
   }, [open, student, classes, reset]);
@@ -139,18 +148,18 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   const [tempPasswordInfo, setTempPasswordInfo] = useState<{ name: string; phone: string; tempPassword: string; emailed: boolean } | null>(null);
 
   const onSubmit = async (values: Form) => {
-    const { parentPhone, parentName, ...core } = values;
+    const { parentPhone, parentName, parentEmail, ...core } = values;
     try {
       if (isEdit && student) {
-        await updateStudent({ id: student.id, body: { ...core, email: core.email || undefined } }).unwrap();
+        await updateStudent({ id: student.id, body: core }).unwrap();
         toast.success('Student updated');
         onClose();
       } else {
         const res = await createStudent({
           ...core,
-          email: core.email || undefined,
           parentPhone: parentPhone || undefined,
           parentName: parentName || undefined,
+          parentEmail: parentEmail || undefined,
         }).unwrap();
         toast.success('Student added');
         onClose();
@@ -162,7 +171,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
             name: `${core.firstName} ${core.lastName}`,
             phone: core.phone,
             tempPassword: res.data.tempPassword,
-            emailed: !!core.email,
+            emailed: true,
           });
         }
       }
@@ -231,7 +240,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
             </div>
 
             <div>
-              <Label htmlFor="email">Email (optional)</Label>
+              <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" dir="ltr" {...register('email')} />
               {errors.email && <p className="mt-1 text-xs text-danger">{errors.email.message}</p>}
             </div>
@@ -342,9 +351,15 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                       <Label htmlFor="parentName">Parent name</Label>
                       <Input id="parentName" {...register('parentName')} />
                     </div>
+                    <div className="col-span-2">
+                      <Label htmlFor="parentEmail">Parent email</Label>
+                      <Input id="parentEmail" type="email" dir="ltr" {...register('parentEmail')} />
+                      {errors.parentEmail && <p className="mt-1 text-xs text-danger">{errors.parentEmail.message}</p>}
+                    </div>
                   </div>
                   <p className="mt-1.5 text-xs text-muted-foreground">
-                    If a parent with this phone exists they&apos;ll be linked; otherwise a parent account is created automatically.
+                    If a parent with this phone exists they&apos;ll be linked (email not needed); otherwise a new parent
+                    account is created and needs an email to reset their own password later.
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground">
