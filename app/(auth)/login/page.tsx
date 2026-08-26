@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import en from 'react-phone-number-input/locale/en.json';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Phone, Lock, AlertCircle, MailWarning } from 'lucide-react';
+import { Eye, EyeOff, Lock, AlertCircle, MailWarning } from 'lucide-react';
 import { useLoginMutation, useResendVerificationMutation } from '@/store/api/authApi';
 import { useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/slices/authSlice';
@@ -16,8 +18,21 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { roleHome } from '@/lib/role-routes';
 
+// Registration (and every other phone-collecting form — StudentFormDrawer,
+// AddTeacherDrawer, etc.) stores phone numbers in E.164 via this same
+// react-phone-number-input component, which strips the local trunk prefix
+// (e.g. "0300 1234567" -> "+923001234567" for PK) before it ever reaches
+// the backend. Login used to be a plain <input type="tel"> with no such
+// normalization — so a user who registered as "+923001234567" and then
+// tried to log in by typing "0300 1234567" or "03001234567" got an exact
+// server-side string mismatch and no way to know why. Using the same
+// component here means whatever the user types is normalized the same way
+// on both ends, so it actually matches what's stored.
 const loginSchema = z.object({
-  phone: z.string().min(10, 'Enter a valid phone number'),
+  phone: z
+    .string()
+    .min(1, 'Enter a valid phone number')
+    .refine((v) => isValidPhoneNumber(v), 'Enter a valid phone number'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
@@ -35,6 +50,7 @@ export default function LoginPage() {
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<LoginForm>({
@@ -120,30 +136,30 @@ export default function LoginPage() {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        {/* Phone */}
+        {/* Phone — same country-aware PhoneInput used at registration, so
+            what's typed here normalizes to E.164 the same way the stored
+            number does (see comment on loginSchema above). */}
         <div>
           <Label htmlFor="phone">Phone number</Label>
-          <div className="relative">
-            <Phone
-              size={17}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <input
-              id="phone"
-              {...register('phone')}
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              autoFocus
-              dir="ltr"
-              placeholder="0300 1234567"
-              aria-invalid={!!errors.phone}
-              className={cn(
-                'h-11 w-full rounded-lg border bg-card pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                errors.phone ? 'border-danger' : 'border-input'
-              )}
-            />
-          </div>
+          <Controller
+            control={control}
+            name="phone"
+            render={({ field }) => (
+              <PhoneInput
+                id="phone"
+                international
+                labels={en}
+                defaultCountry="PK"
+                countryCallingCodeEditable={false}
+                value={field.value}
+                onChange={(v) => field.onChange(v ?? '')}
+                placeholder="300 1234567"
+                autoComplete="tel"
+                autoFocus
+                className={cn(errors.phone && 'PhoneInput-danger')}
+              />
+            )}
+          />
           {errors.phone && <p className="mt-1.5 text-xs text-danger">{errors.phone.message}</p>}
         </div>
 
