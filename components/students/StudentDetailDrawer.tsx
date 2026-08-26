@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Pencil, UserMinus, AlertCircle } from 'lucide-react';
+import { X, Pencil, UserMinus, AlertCircle, Wallet, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,7 +13,10 @@ import {
   useDeleteStudentMutation,
   type StudentListItem,
 } from '@/store/api/studentsApi';
-import { getInitials } from '@/lib/utils';
+import { useGetFeeCardQuery } from '@/store/api/feesApi';
+import { getInitials, formatCurrency, formatDate } from '@/lib/utils';
+import { openAuthedPdf } from '@/lib/downloadFile';
+import type { RootState } from '@/store';
 
 interface Props {
   studentId: string | null;
@@ -34,8 +38,26 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
   const { data, isLoading } = useGetStudentQuery(studentId as string, { skip: !studentId });
   const [deleteStudent, { isLoading: deleting }] = useDeleteStudentMutation();
   const [confirming, setConfirming] = useState(false);
+  const { data: cardData, isFetching: cardLoading } = useGetFeeCardQuery(
+    { studentId: studentId as string },
+    { skip: !studentId }
+  );
+  const accessToken = useSelector((st: RootState) => st.auth.accessToken);
+  const [printingInvoiceId, setPrintingInvoiceId] = useState<string | null>(null);
 
   const s = data?.data as any;
+  const card = cardData?.data;
+
+  const handlePrintSlip = async (invoiceId: string) => {
+    setPrintingInvoiceId(invoiceId);
+    try {
+      await openAuthedPdf(`/fees/invoices/${invoiceId}/slip`, accessToken);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not generate slip');
+    } finally {
+      setPrintingInvoiceId(null);
+    }
+  };
 
   const handleDeactivate = async () => {
     if (!studentId) return;
@@ -92,6 +114,51 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                   <Row label="Gender" value={s.gender} />
                   <Row label="Blood group" value={s.bloodGroup} />
                   <Row label="City" value={s.city} />
+                </div>
+
+                <div className="mt-5">
+                  <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <Wallet size={12} /> Fee card
+                  </p>
+                  {cardLoading && !card ? (
+                    <Skeleton className="h-24 w-full" />
+                  ) : !card || card.rows.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No fee invoices yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-xs">
+                        <span className="text-muted-foreground">Billed {formatCurrency(card.totals.billed)}</span>
+                        <span className="text-muted-foreground">Paid {formatCurrency(card.totals.paid)}</span>
+                        <span className="font-semibold text-foreground">Due {formatCurrency(card.totals.balance)}</span>
+                      </div>
+                      <div className="max-h-56 space-y-1.5 overflow-y-auto">
+                        {card.rows.map((r) => (
+                          <div key={r.invoiceId} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
+                            <div className="min-w-0">
+                              <p className="truncate text-foreground">{r.structureName ?? '—'} · {formatDate(r.dueDate)}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatCurrency(r.paidAmount)} / {formatCurrency(r.netAmount)}
+                                <Badge
+                                  variant={r.status === 'paid' ? 'success' : r.status === 'overdue' ? 'danger' : 'warning'}
+                                  className="ml-2 capitalize"
+                                >
+                                  {r.status}
+                                </Badge>
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              loading={printingInvoiceId === r.invoiceId}
+                              onClick={() => handlePrintSlip(r.invoiceId)}
+                            >
+                              <Printer size={14} />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {s.guardians?.length > 0 && (

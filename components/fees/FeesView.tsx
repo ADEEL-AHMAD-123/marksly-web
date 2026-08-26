@@ -8,6 +8,8 @@ import { useGetFeesSummaryQuery } from '@/store/api/feesApi';
 import { formatCurrency } from '@/lib/utils';
 import { InvoicesTab } from './InvoicesTab';
 import { StructuresTab } from './StructuresTab';
+import { PayoutAccountTab } from './PayoutAccountTab';
+import { MyPayoutsTab } from './MyPayoutsTab';
 
 export function FeesView() {
   const { data: sumRes } = useGetFeesSummaryQuery();
@@ -42,12 +44,20 @@ export function FeesView() {
         <TabsList>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="structures">Fee Structures</TabsTrigger>
+          <TabsTrigger value="payouts">Online Payouts</TabsTrigger>
+          <TabsTrigger value="payout">Payout Account</TabsTrigger>
         </TabsList>
         <TabsContent value="invoices">
           <InvoicesTab />
         </TabsContent>
         <TabsContent value="structures">
           <StructuresTab />
+        </TabsContent>
+        <TabsContent value="payouts">
+          <MyPayoutsTab />
+        </TabsContent>
+        <TabsContent value="payout">
+          <PayoutAccountTab />
         </TabsContent>
       </Tabs>
     </div>

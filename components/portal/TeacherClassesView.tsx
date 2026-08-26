@@ -1,19 +1,39 @@
 'use client';
 
-import { School, Users, Layers } from 'lucide-react';
+import { useState } from 'react';
+import { School, Users, Layers, UserPlus } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useMyClassesQuery } from '@/store/api/portalApi';
+import { StudentFormDrawer } from '@/components/students/StudentFormDrawer';
 
 export function TeacherClassesView() {
   const { data, isLoading } = useMyClassesQuery();
   const classes = data?.data ?? [];
+  const [addOpen, setAddOpen] = useState(false);
 
   return (
     <div className="space-y-6">
-      <PageHeader title="My Classes" description="Classes and sections you teach." />
+      <PageHeader
+        title="My Classes"
+        description="Classes and sections you teach."
+        actions={
+          classes.length > 0 ? (
+            <Button size="sm" onClick={() => setAddOpen(true)}>
+              <UserPlus size={15} /> Add student
+            </Button>
+          ) : undefined
+        }
+      />
+
+      <StudentFormDrawer
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        classesOverride={classes.map((c) => ({ id: c.id, name: c.name, sections: c.sections }))}
+      />
 
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

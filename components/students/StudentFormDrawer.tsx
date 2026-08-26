@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,6 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
+import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import {
   useCreateStudentMutation,
@@ -54,16 +55,28 @@ const schema = z.object({
 
 type Form = z.infer<typeof schema>;
 
+interface ClassOption {
+  id: string;
+  name: string;
+  sections: { id: string; name: string }[];
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
   student?: StudentListItem | null;
+  // Teachers can only add students to their own class/section — passing
+  // this restricts the class/section pickers to a fixed list (from
+  // useMyClassesQuery) instead of fetching every class in the institution,
+  // which teachers aren't allowed to write into anyway (enforced again
+  // server-side in student.service.ts).
+  classesOverride?: ClassOption[];
 }
 
-export function StudentFormDrawer({ open, onClose, student }: Props) {
+export function StudentFormDrawer({ open, onClose, student, classesOverride }: Props) {
   const isEdit = !!student;
-  const { data: classesRes } = useGetClassesQuery();
-  const classes = useMemo(() => classesRes?.data ?? [], [classesRes]);
+  const { data: classesRes } = useGetClassesQuery(undefined, { skip: !!classesOverride });
+  const classes = useMemo(() => classesOverride ?? classesRes?.data ?? [], [classesOverride, classesRes]);
   const [createStudent, { isLoading: creating }] = useCreateStudentMutation();
   const [updateStudent, { isLoading: updating }] = useUpdateStudentMutation();
 
@@ -108,15 +121,22 @@ export function StudentFormDrawer({ open, onClose, student }: Props) {
         gender: student.gender,
       });
     } else {
+      // Auto-select when there's only one option — mainly for teachers, who
+      // (via classesOverride) usually only have one class/section to add
+      // into and shouldn't have to pick it from a dropdown every time.
+      const onlyClass = classes.length === 1 ? classes[0] : undefined;
+      const onlySection = onlyClass?.sections.length === 1 ? onlyClass.sections[0] : undefined;
       reset({
         firstName: '', lastName: '', phone: '', email: '',
-        rollNumber: '', admissionNumber: '', classId: '', sectionId: '', gender: 'male',
+        rollNumber: '', admissionNumber: '',
+        classId: onlyClass?.id ?? '', sectionId: onlySection?.id ?? '', gender: 'male',
         parentPhone: '', parentName: '',
       });
     }
   }, [open, student, classes, reset]);
 
   const noClasses = classes.length === 0;
+  const [tempPasswordInfo, setTempPasswordInfo] = useState<{ name: string; phone: string; tempPassword: string; emailed: boolean } | null>(null);
 
   const onSubmit = async (values: Form) => {
     const { parentPhone, parentName, ...core } = values;
@@ -124,22 +144,35 @@ export function StudentFormDrawer({ open, onClose, student }: Props) {
       if (isEdit && student) {
         await updateStudent({ id: student.id, body: { ...core, email: core.email || undefined } }).unwrap();
         toast.success('Student updated');
+        onClose();
       } else {
-        await createStudent({
+        const res = await createStudent({
           ...core,
           email: core.email || undefined,
           parentPhone: parentPhone || undefined,
           parentName: parentName || undefined,
         }).unwrap();
         toast.success('Student added');
+        onClose();
+        // Only present when the account got an auto-generated password
+        // (i.e. no `password` was set in the form) — see createStudent's
+        // type comment in studentsApi.ts.
+        if (res.data.tempPassword) {
+          setTempPasswordInfo({
+            name: `${core.firstName} ${core.lastName}`,
+            phone: core.phone,
+            tempPassword: res.data.tempPassword,
+            emailed: !!core.email,
+          });
+        }
       }
-      onClose();
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not save student');
     }
   };
 
   return (
+    <>
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[460px]">
         <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
@@ -154,7 +187,11 @@ export function StudentFormDrawer({ open, onClose, student }: Props) {
             {noClasses && (
               <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning-soft px-3.5 py-3 text-sm text-warning">
                 <AlertCircle size={17} className="mt-0.5 shrink-0" />
-                <span>Create a class first (Classes page) — students need a class and section.</span>
+                <span>
+                  {classesOverride
+                    ? "You're not assigned as the teacher of any class section yet — ask an admin to assign you to one."
+                    : 'Create a class first (Classes page) — students need a class and section.'}
+                </span>
               </div>
             )}
 
@@ -328,5 +365,14 @@ export function StudentFormDrawer({ open, onClose, student }: Props) {
         </form>
       </SheetContent>
     </Sheet>
+
+    {tempPasswordInfo && (
+      <TempPasswordDialog
+        open={!!tempPasswordInfo}
+        onClose={() => setTempPasswordInfo(null)}
+        {...tempPasswordInfo}
+      />
+    )}
+    </>
   );
 }

@@ -11,11 +11,16 @@ import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { PageHero } from '@/components/marketing/PageHero';
 import { FeatureVisual, type VisualKind } from '@/components/marketing/FeatureVisual';
 
+const TITLE = 'Features — Everything Your Institution Needs';
+const DESCRIPTION =
+  'Explore Marksly’s features in detail: attendance, exams & results, timetable, fees & invoices, student records, parent messaging, ID cards, and live reports — built for schools, colleges and academies.';
+
 export const metadata: Metadata = {
-  title: 'Features — Everything Your Institution Needs',
-  description:
-    'Explore Marksly’s features in detail: attendance, exams & results, timetable, fees & invoices, student records, parent messaging, ID cards, and live reports — built for schools, colleges and academies.',
+  title: TITLE,
+  description: DESCRIPTION,
   alternates: { canonical: '/features' },
+  openGraph: { type: 'website', url: '/features', title: TITLE, description: DESCRIPTION },
+  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION },
 };
 
 // Every module gets the same documentation-style treatment: icon, title,

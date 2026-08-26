@@ -38,6 +38,13 @@ const JSON_LD = {
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'PKR', description: 'Free plan for up to 50 students' },
       url: 'https://marksly.pk',
     },
+    {
+      '@type': 'WebSite',
+      '@id': 'https://marksly.pk/#website',
+      url: 'https://marksly.pk',
+      name: 'Marksly',
+      publisher: { '@id': 'https://marksly.pk/#organization' },
+    },
   ],
 };
 

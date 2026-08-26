@@ -22,6 +22,7 @@ import {
   Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
+import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { SearchInput } from '@/components/ui/search-input';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getInitials } from '@/lib/utils';
@@ -190,6 +191,7 @@ type TeacherForm = z.infer<typeof schema>;
 
 function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [createUser, { isLoading }] = useCreateUserMutation();
+  const [tempPasswordInfo, setTempPasswordInfo] = useState<{ name: string; phone: string; tempPassword: string; emailed: boolean } | null>(null);
   const { register, control, handleSubmit, reset, formState: { errors } } = useForm<TeacherForm>({
     resolver: zodResolver(schema),
     defaultValues: { firstName: '', lastName: '', phone: '', email: '' },
@@ -197,16 +199,25 @@ function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 
   const onSubmit = async (values: TeacherForm) => {
     try {
-      await createUser({ ...values, email: values.email || undefined, role: 'teacher' }).unwrap();
+      const res = await createUser({ ...values, email: values.email || undefined, role: 'teacher' }).unwrap();
       toast.success('Teacher added');
       reset();
       onClose();
+      if (res.data.tempPassword) {
+        setTempPasswordInfo({
+          name: `${values.firstName} ${values.lastName}`,
+          phone: values.phone,
+          tempPassword: res.data.tempPassword,
+          emailed: !!values.email,
+        });
+      }
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not add teacher');
     }
   };
 
   return (
+    <>
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[440px]">
         <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
@@ -262,5 +273,14 @@ function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => voi
         </form>
       </SheetContent>
     </Sheet>
+
+    {tempPasswordInfo && (
+      <TempPasswordDialog
+        open={!!tempPasswordInfo}
+        onClose={() => setTempPasswordInfo(null)}
+        {...tempPasswordInfo}
+      />
+    )}
+    </>
   );
 }

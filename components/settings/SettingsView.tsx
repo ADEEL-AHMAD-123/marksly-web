@@ -22,10 +22,12 @@ import { useGetBankDetailsQuery, useUpdateBankDetailsMutation } from '@/store/ap
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { THEMES } from '@/lib/themes';
 import { cn } from '@/lib/utils';
+import { InstitutionProfileTab } from './InstitutionProfileTab';
 
 export function SettingsView() {
   const { user } = useAppSelector((s) => s.auth);
   const isSuperadmin = user?.role === 'superadmin';
+  const isAdmin = user?.role === 'admin';
 
   return (
     <div className="space-y-6">
@@ -34,12 +36,14 @@ export function SettingsView() {
       <Tabs defaultValue="profile">
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
+          {isAdmin && <TabsTrigger value="institution">Institution &amp; Branding</TabsTrigger>}
           <TabsTrigger value="security">Security</TabsTrigger>
           {isSuperadmin && <TabsTrigger value="billing">Billing</TabsTrigger>}
           {isSuperadmin && <TabsTrigger value="appearance">Appearance</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="profile"><ProfileTab /></TabsContent>
+        {isAdmin && <TabsContent value="institution"><InstitutionProfileTab /></TabsContent>}
         <TabsContent value="security"><SecurityTab /></TabsContent>
         {isSuperadmin && <TabsContent value="billing"><BillingTab /></TabsContent>}
         {isSuperadmin && <TabsContent value="appearance"><AppearanceTab /></TabsContent>}

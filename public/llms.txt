@@ -1,0 +1,20 @@
+# Marksly
+
+> Marksly is an all-in-one school and campus management platform for academies, schools, colleges and universities in Pakistan — attendance, fee collection and online payments, exams and results, timetable, ID cards, and WhatsApp/SMS parent messaging in one system.
+
+Marksly is built specifically for how Pakistani institutions run day to day: local payment rails (JazzCash, EasyPaisa, bank transfer) for fee collection, WhatsApp/SMS for parent communication, and a free plan for up to 50 students with no card required to start.
+
+## Product
+
+- [Homepage](https://marksly.pk/): Overview of the platform and core features.
+- [Features](https://marksly.pk/features): Detailed breakdown of attendance, exams & results, timetable, fees & invoices, student records, parent messaging, ID cards, and reporting.
+- [Pricing](https://marksly.pk/pricing): Plans, limits, and frequently asked pricing questions.
+
+## Guides
+
+- [Blog](https://marksly.pk/blog): Practical guides on running a school or academy — digital attendance, fee collection, parent communication via WhatsApp, choosing school management software, exam/results management, QR ID cards.
+
+## Support
+
+- [Help Center](https://marksly.pk/help): Answers to common questions about getting started, billing, students & exams, messaging, and account security.
+- [Contact](https://marksly.pk/contact): Get in touch with the Marksly team.

@@ -5,6 +5,8 @@ export interface BlogPost {
   date: string; // ISO
   readingTime: string;
   body: string[]; // paragraphs; a leading "## " marks a subheading
+  author?: string; // defaults to "Marksly" if omitted — used in Article structured data
+  modifiedDate?: string; // ISO — defaults to `date` if omitted, set this when a published post is edited
 }
 
 export const BLOG_POSTS: BlogPost[] = [

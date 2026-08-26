@@ -10,25 +10,50 @@ const BASE_URL = 'https://marksly.pk';
  * explicitly for the same reason.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date();
-
+  // Deliberately NOT stamping every static page with `new Date()` — that
+  // regenerates on every build/request, so Google would see a "last
+  // modified: right now" on pages that didn't actually change. Google's own
+  // guidance is that an inaccurate lastmod is worse than none: it can cause
+  // Google to stop trusting the lastmod signal for the whole sitemap. Since
+  // these pages don't have a tracked real modification date, omit the field
+  // entirely rather than fake one — Google will just fall back to its own
+  // crawl-based freshness signals for them.
   const staticPages: MetadataRoute.Sitemap = [
-    { url: BASE_URL, lastModified: now, changeFrequency: 'weekly', priority: 1 },
-    { url: `${BASE_URL}/features`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
-    { url: `${BASE_URL}/pricing`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
-    { url: `${BASE_URL}/register`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${BASE_URL}/login`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
-    { url: `${BASE_URL}/help`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${BASE_URL}/contact`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${BASE_URL}/blog`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
+    { url: BASE_URL, changeFrequency: 'weekly', priority: 1 },
+    { url: `${BASE_URL}/features`, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${BASE_URL}/pricing`, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${BASE_URL}/register`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE_URL}/login`, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${BASE_URL}/help`, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${BASE_URL}/contact`, changeFrequency: 'monthly', priority: 0.6 },
   ];
 
   const blogPages: MetadataRoute.Sitemap = BLOG_POSTS.map((post) => ({
     url: `${BASE_URL}/blog/${post.slug}`,
-    lastModified: new Date(post.date),
+    // Use modifiedDate when set (a post that's been edited after publishing)
+    // so search engines see a real reason to recrawl — falling back to the
+    // original publish date otherwise. Matches the same modifiedDate logic
+    // already used in the Article JSON-LD on the post page itself.
+    lastModified: new Date(post.modifiedDate ?? post.date),
     changeFrequency: 'monthly',
     priority: 0.6,
   }));
 
-  return [...staticPages, ...blogPages];
+  // The blog index's real "last modified" IS a meaningful signal — it's
+  // exactly the date of whichever post was published/edited most recently —
+  // unlike the static pages above, which have no tracked date at all.
+  const newestBlogDate = blogPages.reduce<Date | null>(
+    (latest, p) => (!latest || (p.lastModified as Date) > latest ? (p.lastModified as Date) : latest),
+    null
+  );
+  const blogIndex: MetadataRoute.Sitemap = [
+    {
+      url: `${BASE_URL}/blog`,
+      lastModified: newestBlogDate ?? undefined,
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    },
+  ];
+
+  return [...staticPages, ...blogIndex, ...blogPages];
 }

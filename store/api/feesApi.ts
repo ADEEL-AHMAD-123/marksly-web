@@ -36,6 +36,26 @@ export interface FeesSummary {
   pendingInvoices: number;
 }
 
+export interface FeeCardRow {
+  invoiceId: string;
+  month: number | null;
+  year: number | null;
+  structureName: string | null;
+  dueDate: string;
+  netAmount: number;
+  paidAmount: number;
+  balance: number;
+  status: InvoiceStatus;
+  challanNumber: string | null;
+}
+
+export interface FeeCard {
+  studentName: string;
+  rollNumber: string | null;
+  rows: FeeCardRow[];
+  totals: { billed: number; paid: number; balance: number };
+}
+
 export interface InvoiceDetail {
   id: string;
   studentName: string;
@@ -165,6 +185,12 @@ export const feesApi = baseApi.injectEndpoints({
       query: () => '/fees/summary',
       providesTags: [{ type: 'Fees', id: 'SUMMARY' }],
     }),
+
+    getFeeCard: builder.query<ApiObject<FeeCard>, { studentId: string; academicYear?: string }>({
+      query: ({ studentId, academicYear }) =>
+        `/fees/students/${studentId}/card${academicYear ? `?academicYear=${encodeURIComponent(academicYear)}` : ''}`,
+      providesTags: (_r, _e, { studentId }) => [{ type: 'Fees', id: `CARD-${studentId}` }],
+    }),
   }),
 });
 
@@ -178,4 +204,5 @@ export const {
   useAdjustInvoiceMutation,
   useRecordPaymentMutation,
   useGetFeesSummaryQuery,
+  useGetFeeCardQuery,
 } = feesApi;

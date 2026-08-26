@@ -44,7 +44,10 @@ export const usersApi = baseApi.injectEndpoints({
       },
       providesTags: [{ type: 'Users', id: 'LIST' }],
     }),
-    createUser: builder.mutation<ApiObject<ManagedUser>, CreateUserBody>({
+    // tempPassword is only present when the account was auto-generated one
+    // (no `password` sent in the request) and only in this response — never
+    // returned from getUsers/update, never persisted anywhere else.
+    createUser: builder.mutation<ApiObject<ManagedUser & { tempPassword?: string }>, CreateUserBody>({
       query: (body) => ({ url: '/users', method: 'POST', body }),
       invalidatesTags: [{ type: 'Users', id: 'LIST' }],
     }),

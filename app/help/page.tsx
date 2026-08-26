@@ -6,11 +6,16 @@ import { MarketingHeader } from '@/components/marketing/MarketingHeader';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { PageHero } from '@/components/marketing/PageHero';
 
+const TITLE = 'Help Center';
+const DESCRIPTION =
+  'Answers to common Marksly questions — getting started, fees & billing, students & exams, WhatsApp/SMS messaging, reports & data, and account security.';
+
 export const metadata: Metadata = {
-  title: 'Help Center',
-  description:
-    'Answers to common Marksly questions — getting started, fees & billing, students & exams, WhatsApp/SMS messaging, reports & data, and account security.',
+  title: TITLE,
+  description: DESCRIPTION,
   alternates: { canonical: '/help' },
+  openGraph: { type: 'website', url: '/help', title: `${TITLE} | Marksly`, description: DESCRIPTION },
+  twitter: { card: 'summary_large_image', title: `${TITLE} | Marksly`, description: DESCRIPTION },
 };
 
 const TOPICS = [

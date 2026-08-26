@@ -7,11 +7,16 @@ import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { PageHero } from '@/components/marketing/PageHero';
 import { PricingPlans } from '@/components/marketing/PricingPlans';
 
+const TITLE = 'Pricing — Marksly School & Campus Management Software';
+const DESCRIPTION =
+  'Simple, transparent pricing for Marksly — the school management system built for academies, schools, colleges and universities. Start free, upgrade as you grow.';
+
 export const metadata: Metadata = {
-  title: 'Pricing — Marksly School & Campus Management Software',
-  description:
-    'Simple, transparent pricing for Marksly — the school management system built for academies, schools, colleges and universities. Start free, upgrade as you grow.',
+  title: TITLE,
+  description: DESCRIPTION,
   alternates: { canonical: '/pricing' },
+  openGraph: { type: 'website', url: '/pricing', title: TITLE, description: DESCRIPTION },
+  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION },
 };
 
 const FAQ = [
@@ -22,9 +27,26 @@ const FAQ = [
   { q: 'What if my institution needs more than the largest plan covers?', a: 'Contact us directly — we can talk through what your institution needs.' },
 ];
 
+// FAQPage structured data — matches the visible FAQ section 1:1 below (never
+// list a question here that isn't actually rendered on the page, and vice
+// versa — Google's guidelines require the structured data to reflect real,
+// visible content, not just be a copy for rich-result purposes).
+const FAQ_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQ.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: item.a },
+  })),
+};
+
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSON_LD) }} />
+
       <MarketingHeader active="/pricing" />
 
       <PageHero

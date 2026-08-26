@@ -5,9 +5,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  ChevronLeft, ChevronRight, AlertCircle, FileText, X, Wallet, RefreshCw, Receipt, Plus, Minus,
+  ChevronLeft, ChevronRight, AlertCircle, FileText, X, Wallet, RefreshCw, Receipt, Plus, Minus, Printer,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/store';
+import { openAuthedPdf } from '@/lib/downloadFile';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +65,19 @@ export function InvoicesTab() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const debounced = useDebounce(query, 350);
   const [runBilling, { isLoading: billingLoading }] = useRunBillingMutation();
+  const accessToken = useSelector((s: RootState) => s.auth.accessToken);
+  const [printingId, setPrintingId] = useState<string | null>(null);
+
+  const handlePrintSlip = async (invoiceId: string) => {
+    setPrintingId(invoiceId);
+    try {
+      await openAuthedPdf(`/fees/invoices/${invoiceId}/slip`, accessToken);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not generate slip');
+    } finally {
+      setPrintingId(null);
+    }
+  };
 
   const handleRunBilling = async () => {
     const now = new Date();
@@ -147,6 +163,9 @@ export function InvoicesTab() {
                       <TableCell><Badge variant={statusBadge[inv.status].variant}>{statusBadge[inv.status].label}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Button size="sm" variant="ghost" loading={printingId === inv.id} onClick={() => handlePrintSlip(inv.id)}>
+                            <Printer size={14} /> Slip
+                          </Button>
                           <Button size="sm" variant="ghost" onClick={() => setDetailId(inv.id)}>Details</Button>
                           {inv.status !== 'paid' && (
                             <Button size="sm" variant="soft" onClick={() => setCollecting(inv)}>Collect</Button>
@@ -174,6 +193,9 @@ export function InvoicesTab() {
                 <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
                   <span className="text-muted-foreground">Balance {formatCurrency(inv.balance)}</span>
                   <div className="flex items-center gap-1">
+                    <Button size="sm" variant="ghost" loading={printingId === inv.id} onClick={() => handlePrintSlip(inv.id)}>
+                      <Printer size={14} />
+                    </Button>
                     <Button size="sm" variant="ghost" onClick={() => setDetailId(inv.id)}>Details</Button>
                     {inv.status !== 'paid' && (
                       <Button size="sm" variant="soft" onClick={() => setCollecting(inv)}>Collect</Button>
@@ -312,6 +334,20 @@ function InvoiceDetailDrawer({ invoiceId, onClose }: { invoiceId: string | null;
   const { data, isFetching } = useGetInvoiceDetailQuery(invoiceId as string, { skip: !invoiceId });
   const [adjust, { isLoading }] = useAdjustInvoiceMutation();
   const d = data?.data;
+  const accessToken = useSelector((s: RootState) => s.auth.accessToken);
+  const [printing, setPrinting] = useState(false);
+
+  const handlePrintSlip = async () => {
+    if (!invoiceId) return;
+    setPrinting(true);
+    try {
+      await openAuthedPdf(`/fees/invoices/${invoiceId}/slip`, accessToken);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not generate slip');
+    } finally {
+      setPrinting(false);
+    }
+  };
 
   const [type, setType] = useState<'credit' | 'debit'>('credit');
   const [amount, setAmount] = useState('');
@@ -422,7 +458,12 @@ function InvoiceDetailDrawer({ invoiceId, onClose }: { invoiceId: string | null;
             ) : null}
           </div>
 
-          <div className="flex items-center justify-end border-t border-border px-5 py-4">
+          <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
+            {d && (
+              <Button type="button" variant="secondary" loading={printing} onClick={handlePrintSlip}>
+                <Printer size={16} /> Print slip
+              </Button>
+            )}
             <SheetClose asChild><Button type="button" variant="secondary">Close</Button></SheetClose>
           </div>
         </div>

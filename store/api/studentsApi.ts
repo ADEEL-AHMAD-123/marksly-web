@@ -138,12 +138,21 @@ export const studentsApi = baseApi.injectEndpoints({
     // created here with a linked guardian phone) or the admin reports page
     // would never refresh. See the same fix applied to attendanceApi,
     // feesApi and examsApi.
-    createStudent: builder.mutation<ApiObject<StudentListItem>, CreateStudentBody>({
+    // tempPassword is only ever present in THIS response, and only when the
+    // account was auto-generated one (no `password` sent in the request) —
+    // never returned from getStudent/list, never persisted anywhere else.
+    createStudent: builder.mutation<ApiObject<StudentListItem & { tempPassword?: string }>, CreateStudentBody>({
       query: (body) => ({ url: '/students', method: 'POST', body }),
+      // Creating a student also bumps Section.currentCount on the Class doc
+      // (see adjustSectionCount in student.service.ts) — invalidate 'Classes'
+      // too, otherwise the class/section student counts shown on the admin
+      // Classes page and the teacher's "My Classes" page go stale until a
+      // manual refresh.
       invalidatesTags: [
         { type: 'Students', id: 'LIST' },
         { type: 'Students', id: 'STATS' },
         'Students',
+        'Classes',
       ],
     }),
 
@@ -157,6 +166,7 @@ export const studentsApi = baseApi.injectEndpoints({
         { type: 'Students', id: 'LIST' },
         { type: 'Students', id: 'STATS' },
         'Students',
+        'Classes',
       ],
     }),
 
@@ -166,6 +176,7 @@ export const studentsApi = baseApi.injectEndpoints({
         { type: 'Students', id: 'LIST' },
         { type: 'Students', id: 'STATS' },
         'Students',
+        'Classes',
       ],
     }),
 
@@ -175,6 +186,7 @@ export const studentsApi = baseApi.injectEndpoints({
         { type: 'Students', id: 'LIST' },
         { type: 'Students', id: 'STATS' },
         'Students',
+        'Classes',
       ],
     }),
 

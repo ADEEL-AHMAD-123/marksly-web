@@ -5,11 +5,16 @@ import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { PageHero } from '@/components/marketing/PageHero';
 import { ContactForm } from '@/components/marketing/ContactForm';
 
+const TITLE = 'Contact Us';
+const DESCRIPTION =
+  'Get in touch with the Marksly team — questions about pricing, a demo for your school or college, or support for an existing account.';
+
 export const metadata: Metadata = {
-  title: 'Contact Us',
-  description:
-    'Get in touch with the Marksly team — questions about pricing, a demo for your school or college, or support for an existing account.',
+  title: TITLE,
+  description: DESCRIPTION,
   alternates: { canonical: '/contact' },
+  openGraph: { type: 'website', url: '/contact', title: `${TITLE} | Marksly`, description: DESCRIPTION },
+  twitter: { card: 'summary_large_image', title: `${TITLE} | Marksly`, description: DESCRIPTION },
 };
 
 const CHANNELS = [

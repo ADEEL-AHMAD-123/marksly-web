@@ -6,11 +6,16 @@ import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { PageHero } from '@/components/marketing/PageHero';
 import { BLOG_POSTS } from './posts';
 
+const TITLE = 'Blog';
+const DESCRIPTION =
+  'Practical guides on running a school or academy — attendance, fee collection, parent communication, and more.';
+
 export const metadata: Metadata = {
-  title: 'Blog',
-  description:
-    'Practical guides on running a school or academy — attendance, fee collection, parent communication, and more.',
+  title: TITLE,
+  description: DESCRIPTION,
   alternates: { canonical: '/blog' },
+  openGraph: { type: 'website', url: '/blog', title: `${TITLE} | Marksly`, description: DESCRIPTION },
+  twitter: { card: 'summary_large_image', title: `${TITLE} | Marksly`, description: DESCRIPTION },
 };
 
 export default function BlogIndexPage() {
