@@ -17,6 +17,11 @@ export function VerifyEmailView() {
   const [resendVerification, { isLoading: resending }] = useResendVerificationMutation();
   const [status, setStatus] = useState<Status>('verifying');
   const [errorMessage, setErrorMessage] = useState('');
+  // True when this exact link was already used — most commonly, clicked on
+  // one device and then clicked again on another (or a second tab).
+  // Nothing is actually wrong in that case, so it gets its own copy on the
+  // success screen instead of pretending this click is what verified it.
+  const [alreadyVerified, setAlreadyVerified] = useState(false);
   const [resendEmail, setResendEmail] = useState('');
   const [resent, setResent] = useState(false);
   // React 18 dev-mode double-invokes effects — without this guard, a single
@@ -37,7 +42,10 @@ export function VerifyEmailView() {
     }
     verifyEmail({ token })
       .unwrap()
-      .then(() => setStatus('success'))
+      .then((res) => {
+        setAlreadyVerified(!!res?.data?.alreadyVerified);
+        setStatus('success');
+      })
       .catch((e: any) => {
         setStatus('error');
         setErrorMessage(getErrorMessage(e, 'This verification link is invalid or has expired — request a new one below.'));
@@ -84,9 +92,13 @@ export function VerifyEmailView() {
         <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-success-soft text-success">
           <CheckCircle2 size={28} />
         </span>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Email verified</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          {alreadyVerified ? 'Already verified' : 'Email verified'}
+        </h1>
         <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
-          Your account is now active. You can sign in.
+          {alreadyVerified
+            ? 'This email was already verified — probably from opening the link on another device. Your account is active, you can sign in.'
+            : 'Your account is now active. You can sign in.'}
         </p>
         <Link href="/login" className="mt-6 inline-block">
           <Button size="lg">Sign in</Button>

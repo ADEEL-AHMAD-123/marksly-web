@@ -60,7 +60,7 @@ export const authApi = baseApi.injectEndpoints({
     register: builder.mutation<RegisterResponse, RegisterRequest>({
       query: (body) => ({ url: '/auth/register', method: 'POST', body }),
     }),
-    verifyEmail: builder.mutation<void, { token: string }>({
+    verifyEmail: builder.mutation<{ success: boolean; data: { alreadyVerified: boolean } }, { token: string }>({
       query: (body) => ({ url: '/auth/verify-email', method: 'POST', body }),
     }),
     resendVerification: builder.mutation<void, { email: string }>({
