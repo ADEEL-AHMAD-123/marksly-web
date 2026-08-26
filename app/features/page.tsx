@@ -12,8 +12,10 @@ import { PageHero } from '@/components/marketing/PageHero';
 import { FeatureVisual, type VisualKind } from '@/components/marketing/FeatureVisual';
 
 const TITLE = 'Features — Everything Your Institution Needs';
+// Kept under ~160 chars — Bing Webmaster Tools flags longer descriptions as
+// an error, and both Google/Bing truncate them in the search snippet anyway.
 const DESCRIPTION =
-  'Explore Marksly’s features in detail: attendance, exams & results, timetable, fees & invoices, student records, parent messaging, ID cards, and live reports — built for schools, colleges and academies.';
+  'Explore Marksly’s features: attendance, exams & results, timetable, fees & invoices, student records, parent messaging, ID cards, and live reports.';
 
 export const metadata: Metadata = {
   title: TITLE,

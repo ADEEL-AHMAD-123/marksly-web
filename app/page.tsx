@@ -12,8 +12,10 @@ import { GrowthPlanCard } from '@/components/marketing/GrowthPlanCard';
 
 export const metadata: Metadata = {
   title: 'Marksly — School & Campus Management Software',
+  // Kept under ~160 chars — Bing/Google truncate longer descriptions in the
+  // SERP snippet, and Bing Webmaster Tools flags it as an error outright.
   description:
-    'Marksly is an all-in-one management system for academies, schools, colleges and universities — students, attendance, fees, exams, timetable, ID cards and parent messaging in one place.',
+    'Marksly is a school management platform for academies, schools, colleges and universities — attendance, fees, exams, timetable, ID cards and parent messaging.',
   alternates: { canonical: '/' },
 };
 
@@ -93,10 +95,16 @@ function MarqueeRow({ items, direction }: { items: Institution[]; direction: 'le
           const isDuplicate = i >= items.length; // second half exists only for the seamless loop
           return (
             <div key={`${inst.name}-${i}`} aria-hidden={isDuplicate} className="flex shrink-0 items-center gap-2 sm:gap-3">
+              {/* alt is the institution name even on the duplicated second
+                  half — the wrapping div's aria-hidden (above) is what
+                  actually removes these from the accessibility tree, so an
+                  empty alt here was redundant AND got flagged by automated
+                  SEO checkers (Bing Webmaster Tools) as "missing alt", since
+                  they don't infer aria-hidden context on the parent. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={inst.logo}
-                alt={isDuplicate ? '' : inst.name}
+                alt={inst.name}
                 width={52}
                 height={52}
                 className="h-9 w-9 shrink-0 rounded-full shadow-sm sm:h-[52px] sm:w-[52px]"

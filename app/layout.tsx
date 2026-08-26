@@ -8,8 +8,10 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 const SITE_URL = 'https://marksly.pk';
+// Kept under ~160 chars — Bing/Google truncate longer descriptions in the
+// SERP snippet, and Bing Webmaster Tools flags anything longer as an error.
 const DEFAULT_DESCRIPTION =
-  'Marksly is the complete school management platform for academies, schools, colleges and universities — students, attendance, fees, exams, timetable, ID cards and WhatsApp/SMS parent messaging in one place.';
+  'Marksly is a school management platform for academies, schools and colleges — attendance, fees, exams, timetable, ID cards and WhatsApp/SMS parent messaging.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
