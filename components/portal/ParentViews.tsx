@@ -10,7 +10,9 @@ import { EmptyState } from '@/components/ui/empty-state';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { AttendanceHistory, ResultsList, FeesList } from './displays';
+import { AttendanceHistory } from './AttendanceHistory';
+import { ResultsList } from './ResultsList';
+import { FeesList } from './FeesList';
 import {
   useMyChildrenQuery,
   useChildAttendanceQuery,

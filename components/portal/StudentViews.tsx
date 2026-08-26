@@ -1,7 +1,9 @@
 'use client';
 
 import { PageHeader } from '@/components/ui/page-header';
-import { AttendanceHistory, ResultsList, FeesList } from './displays';
+import { AttendanceHistory } from './AttendanceHistory';
+import { ResultsList } from './ResultsList';
+import { FeesList } from './FeesList';
 import { useMyAttendanceQuery, useMyResultsQuery, useMyFeesQuery } from '@/store/api/portalApi';
 
 export function StudentAttendanceView() {
