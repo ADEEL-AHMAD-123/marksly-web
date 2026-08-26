@@ -65,14 +65,25 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </aside>
 
       {/* ── Form panel ──────────────────────────────────────────── */}
-      <main className="relative flex min-h-screen flex-col items-center justify-center px-4 py-10 sm:px-6">
+      {/* items-center + justify-center on a min-h-screen flex column dead-
+          centers short content (e.g. the verify-email success/error states)
+          in the exact middle of the viewport, leaving huge empty margins
+          above and below on mobile — looks like a broken/unfinished page
+          rather than a designed one. Anchoring near the top with a fixed
+          top offset instead, and wrapping the content in the same
+          bg-card/border/shadow "card" treatment used elsewhere in the app
+          (ContactForm, PricingPlans), gives every auth page — regardless of
+          how much content it has — a consistent, finished, contained look. */}
+      <main className="relative flex min-h-screen flex-col items-center px-4 pb-10 pt-14 sm:px-6 sm:pt-20">
         <div className="w-full max-w-sm animate-fade-in">
           {/* Compact logo for mobile */}
-          <div className="mb-8 lg:hidden">
+          <div className="mb-6 flex justify-center lg:hidden">
             <Logo size={38} />
           </div>
 
-          {children}
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+            {children}
+          </div>
 
           <p className="mt-8 text-center text-xs text-muted-foreground">
             © {new Date().getFullYear()} Marksly · marksly.pk
