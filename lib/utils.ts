@@ -31,6 +31,23 @@ export function formatDateTime(date: string | Date): string {
   });
 }
 
+/** "3m ago" / "2h ago" / "5d ago", falling back to a plain date once it's
+ *  old enough that a relative phrase stops being more useful than the date
+ *  itself. Used by the notification bell so a fresh item reads as "just
+ *  now" rather than a full timestamp nobody needs to parse at a glance. */
+export function formatRelativeTime(date: string | Date): string {
+  const d = new Date(date);
+  const seconds = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (seconds < 45) return 'Just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return formatDate(d, 'short');
+}
+
 export function getPaginationRange(page: number, totalPages: number, delta = 2): number[] {
   const range: number[] = [];
   for (let i = Math.max(2, page - delta); i <= Math.min(totalPages - 1, page + delta); i++) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, LogOut, User, Menu, Repeat, Check } from 'lucide-react';
+import { LogOut, User, Menu, Repeat, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { logout, setCredentials } from '@/store/slices/authSlice';
@@ -12,6 +12,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { getInitials } from '@/lib/utils';
 import { roleHome, ROLE_LABELS } from '@/lib/role-routes';
 import { useLayout } from './layout-context';
+import { NotificationBell } from './NotificationBell';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,14 +78,7 @@ export function Navbar() {
         {/* Theme switching is a super-admin-only control */}
         {user?.role === 'superadmin' && <ThemeSwitcher />}
 
-        {/* Notifications */}
-        <button
-          aria-label="Notifications"
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <Bell size={18} />
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-danger ring-2 ring-card" />
-        </button>
+        <NotificationBell />
 
         {/* Profile dropdown */}
         <DropdownMenu>
