@@ -5,7 +5,7 @@ export const ROLE_ROUTES: Record<string, string> = {
   teacher: '/teacher',
   student: '/student',
   parent: '/parent',
-  accountant: '/admin/fees',
+  accountant: '/accountant',
   staff: '/admin',
 };
 
