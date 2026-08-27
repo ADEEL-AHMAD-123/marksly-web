@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Pencil, UserMinus, AlertCircle, Wallet, Printer } from 'lucide-react';
+import { X, Pencil, UserMinus, UserCheck, AlertCircle, Wallet, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
@@ -11,11 +11,14 @@ import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import {
   useGetStudentQuery,
   useDeleteStudentMutation,
+  useUpdateStudentMutation,
   type StudentListItem,
 } from '@/store/api/studentsApi';
 import { useGetFeeCardQuery } from '@/store/api/feesApi';
+import { useGetClassesQuery } from '@/store/api/classesApi';
 import { getInitials, formatCurrency, formatDate } from '@/lib/utils';
 import { openAuthedPdf } from '@/lib/downloadFile';
+import { getErrorMessage } from '@/lib/get-error-message';
 import type { RootState } from '@/store';
 
 interface Props {
@@ -44,9 +47,16 @@ const END_ENROLLMENT_REASONS: { value: 'transferred' | 'withdrawn' | 'expelled' 
 export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props) {
   const { data, isLoading } = useGetStudentQuery(studentId as string, { skip: !studentId });
   const [deleteStudent, { isLoading: deleting }] = useDeleteStudentMutation();
+  const [updateStudent, { isLoading: reactivating }] = useUpdateStudentMutation();
   const [confirming, setConfirming] = useState(false);
   const [endStatus, setEndStatus] = useState<'transferred' | 'withdrawn' | 'expelled' | 'inactive'>('transferred');
   const [endReason, setEndReason] = useState('');
+  const [showReactivate, setShowReactivate] = useState(false);
+  const [reactivateClassId, setReactivateClassId] = useState('');
+  const [reactivateSectionId, setReactivateSectionId] = useState('');
+  const { data: classesData } = useGetClassesQuery({ all: true }, { skip: !showReactivate });
+  const classes = classesData?.data ?? [];
+  const reactivateSections = classes.find((c) => c.id === reactivateClassId)?.sections ?? [];
   const { data: cardData, isFetching: cardLoading } = useGetFeeCardQuery(
     { studentId: studentId as string },
     { skip: !studentId }
@@ -65,6 +75,19 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
       toast.error(e?.message || 'Could not generate slip');
     } finally {
       setPrintingInvoiceId(null);
+    }
+  };
+
+  const handleReactivate = async () => {
+    if (!studentId || !reactivateClassId || !reactivateSectionId) return;
+    try {
+      await updateStudent({ id: studentId, body: { status: 'active', classId: reactivateClassId, sectionId: reactivateSectionId } }).unwrap();
+      toast.success('Student reactivated');
+      setShowReactivate(false);
+      setReactivateClassId('');
+      setReactivateSectionId('');
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Could not reactivate student'));
     }
   };
 
@@ -204,6 +227,11 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                     <AlertCircle size={16} className="shrink-0 text-danger" />
                     <span className="text-sm font-medium text-danger">End this student's enrollment</span>
                   </div>
+                  {!!card?.totals?.balance && (
+                    <p className="text-xs text-warning">
+                      This student owes {formatCurrency(card.totals.balance)} — it carries forward, this action does not clear it.
+                    </p>
+                  )}
                   <select
                     value={endStatus}
                     onChange={(e) => setEndStatus(e.target.value as typeof endStatus)}
@@ -228,17 +256,59 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                     </Button>
                   </div>
                 </div>
+              ) : showReactivate ? (
+                <div className="space-y-2.5 rounded-lg bg-success-soft px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <UserCheck size={16} className="shrink-0 text-success" />
+                    <span className="text-sm font-medium text-foreground">Reactivate — assign a current class</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={reactivateClassId}
+                      onChange={(e) => { setReactivateClassId(e.target.value); setReactivateSectionId(''); }}
+                      className="rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
+                    >
+                      <option value="">Class</option>
+                      {classes.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.academicYear}</option>)}
+                    </select>
+                    <select
+                      value={reactivateSectionId}
+                      onChange={(e) => setReactivateSectionId(e.target.value)}
+                      disabled={!reactivateClassId}
+                      className="rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
+                    >
+                      <option value="">Section</option>
+                      {reactivateSections.map((sec) => <option key={sec.id} value={sec.id}>{sec.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => setShowReactivate(false)}>Cancel</Button>
+                    <Button size="sm" loading={reactivating} disabled={!reactivateClassId || !reactivateSectionId} onClick={handleReactivate}>
+                      Confirm
+                    </Button>
+                  </div>
+                </div>
               ) : (
                 <div className="flex items-center justify-between gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-danger hover:bg-danger-soft"
-                    onClick={() => setConfirming(true)}
-                    disabled={s.status !== 'active'}
-                  >
-                    <UserMinus size={16} /> End enrollment
-                  </Button>
+                  {s.status === 'active' ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-danger hover:bg-danger-soft"
+                      onClick={() => setConfirming(true)}
+                    >
+                      <UserMinus size={16} /> End enrollment
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-success hover:bg-success-soft"
+                      onClick={() => setShowReactivate(true)}
+                    >
+                      <UserCheck size={16} /> Reactivate
+                    </Button>
+                  )}
                   <Button size="sm" onClick={() => onEdit(s)}>
                     <Pencil size={16} /> Edit
                   </Button>

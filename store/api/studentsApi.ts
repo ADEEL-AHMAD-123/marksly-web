@@ -14,6 +14,8 @@ export interface StudentListItem {
   section: string | null;
   gender: 'male' | 'female' | 'other';
   status: 'active' | 'inactive' | 'graduated' | 'expelled' | 'transferred' | 'withdrawn';
+  leftAt: string | null;
+  leftReason: string | null;
   admissionDate: string | null;
   guardianName: string | null;
   guardianPhone: string | null;

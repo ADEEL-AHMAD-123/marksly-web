@@ -47,7 +47,10 @@ export function AcademicYearView() {
     if (!lastBatch) return;
     try {
       const res = await undoPromotion(lastBatch.batchId).unwrap();
-      toast.success(`Reverted ${res.data.reverted} student(s)${res.data.skipped ? ` — ${res.data.skipped} could not be reverted (already changed since)` : ''}`);
+      const notes: string[] = [];
+      if (res.data.skipped) notes.push(`${res.data.skipped} could not be reverted (already changed since)`);
+      if (res.data.overLimit) notes.push(`${res.data.overLimit} skipped — would exceed your plan's student limit`);
+      toast.success(`Reverted ${res.data.reverted} student(s)${notes.length ? ` — ${notes.join('; ')}` : ''}`);
       setLastBatch(null);
     } catch (e: any) {
       toast.error(getErrorMessage(e, 'Could not undo promotion'));

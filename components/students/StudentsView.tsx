@@ -24,7 +24,7 @@ import {
   type StudentListItem,
 } from '@/store/api/studentsApi';
 import { ImportCsvDrawer } from '@/components/ui/import-csv-drawer';
-import { getInitials } from '@/lib/utils';
+import { getInitials, formatDate } from '@/lib/utils';
 import { StudentFormDrawer } from './StudentFormDrawer';
 import { StudentDetailDrawer } from './StudentDetailDrawer';
 
@@ -190,9 +190,19 @@ export function StudentsView() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={statusBadge[s.status].variant}>
+                        <Badge
+                          variant={statusBadge[s.status].variant}
+                          title={s.status !== 'active' && (s.leftAt || s.leftReason)
+                            ? `Left${s.leftAt ? ` ${formatDate(s.leftAt)}` : ''}${s.leftReason ? ` — ${s.leftReason}` : ''}`
+                            : undefined}
+                        >
                           {statusBadge[s.status].label}
                         </Badge>
+                        {s.status !== 'active' && s.leftReason && (
+                          <p className="mt-1 max-w-[160px] truncate text-xs text-muted-foreground" title={s.leftReason}>
+                            {s.leftReason}
+                          </p>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -220,6 +230,9 @@ export function StudentsView() {
                     {statusBadge[s.status].label}
                   </Badge>
                 </div>
+                {s.status !== 'active' && s.leftReason && (
+                  <p className="mt-1.5 truncate text-xs text-muted-foreground">Left — {s.leftReason}</p>
+                )}
                 {(s.guardianName || s.guardianPhone) && (
                   <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
                     <span className="text-muted-foreground">{s.guardianName ?? '—'}</span>

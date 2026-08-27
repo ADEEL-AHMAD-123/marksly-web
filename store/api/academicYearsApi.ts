@@ -96,7 +96,7 @@ export const academicYearsApi = baseApi.injectEndpoints({
       // tag, not a specific id, so it would otherwise show a stale class.
       invalidatesTags: [{ type: 'Students', id: 'LIST' }, { type: 'Students', id: 'STATS' }, 'Students'],
     }),
-    undoPromotion: builder.mutation<ApiObject<{ reverted: number; skipped: number }>, string>({
+    undoPromotion: builder.mutation<ApiObject<{ reverted: number; skipped: number; overLimit: number }>, string>({
       query: (batchId) => ({ url: `/academic-years/promote/${batchId}/undo`, method: 'POST' }),
       invalidatesTags: [{ type: 'Students', id: 'LIST' }, { type: 'Students', id: 'STATS' }, 'Students'],
     }),
