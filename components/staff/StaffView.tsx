@@ -254,7 +254,16 @@ function AddStaffDrawer({
 
   return (
     <>
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+    <Sheet
+      open={open}
+      onOpenChange={(o) => {
+        // Reset on every close, not just a successful submit — otherwise
+        // typed-but-cancelled values (or values left over from the OTHER
+        // role's drawer, since both tabs share this same component)
+        // silently reappear the next time this drawer is opened.
+        if (!o) { reset(); onClose(); }
+      }}
+    >
       <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[440px]">
         <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
