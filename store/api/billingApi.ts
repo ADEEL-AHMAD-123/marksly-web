@@ -141,6 +141,9 @@ export const billingApi = baseApi.injectEndpoints({
       query: (body) => ({ url: '/billing/plan', method: 'POST', body }),
       invalidatesTags: [{ type: 'Billing', id: 'ME' }],
     }),
+    requestCustomPlan: builder.mutation<ApiObject<{ id: string }>, { message: string; desiredStudents?: number }>({
+      query: (body) => ({ url: '/billing/request-custom-plan', method: 'POST', body }),
+    }),
     billingCheckout: builder.mutation<ApiObject<{ settled: boolean; gateway: string; reference: string; redirectUrl?: string | null; gatewayTxnId?: string | null }>, { gateway: Gateway }>({
       query: (body) => ({ url: '/billing/checkout', method: 'POST', body }),
       invalidatesTags: [{ type: 'Billing', id: 'ME' }],
@@ -254,6 +257,7 @@ export const {
   useGetBillingPlansQuery,
   useLazyGetMyPaymentsQuery,
   useSelectPlanMutation,
+  useRequestCustomPlanMutation,
   useBillingCheckoutMutation,
   useVerifyPaymentMutation,
   useSubmitBankTransferMutation,

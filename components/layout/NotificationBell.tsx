@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, CheckCheck, Wallet, Megaphone, UserCircle, Award, Inbox as InboxIcon } from 'lucide-react';
+import { Bell, CheckCheck, Wallet, Megaphone, UserCircle, Award, Sparkles, Inbox as InboxIcon } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
 } from '@/components/ui/dropdown-menu';
@@ -18,6 +18,7 @@ const TYPE_ICON: Record<InboxItemType, typeof Bell> = {
   notice: Megaphone,
   account: UserCircle,
   exam_result: Award,
+  plan_request: Sparkles,
 };
 
 const TYPE_TONE: Record<InboxItemType, string> = {
@@ -25,6 +26,7 @@ const TYPE_TONE: Record<InboxItemType, string> = {
   notice: 'bg-primary-soft text-primary-soft-foreground',
   account: 'bg-muted text-muted-foreground',
   exam_result: 'bg-warning-soft text-warning',
+  plan_request: 'bg-primary-soft text-primary-soft-foreground',
 };
 
 /** The bell's dropdown — a real, working notification center (see

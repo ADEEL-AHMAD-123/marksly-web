@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatCurrency } from '@/lib/utils';
+import { RequestCustomPlanDialog } from './RequestCustomPlanDialog';
 
 /* ── Step 2: plans — shown only when the admin asks to view/change plans ── */
 export function PlansStep({
@@ -111,6 +112,17 @@ export function PlansStep({
             })}
           </div>
         )}
+
+        <div className="mt-6 flex flex-col items-start justify-between gap-3 rounded-xl border border-dashed border-border p-4 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-sm font-medium text-foreground">Need something bigger or different?</p>
+            <p className="text-xs text-muted-foreground">
+              If none of these fit — more students, more storage, or a different feature mix — request a
+              custom plan and our team will set one up for you.
+            </p>
+          </div>
+          <RequestCustomPlanDialog trigger={<Button variant="secondary" size="sm" className="shrink-0">Request a custom plan</Button>} />
+        </div>
       </CardContent>
     </Card>
   );

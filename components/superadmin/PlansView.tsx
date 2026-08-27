@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Check, Package, Plus, Pencil, Trash2, X, Info } from 'lucide-react';
+import { Check, Package, Plus, Pencil, Trash2, X, Info, Inbox, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
@@ -16,9 +17,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import {
   useGetPlansQuery, useCreatePlanMutation, useUpdatePlanMutation, useDeletePlanMutation,
+  useGetPlanRequestsQuery, useResolvePlanRequestMutation,
   type Plan,
 } from '@/store/api/superadminApi';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency, formatDate, cn } from '@/lib/utils';
 
 const ALL_FEATURES = [
   { key: 'whatsapp', label: 'WhatsApp notifications' },
@@ -26,6 +28,56 @@ const ALL_FEATURES = [
   { key: 'multibranch', label: 'Multi-branch management' },
 ];
 const featureLabel = (k: string) => ALL_FEATURES.find((f) => f.key === k)?.label ?? k;
+
+function PlanRequestsQueue() {
+  const { data, isLoading } = useGetPlanRequestsQuery();
+  const requests = data?.data ?? [];
+  const [resolvePlanRequest, { isLoading: resolving }] = useResolvePlanRequestMutation();
+
+  const handleResolve = async (id: string) => {
+    try { await resolvePlanRequest(id).unwrap(); toast.success('Marked resolved'); }
+    catch (e: any) { toast.error(e?.data?.error?.message || 'Could not update request'); }
+  };
+
+  if (isLoading || requests.length === 0) return null;
+
+  return (
+    <Card className="p-5">
+      <div className="mb-3 flex items-center gap-2">
+        <Inbox size={17} className="text-primary" />
+        <h3 className="text-sm font-semibold text-foreground">Custom plan requests</h3>
+        <Badge variant="warning">{requests.length} pending</Badge>
+      </div>
+      <div className="space-y-3">
+        {requests.map((r) => (
+          <div key={r.id} className="flex flex-col gap-2 rounded-lg border border-border p-3.5 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <Link href={`/superadmin/institutions/${r.institutionId}`} className="text-sm font-medium text-foreground hover:underline">
+                  {r.institutionName}
+                </Link>
+                <span className="text-xs text-muted-foreground">{formatDate(r.createdAt)}</span>
+                {r.desiredStudents && <Badge variant="neutral">~{r.desiredStudents.toLocaleString('en-PK')} students</Badge>}
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">{r.message}</p>
+              {r.requestedByName && (
+                <p className="mt-1 text-xs text-muted-foreground/70">
+                  Requested by {r.requestedByName}{r.requestedByEmail ? ` (${r.requestedByEmail})` : ''}
+                </p>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link href={`/superadmin/institutions/${r.institutionId}`} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                Assign a plan <ArrowRight size={12} />
+              </Link>
+              <Button size="sm" variant="secondary" loading={resolving} onClick={() => handleResolve(r.id)}>Mark resolved</Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
 
 export function PlansView() {
   const { data, isLoading } = useGetPlansQuery();
@@ -46,6 +98,8 @@ export function PlansView() {
         description="Edit pricing, limits and features for the subscription catalog."
         actions={<Button size="sm" onClick={() => setAdding(true)}><Plus size={16} /> Add plan</Button>}
       />
+
+      <PlanRequestsQueue />
 
       <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary-soft px-4 py-3 text-sm text-primary-soft-foreground">
         <Info size={17} className="mt-0.5 shrink-0" />

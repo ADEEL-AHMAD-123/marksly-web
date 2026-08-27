@@ -67,6 +67,20 @@ export interface Plan {
   isPublic: boolean;
 }
 
+export interface PlanRequest {
+  id: string;
+  institutionId: string | null;
+  institutionName: string;
+  institutionSlug: string | null;
+  requestedByName: string | null;
+  requestedByEmail: string | null;
+  message: string;
+  desiredStudents: number | null;
+  status: 'pending' | 'resolved';
+  resolvedAt: string | null;
+  createdAt: string;
+}
+
 export interface PlanBody {
   key?: string;
   name: string;
@@ -161,6 +175,14 @@ export const superadminApi = baseApi.injectEndpoints({
       query: (id) => ({ url: `/superadmin/plans/${id}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Institutions', id: 'PLANS' }],
     }),
+    getPlanRequests: builder.query<ApiObject<PlanRequest[]>, { includeResolved?: boolean } | void>({
+      query: (params) => `/superadmin/plan-requests${params?.includeResolved ? '?includeResolved=true' : ''}`,
+      providesTags: [{ type: 'Institutions', id: 'PLAN_REQUESTS' }],
+    }),
+    resolvePlanRequest: builder.mutation<ApiObject<{ id: string }>, string>({
+      query: (id) => ({ url: `/superadmin/plan-requests/${id}/resolve`, method: 'POST' }),
+      invalidatesTags: [{ type: 'Institutions', id: 'PLAN_REQUESTS' }],
+    }),
     getInstitution: builder.query<ApiObject<InstitutionDetail>, string>({
       query: (id) => `/superadmin/institutions/${id}`,
       providesTags: (_r, _e, id) => [{ type: 'Institutions', id }],
@@ -212,6 +234,8 @@ export const {
   useCreatePlanMutation,
   useUpdatePlanMutation,
   useDeletePlanMutation,
+  useGetPlanRequestsQuery,
+  useResolvePlanRequestMutation,
   useGetInstitutionQuery,
   useGetInstitutionStudentsQuery,
   useUpdateInstitutionMutation,
