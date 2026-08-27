@@ -366,6 +366,9 @@ function PromoteDrawer({
                           {l.name} ({l.rollNumber}) — <span className="capitalize">{l.status}</span>
                           {l.reason ? ` — ${l.reason}` : ''}
                           {!l.valid && ` — cannot process: ${l.issue}`}
+                          {l.valid && !!l.balance && (
+                            <span className="text-warning"> — owes Rs {l.balance.toLocaleString('en-PK')}</span>
+                          )}
                         </li>
                       ))}
                     </ul>

@@ -55,6 +55,7 @@ export interface PromotionPreviewLeaver {
   reason?: string;
   valid: boolean;
   issue?: string;
+  balance?: number;
 }
 
 export interface PromotionPreview {
