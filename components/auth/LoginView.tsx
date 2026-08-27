@@ -75,7 +75,10 @@ export function LoginView() {
   const [login, { isLoading }] = useLoginMutation();
   const [resendVerification, { isLoading: resending }] = useResendVerificationMutation();
 
-  const [loginMode, setLoginMode] = useState<'phone' | 'email'>('phone');
+  // Email is the default — it's the mandatory, always-present identifier
+  // for every account, whereas phone formatting/country varies more and is
+  // the secondary option here.
+  const [loginMode, setLoginMode] = useState<'phone' | 'email'>('email');
 
   const {
     register,
@@ -87,7 +90,7 @@ export function LoginView() {
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     mode: 'onTouched',
-    defaultValues: { mode: 'phone', phone: '', password: '' } as LoginForm,
+    defaultValues: { mode: 'email', email: '', password: '' } as LoginForm,
   });
 
   const onToggleMode = (next: 'phone' | 'email') => {
