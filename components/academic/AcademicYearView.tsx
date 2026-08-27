@@ -238,7 +238,7 @@ function PromoteDrawer({
     ? { ...x, excludeStudentIds: x.excludeStudentIds.includes(studentId) ? x.excludeStudentIds.filter((id) => id !== studentId) : [...x.excludeStudentIds, studentId] }
     : x));
   const addLeaver = (s: { id: string; name: string; rollNumber: string }) => {
-    setLeavers((l) => [...l, { studentId: s.id, name: s.name, rollNumber: s.rollNumber, status: 'transferred', reason: '' }]);
+    setLeavers((l) => (l.some((x) => x.studentId === s.id) ? l : [...l, { studentId: s.id, name: s.name, rollNumber: s.rollNumber, status: 'transferred', reason: '' }]));
     setLeaverSearch('');
   };
   const updateLeaver = (studentId: string, patch: Partial<LeaverRow>) =>
@@ -388,14 +388,14 @@ function PromoteDrawer({
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <Label className="text-xs">From class</Label>
-                          <select className={selectCls} value={row.fromClassId} onChange={(e) => setRow(i, { fromClassId: e.target.value, fromSectionId: '' })}>
+                          <select className={selectCls} value={row.fromClassId} onChange={(e) => setRow(i, { fromClassId: e.target.value, fromSectionId: '', excludeStudentIds: [] })}>
                             <option value="">Select</option>
                             {classes.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.academicYear}</option>)}
                           </select>
                         </div>
                         <div>
                           <Label className="text-xs">From section</Label>
-                          <select className={selectCls} value={row.fromSectionId} disabled={!row.fromClassId} onChange={(e) => setRow(i, { fromSectionId: e.target.value })}>
+                          <select className={selectCls} value={row.fromSectionId} disabled={!row.fromClassId} onChange={(e) => setRow(i, { fromSectionId: e.target.value, excludeStudentIds: [] })}>
                             <option value="">Select</option>
                             {sectionsOf(row.fromClassId).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                           </select>
