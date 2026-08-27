@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
+import { getErrorMessage } from '@/lib/get-error-message';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import {
   useCreateStudentMutation,
@@ -176,7 +177,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         }
       }
     } catch (e: any) {
-      toast.error(e?.data?.error?.message || 'Could not save student');
+      toast.error(getErrorMessage(e, 'Could not save student'));
     }
   };
 

@@ -27,6 +27,7 @@ import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { SearchInput } from '@/components/ui/search-input';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getInitials } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/get-error-message';
 import {
   useGetUsersQuery,
   useCreateUserMutation,
@@ -287,7 +288,7 @@ function AddStaffDrawer({
       }
       onClose();
     } catch (e: any) {
-      toast.error(e?.data?.error?.message || `Could not ${isEditing ? 'update' : 'add'} ${roleLabel.toLowerCase()}`);
+      toast.error(getErrorMessage(e, `Could not ${isEditing ? 'update' : 'add'} ${roleLabel.toLowerCase()}`));
     }
   };
 

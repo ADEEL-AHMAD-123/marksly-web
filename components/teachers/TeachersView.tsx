@@ -26,6 +26,7 @@ import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { SearchInput } from '@/components/ui/search-input';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getInitials } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/get-error-message';
 import {
   useGetUsersQuery,
   useCreateUserMutation,
@@ -214,7 +215,7 @@ function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => voi
         });
       }
     } catch (e: any) {
-      toast.error(e?.data?.error?.message || 'Could not add teacher');
+      toast.error(getErrorMessage(e, 'Could not add teacher'));
     }
   };
 
