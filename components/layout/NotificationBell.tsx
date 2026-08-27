@@ -68,22 +68,36 @@ export function NotificationBell() {
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-[22rem] max-w-[90vw] p-0">
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <DropdownMenuContent
+        align="end"
+        collisionPadding={12}
+        // On a narrow phone this panel is nearly the full screen width —
+        // `calc(100vw-1.5rem)` guarantees a consistent ~12px gutter on
+        // each side no matter how small the viewport is, rather than a
+        // fixed rem width that could either overflow or (on `max-w-[90vw]`
+        // alone) leave an inconsistent, screen-size-dependent margin.
+        className="w-[22rem] max-w-[calc(100vw-1.5rem)] p-0"
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-border px-3.5 py-3 sm:px-4">
           <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
           {unread > 0 && (
             <button
               type="button"
               disabled={markingAll}
               onClick={() => markAllRead()}
-              className="flex items-center gap-1 text-xs font-medium text-primary hover:underline disabled:opacity-50"
+              className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary hover:underline disabled:opacity-50"
             >
               <CheckCheck size={13} /> Mark all read
             </button>
           )}
         </div>
 
-        <div className="max-h-[24rem] overflow-y-auto">
+        {/* Height caps at a viewport-relative bound first — a fixed 24rem
+            max-height can be taller than the whole screen on a short phone
+            in landscape, pinning the list against the top/bottom of the
+            viewport with no room for it to shrink. `sm:` overrides back to
+            the fixed height once there's enough vertical room to spare. */}
+        <div className="max-h-[60vh] overflow-y-auto sm:max-h-[24rem]">
           {isLoading ? (
             <div className="space-y-3 p-4">
               {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
@@ -120,7 +134,7 @@ export function NotificationBell() {
                           </span>
                           {!item.read && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
                         </span>
-                        <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+                        <span className="mt-0.5 line-clamp-2 text-xs leading-snug text-muted-foreground">
                           {item.message}
                         </span>
                         <span className="mt-1 block text-[11px] text-muted-foreground/70">
