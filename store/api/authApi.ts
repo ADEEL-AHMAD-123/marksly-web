@@ -1,7 +1,10 @@
 import { baseApi } from './baseApi';
 
 interface LoginRequest {
-  phone: string;
+  // Phone or email — the login form lets the user toggle which one they're
+  // typing (see LoginView.tsx), and auth.service.ts's login() detects which
+  // by checking for '@'.
+  identifier: string;
   password: string;
   institutionId?: string;
 }

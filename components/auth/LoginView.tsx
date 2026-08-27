@@ -8,7 +8,7 @@ import { z } from 'zod';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import en from 'react-phone-number-input/locale/en.json';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Lock, AlertCircle, MailWarning, Building2, ChevronRight } from 'lucide-react';
+import { Eye, EyeOff, Lock, AlertCircle, MailWarning, Building2, ChevronRight, Phone as PhoneIcon, Mail } from 'lucide-react';
 import { useLoginMutation, useResendVerificationMutation } from '@/store/api/authApi';
 import { useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/slices/authSlice';
@@ -41,13 +41,26 @@ interface AmbiguousAccountOption {
 // server-side string mismatch and no way to know why. Using the same
 // component here means whatever the user types is normalized the same way
 // on both ends, so it actually matches what's stored.
-const loginSchema = z.object({
-  phone: z
-    .string()
-    .min(1, 'Enter a valid phone number')
-    .refine((v) => isValidPhoneNumber(v), 'Enter a valid phone number'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-});
+// Email is now mandatory for every account (register + every admin-created
+// user form), so it works as a second login identifier alongside phone —
+// offered as an explicit toggle (not an auto-detecting single field) so
+// the input control itself (PhoneInput vs. a plain email field) always
+// matches what the user is trying to type, per the user's own preference.
+const loginSchema = z.discriminatedUnion('mode', [
+  z.object({
+    mode: z.literal('phone'),
+    phone: z
+      .string()
+      .min(1, 'Enter a valid phone number')
+      .refine((v) => isValidPhoneNumber(v), 'Enter a valid phone number'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+  }),
+  z.object({
+    mode: z.literal('email'),
+    email: z.string().min(1, 'Enter your email address').email('Enter a valid email address'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+  }),
+]);
 
 type LoginForm = z.infer<typeof loginSchema>;
 
@@ -62,19 +75,40 @@ export function LoginView() {
   const [login, { isLoading }] = useLoginMutation();
   const [resendVerification, { isLoading: resending }] = useResendVerificationMutation();
 
+  const [loginMode, setLoginMode] = useState<'phone' | 'email'>('phone');
+
   const {
     register,
     control,
     handleSubmit,
     getValues,
+    reset,
     formState: { errors },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     mode: 'onTouched',
+    defaultValues: { mode: 'phone', phone: '', password: '' } as LoginForm,
   });
 
+  const onToggleMode = (next: 'phone' | 'email') => {
+    if (next === loginMode) return;
+    setFormError(null);
+    setNeedsVerification(false);
+    setLoginMode(next);
+    // Swap the discriminant + clear the identifier field rather than
+    // leaving a stale `phone` value sitting around under an `email` mode
+    // (or vice versa) — the resolver would otherwise validate a field
+    // that's no longer even rendered.
+    reset(
+      next === 'phone'
+        ? ({ mode: 'phone', phone: '', password: getValues('password') ?? '' } as LoginForm)
+        : ({ mode: 'email', email: '', password: getValues('password') ?? '' } as LoginForm)
+    );
+  };
+
   const completeLogin = async (data: LoginForm & { institutionId?: string }) => {
-    const result = await login(data).unwrap();
+    const identifier = data.mode === 'phone' ? data.phone : data.email;
+    const result = await login({ identifier, password: data.password, institutionId: data.institutionId }).unwrap();
     dispatch(setCredentials({ user: result.data.user, accessToken: result.data.accessToken }));
     toast.success(`Welcome back, ${result.data.user.firstName}!`);
     router.push(roleHome(result.data.user.role));
@@ -99,7 +133,7 @@ export function LoginView() {
           return;
         }
       }
-      setFormError(getErrorMessage(error, 'That phone number and password don’t match — please check and try again.'));
+      setFormError(getErrorMessage(error, 'That phone number/email and password don’t match — please check and try again.'));
     }
   };
 
@@ -132,7 +166,7 @@ export function LoginView() {
         <div className="mb-7">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Which institution?</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            This phone number and password match more than one account. Pick the one you want to sign in to.
+            This phone number/email and password match more than one account. Pick the one you want to sign in to.
           </p>
         </div>
 
@@ -172,7 +206,7 @@ export function LoginView() {
           onClick={() => setAccountOptions(null)}
           className="mt-6 text-sm font-medium text-primary hover:underline"
         >
-          Use a different phone number or password
+          Use a different phone number/email or password
         </button>
       </div>
     );
@@ -226,32 +260,82 @@ export function LoginView() {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        {/* Phone — same country-aware PhoneInput used at registration, so
-            what's typed here normalizes to E.164 the same way the stored
-            number does (see comment on loginSchema above). */}
-        <div>
-          <Label htmlFor="phone">Phone number</Label>
-          <Controller
-            control={control}
-            name="phone"
-            render={({ field }) => (
-              <PhoneInput
-                id="phone"
-                international
-                labels={en}
-                defaultCountry="PK"
-                countryCallingCodeEditable={false}
-                value={field.value}
-                onChange={(v) => field.onChange(v ?? '')}
-                placeholder="300 1234567"
-                autoComplete="tel"
-                autoFocus
-                className={cn(errors.phone && 'PhoneInput-danger')}
-              />
+        {/* Phone/email toggle — a visible tab pair rather than a single
+            auto-detecting field, so the input control shown (PhoneInput's
+            country picker vs. a plain email field) always matches what the
+            person is about to type. */}
+        <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+          <button
+            type="button"
+            onClick={() => onToggleMode('phone')}
+            className={cn(
+              'flex items-center justify-center gap-1.5 rounded-md py-1.5 text-sm font-medium transition-colors',
+              loginMode === 'phone' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             )}
-          />
-          {errors.phone && <p className="mt-1.5 text-xs text-danger">{errors.phone.message}</p>}
+          >
+            <PhoneIcon size={14} /> Phone
+          </button>
+          <button
+            type="button"
+            onClick={() => onToggleMode('email')}
+            className={cn(
+              'flex items-center justify-center gap-1.5 rounded-md py-1.5 text-sm font-medium transition-colors',
+              loginMode === 'email' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Mail size={14} /> Email
+          </button>
         </div>
+
+        {loginMode === 'phone' ? (
+          // Same country-aware PhoneInput used at registration, so what's
+          // typed here normalizes to E.164 the same way the stored number
+          // does (see comment on loginSchema above).
+          <div>
+            <Label htmlFor="phone">Phone number</Label>
+            <Controller
+              control={control}
+              name="phone"
+              render={({ field }) => (
+                <PhoneInput
+                  id="phone"
+                  international
+                  labels={en}
+                  defaultCountry="PK"
+                  countryCallingCodeEditable={false}
+                  value={field.value}
+                  onChange={(v) => field.onChange(v ?? '')}
+                  placeholder="300 1234567"
+                  autoComplete="tel"
+                  autoFocus
+                  className={cn((errors as any).phone && 'PhoneInput-danger')}
+                />
+              )}
+            />
+            {(errors as any).phone && <p className="mt-1.5 text-xs text-danger">{(errors as any).phone.message}</p>}
+          </div>
+        ) : (
+          <div>
+            <Label htmlFor="email">Email address</Label>
+            <div className="relative">
+              <Mail size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                id="email"
+                {...register('email' as any)}
+                type="email"
+                autoComplete="email"
+                autoFocus
+                placeholder="you@example.com"
+                aria-invalid={!!(errors as any).email}
+                className={cn(
+                  'h-11 w-full rounded-lg border bg-card pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  (errors as any).email ? 'border-danger' : 'border-input'
+                )}
+              />
+            </div>
+            {(errors as any).email && <p className="mt-1.5 text-xs text-danger">{(errors as any).email.message}</p>}
+          </div>
+        )}
 
         {/* Password */}
         <div>
