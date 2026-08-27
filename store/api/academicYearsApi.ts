@@ -45,6 +45,8 @@ export interface PromotionPreviewItem {
   studentsWithOutstandingBalance: StudentWithBalance[];
   heldBackCount: number;
   heldBackStudents: NamedStudent[];
+  willCloneSubjects: boolean;
+  noSubjectsWarning: boolean;
 }
 
 export interface PromotionPreviewLeaver {

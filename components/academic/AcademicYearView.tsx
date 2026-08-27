@@ -330,6 +330,15 @@ function PromoteDrawer({
                         Repeating: {it.heldBackStudents.map((s) => `${s.name} (${s.rollNumber})`).join(', ')}
                       </p>
                     )}
+                    {it.willCloneSubjects && (
+                      <p className="mt-2 text-xs text-primary">{it.toClassName} has no subjects yet — they'll be copied over from {it.fromClassName} automatically.</p>
+                    )}
+                    {it.noSubjectsWarning && (
+                      <div className="mt-2 flex items-start gap-1.5 rounded-md border border-warning/30 bg-warning-soft px-2.5 py-2 text-xs text-warning">
+                        <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                        <span>Neither {it.fromClassName} nor {it.toClassName} has any subjects set up — students promoted here won't be markable for attendance or exams until you add subjects.</span>
+                      </div>
+                    )}
                     {it.studentsWithOutstandingBalance.length > 0 && (
                       <div className="mt-2 rounded-md border border-warning/30 bg-warning-soft px-2.5 py-2 text-xs text-warning">
                         <p className="flex items-center gap-1.5 font-medium"><AlertTriangle size={12} /> {it.studentsWithOutstandingBalance.length} student(s) have unpaid fees — balance carries forward, not blocked:</p>

@@ -13,6 +13,8 @@ export interface ManagedUser {
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
+  unassignedSubjects?: number;
+  unassignedSections?: number;
 }
 
 interface ApiArray<T> { success: boolean; data: T[]; message: string; meta?: any }

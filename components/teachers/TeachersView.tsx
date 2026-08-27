@@ -58,8 +58,16 @@ export function TeachersView() {
 
   const toggleActive = async (id: string, isActive: boolean) => {
     try {
-      await updateUser({ id, body: { isActive: !isActive } }).unwrap();
-      toast.success(isActive ? 'Teacher deactivated' : 'Teacher activated');
+      const res = await updateUser({ id, body: { isActive: !isActive } }).unwrap();
+      if (isActive) {
+        const { unassignedSubjects, unassignedSections } = res.data;
+        const notes: string[] = [];
+        if (unassignedSubjects) notes.push(`${unassignedSubjects} subject(s)`);
+        if (unassignedSections) notes.push(`${unassignedSections} class section(s)`);
+        toast.success(notes.length ? `Teacher deactivated — unassigned from ${notes.join(' and ')}, reassign when ready` : 'Teacher deactivated');
+      } else {
+        toast.success('Teacher activated');
+      }
     } catch {
       toast.error('Could not update teacher');
     }
