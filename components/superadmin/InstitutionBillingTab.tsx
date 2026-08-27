@@ -11,12 +11,10 @@ import {
   Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
 import {
-  type InstitutionDetail, type PlanHistoryEntry,
+  type InstitutionDetail, type PlanHistoryEntry, useGetPlansQuery,
 } from '@/store/api/superadminApi';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { Row, fallbackBadge } from './InstitutionDetailShared';
-
-const PLAN_OPTS = ['free', 'growth', 'standard', 'enterprise'];
 
 const originLabel: Record<string, string> = {
   bank_transfer: 'Bank transfer',
@@ -55,6 +53,15 @@ export function InstitutionBillingTab({
   saving: boolean;
   setPlan: (planType: string) => void;
 }) {
+  // Previously a hardcoded 4-item list — a superadmin who created a bespoke
+  // plan via the Plans catalog (any key is allowed there, e.g. a negotiated
+  // per-institution deal) had no way to actually select it here, even
+  // though the backend (applyPlanToInstitution()) always supported
+  // assigning any plan that exists in the catalog. Pulling the live list
+  // means a newly created custom plan shows up here immediately.
+  const { data: plansRes } = useGetPlansQuery();
+  const planOpts = plansRes?.data?.length ? plansRes.data.map((p) => p.key) : ['free', 'growth', 'standard', 'enterprise'];
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <Card className="lg:col-span-1">
@@ -227,7 +234,7 @@ export function InstitutionBillingTab({
             <Select value={inst.plan} onValueChange={setPlan}>
               <SelectTrigger id="plan-override" className="w-40"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {PLAN_OPTS.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
+                {planOpts.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
               </SelectContent>
             </Select>
             {saving && <span className="text-xs text-muted-foreground">Applying…</span>}
