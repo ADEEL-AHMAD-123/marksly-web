@@ -37,6 +37,7 @@ const statusBadge: Record<
   graduated: { variant: 'outline', label: 'Graduated' },
   expelled: { variant: 'danger', label: 'Expelled' },
   transferred: { variant: 'warning', label: 'Transferred' },
+  withdrawn: { variant: 'neutral', label: 'Withdrawn' },
 };
 
 const PAGE_SIZE = 20;

@@ -13,7 +13,7 @@ export interface StudentListItem {
   className: string | null;
   section: string | null;
   gender: 'male' | 'female' | 'other';
-  status: 'active' | 'inactive' | 'graduated' | 'expelled' | 'transferred';
+  status: 'active' | 'inactive' | 'graduated' | 'expelled' | 'transferred' | 'withdrawn';
   admissionDate: string | null;
   guardianName: string | null;
   guardianPhone: string | null;
@@ -35,6 +35,7 @@ export interface ListStudentsParams {
   limit?: number;
   search?: string;
   classId?: string;
+  sectionId?: string;
   status?: StudentListItem['status'];
   sortBy?: 'createdAt' | 'rollNumber' | 'admissionDate';
   sortOrder?: 'asc' | 'desc';
@@ -172,8 +173,15 @@ export const studentsApi = baseApi.injectEndpoints({
       ],
     }),
 
-    deleteStudent: builder.mutation<ApiObject<{ id: string; status: string }>, string>({
-      query: (id) => ({ url: `/students/${id}`, method: 'DELETE' }),
+    deleteStudent: builder.mutation<
+      ApiObject<{ id: string; status: string }>,
+      string | { id: string; status: 'transferred' | 'withdrawn' | 'expelled' | 'inactive'; reason?: string }
+    >({
+      query: (arg) => {
+        const id = typeof arg === 'string' ? arg : arg.id;
+        const body = typeof arg === 'string' ? undefined : { status: arg.status, reason: arg.reason };
+        return { url: `/students/${id}`, method: 'DELETE', body };
+      },
       invalidatesTags: [
         { type: 'Students', id: 'LIST' },
         { type: 'Students', id: 'STATS' },

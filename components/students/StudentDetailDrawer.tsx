@@ -34,10 +34,19 @@ function Row({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
+const END_ENROLLMENT_REASONS: { value: 'transferred' | 'withdrawn' | 'expelled' | 'inactive'; label: string }[] = [
+  { value: 'transferred', label: 'Transferred to another school' },
+  { value: 'withdrawn', label: 'Withdrawn (did not seek readmission)' },
+  { value: 'expelled', label: 'Expelled' },
+  { value: 'inactive', label: 'Other' },
+];
+
 export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props) {
   const { data, isLoading } = useGetStudentQuery(studentId as string, { skip: !studentId });
   const [deleteStudent, { isLoading: deleting }] = useDeleteStudentMutation();
   const [confirming, setConfirming] = useState(false);
+  const [endStatus, setEndStatus] = useState<'transferred' | 'withdrawn' | 'expelled' | 'inactive'>('transferred');
+  const [endReason, setEndReason] = useState('');
   const { data: cardData, isFetching: cardLoading } = useGetFeeCardQuery(
     { studentId: studentId as string },
     { skip: !studentId }
@@ -59,15 +68,16 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
     }
   };
 
-  const handleDeactivate = async () => {
+  const handleEndEnrollment = async () => {
     if (!studentId) return;
     try {
-      await deleteStudent(studentId).unwrap();
-      toast.success('Student deactivated');
+      await deleteStudent({ id: studentId, status: endStatus, reason: endReason.trim() || undefined }).unwrap();
+      toast.success('Student enrollment ended');
       setConfirming(false);
+      setEndReason('');
       onClose();
     } catch (e: any) {
-      toast.error(e?.data?.error?.message || 'Could not deactivate');
+      toast.error(e?.data?.error?.message || 'Could not end enrollment');
     }
   };
 
@@ -114,6 +124,12 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                   <Row label="Gender" value={s.gender} />
                   <Row label="Blood group" value={s.bloodGroup} />
                   <Row label="City" value={s.city} />
+                  {s.status !== 'active' && s.leftAt && (
+                    <Row label="Left on" value={formatDate(s.leftAt)} />
+                  )}
+                  {s.status !== 'active' && s.leftReason && (
+                    <Row label="Reason" value={s.leftReason} />
+                  )}
                 </div>
 
                 <div className="mt-5">
@@ -183,13 +199,34 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
           {s && (
             <div className="border-t border-border px-5 py-4">
               {confirming ? (
-                <div className="flex items-center gap-2 rounded-lg bg-danger-soft px-3 py-2.5">
-                  <AlertCircle size={16} className="shrink-0 text-danger" />
-                  <span className="flex-1 text-sm text-danger">Deactivate this student?</span>
-                  <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>Cancel</Button>
-                  <Button variant="danger" size="sm" loading={deleting} onClick={handleDeactivate}>
-                    Deactivate
-                  </Button>
+                <div className="space-y-2.5 rounded-lg bg-danger-soft px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle size={16} className="shrink-0 text-danger" />
+                    <span className="text-sm font-medium text-danger">End this student's enrollment</span>
+                  </div>
+                  <select
+                    value={endStatus}
+                    onChange={(e) => setEndStatus(e.target.value as typeof endStatus)}
+                    className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
+                  >
+                    {END_ENROLLMENT_REASONS.map((r) => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={endReason}
+                    onChange={(e) => setEndReason(e.target.value)}
+                    placeholder="Note (optional) — e.g. school name, details"
+                    maxLength={500}
+                    className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground"
+                  />
+                  <div className="flex items-center justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => { setConfirming(false); setEndReason(''); }}>Cancel</Button>
+                    <Button variant="danger" size="sm" loading={deleting} onClick={handleEndEnrollment}>
+                      Confirm
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-between gap-2">
@@ -200,7 +237,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                     onClick={() => setConfirming(true)}
                     disabled={s.status !== 'active'}
                   >
-                    <UserMinus size={16} /> Deactivate
+                    <UserMinus size={16} /> End enrollment
                   </Button>
                   <Button size="sm" onClick={() => onEdit(s)}>
                     <Pencil size={16} /> Edit

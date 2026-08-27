@@ -12,12 +12,26 @@ export interface AcademicYear {
 interface ApiArray<T> { success: boolean; data: T[]; message: string }
 interface ApiObject<T> { success: boolean; data: T; message: string }
 
+export interface Leaver {
+  studentId: string;
+  status: 'transferred' | 'withdrawn' | 'expelled';
+  reason?: string;
+}
+
 export interface PromoteBody {
-  items: { fromClassId: string; fromSectionId: string; toClassId: string; toSectionId: string }[];
+  items: {
+    fromClassId: string;
+    fromSectionId: string;
+    toClassId: string;
+    toSectionId: string;
+    excludeStudentIds?: string[];
+  }[];
   graduateClassIds?: string[];
+  leavers?: Leaver[];
 }
 
 interface StudentWithBalance { id: string; name: string; rollNumber: string; balance: number }
+interface NamedStudent { id: string; name: string; rollNumber: string }
 
 export interface PromotionPreviewItem {
   fromClassId: string;
@@ -29,11 +43,24 @@ export interface PromotionPreviewItem {
   type: 'promoted' | 'repeated';
   studentCount: number;
   studentsWithOutstandingBalance: StudentWithBalance[];
+  heldBackCount: number;
+  heldBackStudents: NamedStudent[];
+}
+
+export interface PromotionPreviewLeaver {
+  studentId: string;
+  name: string;
+  rollNumber: string;
+  status: string;
+  reason?: string;
+  valid: boolean;
+  issue?: string;
 }
 
 export interface PromotionPreview {
   items: PromotionPreviewItem[];
   graduate: { studentCount: number; studentsWithOutstandingBalance: StudentWithBalance[] } | null;
+  leavers: PromotionPreviewLeaver[];
 }
 
 export const academicYearsApi = baseApi.injectEndpoints({
@@ -61,7 +88,7 @@ export const academicYearsApi = baseApi.injectEndpoints({
     previewPromotion: builder.mutation<ApiObject<PromotionPreview>, PromoteBody>({
       query: (body) => ({ url: '/academic-years/promote/preview', method: 'POST', body }),
     }),
-    promoteStudents: builder.mutation<ApiObject<{ batchId: string; moved: number; graduated: number }>, PromoteBody>({
+    promoteStudents: builder.mutation<ApiObject<{ batchId: string; moved: number; graduated: number; left: number }>, PromoteBody>({
       query: (body) => ({ url: '/academic-years/promote', method: 'POST', body }),
       // Bare 'Students' too — a promoted/graduated student's class changes
       // here, and portalApi's myChildren (parent portal) provides the bare
