@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, GraduationCap, BookOpen, CalendarCheck,
   DollarSign, FileText, Bell, BarChart2, Settings, School,
   Package, CalendarRange, CalendarClock, CreditCard, MessageSquare,
-  FlaskConical,
+  FlaskConical, Briefcase,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -18,6 +18,7 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Students', href: '/admin/students', icon: GraduationCap },
     { label: 'ID Cards', href: '/admin/id-cards', icon: CreditCard },
     { label: 'Teachers', href: '/admin/teachers', icon: Users },
+    { label: 'Staff', href: '/admin/staff', icon: Briefcase },
     { label: 'Classes', href: '/admin/classes', icon: School },
     { label: 'Subjects', href: '/admin/subjects', icon: BookOpen },
     { label: 'Timetable', href: '/admin/timetable', icon: CalendarClock },
