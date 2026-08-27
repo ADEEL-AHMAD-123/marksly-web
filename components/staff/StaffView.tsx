@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  Plus, X, Briefcase, Landmark, AlertCircle, ChevronLeft, ChevronRight,
+  Plus, X, Briefcase, Landmark, AlertCircle, ChevronLeft, ChevronRight, Pencil,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
@@ -33,6 +33,7 @@ import {
   useUpdateUserMutation,
   useBulkImportUsersMutation,
   type ManageableRole,
+  type ManagedUser,
 } from '@/store/api/usersApi';
 import { ImportCsvDrawer } from '@/components/ui/import-csv-drawer';
 
@@ -53,6 +54,7 @@ export function StaffView() {
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<ManagedUser | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [bulkImport] = useBulkImportUsersMutation();
   const debounced = useDebounce(query, 350);
@@ -87,7 +89,7 @@ export function StaffView() {
         actions={
           <>
             <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}><Plus size={16} /> Import CSV</Button>
-            <Button size="sm" onClick={() => setOpen(true)}><Plus size={16} /> Add {roleLabelLower}</Button>
+            <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus size={16} /> Add {roleLabelLower}</Button>
           </>
         }
       />
@@ -120,7 +122,7 @@ export function StaffView() {
             icon={role === 'accountant' ? Landmark : Briefcase}
             title={debounced ? 'No matches' : `No ${role === 'accountant' ? 'accountants' : 'staff members'} yet`}
             description={debounced ? 'Try a different search.' : `Add your first ${roleLabelLower} to get started.`}
-            action={!debounced ? <Button size="sm" onClick={() => setOpen(true)}><Plus size={16} /> Add {roleLabelLower}</Button> : undefined}
+            action={!debounced ? <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus size={16} /> Add {roleLabelLower}</Button> : undefined}
           />
         </Card>
       ) : (
@@ -152,9 +154,14 @@ export function StaffView() {
                       <TableCell className="text-muted-foreground">{m.email ?? '—'}</TableCell>
                       <TableCell><Badge variant={m.isActive ? 'success' : 'neutral'}>{m.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => toggleActive(m.id, m.isActive)}>
-                          {m.isActive ? 'Deactivate' : 'Activate'}
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => { setEditing(m); setOpen(true); }}>
+                            <Pencil size={14} /> Edit
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => toggleActive(m.id, m.isActive)}>
+                            {m.isActive ? 'Deactivate' : 'Activate'}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -176,7 +183,10 @@ export function StaffView() {
                   </div>
                   <Badge variant={m.isActive ? 'success' : 'neutral'}>{m.isActive ? 'Active' : 'Inactive'}</Badge>
                 </div>
-                <div className="mt-3 flex justify-end border-t border-border pt-3">
+                <div className="mt-3 flex justify-end gap-1 border-t border-border pt-3">
+                  <Button variant="ghost" size="sm" onClick={() => { setEditing(m); setOpen(true); }}>
+                    <Pencil size={14} /> Edit
+                  </Button>
                   <Button variant="ghost" size="sm" onClick={() => toggleActive(m.id, m.isActive)}>
                     {m.isActive ? 'Deactivate' : 'Activate'}
                   </Button>
@@ -195,7 +205,13 @@ export function StaffView() {
         </div>
       )}
 
-      <AddStaffDrawer open={open} onClose={() => setOpen(false)} role={role} roleLabel={roleLabel} />
+      <AddStaffDrawer
+        open={open}
+        onClose={() => { setOpen(false); setEditing(null); }}
+        role={role}
+        roleLabel={roleLabel}
+        editing={editing}
+      />
 
       <ImportCsvDrawer
         open={importOpen}
@@ -224,50 +240,64 @@ const schema = z.object({
 type StaffForm = z.infer<typeof schema>;
 
 function AddStaffDrawer({
-  open, onClose, role, roleLabel,
-}: { open: boolean; onClose: () => void; role: ManageableRole; roleLabel: string }) {
-  const [createUser, { isLoading }] = useCreateUserMutation();
+  open, onClose, role, roleLabel, editing,
+}: { open: boolean; onClose: () => void; role: ManageableRole; roleLabel: string; editing: ManagedUser | null }) {
+  const isEditing = !!editing;
+  const [createUser, { isLoading: creating }] = useCreateUserMutation();
+  const [updateUser, { isLoading: updating }] = useUpdateUserMutation();
+  const isLoading = creating || updating;
   const [tempPasswordInfo, setTempPasswordInfo] = useState<{ name: string; phone: string; tempPassword: string; emailed: boolean } | null>(null);
   const { register, control, handleSubmit, reset, formState: { errors } } = useForm<StaffForm>({
     resolver: zodResolver(schema),
     defaultValues: { firstName: '', lastName: '', phone: '', email: '' },
   });
 
+  // Re-seed the form every time the drawer opens — either with the row
+  // being edited, or blank for a fresh "Add". Keying off `open` (not just
+  // `editing`) is what actually fixes the earlier stale-values bug: this
+  // drawer is shared by both the Staff and Accountant tabs and by both the
+  // add and edit flows, so it must never trust whatever was left in the
+  // form from the last time it was open.
+  useEffect(() => {
+    if (!open) return;
+    reset(
+      editing
+        ? { firstName: editing.firstName, lastName: editing.lastName, phone: editing.phone, email: editing.email ?? '' }
+        : { firstName: '', lastName: '', phone: '', email: '' }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editing]);
+
   const onSubmit = async (values: StaffForm) => {
     try {
-      const res = await createUser({ ...values, role }).unwrap();
-      toast.success(`${roleLabel} added`);
-      reset();
-      onClose();
-      if (res.data.tempPassword) {
-        setTempPasswordInfo({
-          name: `${values.firstName} ${values.lastName}`,
-          phone: values.phone,
-          tempPassword: res.data.tempPassword,
-          emailed: true,
-        });
+      if (isEditing) {
+        await updateUser({ id: editing.id, body: { ...values, role } }).unwrap();
+        toast.success(`${roleLabel} updated`);
+      } else {
+        const res = await createUser({ ...values, role }).unwrap();
+        toast.success(`${roleLabel} added`);
+        if (res.data.tempPassword) {
+          setTempPasswordInfo({
+            name: `${values.firstName} ${values.lastName}`,
+            phone: values.phone,
+            tempPassword: res.data.tempPassword,
+            emailed: true,
+          });
+        }
       }
+      onClose();
     } catch (e: any) {
-      toast.error(e?.data?.error?.message || `Could not add ${roleLabel.toLowerCase()}`);
+      toast.error(e?.data?.error?.message || `Could not ${isEditing ? 'update' : 'add'} ${roleLabel.toLowerCase()}`);
     }
   };
 
   return (
     <>
-    <Sheet
-      open={open}
-      onOpenChange={(o) => {
-        // Reset on every close, not just a successful submit — otherwise
-        // typed-but-cancelled values (or values left over from the OTHER
-        // role's drawer, since both tabs share this same component)
-        // silently reappear the next time this drawer is opened.
-        if (!o) { reset(); onClose(); }
-      }}
-    >
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[440px]">
         <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
-            <h2 className="text-lg font-semibold">Add {roleLabel}</h2>
+            <h2 className="text-lg font-semibold">{isEditing ? `Edit ${roleLabel}` : `Add ${roleLabel}`}</h2>
             <SheetClose className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></SheetClose>
           </div>
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
@@ -309,11 +339,13 @@ function AddStaffDrawer({
               <Input id="email" type="email" dir="ltr" {...register('email')} />
               {errors.email && <p className="mt-1 text-xs text-danger">{errors.email.message}</p>}
             </div>
-            <p className="text-xs text-muted-foreground">A login is created with a temporary password {roleLabel.toLowerCase()} can reset.</p>
+            {!isEditing && (
+              <p className="text-xs text-muted-foreground">A login is created with a temporary password {roleLabel.toLowerCase()} can reset.</p>
+            )}
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
             <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
-            <Button type="submit" loading={isLoading}>Add {roleLabel.toLowerCase()}</Button>
+            <Button type="submit" loading={isLoading}>{isEditing ? 'Save changes' : `Add ${roleLabel.toLowerCase()}`}</Button>
           </div>
         </form>
       </SheetContent>

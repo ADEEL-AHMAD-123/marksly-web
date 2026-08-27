@@ -61,6 +61,7 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Dashboard', href: '/accountant', icon: LayoutDashboard },
     { label: 'Fees & Payments', href: '/accountant/fees', icon: DollarSign },
     { label: 'Reports', href: '/accountant/reports', icon: BarChart2 },
+    { label: 'Messaging', href: '/accountant/messaging', icon: MessageSquare },
     { label: 'Notices', href: '/accountant/notices', icon: Bell },
     { label: 'Settings', href: '/accountant/settings', icon: Settings },
   ],

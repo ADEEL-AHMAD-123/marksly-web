@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Wallet, Clock, FileText, Landmark, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Wallet, Clock, FileText, Landmark, ArrowRight, AlertTriangle, MessageSquare } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,9 +41,14 @@ export function AccountantDashboard() {
         title="Accountant Dashboard"
         description="Fee collection, online payouts and dues at a glance."
         actions={
-          <Link href="/accountant/fees" className={buttonVariants({ size: 'sm' })}>
-            Go to Fees & Payments <ArrowRight size={15} />
-          </Link>
+          <>
+            <Link href="/accountant/messaging" className={buttonVariants({ variant: 'secondary', size: 'sm' })}>
+              <MessageSquare size={15} /> Send reminders
+            </Link>
+            <Link href="/accountant/fees" className={buttonVariants({ size: 'sm' })}>
+              Go to Fees & Payments <ArrowRight size={15} />
+            </Link>
+          </>
         }
       />
 
