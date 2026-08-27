@@ -10,6 +10,7 @@ export interface Subject {
   teacherId: string | null;
   isElective: boolean;
   isActive: boolean;
+  enrolledCount: number;
 }
 
 interface ApiArray<T> { success: boolean; data: T[]; message: string }

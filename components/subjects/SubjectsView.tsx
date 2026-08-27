@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, X, BookOpen, Trash2, ChevronLeft, ChevronRight, Filter, Check, UserPlus } from 'lucide-react';
+import { Plus, X, BookOpen, Trash2, ChevronLeft, ChevronRight, Filter, Check, UserPlus, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
@@ -32,6 +32,7 @@ import {
   useApproveEnrollmentMutation,
   useRejectEnrollmentMutation,
 } from '@/store/api/subjectsApi';
+import { getErrorMessage } from '@/lib/get-error-message';
 
 const PAGE_SIZE = 10;
 
@@ -41,16 +42,21 @@ export function SubjectsView() {
   const [open, setOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [unassignedOnly, setUnassignedOnly] = useState(false);
   const [page, setPage] = useState(1);
-  const [deleteSubject] = useDeleteSubjectMutation();
+  const [deleteSubject, { isLoading: deleting }] = useDeleteSubjectMutation();
+
+  const unassignedCount = useMemo(() => subjects.filter((s) => !s.teacherId).length, [subjects]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return subjects;
-    return subjects.filter((s) =>
+    let rows = subjects;
+    if (unassignedOnly) rows = rows.filter((s) => !s.teacherId);
+    if (!q) return rows;
+    return rows.filter((s) =>
       [s.name, s.code, s.className, s.teacherName].some((v) => (v ?? '').toLowerCase().includes(q))
     );
-  }, [subjects, query]);
+  }, [subjects, query, unassignedOnly]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageSafe = Math.min(page, totalPages);
@@ -61,8 +67,8 @@ export function SubjectsView() {
       await deleteSubject(id).unwrap();
       toast.success('Subject deleted');
       setConfirmId(null);
-    } catch {
-      toast.error('Could not delete subject');
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Could not delete subject'));
     }
   };
 
@@ -77,12 +83,25 @@ export function SubjectsView() {
       <EnrollmentRequests />
 
       {subjects.length > 0 && (
-        <Card className="p-4">
+        <Card className="space-y-3 p-4">
           <SearchInput
             value={query}
             onChange={(v) => { setQuery(v); setPage(1); }}
             placeholder="Search by name, code, class or teacher…"
           />
+          {unassignedCount > 0 && (
+            <button
+              type="button"
+              onClick={() => { setUnassignedOnly((v) => !v); setPage(1); }}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                unassignedOnly
+                  ? 'border-warning bg-warning-soft text-warning'
+                  : 'border-border text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              <AlertTriangle size={12} /> {unassignedCount} unassigned {unassignedOnly ? '· showing only these' : ''}
+            </button>
+          )}
         </Card>
       )}
 
@@ -113,14 +132,27 @@ export function SubjectsView() {
                       <TableCell className="font-medium text-foreground">{s.name}</TableCell>
                       <TableCell className="text-muted-foreground">{s.code ?? '—'}</TableCell>
                       <TableCell className="text-muted-foreground">{s.className ?? 'All'}</TableCell>
-                      <TableCell className="text-muted-foreground">{s.teacherName ?? '—'}</TableCell>
+                      <TableCell>
+                        {s.teacherName ? (
+                          <span className="text-muted-foreground">{s.teacherName}</span>
+                        ) : (
+                          <Badge variant="warning" title="No teacher assigned">
+                            <AlertTriangle size={11} /> Unassigned
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell><Badge variant={s.isElective ? 'warning' : 'neutral'}>{s.isElective ? 'Elective' : 'Core'}</Badge></TableCell>
                       <TableCell className="text-right">
                         {confirmId === s.id ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)}>Cancel</Button>
-                            <Button variant="danger" size="sm" onClick={() => handleDelete(s.id)}>Delete</Button>
-                          </span>
+                          <div className="inline-flex flex-col items-end gap-1.5">
+                            {s.enrolledCount > 0 && (
+                              <p className="text-xs text-warning">{s.enrolledCount} student{s.enrolledCount === 1 ? '' : 's'} currently enrolled</p>
+                            )}
+                            <span className="inline-flex items-center gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)}>Cancel</Button>
+                              <Button variant="danger" size="sm" loading={deleting} onClick={() => handleDelete(s.id)}>Delete</Button>
+                            </span>
+                          </div>
                         ) : (
                           <button onClick={() => setConfirmId(s.id)} aria-label="Delete subject" className="rounded-lg p-2 text-muted-foreground hover:bg-danger-soft hover:text-danger">
                             <Trash2 size={16} />
@@ -144,12 +176,20 @@ export function SubjectsView() {
                   </div>
                   <Badge variant={s.isElective ? 'warning' : 'neutral'}>{s.isElective ? 'Elective' : 'Core'}</Badge>
                 </div>
-                <div className="mt-3 flex justify-end border-t border-border pt-3">
+                {!s.teacherName && (
+                  <Badge variant="warning" className="mt-2"><AlertTriangle size={11} /> No teacher assigned</Badge>
+                )}
+                <div className="mt-3 flex flex-col items-end gap-1.5 border-t border-border pt-3">
                   {confirmId === s.id ? (
-                    <span className="inline-flex items-center gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)}>Cancel</Button>
-                      <Button variant="danger" size="sm" onClick={() => handleDelete(s.id)}>Delete</Button>
-                    </span>
+                    <>
+                      {s.enrolledCount > 0 && (
+                        <p className="text-xs text-warning">{s.enrolledCount} student{s.enrolledCount === 1 ? '' : 's'} currently enrolled</p>
+                      )}
+                      <span className="inline-flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)}>Cancel</Button>
+                        <Button variant="danger" size="sm" loading={deleting} onClick={() => handleDelete(s.id)}>Delete</Button>
+                      </span>
+                    </>
                   ) : (
                     <Button variant="ghost" size="sm" className="text-danger" onClick={() => setConfirmId(s.id)}>
                       <Trash2 size={15} /> Delete
@@ -184,7 +224,7 @@ function EnrollmentRequests() {
 
   const decide = async (fn: (id: string) => any, id: string, ok: string) => {
     try { await fn(id).unwrap(); toast.success(ok); }
-    catch { toast.error('Could not update request'); }
+    catch (e: any) { toast.error(getErrorMessage(e, 'Could not update request')); }
   };
 
   return (
@@ -249,7 +289,7 @@ function AddSubjectDrawer({ open, onClose }: { open: boolean; onClose: () => voi
       reset();
       onClose();
     } catch (e: any) {
-      toast.error(e?.data?.error?.message || 'Could not add subject');
+      toast.error(getErrorMessage(e, 'Could not add subject'));
     }
   };
 

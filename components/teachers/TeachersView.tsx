@@ -51,7 +51,8 @@ export function TeachersView() {
     page,
     limit: PAGE_SIZE,
   });
-  const [updateUser] = useUpdateUserMutation();
+  const [updateUser, { isLoading: updating }] = useUpdateUserMutation();
+  const [confirmDeactivateId, setConfirmDeactivateId] = useState<string | null>(null);
 
   const teachers = data?.data ?? [];
   const totalPages = data?.meta?.totalPages ?? 1;
@@ -59,6 +60,7 @@ export function TeachersView() {
   const toggleActive = async (id: string, isActive: boolean) => {
     try {
       const res = await updateUser({ id, body: { isActive: !isActive } }).unwrap();
+      setConfirmDeactivateId(null);
       if (isActive) {
         const { unassignedSubjects, unassignedSections } = res.data;
         const notes: string[] = [];
@@ -68,8 +70,8 @@ export function TeachersView() {
       } else {
         toast.success('Teacher activated');
       }
-    } catch {
-      toast.error('Could not update teacher');
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Could not update teacher'));
     }
   };
 
@@ -129,9 +131,20 @@ export function TeachersView() {
                       <TableCell className="text-muted-foreground">{t.email ?? '—'}</TableCell>
                       <TableCell><Badge variant={t.isActive ? 'success' : 'neutral'}>{t.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => toggleActive(t.id, t.isActive)}>
-                          {t.isActive ? 'Deactivate' : 'Activate'}
-                        </Button>
+                        {confirmDeactivateId === t.id ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => setConfirmDeactivateId(null)}>Cancel</Button>
+                            <Button variant="danger" size="sm" loading={updating} onClick={() => toggleActive(t.id, t.isActive)}>Confirm</Button>
+                          </span>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => (t.isActive ? setConfirmDeactivateId(t.id) : toggleActive(t.id, t.isActive))}
+                          >
+                            {t.isActive ? 'Deactivate' : 'Activate'}
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -154,9 +167,20 @@ export function TeachersView() {
                   <Badge variant={t.isActive ? 'success' : 'neutral'}>{t.isActive ? 'Active' : 'Inactive'}</Badge>
                 </div>
                 <div className="mt-3 flex justify-end border-t border-border pt-3">
-                  <Button variant="ghost" size="sm" onClick={() => toggleActive(t.id, t.isActive)}>
-                    {t.isActive ? 'Deactivate' : 'Activate'}
-                  </Button>
+                  {confirmDeactivateId === t.id ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => setConfirmDeactivateId(null)}>Cancel</Button>
+                      <Button variant="danger" size="sm" loading={updating} onClick={() => toggleActive(t.id, t.isActive)}>Confirm</Button>
+                    </span>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => (t.isActive ? setConfirmDeactivateId(t.id) : toggleActive(t.id, t.isActive))}
+                    >
+                      {t.isActive ? 'Deactivate' : 'Activate'}
+                    </Button>
+                  )}
                 </div>
               </Card>
             ))}

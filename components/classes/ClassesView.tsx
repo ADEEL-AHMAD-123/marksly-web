@@ -162,7 +162,7 @@ export function ClassesView() {
                     {c.sections.map((s) => (
                       <div key={s.id} className="flex items-center justify-between gap-2 rounded-md bg-muted px-2.5 py-1.5 text-xs">
                         <span className="inline-flex items-center gap-1 text-muted-foreground"><Layers size={11} /> {s.name}{s.capacity ? <span className="opacity-60">/{s.capacity}</span> : null}</span>
-                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                        <span className={`inline-flex items-center gap-1 ${s.teacherName ? 'text-muted-foreground' : 'text-warning'}`}>
                           <UserCog size={11} /> {s.teacherName ?? 'Unassigned'}
                         </span>
                       </div>

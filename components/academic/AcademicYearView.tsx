@@ -23,6 +23,7 @@ import {
 } from '@/store/api/academicYearsApi';
 import { useGetClassesQuery, type ClassItem } from '@/store/api/classesApi';
 import { useGetStudentsQuery } from '@/store/api/studentsApi';
+import { useDebounce } from '@/hooks/useDebounce';
 import { getErrorMessage } from '@/lib/get-error-message';
 
 export function AcademicYearView() {
@@ -228,9 +229,10 @@ function PromoteDrawer({
   // exactly who's affected (and who owes money) first matters here.
   const [preview, setPreview] = useState<PromotionPreview | null>(null);
 
+  const debouncedLeaverSearch = useDebounce(leaverSearch, 350);
   const { data: searchResults } = useGetStudentsQuery(
-    { search: leaverSearch, status: 'active', limit: 6 },
-    { skip: leaverSearch.trim().length < 2 }
+    { search: debouncedLeaverSearch, status: 'active', limit: 6 },
+    { skip: debouncedLeaverSearch.trim().length < 2 }
   );
   const searchMatches = (searchResults?.data ?? []).filter((s) => !leavers.some((l) => l.studentId === s.id));
 
@@ -412,7 +414,7 @@ function PromoteDrawer({
                           <Label className="text-xs">From section</Label>
                           <select className={selectCls} value={row.fromSectionId} disabled={!row.fromClassId} onChange={(e) => setRow(i, { fromSectionId: e.target.value, excludeStudentIds: [] })}>
                             <option value="">Select</option>
-                            {sectionsOf(row.fromClassId).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            {sectionsOf(row.fromClassId).map((s) => <option key={s.id} value={s.id}>{s.name} ({s.currentCount} student{s.currentCount === 1 ? '' : 's'})</option>)}
                           </select>
                         </div>
                       </div>
@@ -472,7 +474,7 @@ function PromoteDrawer({
                     placeholder="Search by name or roll number..."
                     className="mt-1"
                   />
-                  {leaverSearch.trim().length >= 2 && searchMatches.length > 0 && (
+                  {debouncedLeaverSearch.trim().length >= 2 && searchMatches.length > 0 && (
                     <div className="mt-1 max-h-32 space-y-1 overflow-y-auto rounded-md border border-border p-1.5">
                       {searchMatches.map((s) => (
                         <button
