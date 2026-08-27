@@ -67,7 +67,10 @@ export function PlansView() {
                   <button onClick={() => handleDelete(p)} aria-label="Delete plan" className="rounded-lg p-2 text-muted-foreground hover:bg-danger-soft hover:text-danger"><Trash2 size={15} /></button>
                 </div>
               </div>
-              <p className="mt-3 text-lg font-semibold text-foreground">{p.name}</p>
+              {!p.isPublic && (
+                <Badge variant="warning" className="mt-3 w-fit">Custom — hidden from public/other institutions</Badge>
+              )}
+              <p className={cn('text-lg font-semibold text-foreground', p.isPublic ? 'mt-3' : 'mt-2')}>{p.name}</p>
               <p className="mt-1">
                 <span className="text-2xl font-bold text-foreground">{p.price === 0 ? 'Free' : formatCurrency(p.price)}</span>
                 {p.price > 0 && <span className="text-sm text-muted-foreground">/mo</span>}
@@ -100,6 +103,12 @@ function PlanDrawer({ plan, open, onClose }: { plan: Plan | null; open: boolean;
   const [createPlan, { isLoading: creating }] = useCreatePlanMutation();
   const [updatePlan, { isLoading: updating }] = useUpdatePlanMutation();
   const [features, setFeatures] = useState<string[]>([]);
+  // Uncheck for a bespoke, single-institution deal (e.g. an institution
+  // requested custom pricing/limits) — keeps it out of the public pricing
+  // page and out of every OTHER institution's own plan picker. See
+  // Plan.isPublic's comment on the backend. Defaults to true (a normal,
+  // publicly-offered tier) for new plans.
+  const [isPublic, setIsPublic] = useState(true);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<PlanForm>({ resolver: zodResolver(schema) });
 
@@ -107,6 +116,7 @@ function PlanDrawer({ plan, open, onClose }: { plan: Plan | null; open: boolean;
     if (open) {
       reset({ name: plan?.name ?? '', price: plan?.price ?? 0, studentsLimit: plan?.studentsLimit ?? 50, storageGB: plan?.storageGB ?? 1 });
       setFeatures(plan?.features ?? []);
+      setIsPublic(plan?.isPublic ?? true);
     }
   }, [open, plan, reset]);
 
@@ -115,10 +125,10 @@ function PlanDrawer({ plan, open, onClose }: { plan: Plan | null; open: boolean;
   const onSubmit = async (values: PlanForm) => {
     try {
       if (isEdit && plan) {
-        await updatePlan({ id: plan.id, body: { ...values, features } }).unwrap();
+        await updatePlan({ id: plan.id, body: { ...values, features, isPublic } }).unwrap();
         toast.success('Plan updated');
       } else {
-        await createPlan({ ...values, features }).unwrap();
+        await createPlan({ ...values, features, isPublic }).unwrap();
         toast.success('Plan created');
       }
       onClose();
@@ -171,6 +181,22 @@ function PlanDrawer({ plan, open, onClose }: { plan: Plan | null; open: boolean;
                 })}
               </div>
             </div>
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-3">
+              <input
+                type="checkbox"
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span className="text-sm">
+                <span className="block font-medium text-foreground">Public plan</span>
+                <span className="block text-xs text-muted-foreground">
+                  Shown on the pricing page and selectable by any institution. Uncheck for a custom
+                  plan negotiated for one specific institution — assign it to them from their
+                  institution page instead.
+                </span>
+              </span>
+            </label>
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
             <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>

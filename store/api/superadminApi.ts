@@ -60,6 +60,11 @@ export interface Plan {
   storageGB: number;
   features: string[];
   isActive: boolean;
+  // false = a bespoke, institution-specific plan (a custom deal negotiated
+  // after that institution requested one) — hidden from the public pricing
+  // page and from every OTHER institution's own plan picker. See
+  // Plan.isPublic's comment on the backend (plan.model.ts).
+  isPublic: boolean;
 }
 
 export interface PlanBody {
@@ -69,6 +74,7 @@ export interface PlanBody {
   studentsLimit: number;
   storageGB: number;
   features?: string[];
+  isPublic?: boolean;
 }
 
 export interface InstitutionDetail {
