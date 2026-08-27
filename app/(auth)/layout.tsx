@@ -1,5 +1,6 @@
 import { CalendarCheck, FileText, ShieldCheck } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
+import { AuthCardShell } from '@/components/auth/AuthCardShell';
 
 const FEATURES = [
   { icon: CalendarCheck, title: 'Attendance in seconds', desc: 'Teachers mark it, admins see live rates instantly.' },
@@ -96,7 +97,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           content vertically when it fits (`lg:justify-center`) while still
           scrolling normally the moment it doesn't (register's longer form). */}
       <main className="relative flex min-h-screen flex-col items-center px-4 pb-10 pt-14 sm:px-6 sm:pt-20 lg:h-full lg:min-h-0 lg:justify-center lg:overflow-y-auto lg:px-10 lg:py-12">
-        <div className="w-full max-w-md animate-fade-in">
+        <AuthCardShell>
           {/* Compact logo for mobile */}
           <div className="mb-6 flex justify-center lg:hidden">
             <Logo size={38} />
@@ -109,7 +110,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <p className="mt-8 text-center text-xs text-muted-foreground">
             © {new Date().getFullYear()} Marksly · marksly.pk
           </p>
-        </div>
+        </AuthCardShell>
       </main>
     </div>
   );

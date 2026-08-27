@@ -149,48 +149,58 @@ export function RegisterView() {
         </div>
       )}
 
+      {/* Two-per-row on sm+ — register has more than 3x login's fields, and
+          stacking every one of them full-width made the card (and the page)
+          far taller than it needed to be, especially now that the layout
+          scrolls the form panel independently rather than the whole page.
+          Pairing related-enough fields (institution name+type, phone+email)
+          cuts this from 6 stacked rows down to 4, trading unused width on
+          larger screens for a shorter, more scannable form. Stays a single
+          column below `sm:` where there isn't width to spare. */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        {/* Institution name */}
-        <div>
-          <Label htmlFor="institutionName">Institution name</Label>
-          <div className="relative">
-            <Building2 size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              id="institutionName"
-              {...register('institutionName')}
-              placeholder="e.g. Iqra Academy"
-              autoFocus
-              aria-invalid={!!errors.institutionName}
-              className={fieldCls(!!errors.institutionName)}
-            />
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* Institution name */}
+          <div>
+            <Label htmlFor="institutionName">Institution name</Label>
+            <div className="relative">
+              <Building2 size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                id="institutionName"
+                {...register('institutionName')}
+                placeholder="e.g. Iqra Academy"
+                autoFocus
+                aria-invalid={!!errors.institutionName}
+                className={fieldCls(!!errors.institutionName)}
+              />
+            </div>
+            {errors.institutionName && <p className="mt-1.5 text-xs text-danger">{errors.institutionName.message}</p>}
           </div>
-          {errors.institutionName && <p className="mt-1.5 text-xs text-danger">{errors.institutionName.message}</p>}
-        </div>
 
-        {/* Institution type */}
-        <div>
-          <Label htmlFor="institutionType">Institution type</Label>
-          <Controller
-            control={control}
-            name="institutionType"
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger aria-invalid={!!errors.institutionType} className={errors.institutionType ? 'border-danger' : ''}>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          {errors.institutionType && <p className="mt-1.5 text-xs text-danger">{errors.institutionType.message}</p>}
+          {/* Institution type */}
+          <div>
+            <Label htmlFor="institutionType">Institution type</Label>
+            <Controller
+              control={control}
+              name="institutionType"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger aria-invalid={!!errors.institutionType} className={errors.institutionType ? 'border-danger' : ''}>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.institutionType && <p className="mt-1.5 text-xs text-danger">{errors.institutionType.message}</p>}
+          </div>
         </div>
 
         {/* Name row */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <Label htmlFor="firstName">First name</Label>
             <div className="relative">
@@ -206,42 +216,44 @@ export function RegisterView() {
           </div>
         </div>
 
-        {/* Country + phone — the country selector doubles as the phone
-            field's dialing-code prefix, so picking a country and entering a
-            number happens in one motion instead of two disconnected fields. */}
-        <div>
-          <Label htmlFor="phone">Country &amp; phone number</Label>
-          <Controller
-            control={control}
-            name="phone"
-            render={({ field }) => (
-              <PhoneInput
-                id="phone"
-                international
-                labels={en}
-                defaultCountry="PK"
-                countryCallingCodeEditable={false}
-                value={field.value}
-                onChange={(v) => field.onChange(v ?? '')}
-                onCountryChange={(c) => setValue('country', c ?? '', { shouldValidate: true })}
-                placeholder="300 1234567"
-                autoComplete="tel"
-                className={cn(errors.phone && 'PhoneInput-danger')}
-              />
-            )}
-          />
-          {errors.phone && <p className="mt-1.5 text-xs text-danger">{errors.phone.message}</p>}
-          {errors.country && !errors.phone && <p className="mt-1.5 text-xs text-danger">{errors.country.message}</p>}
-        </div>
-
-        {/* Email */}
-        <div>
-          <Label htmlFor="email">Email address</Label>
-          <div className="relative">
-            <Mail size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input id="email" {...register('email')} type="email" autoComplete="email" dir="ltr" placeholder="you@institute.pk" aria-invalid={!!errors.email} className={fieldCls(!!errors.email)} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* Country + phone — the country selector doubles as the phone
+              field's dialing-code prefix, so picking a country and entering a
+              number happens in one motion instead of two disconnected fields. */}
+          <div>
+            <Label htmlFor="phone">Country &amp; phone number</Label>
+            <Controller
+              control={control}
+              name="phone"
+              render={({ field }) => (
+                <PhoneInput
+                  id="phone"
+                  international
+                  labels={en}
+                  defaultCountry="PK"
+                  countryCallingCodeEditable={false}
+                  value={field.value}
+                  onChange={(v) => field.onChange(v ?? '')}
+                  onCountryChange={(c) => setValue('country', c ?? '', { shouldValidate: true })}
+                  placeholder="300 1234567"
+                  autoComplete="tel"
+                  className={cn(errors.phone && 'PhoneInput-danger')}
+                />
+              )}
+            />
+            {errors.phone && <p className="mt-1.5 text-xs text-danger">{errors.phone.message}</p>}
+            {errors.country && !errors.phone && <p className="mt-1.5 text-xs text-danger">{errors.country.message}</p>}
           </div>
-          {errors.email && <p className="mt-1.5 text-xs text-danger">{errors.email.message}</p>}
+
+          {/* Email */}
+          <div>
+            <Label htmlFor="email">Email address</Label>
+            <div className="relative">
+              <Mail size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input id="email" {...register('email')} type="email" autoComplete="email" dir="ltr" placeholder="you@institute.pk" aria-invalid={!!errors.email} className={fieldCls(!!errors.email)} />
+            </div>
+            {errors.email && <p className="mt-1.5 text-xs text-danger">{errors.email.message}</p>}
+          </div>
         </div>
 
         {/* Password */}
