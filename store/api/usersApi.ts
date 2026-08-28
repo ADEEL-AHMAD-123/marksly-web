@@ -2,6 +2,8 @@ import { baseApi } from './baseApi';
 
 export type ManageableRole = 'teacher' | 'staff' | 'accountant';
 
+export type EmailDeliveryStatus = 'pending' | 'sent' | 'delivered' | 'bounced' | 'failed' | null;
+
 export interface ManagedUser {
   id: string;
   firstName: string;
@@ -11,6 +13,12 @@ export interface ManagedUser {
   email: string | null;
   role: ManageableRole;
   isActive: boolean;
+  // false means an activation-link invite is still pending (see the
+  // invite-based creation flow in user.service.ts) — the account can't log
+  // in yet at all, regardless of `isActive`.
+  emailVerified: boolean;
+  emailDeliveryStatus: EmailDeliveryStatus;
+  emailDeliveryError: string | null;
   lastLoginAt: string | null;
   createdAt: string;
   unassignedSubjects?: number;
@@ -27,6 +35,9 @@ export interface CreateUserBody {
   email: string;
   password?: string;
   role: ManageableRole;
+  // Set on a resubmit after the backend flags EMAIL_DOMAIN_UNVERIFIED and
+  // the admin confirms the address is correct anyway.
+  confirmUnverifiedEmail?: boolean;
 }
 
 export const usersApi = baseApi.injectEndpoints({
@@ -46,11 +57,16 @@ export const usersApi = baseApi.injectEndpoints({
       },
       providesTags: [{ type: 'Users', id: 'LIST' }],
     }),
-    // tempPassword is only present when the account was auto-generated one
-    // (no `password` sent in the request) and only in this response — never
+    // tempPassword is only present for the explicit-password override path
+    // (dto.password sent in the request) — normal creation goes through the
+    // invite-link flow instead and never returns a password at all. Never
     // returned from getUsers/update, never persisted anywhere else.
     createUser: builder.mutation<ApiObject<ManagedUser & { tempPassword?: string }>, CreateUserBody>({
       query: (body) => ({ url: '/users', method: 'POST', body }),
+      invalidatesTags: [{ type: 'Users', id: 'LIST' }],
+    }),
+    resendInvite: builder.mutation<ApiObject<ManagedUser>, { id: string; email?: string; confirmUnverifiedEmail?: boolean }>({
+      query: ({ id, ...body }) => ({ url: `/users/${id}/resend-invite`, method: 'POST', body }),
       invalidatesTags: [{ type: 'Users', id: 'LIST' }],
     }),
     updateUser: builder.mutation<
@@ -80,4 +96,5 @@ export const {
   useUpdateUserMutation,
   useDeleteUserMutation,
   useBulkImportUsersMutation,
+  useResendInviteMutation,
 } = usersApi;

@@ -27,7 +27,7 @@ import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { SearchInput } from '@/components/ui/search-input';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getInitials } from '@/lib/utils';
-import { getErrorMessage } from '@/lib/get-error-message';
+import { getErrorMessage, getErrorCode, getErrorDetails } from '@/lib/get-error-message';
 import {
   useGetUsersQuery,
   useCreateUserMutation,
@@ -37,6 +37,10 @@ import {
   type ManagedUser,
 } from '@/store/api/usersApi';
 import { ImportCsvDrawer } from '@/components/ui/import-csv-drawer';
+import { InviteStatusBadge } from '@/components/users/InviteStatusBadge';
+import { InviteSentDialog } from '@/components/users/InviteSentDialog';
+import { DomainConfirmDialog } from '@/components/users/DomainConfirmDialog';
+import { ResendInviteDialog } from '@/components/users/ResendInviteDialog';
 
 const PAGE_SIZE = 20;
 
@@ -67,6 +71,7 @@ export function StaffView() {
     limit: PAGE_SIZE,
   });
   const [updateUser] = useUpdateUserMutation();
+  const [resendTarget, setResendTarget] = useState<{ id: string; name: string; email: string } | null>(null);
 
   const members = data?.data ?? [];
   const totalPages = data?.meta?.totalPages ?? 1;
@@ -137,6 +142,7 @@ export function StaffView() {
                     <TableHead>Phone</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Account</TableHead>
                     <TableHead />
                   </TableRow>
                 </TableHeader>
@@ -154,11 +160,19 @@ export function StaffView() {
                       <TableCell className="text-muted-foreground">{m.phone}</TableCell>
                       <TableCell className="text-muted-foreground">{m.email ?? '—'}</TableCell>
                       <TableCell><Badge variant={m.isActive ? 'success' : 'neutral'}>{m.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
+                      <TableCell>
+                        <InviteStatusBadge emailVerified={m.emailVerified} emailDeliveryStatus={m.emailDeliveryStatus} emailDeliveryError={m.emailDeliveryError} />
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button variant="ghost" size="sm" onClick={() => { setEditing(m); setOpen(true); }}>
                             <Pencil size={14} /> Edit
                           </Button>
+                          {!m.emailVerified && m.email && (
+                            <Button variant="ghost" size="sm" onClick={() => setResendTarget({ id: m.id, name: m.name, email: m.email! })}>
+                              Resend invite
+                            </Button>
+                          )}
                           <Button variant="ghost" size="sm" onClick={() => toggleActive(m.id, m.isActive)}>
                             {m.isActive ? 'Deactivate' : 'Activate'}
                           </Button>
@@ -184,10 +198,18 @@ export function StaffView() {
                   </div>
                   <Badge variant={m.isActive ? 'success' : 'neutral'}>{m.isActive ? 'Active' : 'Inactive'}</Badge>
                 </div>
+                <div className="mt-2">
+                  <InviteStatusBadge emailVerified={m.emailVerified} emailDeliveryStatus={m.emailDeliveryStatus} emailDeliveryError={m.emailDeliveryError} />
+                </div>
                 <div className="mt-3 flex justify-end gap-1 border-t border-border pt-3">
                   <Button variant="ghost" size="sm" onClick={() => { setEditing(m); setOpen(true); }}>
                     <Pencil size={14} /> Edit
                   </Button>
+                  {!m.emailVerified && m.email && (
+                    <Button variant="ghost" size="sm" onClick={() => setResendTarget({ id: m.id, name: m.name, email: m.email! })}>
+                      Resend invite
+                    </Button>
+                  )}
                   <Button variant="ghost" size="sm" onClick={() => toggleActive(m.id, m.isActive)}>
                     {m.isActive ? 'Deactivate' : 'Activate'}
                   </Button>
@@ -213,6 +235,16 @@ export function StaffView() {
         roleLabel={roleLabel}
         editing={editing}
       />
+
+      {resendTarget && (
+        <ResendInviteDialog
+          open={!!resendTarget}
+          onClose={() => setResendTarget(null)}
+          userId={resendTarget.id}
+          name={resendTarget.name}
+          currentEmail={resendTarget.email}
+        />
+      )}
 
       <ImportCsvDrawer
         open={importOpen}
@@ -248,7 +280,9 @@ function AddStaffDrawer({
   const [updateUser, { isLoading: updating }] = useUpdateUserMutation();
   const isLoading = creating || updating;
   const [tempPasswordInfo, setTempPasswordInfo] = useState<{ name: string; phone: string; tempPassword: string; emailed: boolean } | null>(null);
-  const { register, control, handleSubmit, reset, formState: { errors } } = useForm<StaffForm>({
+  const [inviteSentInfo, setInviteSentInfo] = useState<{ name: string; email: string; emailDeliveryStatus: any; emailDeliveryError: string | null } | null>(null);
+  const [domainIssue, setDomainIssue] = useState<{ domain: string; email: string } | null>(null);
+  const { register, control, handleSubmit, reset, getValues, formState: { errors } } = useForm<StaffForm>({
     resolver: zodResolver(schema),
     defaultValues: { firstName: '', lastName: '', phone: '', email: '' },
   });
@@ -269,28 +303,46 @@ function AddStaffDrawer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
 
-  const onSubmit = async (values: StaffForm) => {
+  const submit = async (values: StaffForm, confirmUnverifiedEmail?: boolean) => {
     try {
       if (isEditing) {
         await updateUser({ id: editing.id, body: { ...values, role } }).unwrap();
         toast.success(`${roleLabel} updated`);
+        onClose();
+        return;
+      }
+      const res = await createUser({ ...values, role, confirmUnverifiedEmail }).unwrap();
+      toast.success(`${roleLabel} added`);
+      setDomainIssue(null);
+      onClose();
+      if (res.data.tempPassword) {
+        setTempPasswordInfo({
+          name: `${values.firstName} ${values.lastName}`,
+          phone: values.phone,
+          tempPassword: res.data.tempPassword,
+          emailed: true,
+        });
       } else {
-        const res = await createUser({ ...values, role }).unwrap();
-        toast.success(`${roleLabel} added`);
-        if (res.data.tempPassword) {
-          setTempPasswordInfo({
-            name: `${values.firstName} ${values.lastName}`,
-            phone: values.phone,
-            tempPassword: res.data.tempPassword,
-            emailed: true,
-          });
+        setInviteSentInfo({
+          name: `${values.firstName} ${values.lastName}`,
+          email: values.email,
+          emailDeliveryStatus: res.data.emailDeliveryStatus,
+          emailDeliveryError: res.data.emailDeliveryError,
+        });
+      }
+    } catch (e: any) {
+      if (!isEditing && getErrorCode(e) === 'EMAIL_DOMAIN_UNVERIFIED') {
+        const details = getErrorDetails<{ domain: string; email: string }>(e);
+        if (details) {
+          setDomainIssue(details);
+          return;
         }
       }
-      onClose();
-    } catch (e: any) {
       toast.error(getErrorMessage(e, `Could not ${isEditing ? 'update' : 'add'} ${roleLabel.toLowerCase()}`));
     }
   };
+
+  const onSubmit = (values: StaffForm) => submit(values);
 
   return (
     <>
@@ -341,7 +393,7 @@ function AddStaffDrawer({
               {errors.email && <p className="mt-1 text-xs text-danger">{errors.email.message}</p>}
             </div>
             {!isEditing && (
-              <p className="text-xs text-muted-foreground">A login is created with a temporary password {roleLabel.toLowerCase()} can reset.</p>
+              <p className="text-xs text-muted-foreground">An activation link is emailed to them — they choose their own password when they click it.</p>
             )}
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
@@ -357,6 +409,25 @@ function AddStaffDrawer({
         open={!!tempPasswordInfo}
         onClose={() => setTempPasswordInfo(null)}
         {...tempPasswordInfo}
+      />
+    )}
+
+    {inviteSentInfo && (
+      <InviteSentDialog
+        open={!!inviteSentInfo}
+        onClose={() => setInviteSentInfo(null)}
+        {...inviteSentInfo}
+      />
+    )}
+
+    {domainIssue && (
+      <DomainConfirmDialog
+        open
+        domain={domainIssue.domain}
+        email={domainIssue.email}
+        loading={isLoading}
+        onCancel={() => setDomainIssue(null)}
+        onConfirm={() => submit(getValues(), true)}
       />
     )}
     </>

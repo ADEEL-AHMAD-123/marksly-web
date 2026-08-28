@@ -26,7 +26,7 @@ import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { SearchInput } from '@/components/ui/search-input';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getInitials } from '@/lib/utils';
-import { getErrorMessage } from '@/lib/get-error-message';
+import { getErrorMessage, getErrorCode, getErrorDetails } from '@/lib/get-error-message';
 import {
   useGetUsersQuery,
   useCreateUserMutation,
@@ -34,6 +34,10 @@ import {
   useBulkImportUsersMutation,
 } from '@/store/api/usersApi';
 import { ImportCsvDrawer } from '@/components/ui/import-csv-drawer';
+import { InviteStatusBadge } from '@/components/users/InviteStatusBadge';
+import { InviteSentDialog } from '@/components/users/InviteSentDialog';
+import { DomainConfirmDialog } from '@/components/users/DomainConfirmDialog';
+import { ResendInviteDialog } from '@/components/users/ResendInviteDialog';
 
 const PAGE_SIZE = 20;
 
@@ -53,6 +57,7 @@ export function TeachersView() {
   });
   const [updateUser, { isLoading: updating }] = useUpdateUserMutation();
   const [confirmDeactivateId, setConfirmDeactivateId] = useState<string | null>(null);
+  const [resendTarget, setResendTarget] = useState<{ id: string; name: string; email: string } | null>(null);
 
   const teachers = data?.data ?? [];
   const totalPages = data?.meta?.totalPages ?? 1;
@@ -113,6 +118,7 @@ export function TeachersView() {
                     <TableHead>Phone</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Account</TableHead>
                     <TableHead />
                   </TableRow>
                 </TableHeader>
@@ -130,6 +136,9 @@ export function TeachersView() {
                       <TableCell className="text-muted-foreground">{t.phone}</TableCell>
                       <TableCell className="text-muted-foreground">{t.email ?? '—'}</TableCell>
                       <TableCell><Badge variant={t.isActive ? 'success' : 'neutral'}>{t.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
+                      <TableCell>
+                        <InviteStatusBadge emailVerified={t.emailVerified} emailDeliveryStatus={t.emailDeliveryStatus} emailDeliveryError={t.emailDeliveryError} />
+                      </TableCell>
                       <TableCell className="text-right">
                         {confirmDeactivateId === t.id ? (
                           <span className="inline-flex items-center gap-1">
@@ -137,13 +146,20 @@ export function TeachersView() {
                             <Button variant="danger" size="sm" loading={updating} onClick={() => toggleActive(t.id, t.isActive)}>Confirm</Button>
                           </span>
                         ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => (t.isActive ? setConfirmDeactivateId(t.id) : toggleActive(t.id, t.isActive))}
-                          >
-                            {t.isActive ? 'Deactivate' : 'Activate'}
-                          </Button>
+                          <span className="inline-flex items-center gap-1">
+                            {!t.emailVerified && t.email && (
+                              <Button variant="ghost" size="sm" onClick={() => setResendTarget({ id: t.id, name: t.name, email: t.email! })}>
+                                Resend invite
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => (t.isActive ? setConfirmDeactivateId(t.id) : toggleActive(t.id, t.isActive))}
+                            >
+                              {t.isActive ? 'Deactivate' : 'Activate'}
+                            </Button>
+                          </span>
                         )}
                       </TableCell>
                     </TableRow>
@@ -166,20 +182,30 @@ export function TeachersView() {
                   </div>
                   <Badge variant={t.isActive ? 'success' : 'neutral'}>{t.isActive ? 'Active' : 'Inactive'}</Badge>
                 </div>
-                <div className="mt-3 flex justify-end border-t border-border pt-3">
+                <div className="mt-2">
+                  <InviteStatusBadge emailVerified={t.emailVerified} emailDeliveryStatus={t.emailDeliveryStatus} emailDeliveryError={t.emailDeliveryError} />
+                </div>
+                <div className="mt-3 flex justify-end gap-1 border-t border-border pt-3">
                   {confirmDeactivateId === t.id ? (
                     <span className="inline-flex items-center gap-1">
                       <Button variant="ghost" size="sm" onClick={() => setConfirmDeactivateId(null)}>Cancel</Button>
                       <Button variant="danger" size="sm" loading={updating} onClick={() => toggleActive(t.id, t.isActive)}>Confirm</Button>
                     </span>
                   ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => (t.isActive ? setConfirmDeactivateId(t.id) : toggleActive(t.id, t.isActive))}
-                    >
-                      {t.isActive ? 'Deactivate' : 'Activate'}
-                    </Button>
+                    <>
+                      {!t.emailVerified && t.email && (
+                        <Button variant="ghost" size="sm" onClick={() => setResendTarget({ id: t.id, name: t.name, email: t.email! })}>
+                          Resend invite
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => (t.isActive ? setConfirmDeactivateId(t.id) : toggleActive(t.id, t.isActive))}
+                      >
+                        {t.isActive ? 'Deactivate' : 'Activate'}
+                      </Button>
+                    </>
                   )}
                 </div>
               </Card>
@@ -197,6 +223,16 @@ export function TeachersView() {
       )}
 
       <AddTeacherDrawer open={open} onClose={() => setOpen(false)} />
+
+      {resendTarget && (
+        <ResendInviteDialog
+          open={!!resendTarget}
+          onClose={() => setResendTarget(null)}
+          userId={resendTarget.id}
+          name={resendTarget.name}
+          currentEmail={resendTarget.email}
+        />
+      )}
 
       <ImportCsvDrawer
         open={importOpen}
@@ -227,15 +263,18 @@ type TeacherForm = z.infer<typeof schema>;
 function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [createUser, { isLoading }] = useCreateUserMutation();
   const [tempPasswordInfo, setTempPasswordInfo] = useState<{ name: string; phone: string; tempPassword: string; emailed: boolean } | null>(null);
-  const { register, control, handleSubmit, reset, formState: { errors } } = useForm<TeacherForm>({
+  const [inviteSentInfo, setInviteSentInfo] = useState<{ name: string; email: string; emailDeliveryStatus: any; emailDeliveryError: string | null } | null>(null);
+  const [domainIssue, setDomainIssue] = useState<{ domain: string; email: string } | null>(null);
+  const { register, control, handleSubmit, reset, getValues, formState: { errors } } = useForm<TeacherForm>({
     resolver: zodResolver(schema),
     defaultValues: { firstName: '', lastName: '', phone: '', email: '' },
   });
 
-  const onSubmit = async (values: TeacherForm) => {
+  const submit = async (values: TeacherForm, confirmUnverifiedEmail?: boolean) => {
     try {
-      const res = await createUser({ ...values, role: 'teacher' }).unwrap();
+      const res = await createUser({ ...values, role: 'teacher', confirmUnverifiedEmail }).unwrap();
       toast.success('Teacher added');
+      setDomainIssue(null);
       reset();
       onClose();
       if (res.data.tempPassword) {
@@ -245,11 +284,27 @@ function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => voi
           tempPassword: res.data.tempPassword,
           emailed: true,
         });
+      } else {
+        setInviteSentInfo({
+          name: `${values.firstName} ${values.lastName}`,
+          email: values.email,
+          emailDeliveryStatus: res.data.emailDeliveryStatus,
+          emailDeliveryError: res.data.emailDeliveryError,
+        });
       }
     } catch (e: any) {
+      if (getErrorCode(e) === 'EMAIL_DOMAIN_UNVERIFIED') {
+        const details = getErrorDetails<{ domain: string; email: string }>(e);
+        if (details) {
+          setDomainIssue(details);
+          return;
+        }
+      }
       toast.error(getErrorMessage(e, 'Could not add teacher'));
     }
   };
+
+  const onSubmit = (values: TeacherForm) => submit(values);
 
   return (
     <>
@@ -299,7 +354,7 @@ function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => voi
               <Input id="email" type="email" dir="ltr" {...register('email')} />
               {errors.email && <p className="mt-1 text-xs text-danger">{errors.email.message}</p>}
             </div>
-            <p className="text-xs text-muted-foreground">A login is created with a temporary password the teacher can reset.</p>
+            <p className="text-xs text-muted-foreground">An activation link is emailed to the teacher — they choose their own password when they click it.</p>
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
             <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
@@ -314,6 +369,25 @@ function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => voi
         open={!!tempPasswordInfo}
         onClose={() => setTempPasswordInfo(null)}
         {...tempPasswordInfo}
+      />
+    )}
+
+    {inviteSentInfo && (
+      <InviteSentDialog
+        open={!!inviteSentInfo}
+        onClose={() => setInviteSentInfo(null)}
+        {...inviteSentInfo}
+      />
+    )}
+
+    {domainIssue && (
+      <DomainConfirmDialog
+        open
+        domain={domainIssue.domain}
+        email={domainIssue.email}
+        loading={isLoading}
+        onCancel={() => setDomainIssue(null)}
+        onConfirm={() => submit(getValues(), true)}
       />
     )}
     </>
