@@ -21,8 +21,10 @@ export const metadata: Metadata = {
   },
   description: DEFAULT_DESCRIPTION,
   keywords: [
-    'school management software', 'education ERP', 'academy software',
-    'college management system', 'student attendance software', 'school fee management software',
+    'school management software', 'school management system Pakistan', 'education ERP',
+    'education management system Pakistan', 'academy software',
+    'college management system', 'college management system Pakistan',
+    'student attendance software', 'school fee management software',
     'Marksly',
   ],
   alternates: { canonical: '/' },

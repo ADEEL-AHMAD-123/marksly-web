@@ -5,7 +5,7 @@ export function MarketingFooter() {
   return (
     <footer className="border-t border-border bg-sidebar text-sidebar-foreground">
       <div className="mx-auto max-w-6xl px-5 py-14">
-        <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-8 sm:grid-cols-5">
           <div className="col-span-2 sm:col-span-1">
             <Logo size={28} />
             <p className="mt-3 text-sm text-sidebar-muted">
@@ -19,6 +19,14 @@ export function MarketingFooter() {
               <li><Link href="/pricing" className="hover:text-sidebar-foreground">Pricing</Link></li>
               <li><Link href="/register" className="hover:text-sidebar-foreground">Start free trial</Link></li>
               <li><Link href="/login" className="hover:text-sidebar-foreground">Sign in</Link></li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent">Solutions</p>
+            <ul className="mt-3 space-y-2 text-sm text-sidebar-muted">
+              <li><Link href="/school-management-system-pakistan" className="hover:text-sidebar-foreground">School Management System</Link></li>
+              <li><Link href="/college-management-system-pakistan" className="hover:text-sidebar-foreground">College Management System</Link></li>
+              <li><Link href="/education-management-system-pakistan" className="hover:text-sidebar-foreground">Education Management System</Link></li>
             </ul>
           </div>
           <div>

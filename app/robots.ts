@@ -7,7 +7,10 @@ const BASE_URL = 'https://marksly.pk';
 // be crawled or show up in search results — same disallow list for every
 // bot below, human or AI.
 const DASHBOARD_DISALLOW = ['/student', '/admin', '/superadmin', '/teacher', '/parent', '/accountant', '/verify-email', '/forgot-password/reset'];
-const MARKETING_ALLOW = ['/', '/login', '/register', '/pricing', '/features', '/help', '/contact', '/blog'];
+const MARKETING_ALLOW = [
+  '/', '/login', '/register', '/pricing', '/features', '/help', '/contact', '/blog',
+  '/school-management-system-pakistan', '/college-management-system-pakistan', '/education-management-system-pakistan',
+];
 
 export default function robots(): MetadataRoute.Robots {
   return {

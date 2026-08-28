@@ -22,6 +22,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: BASE_URL, changeFrequency: 'weekly', priority: 1 },
     { url: `${BASE_URL}/features`, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${BASE_URL}/pricing`, changeFrequency: 'monthly', priority: 0.9 },
+    // Keyword-targeted marketing landing pages — same treatment as
+    // /features (own copy, own FAQ JSON-LD), aimed at generic-intent
+    // searches ("school management system Pakistan" etc.) rather than
+    // brand-name searches, since /,/features,/pricing already cover brand.
+    { url: `${BASE_URL}/school-management-system-pakistan`, changeFrequency: 'monthly', priority: 0.85 },
+    { url: `${BASE_URL}/college-management-system-pakistan`, changeFrequency: 'monthly', priority: 0.85 },
+    { url: `${BASE_URL}/education-management-system-pakistan`, changeFrequency: 'monthly', priority: 0.85 },
     { url: `${BASE_URL}/register`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/login`, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${BASE_URL}/help`, changeFrequency: 'monthly', priority: 0.6 },
