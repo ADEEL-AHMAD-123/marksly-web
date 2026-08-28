@@ -21,9 +21,9 @@ export function ThemeSwitcher() {
       <DropdownMenuTrigger asChild>
         <button
           aria-label="Change theme"
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 sm:h-9 sm:w-9 sm:rounded-lg"
         >
-          <Palette size={18} />
+          <Palette className="h-6 w-6 sm:h-[18px] sm:w-[18px]" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">

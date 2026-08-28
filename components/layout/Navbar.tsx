@@ -9,6 +9,7 @@ import { baseApi } from '@/store/api/baseApi';
 import toast from 'react-hot-toast';
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher';
 import { Avatar } from '@/components/ui/avatar';
+import { LogoMark } from '@/components/brand/Logo';
 import { getInitials } from '@/lib/utils';
 import { roleHome, ROLE_LABELS } from '@/lib/role-routes';
 import { useLayout } from './layout-context';
@@ -61,20 +62,29 @@ export function Navbar() {
   const canSwitch = availableRoles.length > 1;
 
   return (
-    <header className="flex h-16 items-center justify-between gap-3 border-b border-border bg-card px-4 sm:px-6">
-      {/* Mobile menu button */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        aria-label="Open menu"
-        className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
-      >
-        <Menu size={20} />
-      </button>
+    <header
+      className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border bg-card/85 px-4 shadow-[0_1px_0_0_rgba(0,0,0,0.03),0_8px_24px_-18px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:px-6"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+    >
+      {/* Mobile: hamburger + brand mark — the header previously had nothing
+          between the menu button and the right-side icons on phones, which
+          both looked empty and made the (already small) icons the only
+          thing to look at. The mark gives it an anchor. */}
+      <div className="flex items-center gap-2.5 lg:hidden">
+        <button
+          onClick={() => setMobileOpen(true)}
+          aria-label="Open menu"
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
+        >
+          <Menu className="h-6 w-6" />
+        </button>
+        <LogoMark size={26} variant="plain" className="text-foreground" />
+      </div>
 
       <div className="flex-1" />
 
       {/* Right: actions */}
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="ml-auto flex items-center gap-2 sm:gap-1.5">
         {/* Theme switching is a super-admin-only control */}
         {user?.role === 'superadmin' && <ThemeSwitcher />}
 
@@ -83,8 +93,8 @@ export function Navbar() {
         {/* Profile dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="ml-1.5 flex items-center gap-2 rounded-lg border-l border-border pl-3 outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <Avatar initials={initials} size="sm" />
+            <button className="ml-1 flex items-center gap-2 rounded-xl border-l border-border pl-2.5 outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring sm:pl-3">
+              <Avatar initials={initials} size="md" className="sm:h-8 sm:w-8 sm:text-xs" />
               <div className="hidden text-left sm:block">
                 <p className="text-sm font-medium leading-none text-foreground">
                   {user?.firstName} {user?.lastName}
