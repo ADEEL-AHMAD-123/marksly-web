@@ -35,6 +35,7 @@ import {
   useBulkImportUsersMutation,
   type ManageableRole,
   type ManagedUser,
+  type EmailDeliveryStatus,
 } from '@/store/api/usersApi';
 import { ImportCsvDrawer } from '@/components/ui/import-csv-drawer';
 import { InviteStatusBadge } from '@/components/users/InviteStatusBadge';
@@ -280,7 +281,7 @@ function AddStaffDrawer({
   const [updateUser, { isLoading: updating }] = useUpdateUserMutation();
   const isLoading = creating || updating;
   const [tempPasswordInfo, setTempPasswordInfo] = useState<{ name: string; phone: string; tempPassword: string; emailed: boolean } | null>(null);
-  const [inviteSentInfo, setInviteSentInfo] = useState<{ name: string; email: string; emailDeliveryStatus: any; emailDeliveryError: string | null } | null>(null);
+  const [inviteSentInfo, setInviteSentInfo] = useState<{ name: string; email: string; emailDeliveryStatus: EmailDeliveryStatus; emailDeliveryError: string | null } | null>(null);
   const [domainIssue, setDomainIssue] = useState<{ domain: string; email: string } | null>(null);
   const { register, control, handleSubmit, reset, getValues, formState: { errors } } = useForm<StaffForm>({
     resolver: zodResolver(schema),

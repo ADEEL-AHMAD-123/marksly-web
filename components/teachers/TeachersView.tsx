@@ -32,6 +32,7 @@ import {
   useCreateUserMutation,
   useUpdateUserMutation,
   useBulkImportUsersMutation,
+  type EmailDeliveryStatus,
 } from '@/store/api/usersApi';
 import { ImportCsvDrawer } from '@/components/ui/import-csv-drawer';
 import { InviteStatusBadge } from '@/components/users/InviteStatusBadge';
@@ -263,7 +264,7 @@ type TeacherForm = z.infer<typeof schema>;
 function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [createUser, { isLoading }] = useCreateUserMutation();
   const [tempPasswordInfo, setTempPasswordInfo] = useState<{ name: string; phone: string; tempPassword: string; emailed: boolean } | null>(null);
-  const [inviteSentInfo, setInviteSentInfo] = useState<{ name: string; email: string; emailDeliveryStatus: any; emailDeliveryError: string | null } | null>(null);
+  const [inviteSentInfo, setInviteSentInfo] = useState<{ name: string; email: string; emailDeliveryStatus: EmailDeliveryStatus; emailDeliveryError: string | null } | null>(null);
   const [domainIssue, setDomainIssue] = useState<{ domain: string; email: string } | null>(null);
   const { register, control, handleSubmit, reset, getValues, formState: { errors } } = useForm<TeacherForm>({
     resolver: zodResolver(schema),
