@@ -11,7 +11,7 @@ import type { EmailDeliveryStatus } from '@/store/api/usersApi';
 
 export interface ImportResultRow {
   row: number;
-  status: string;
+  status: 'created' | 'error';
   name?: string;
   message?: string;
   email?: string;
@@ -36,6 +36,11 @@ interface Props {
   sample: string[];
   filename: string;
   onImport: (csv: string) => Promise<ImportResult>;
+  /** Shown under the file picker before an import runs — the invite-link
+   *  copy only applies to teacher/staff/accountant imports, so this isn't
+   *  hardcoded (students, the other user of this drawer, have no invite
+   *  step at all). Omit for no help text. */
+  helpText?: string;
 }
 
 /** Small per-row indicator for a created account's invite email — same
@@ -71,7 +76,7 @@ function InviteResultBadge({ status, error }: { status?: EmailDeliveryStatus; er
   );
 }
 
-export function ImportCsvDrawer({ open, onClose, title, columns, sample, filename, onImport }: Props) {
+export function ImportCsvDrawer({ open, onClose, title, columns, sample, filename, onImport, helpText }: Props) {
   const [csv, setCsv] = useState('');
   const [fileName, setFileName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -116,7 +121,17 @@ export function ImportCsvDrawer({ open, onClose, title, columns, sample, filenam
 
   const errorRows = result?.results.filter((r) => r.status === 'error') ?? [];
   const createdRows = result?.results.filter((r) => r.status === 'created') ?? [];
-  const failedInvites = createdRows.filter((r) => r.emailDeliveryStatus === 'failed' || r.emailDeliveryStatus === 'bounced').length;
+  // Only teacher/staff/accountant imports go through the invite-link flow —
+  // student imports (StudentsView.tsx also uses this drawer, via a
+  // different bulk-import endpoint) never populate emailDeliveryStatus at
+  // all. Gate every invite-related bit of UI on actually having that data,
+  // rather than rendering a permanently-"Sending…" badge and a meaningless
+  // always-zero "Invites failed" stat for an import type that has no
+  // invite step in the first place.
+  const hasInviteData = createdRows.some((r) => r.emailDeliveryStatus != null);
+  const failedInvites = hasInviteData
+    ? createdRows.filter((r) => r.emailDeliveryStatus === 'failed' || r.emailDeliveryStatus === 'bounced').length
+    : 0;
 
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
@@ -155,15 +170,13 @@ export function ImportCsvDrawer({ open, onClose, title, columns, sample, filenam
                   </button>
                 </div>
 
-                <p className="text-xs text-muted-foreground">
-                  Each row gets an activation link emailed to it, same as adding one person at a time — nobody gets a password chosen for them.
-                </p>
+                {helpText && <p className="text-xs text-muted-foreground">{helpText}</p>}
               </>
             )}
 
             {result && (
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-2">
+                <div className={cn('grid gap-2', hasInviteData ? 'grid-cols-3' : 'grid-cols-2')}>
                   <div className="rounded-xl border border-border bg-muted/40 p-3 text-center">
                     <p className="text-xl font-semibold text-foreground">{result.created}</p>
                     <p className="text-xs text-muted-foreground">Created</p>
@@ -172,10 +185,12 @@ export function ImportCsvDrawer({ open, onClose, title, columns, sample, filenam
                     <p className={cn('text-xl font-semibold', result.failed > 0 ? 'text-danger' : 'text-foreground')}>{result.failed}</p>
                     <p className="text-xs text-muted-foreground">Row errors</p>
                   </div>
-                  <div className={cn('rounded-xl border p-3 text-center', failedInvites > 0 ? 'border-warning/30 bg-warning-soft' : 'border-border bg-muted/40')}>
-                    <p className={cn('text-xl font-semibold', failedInvites > 0 ? 'text-warning' : 'text-foreground')}>{failedInvites}</p>
-                    <p className="text-xs text-muted-foreground">Invites failed</p>
-                  </div>
+                  {hasInviteData && (
+                    <div className={cn('rounded-xl border p-3 text-center', failedInvites > 0 ? 'border-warning/30 bg-warning-soft' : 'border-border bg-muted/40')}>
+                      <p className={cn('text-xl font-semibold', failedInvites > 0 ? 'text-warning' : 'text-foreground')}>{failedInvites}</p>
+                      <p className="text-xs text-muted-foreground">Invites failed</p>
+                    </div>
+                  )}
                 </div>
 
                 {createdRows.length > 0 && (
@@ -183,21 +198,33 @@ export function ImportCsvDrawer({ open, onClose, title, columns, sample, filenam
                     <p className="mb-1.5 text-xs font-medium text-foreground">
                       {createdRows.length} account{createdRows.length === 1 ? '' : 's'} created
                     </p>
-                    <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-border p-2">
-                      {createdRows.map((r, i) => (
-                        <div key={i} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted">
-                          <div className="min-w-0">
-                            <p className="truncate font-medium text-foreground">{r.name}</p>
-                            {r.email && <p className="truncate text-muted-foreground" dir="ltr">{r.email}</p>}
-                            {r.emailDeliveryError && <p className="mt-0.5 text-danger">{r.emailDeliveryError}</p>}
+                    <div className="relative">
+                      <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-border p-2">
+                        {createdRows.map((r, i) => (
+                          <div key={i} className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted">
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-foreground">{r.name}</p>
+                              {r.email && <p className="truncate text-muted-foreground" dir="ltr">{r.email}</p>}
+                              {hasInviteData && r.emailDeliveryError && <p className="mt-0.5 text-danger">{r.emailDeliveryError}</p>}
+                            </div>
+                            {hasInviteData && (
+                              <div className="shrink-0">
+                                <InviteResultBadge status={r.emailDeliveryStatus} error={r.emailDeliveryError} />
+                              </div>
+                            )}
                           </div>
-                          <div className="shrink-0">
-                            <InviteResultBadge status={r.emailDeliveryStatus} error={r.emailDeliveryError} />
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+                      {/* Fade cue at the bottom edge — hints there's more to
+                          scroll to on a large import without needing to
+                          trial-and-error scroll to find out. Only shows once
+                          the list is actually tall enough to clip (7+ rows
+                          at this row height within max-h-64). */}
+                      {createdRows.length > 7 && (
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 rounded-b-lg bg-gradient-to-t from-card to-transparent" />
+                      )}
                     </div>
-                    {failedInvites > 0 && (
+                    {hasInviteData && failedInvites > 0 && (
                       <p className="mt-1.5 text-xs text-muted-foreground">
                         Accounts with a failed invite were still created — use &quot;Resend invite&quot; for them from the list after closing this.
                       </p>

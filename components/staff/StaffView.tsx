@@ -254,6 +254,7 @@ export function StaffView() {
         columns={['firstName', 'lastName', 'phone', 'email']}
         sample={['Bilal', 'Ahmed', '03007654321', 'bilal@example.com']}
         filename={`${role}-template.csv`}
+        helpText="Each row gets an activation link emailed to it, same as adding one person at a time — nobody gets a password chosen for them."
         onImport={async (csv) => (await bulkImport({ csv, role }).unwrap()).data}
       />
     </div>

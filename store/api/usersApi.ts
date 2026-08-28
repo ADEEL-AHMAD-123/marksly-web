@@ -87,7 +87,7 @@ export const usersApi = baseApi.injectEndpoints({
         failed: number;
         results: {
           row: number;
-          status: string;
+          status: 'created' | 'error';
           name?: string;
           message?: string;
           email?: string;

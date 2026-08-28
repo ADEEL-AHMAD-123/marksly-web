@@ -242,6 +242,7 @@ export function TeachersView() {
         columns={['firstName', 'lastName', 'phone', 'email']}
         sample={['Sara', 'Iqbal', '03007654321', 'sara@example.com']}
         filename="teachers-template.csv"
+        helpText="Each row gets an activation link emailed to it, same as adding one person at a time — nobody gets a password chosen for them."
         onImport={async (csv) => (await bulkImport({ csv, role: 'teacher' }).unwrap()).data}
       />
     </div>
