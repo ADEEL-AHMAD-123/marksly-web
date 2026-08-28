@@ -63,7 +63,7 @@ export function Navbar() {
 
   return (
     <header
-      className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border bg-card/85 px-4 shadow-[0_1px_0_0_rgba(0,0,0,0.03),0_8px_24px_-18px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:px-6"
+      className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border bg-card/85 px-4 shadow-[0_1px_0_0_rgba(0,0,0,0.03),0_8px_24px_-18px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:px-6 lg:h-[70px] lg:px-8"
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       {/* Mobile: hamburger + brand mark — the header previously had nothing
@@ -84,7 +84,7 @@ export function Navbar() {
       <div className="flex-1" />
 
       {/* Right: actions */}
-      <div className="ml-auto flex items-center gap-2 sm:gap-1.5">
+      <div className="ml-auto flex items-center gap-2">
         {/* Theme switching is a super-admin-only control */}
         {user?.role === 'superadmin' && <ThemeSwitcher />}
 
@@ -93,13 +93,13 @@ export function Navbar() {
         {/* Profile dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="ml-1 flex items-center gap-2 rounded-xl border-l border-border pl-2.5 outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring sm:pl-3">
-              <Avatar initials={initials} size="md" className="sm:h-8 sm:w-8 sm:text-xs" />
+            <button className="ml-1 flex items-center gap-2.5 rounded-xl border-l border-border pl-3 outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring">
+              <Avatar initials={initials} size="md" />
               <div className="hidden text-left sm:block">
-                <p className="text-sm font-medium leading-none text-foreground">
+                <p className="text-sm font-semibold leading-none text-foreground">
                   {user?.firstName} {user?.lastName}
                 </p>
-                <p className="mt-0.5 text-xs capitalize text-muted-foreground">
+                <p className="mt-1 text-xs capitalize text-muted-foreground">
                   {user?.role}
                 </p>
               </div>

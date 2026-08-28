@@ -59,9 +59,9 @@ export function NotificationBell() {
       <DropdownMenuTrigger asChild>
         <button
           aria-label={unread > 0 ? `Notifications — ${unread} unread` : 'Notifications'}
-          className="relative flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95 sm:h-9 sm:w-9 sm:rounded-lg"
+          className="relative flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
         >
-          <Bell className="h-6 w-6 sm:h-[18px] sm:w-[18px]" />
+          <Bell className="h-5 w-5" />
           {unread > 0 && (
             <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold leading-none text-danger-foreground ring-2 ring-card">
               {unread > 9 ? '9+' : unread}
