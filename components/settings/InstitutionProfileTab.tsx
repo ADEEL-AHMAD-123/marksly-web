@@ -103,22 +103,22 @@ export function InstitutionProfileTab() {
 
   if (isLoading) {
     return (
-      <Card className="max-w-xl">
+      <Card className="max-w-2xl">
         <CardContent className="pt-6"><Skeleton className="h-72 w-full" /></CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="max-w-xl space-y-6">
+    <div className="max-w-2xl space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><ImageUp size={18} /> Logo</CardTitle>
+        <CardHeader className="p-6 pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg"><ImageUp size={18} className="text-primary" /> Logo</CardTitle>
           <CardDescription>
             Used on fee slips, payment receipts, and other documents parents receive. PNG, JPEG, or WebP, up to 2MB — automatically cropped and resized to a consistent square, no need to pre-crop it yourself.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6 pt-0">
           <div className="flex items-center gap-4">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted">
               {inst?.logoUrl ? (
@@ -156,12 +156,12 @@ export function InstitutionProfileTab() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Institution details</CardTitle>
+        <CardHeader className="p-6 pb-4">
+          <CardTitle className="text-lg">Institution details</CardTitle>
           <CardDescription>Shown on fee slips, receipts, and messages sent to parents.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <CardContent className="p-6 pt-0">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div>
               <Label htmlFor="name">Institution name</Label>
               <Input id="name" {...register('name')} />
