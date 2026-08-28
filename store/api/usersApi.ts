@@ -81,7 +81,20 @@ export const usersApi = baseApi.injectEndpoints({
       invalidatesTags: [{ type: 'Users', id: 'LIST' }],
     }),
     bulkImportUsers: builder.mutation<
-      ApiObject<{ created: number; total: number; failed: number; results: { row: number; status: string; name?: string; message?: string }[] }>,
+      ApiObject<{
+        created: number;
+        total: number;
+        failed: number;
+        results: {
+          row: number;
+          status: string;
+          name?: string;
+          message?: string;
+          email?: string;
+          emailDeliveryStatus?: EmailDeliveryStatus;
+          emailDeliveryError?: string;
+        }[];
+      }>,
       { csv: string; role: ManageableRole }
     >({
       query: (body) => ({ url: '/users/bulk', method: 'POST', body }),
