@@ -8,8 +8,8 @@ import { z } from 'zod';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import en from 'react-phone-number-input/locale/en.json';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Lock, AlertCircle, MailWarning, Building2, ChevronRight, Phone as PhoneIcon, Mail } from 'lucide-react';
-import { useLoginMutation, useResendVerificationMutation } from '@/store/api/authApi';
+import { Eye, EyeOff, Lock, AlertCircle, MailWarning, MailQuestion, Building2, ChevronRight, Phone as PhoneIcon, Mail } from 'lucide-react';
+import { useLoginMutation, useResendVerificationMutation, useResendInviteSelfMutation } from '@/store/api/authApi';
 import { useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/slices/authSlice';
 import toast from 'react-hot-toast';
@@ -70,10 +70,12 @@ export function LoginView() {
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [needsVerification, setNeedsVerification] = useState(false);
+  const [needsInviteResend, setNeedsInviteResend] = useState(false);
   const [resendEmail, setResendEmail] = useState('');
   const [accountOptions, setAccountOptions] = useState<AmbiguousAccountOption[] | null>(null);
   const [login, { isLoading }] = useLoginMutation();
   const [resendVerification, { isLoading: resending }] = useResendVerificationMutation();
+  const [resendInviteSelf, { isLoading: resendingInvite }] = useResendInviteSelfMutation();
 
   // Email is the default — it's the mandatory, always-present identifier
   // for every account, whereas phone formatting/country varies more and is
@@ -97,6 +99,7 @@ export function LoginView() {
     if (next === loginMode) return;
     setFormError(null);
     setNeedsVerification(false);
+    setNeedsInviteResend(false);
     setLoginMode(next);
     // Swap the discriminant + clear the identifier field rather than
     // leaving a stale `phone` value sitting around under an `email` mode
@@ -120,6 +123,7 @@ export function LoginView() {
   const onSubmit = async (data: LoginForm) => {
     setFormError(null);
     setNeedsVerification(false);
+    setNeedsInviteResend(false);
     setAccountOptions(null);
     try {
       await completeLogin(data);
@@ -127,6 +131,14 @@ export function LoginView() {
       if (getErrorCode(error) === 'EMAIL_NOT_VERIFIED') {
         setNeedsVerification(true);
         setFormError(getErrorMessage(error, 'Please verify your email before logging in.'));
+        return;
+      }
+      if (getErrorCode(error) === 'ACCOUNT_PENDING_INVITE') {
+        setNeedsInviteResend(true);
+        setFormError(getErrorMessage(error, 'This account is waiting for you to finish setup — check your inbox for the activation link.'));
+        // Pre-fill with whatever they just tried to log in with, if it was
+        // the email field — saves retyping it into the resend box below.
+        if (data.mode === 'email') setResendEmail(data.email);
         return;
       }
       if (getErrorCode(error) === 'MULTIPLE_ACCOUNTS') {
@@ -159,6 +171,16 @@ export function LoginView() {
       // Show the real reason (e.g. rate-limited) instead of always claiming
       // a generic failure — a throttled user deserves to know why nothing
       // arrived rather than being told to "try again in a moment" forever.
+      toast.error(getErrorMessage(error, 'Could not resend the email. Please try again in a moment.'));
+    }
+  };
+
+  const onResendInvite = async () => {
+    if (!resendEmail.trim()) { toast.error('Enter the email your account was added with'); return; }
+    try {
+      await resendInviteSelf({ email: resendEmail.trim() }).unwrap();
+      toast.success('Activation email sent — check your inbox.');
+    } catch (error: any) {
       toast.error(getErrorMessage(error, 'Could not resend the email. Please try again in a moment.'));
     }
   };
@@ -224,7 +246,7 @@ export function LoginView() {
         </p>
       </div>
 
-      {formError && !needsVerification && (
+      {formError && !needsVerification && !needsInviteResend && (
         <div
           role="alert"
           className="mb-5 flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger-soft px-3.5 py-3 text-sm text-danger"
@@ -256,6 +278,31 @@ export function LoginView() {
               className="h-9 min-w-0 flex-1 rounded-md border border-warning/30 bg-card px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <Button type="button" size="sm" variant="secondary" loading={resending} onClick={onResend} className="shrink-0">
+              Resend
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {needsInviteResend && (
+        <div
+          role="alert"
+          className="mb-5 space-y-2.5 rounded-lg border border-warning/30 bg-warning-soft px-3.5 py-3 text-sm text-warning"
+        >
+          <div className="flex items-start gap-2.5">
+            <MailQuestion size={17} className="mt-0.5 shrink-0" />
+            <span>{formError}</span>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="email"
+              value={resendEmail}
+              onChange={(e) => setResendEmail(e.target.value)}
+              placeholder="The email your account was added with"
+              dir="ltr"
+              className="h-9 min-w-0 flex-1 rounded-md border border-warning/30 bg-card px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <Button type="button" size="sm" variant="secondary" loading={resendingInvite} onClick={onResendInvite} className="shrink-0">
               Resend
             </Button>
           </div>

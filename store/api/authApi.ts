@@ -69,6 +69,9 @@ export const authApi = baseApi.injectEndpoints({
     resendVerification: builder.mutation<void, { email: string }>({
       query: (body) => ({ url: '/auth/resend-verification', method: 'POST', body }),
     }),
+    resendInviteSelf: builder.mutation<void, { email: string }>({
+      query: (body) => ({ url: '/auth/resend-invite', method: 'POST', body }),
+    }),
     logout: builder.mutation<void, void>({
       query: () => ({ url: '/auth/logout', method: 'POST' }),
     }),
@@ -105,6 +108,7 @@ export const {
   useRegisterMutation,
   useVerifyEmailMutation,
   useResendVerificationMutation,
+  useResendInviteSelfMutation,
   useLogoutMutation,
   useForgotPasswordMutation,
   useResetPasswordMutation,
