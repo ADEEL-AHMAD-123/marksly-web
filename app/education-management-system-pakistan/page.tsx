@@ -8,6 +8,7 @@ import { buttonVariants } from '@/components/ui/button-variants';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { PageHero } from '@/components/marketing/PageHero';
+import { RelatedSolutions } from '@/components/marketing/RelatedSolutions';
 
 const TITLE = 'Education Management System in Pakistan — Marksly';
 const DESCRIPTION =
@@ -162,6 +163,8 @@ export default function EducationManagementSystemPakistanPage() {
           </p>
         </div>
       </section>
+
+      <RelatedSolutions current="/education-management-system-pakistan" />
 
       <MarketingFooter />
     </div>

@@ -262,6 +262,12 @@ export default function FeaturesPage() {
               </div>
             ))}
           </div>
+          <p className="mt-8 text-center text-sm text-sidebar-muted">
+            See how Marksly fits your institution:{' '}
+            <Link href="/school-management-system-pakistan" className="font-medium text-accent hover:underline">schools</Link>,{' '}
+            <Link href="/college-management-system-pakistan" className="font-medium text-accent hover:underline">colleges</Link>, or{' '}
+            <Link href="/education-management-system-pakistan" className="font-medium text-accent hover:underline">any institution</Link>.
+          </p>
         </div>
       </section>
 
