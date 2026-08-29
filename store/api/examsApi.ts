@@ -20,6 +20,11 @@ export interface ExamListItem {
   type: ExamType;
   className: string | null;
   classId: string | null;
+  // Legacy free-text label predating the Term migration. Backend
+  // (exam.model.ts) still stores/accepts it as an optional plain string,
+  // but it is NOT wired to Term in any way and is unused in the UI —
+  // do not use this for term display/filtering, use termId/termName
+  // wherever those exist instead.
   academicYear: string | null;
   examDate: string | null;
   status: 'scheduled' | 'ongoing' | 'completed';
@@ -73,6 +78,7 @@ export interface CreateExamBody {
   type: ExamType;
   classId: string;
   sectionId?: string;
+  // Legacy free-text label, unused in UI — see ExamListItem.academicYear.
   academicYear?: string;
   examDate?: string;
   subjects: { name: string; totalMarks: number; passingMarks?: number }[];

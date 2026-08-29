@@ -101,7 +101,7 @@ export interface InstitutionDetail {
     autoRenew: boolean; savedCardLast4: string | null;
   };
   counts: { students: number; teachers: number; classes: number; subjects: number };
-  classes: { id: string; name: string; academicYear: string; sections: { name: string; students: number }[] }[];
+  classes: { id: string; name: string; termId: string | null; termName: string | null; sections: { name: string; students: number }[] }[];
   subjects: { id: string; name: string; code: string | null; className: string | null; teacherName: string | null }[];
   teachers: { id: string; name: string; phone: string; email: string | null; isActive: boolean }[];
   recentStudents: { id: string; name: string; rollNumber: string; className: string | null }[];

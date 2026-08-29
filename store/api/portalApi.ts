@@ -57,7 +57,8 @@ export interface ChildSummary {
 export interface TeacherClass {
   id: string;
   name: string;
-  academicYear: string;
+  termId: string | null;
+  termName: string | null;
   sections: { id: string; name: string; students: number }[];
 }
 

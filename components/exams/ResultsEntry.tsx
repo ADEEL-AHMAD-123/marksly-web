@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Send, Save, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
@@ -223,8 +223,17 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
 
   const roster = data?.data;
 
+  // Only reseed local marks/statuses when we switch to a genuinely different
+  // exam (or on first load). A background refetch of the SAME exam (e.g.
+  // triggered by setOfficialGrade invalidating the 'Results' tag) must NOT
+  // reseed here, or it would silently wipe any unsaved marks a teacher has
+  // typed for other students. We track the last exam id we seeded from in a
+  // ref rather than in the effect deps, since `roster` gets a new object
+  // reference on every refetch even when the exam id is unchanged.
+  const seededExamIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (roster) {
+    if (roster && seededExamIdRef.current !== roster.exam.id) {
       const seed: MarksState = {};
       const seedStatus: StatusState = {};
       roster.students.forEach((s) => {
@@ -236,6 +245,7 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
       });
       setMarks(seed);
       setStatuses(seedStatus);
+      seededExamIdRef.current = roster.exam.id;
     }
   }, [roster]);
 

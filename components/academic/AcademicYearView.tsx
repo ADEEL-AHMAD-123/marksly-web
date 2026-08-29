@@ -273,8 +273,14 @@ function TermFormSheet({
       setStatus('upcoming');
     }
     setTypeLockedError(null);
+    // `structure` (and therefore defaultType) is included so that if
+    // useGetMyInstitutionQuery is still loading when the create sheet first
+    // opens, the form reseeds with the real default type once it arrives —
+    // but only while freshly opened in create mode, since this whole branch
+    // is skipped once `open` is false, so it won't clobber a value the user
+    // has already actively changed mid-session.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, mode, term?.id]);
+  }, [open, mode, term?.id, structure]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1040,6 +1046,43 @@ function ConfigEditor({ type, config, onChange }: { type: GradingSchemeType; con
   }
 }
 
+// Validates that a scheme's config isn't obviously broken before it's ever
+// sent to the backend. Returns an error message to show inline, or null if
+// the config is valid. `pass_fail` only needs its passingPercent bound
+// checked; the band-based types (percentage_letter/gpa/cambridge) all need
+// at least one row, a 0%-floor band, and unique grades.
+function validateSchemeConfig(type: GradingSchemeType, config: GradingSchemeConfig): string | null {
+  if (type === 'pass_fail') {
+    const p = config.passingPercent;
+    if (p === undefined || p === null || Number.isNaN(p) || p < 0 || p > 100) {
+      return 'Passing percent must be between 0 and 100.';
+    }
+    return null;
+  }
+
+  const rows: { grade: string; minPercent: number }[] =
+    type === 'percentage_letter' ? (config.bands ?? [])
+    : type === 'gpa' ? (config.gradePoints ?? [])
+    : type === 'cambridge' ? (config.predictedBands ?? [])
+    : [];
+
+  if (rows.length === 0) {
+    return 'Add at least one grade band.';
+  }
+  if (!rows.some((r) => r.minPercent === 0)) {
+    return 'Add a band starting at 0% so every score has a grade.';
+  }
+  const grades = rows.map((r) => r.grade.trim()).filter((g) => g !== '');
+  if (grades.length !== rows.length) {
+    return 'Every band needs a grade label.';
+  }
+  const uniqueGrades = new Set(grades);
+  if (uniqueGrades.size !== grades.length) {
+    return 'Each grade must be unique within this scheme.';
+  }
+  return null;
+}
+
 function GradingSchemeCreateSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [createScheme, { isLoading }] = useCreateGradingSchemeMutation();
   const [step, setStep] = useState<'type' | 'config'>('type');
@@ -1047,6 +1090,7 @@ function GradingSchemeCreateSheet({ open, onClose }: { open: boolean; onClose: (
   const [name, setName] = useState('');
   const [repeatPolicy, setRepeatPolicy] = useState<RepeatPolicy>('replace');
   const [config, setConfig] = useState<GradingSchemeConfig>(seedConfigFor('percentage_letter'));
+  const [configError, setConfigError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -1055,18 +1099,30 @@ function GradingSchemeCreateSheet({ open, onClose }: { open: boolean; onClose: (
     setName('');
     setRepeatPolicy('replace');
     setConfig(seedConfigFor('percentage_letter'));
+    setConfigError(null);
   }, [open]);
 
   const pickType = (t: GradingSchemeType) => {
     setType(t);
     setConfig(seedConfigFor(t));
+    setConfigError(null);
     setStep('config');
+  };
+
+  const handleConfigChange = (c: GradingSchemeConfig) => {
+    setConfig(c);
+    setConfigError(null);
   };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       toast.error('Name is required');
+      return;
+    }
+    const err = validateSchemeConfig(type, config);
+    if (err) {
+      setConfigError(err);
       return;
     }
     try {
@@ -1125,7 +1181,8 @@ function GradingSchemeCreateSheet({ open, onClose }: { open: boolean; onClose: (
                   <Badge variant="outline">{SCHEME_TYPE_INFO.find((t) => t.value === type)?.title}</Badge>
                   <span className="text-xs text-muted-foreground">Type selected — go back to change it.</span>
                 </div>
-                <ConfigEditor type={type} config={config} onChange={setConfig} />
+                <ConfigEditor type={type} config={config} onChange={handleConfigChange} />
+                {configError && <p className="text-xs text-danger">{configError}</p>}
                 <RepeatPolicySelector value={repeatPolicy} onChange={setRepeatPolicy} />
               </div>
               <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
@@ -1145,20 +1202,32 @@ function GradingSchemeEditSheet({ scheme, open, onClose }: { scheme: GradingSche
   const [name, setName] = useState('');
   const [repeatPolicy, setRepeatPolicy] = useState<RepeatPolicy>('replace');
   const [config, setConfig] = useState<GradingSchemeConfig>({});
+  const [configError, setConfigError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && scheme) {
       setName(scheme.name);
       setRepeatPolicy(scheme.repeatPolicy);
       setConfig(scheme.config);
+      setConfigError(null);
     }
   }, [open, scheme]);
+
+  const handleConfigChange = (c: GradingSchemeConfig) => {
+    setConfig(c);
+    setConfigError(null);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scheme) return;
     if (!name.trim()) {
       toast.error('Name is required');
+      return;
+    }
+    const err = validateSchemeConfig(scheme.type, config);
+    if (err) {
+      setConfigError(err);
       return;
     }
     try {
@@ -1193,7 +1262,8 @@ function GradingSchemeEditSheet({ scheme, open, onClose }: { scheme: GradingSche
               </div>
               <p className="mt-1 text-xs text-muted-foreground">Scheme type can't be changed after creation — create a new scheme if you need a different type.</p>
             </div>
-            <ConfigEditor type={scheme.type} config={config} onChange={setConfig} />
+            <ConfigEditor type={scheme.type} config={config} onChange={handleConfigChange} />
+            {configError && <p className="text-xs text-danger">{configError}</p>}
             <RepeatPolicySelector value={repeatPolicy} onChange={setRepeatPolicy} />
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">

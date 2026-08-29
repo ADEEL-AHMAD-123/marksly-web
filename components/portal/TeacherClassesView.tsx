@@ -51,7 +51,7 @@ export function TeacherClassesView() {
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary-soft-foreground"><School size={18} /></span>
                   <div>
                     <p className="font-semibold text-foreground">{c.name}</p>
-                    <p className="text-xs text-muted-foreground">{c.academicYear}</p>
+                    <p className="text-xs text-muted-foreground">{c.termName ?? 'No term'}</p>
                   </div>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-1.5">

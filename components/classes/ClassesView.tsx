@@ -23,7 +23,7 @@ import {
   type ClassItem,
 } from '@/store/api/classesApi';
 import { useGetUsersQuery } from '@/store/api/usersApi';
-import { useGetActiveTermsQuery } from '@/store/api/termsApi';
+import { useGetActiveTermsQuery, useGetTermsQuery } from '@/store/api/termsApi';
 
 const schema = z.object({
   name: z.string().min(1, 'Class name is required'),
@@ -59,6 +59,20 @@ export function ClassesView() {
   // most recently-started active term but let the admin pick another.
   const { data: activeTermsRes } = useGetActiveTermsQuery();
   const activeTerms = activeTermsRes?.data ?? [];
+  // Full term list — needed so that editing a class whose term is
+  // 'upcoming'/'closed' (not currently active) still has that term
+  // available as a selectable option; otherwise the select silently falls
+  // back to an unmatched/empty value and zod blocks saving ANY edit.
+  const { data: allTermsRes } = useGetTermsQuery();
+  const allTerms = allTermsRes?.data ?? [];
+  const termOptions = useMemo(() => {
+    const options = [...activeTerms];
+    if (editing?.termId && !options.some((t) => t.id === editing.termId)) {
+      const currentTerm = allTerms.find((t) => t.id === editing.termId);
+      if (currentTerm) options.push(currentTerm);
+    }
+    return options;
+  }, [activeTerms, allTerms, editing]);
   const teachers = teachersRes?.data ?? [];
   const classes = data?.data ?? [];
 
@@ -222,7 +236,11 @@ export function ClassesView() {
                     className="h-10 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <option value="">Select a term</option>
-                    {activeTerms.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    {termOptions.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}{t.status !== 'active' ? ` (${t.status})` : ''}
+                      </option>
+                    ))}
                   </select>
                   {errors.termId && <p className="mt-1 text-xs text-danger">{errors.termId.message}</p>}
                 </div>

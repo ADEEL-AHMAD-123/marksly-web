@@ -17,7 +17,7 @@ export function InstitutionClassesTab({ classes }: { classes: InstitutionDetail[
     const q = query.trim().toLowerCase();
     if (!q) return classes;
     return classes.filter((c) =>
-      [c.name, c.academicYear, ...c.sections.map((s) => s.name)].some((v) => (v ?? '').toLowerCase().includes(q))
+      [c.name, c.termName, ...c.sections.map((s) => s.name)].some((v) => (v ?? '').toLowerCase().includes(q))
     );
   }, [classes, query]);
 
@@ -40,7 +40,7 @@ export function InstitutionClassesTab({ classes }: { classes: InstitutionDetail[
                 <li key={c.id} className="flex items-center justify-between gap-3 p-4">
                   <div>
                     <p className="font-medium text-foreground">{c.name}</p>
-                    <p className="text-xs text-muted-foreground">{c.academicYear}</p>
+                    <p className="text-xs text-muted-foreground">{c.termName ?? 'No term'}</p>
                   </div>
                   <div className="flex flex-wrap justify-end gap-1.5">
                     {c.sections.map((s) => (
