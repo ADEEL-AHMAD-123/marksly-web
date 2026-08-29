@@ -29,6 +29,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE_URL}/school-management-system-pakistan`, changeFrequency: 'monthly', priority: 0.85 },
     { url: `${BASE_URL}/college-management-system-pakistan`, changeFrequency: 'monthly', priority: 0.85 },
     { url: `${BASE_URL}/education-management-system-pakistan`, changeFrequency: 'monthly', priority: 0.85 },
+    { url: `${BASE_URL}/best-school-management-software-pakistan`, changeFrequency: 'monthly', priority: 0.85 },
     { url: `${BASE_URL}/register`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/login`, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${BASE_URL}/help`, changeFrequency: 'monthly', priority: 0.6 },

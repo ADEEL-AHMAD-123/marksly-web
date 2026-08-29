@@ -27,6 +27,7 @@ export function MarketingFooter() {
               <li><Link href="/school-management-system-pakistan" className="hover:text-sidebar-foreground">School Management System</Link></li>
               <li><Link href="/college-management-system-pakistan" className="hover:text-sidebar-foreground">College Management System</Link></li>
               <li><Link href="/education-management-system-pakistan" className="hover:text-sidebar-foreground">Education Management System</Link></li>
+              <li><Link href="/best-school-management-software-pakistan" className="hover:text-sidebar-foreground">Buyer&apos;s Guide</Link></li>
             </ul>
           </div>
           <div>

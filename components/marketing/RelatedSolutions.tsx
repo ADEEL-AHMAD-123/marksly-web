@@ -12,15 +12,18 @@ const ALL_SOLUTIONS = [
   { href: '/education-management-system-pakistan', label: 'Education Management System' },
 ] as const;
 
-export function RelatedSolutions({ current }: { current: (typeof ALL_SOLUTIONS)[number]['href'] }) {
-  const others = ALL_SOLUTIONS.filter((s) => s.href !== current);
+// `current` is optional — omit it (e.g. from a page that isn't itself one
+// of the three, like the buyer's-guide page) to link all three instead of
+// excluding one.
+export function RelatedSolutions({ current }: { current?: (typeof ALL_SOLUTIONS)[number]['href'] }) {
+  const others = current ? ALL_SOLUTIONS.filter((s) => s.href !== current) : ALL_SOLUTIONS;
   return (
     <section className="border-t border-border bg-muted/40 py-12">
       <div className="mx-auto max-w-4xl px-5">
         <p className="text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Related solutions
         </p>
-        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className={`mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 ${others.length === 3 ? 'lg:grid-cols-3' : ''}`}>
           {others.map((s) => (
             <Link
               key={s.href}

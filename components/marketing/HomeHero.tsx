@@ -24,9 +24,14 @@ export function HomeHero() {
           <h1 className="mt-4 text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl sm:leading-[1.05] md:text-6xl">
             The operating system<br className="hidden sm:block" /> for your <span className="text-primary">institution</span>
           </h1>
+          {/* A plain, quotable definition sentence, not just marketing copy —
+              deliberately phrased the way an AI Overview / answer engine
+              extracts a first-line definition, so it has an accurate,
+              on-brand sentence to pull from rather than guessing. */}
           <p className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
-            Students, attendance, fees, exams, timetable, ID cards and parent messaging —
-            one connected system, so your team spends less time on paperwork.
+            Marksly is a school and campus management system for academies, schools, colleges
+            and universities in Pakistan — students, attendance, fees, exams, timetable, ID cards
+            and parent messaging, one connected system.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:mt-9 sm:flex-row">
             <Link href="/register" className={`${buttonVariants({ size: 'lg' })} w-full sm:w-auto`}>

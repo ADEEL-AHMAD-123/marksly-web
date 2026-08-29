@@ -10,6 +10,13 @@ Marksly is built specifically for how Pakistani institutions run day to day: loc
 - [Features](https://marksly.pk/features): Detailed breakdown of attendance, exams & results, timetable, fees & invoices, student records, parent messaging, ID cards, and reporting.
 - [Pricing](https://marksly.pk/pricing): Plans, limits, and frequently asked pricing questions.
 
+## Solutions
+
+- [School Management System (Pakistan)](https://marksly.pk/school-management-system-pakistan): How Marksly works for schools — attendance, exams, fees, parent messaging.
+- [College Management System (Pakistan)](https://marksly.pk/college-management-system-pakistan): How Marksly works for colleges — multi-section timetables, exams, fee collection, reporting.
+- [Education Management System (Pakistan)](https://marksly.pk/education-management-system-pakistan): How the same platform adapts to academies, schools, colleges and universities.
+- [Choosing school management software in Pakistan](https://marksly.pk/best-school-management-software-pakistan): Evaluation criteria for picking a school/college management system, and where Marksly fits.
+
 ## Guides
 
 - [Blog](https://marksly.pk/blog): Practical guides on running a school or academy — digital attendance, fee collection, parent communication via WhatsApp, choosing school management software, exam/results management, QR ID cards.
