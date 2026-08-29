@@ -18,6 +18,9 @@ export interface AttendanceData {
   rate: number;
   total: number;
   records: AttendanceRecord[];
+  // Echoes back the termId the rate was scoped to (null when unscoped —
+  // the default "last 30/60 records" view).
+  termId?: string | null;
 }
 
 export interface ResultItem {
@@ -81,6 +84,11 @@ export interface StudentSubjects {
 
 interface ApiObject<T> { success: boolean; data: T; message: string }
 
+function qs(params: Record<string, string | undefined>): string {
+  const parts = Object.entries(params).filter(([, v]) => !!v) as [string, string][];
+  return parts.length ? `?${parts.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&')}` : '';
+}
+
 export const portalApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Student
@@ -88,8 +96,8 @@ export const portalApi = baseApi.injectEndpoints({
     // whenever ANY admin/teacher mutation invalidates that tag type, e.g. a
     // teacher marking attendance or saving results. These previously had no
     // tags at all, so a student's own portal never refreshed on its own.)
-    myAttendance: builder.query<ApiObject<AttendanceData>, void>({
-      query: () => '/me/student/attendance',
+    myAttendance: builder.query<ApiObject<AttendanceData>, { termId?: string } | void>({
+      query: (params) => `/me/student/attendance${qs({ termId: params?.termId })}`,
       providesTags: ['Attendance'],
     }),
     myResults: builder.query<ApiObject<ResultItem[]>, void>({
@@ -129,8 +137,8 @@ export const portalApi = baseApi.injectEndpoints({
       query: () => '/me/children',
       providesTags: ['Students', 'Attendance', 'Fees'],
     }),
-    childAttendance: builder.query<ApiObject<AttendanceData>, string>({
-      query: (id) => `/me/children/${id}/attendance`,
+    childAttendance: builder.query<ApiObject<AttendanceData>, { id: string; termId?: string }>({
+      query: ({ id, termId }) => `/me/children/${id}/attendance${qs({ termId })}`,
       providesTags: ['Attendance'],
     }),
     childResults: builder.query<ApiObject<ResultItem[]>, string>({

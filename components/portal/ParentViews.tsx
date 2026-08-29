@@ -21,7 +21,8 @@ import {
   useChildCgpaQuery,
   useChildFeesQuery,
 } from '@/store/api/portalApi';
-import { formatCurrency, getInitials } from '@/lib/utils';
+import { useGetTermsQuery } from '@/store/api/termsApi';
+import { formatCurrency, getInitials, cn } from '@/lib/utils';
 
 export function ChildrenView() {
   const { data, isLoading } = useMyChildrenQuery();
@@ -76,12 +77,22 @@ export function ParentScopedView({ kind }: { kind: Kind }) {
   const { data: childrenRes, isLoading: childrenLoading } = useMyChildrenQuery();
   const children = childrenRes?.data ?? [];
   const [sel, setSel] = useState('');
+  const [termId, setTermId] = useState('all');
 
   useEffect(() => {
     if (!sel && children.length) setSel(children[0].id);
   }, [children, sel]);
 
-  const att = useChildAttendanceQuery(sel, { skip: kind !== 'attendance' || !sel });
+  const { data: termsRes } = useGetTermsQuery();
+  // Show ALL terms (not just active), same as AttendanceReportView/
+  // ExamsView/ReportsView — a recently-closed term's attendance should
+  // still be reachable.
+  const terms = termsRes?.data ?? [];
+
+  const att = useChildAttendanceQuery(
+    { id: sel, termId: termId === 'all' ? undefined : termId },
+    { skip: kind !== 'attendance' || !sel }
+  );
   const res = useChildResultsQuery(sel, { skip: kind !== 'results' || !sel });
   const cgpa = useChildCgpaQuery(sel, { skip: kind !== 'results' || !sel });
   const fee = useChildFeesQuery(sel, { skip: kind !== 'fees' || !sel });
@@ -99,13 +110,30 @@ export function ParentScopedView({ kind }: { kind: Kind }) {
       ) : (
         <>
           <Card className="p-4">
-            <div className="max-w-xs">
-              <Select value={sel} onValueChange={setSel}>
-                <SelectTrigger><SelectValue placeholder="Select child" /></SelectTrigger>
-                <SelectContent>
-                  {children.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <div className={cn('grid grid-cols-1 gap-3', kind === 'attendance' ? 'sm:grid-cols-2' : '')}>
+              <div className={kind === 'attendance' ? '' : 'max-w-xs'}>
+                <Select value={sel} onValueChange={setSel}>
+                  <SelectTrigger><SelectValue placeholder="Select child" /></SelectTrigger>
+                  <SelectContent>
+                    {children.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {kind === 'attendance' && (
+                <div>
+                  <Select value={termId} onValueChange={setTermId}>
+                    <SelectTrigger><SelectValue placeholder="All time" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All time</SelectItem>
+                      {terms.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name}{t.status !== 'active' ? ` (${t.status})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -113,8 +141,14 @@ export function ParentScopedView({ kind }: { kind: Kind }) {
               (see baseApi.ts), `isFetching` would flip true every time this
               tab regains focus and flash the whole card back to a skeleton
               even though the data underneath hasn't changed. `isLoading`
-              still covers switching to a child we haven't fetched yet. */}
-          {kind === 'attendance' && <AttendanceHistory data={att.data?.data} isLoading={att.isLoading || !sel} />}
+              still covers switching to a child we haven't fetched yet.
+              `isFetching` IS passed separately so AttendanceHistory can show
+              a subtle updating state on the rate stat itself when only the
+              term filter changes (data already present, new request in
+              flight) rather than reverting to a full-card skeleton. */}
+          {kind === 'attendance' && (
+            <AttendanceHistory data={att.data?.data} isLoading={att.isLoading || !sel} isFetching={att.isFetching} />
+          )}
           {kind === 'results' && (
             <>
               <GpaSummary data={cgpa.data?.data} isLoading={cgpa.isLoading || !sel} />
