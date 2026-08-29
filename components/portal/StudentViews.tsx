@@ -10,8 +10,10 @@ import { AttendanceHistory } from './AttendanceHistory';
 import { ResultsList } from './ResultsList';
 import { GpaSummary } from './GpaSummary';
 import { FeesList } from './FeesList';
+import { OnlineExamsList } from './OnlineExamsList';
 import { useMyAttendanceQuery, useMyResultsQuery, useMyCgpaQuery, useMyFeesQuery } from '@/store/api/portalApi';
 import { useGetTermsQuery } from '@/store/api/termsApi';
+import { useMyOnlineExamsQuery } from '@/store/api/examAttemptApi';
 
 export function StudentAttendanceView() {
   const [termId, setTermId] = useState('all');
@@ -48,6 +50,16 @@ export function StudentAttendanceView() {
           while a background refetch for the same term is in flight, instead
           of flashing the whole card back to a skeleton. */}
       <AttendanceHistory data={data?.data} isLoading={isLoading} isFetching={isFetching} />
+    </div>
+  );
+}
+
+export function StudentExamsView() {
+  const { data, isLoading } = useMyOnlineExamsQuery();
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Online Exams" description="Exams scheduled for your class that you can take in the app." />
+      <OnlineExamsList data={data?.data} isLoading={isLoading} />
     </div>
   );
 }

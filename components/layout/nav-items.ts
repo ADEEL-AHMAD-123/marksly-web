@@ -48,6 +48,7 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Subjects', href: '/student/subjects', icon: BookOpen },
     { label: 'Timetable', href: '/student/timetable', icon: CalendarClock },
     { label: 'Attendance', href: '/student/attendance', icon: CalendarCheck },
+    { label: 'Online Exams', href: '/student/exams', icon: HelpCircle },
     { label: 'Results', href: '/student/results', icon: FileText },
     { label: 'Fees', href: '/student/fees', icon: DollarSign },
     { label: 'Notices', href: '/student/notices', icon: Bell },
