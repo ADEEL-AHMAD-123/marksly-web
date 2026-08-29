@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  Plus, X, Users, AlertCircle, ChevronLeft, ChevronRight,
+  Plus, X, Users, AlertCircle, ChevronLeft, ChevronRight, Pencil,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
@@ -33,12 +33,14 @@ import {
   useUpdateUserMutation,
   useBulkImportUsersMutation,
   type EmailDeliveryStatus,
+  type ManagedUser,
 } from '@/store/api/usersApi';
 import { ImportCsvDrawer } from '@/components/ui/import-csv-drawer';
 import { InviteStatusBadge } from '@/components/users/InviteStatusBadge';
 import { InviteSentDialog } from '@/components/users/InviteSentDialog';
 import { DomainConfirmDialog } from '@/components/users/DomainConfirmDialog';
 import { ResendInviteDialog } from '@/components/users/ResendInviteDialog';
+import { PhotoUpload } from '@/components/shared/PhotoUpload';
 
 const PAGE_SIZE = 20;
 
@@ -46,6 +48,7 @@ export function TeachersView() {
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<ManagedUser | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [bulkImport] = useBulkImportUsersMutation();
   const debounced = useDebounce(query, 350);
@@ -89,7 +92,7 @@ export function TeachersView() {
         actions={
           <>
             <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}><Plus size={16} /> Import CSV</Button>
-            <Button size="sm" onClick={() => setOpen(true)}><Plus size={16} /> Add teacher</Button>
+            <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus size={16} /> Add teacher</Button>
           </>
         }
       />
@@ -148,6 +151,9 @@ export function TeachersView() {
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => { setEditing(t); setOpen(true); }}>
+                              <Pencil size={14} /> Edit
+                            </Button>
                             {!t.emailVerified && t.email && (
                               <Button variant="ghost" size="sm" onClick={() => setResendTarget({ id: t.id, name: t.name, email: t.email! })}>
                                 Resend invite
@@ -194,6 +200,9 @@ export function TeachersView() {
                     </span>
                   ) : (
                     <>
+                      <Button variant="ghost" size="sm" onClick={() => { setEditing(t); setOpen(true); }}>
+                        <Pencil size={14} /> Edit
+                      </Button>
                       {!t.emailVerified && t.email && (
                         <Button variant="ghost" size="sm" onClick={() => setResendTarget({ id: t.id, name: t.name, email: t.email! })}>
                           Resend invite
@@ -223,7 +232,7 @@ export function TeachersView() {
         </div>
       )}
 
-      <AddTeacherDrawer open={open} onClose={() => setOpen(false)} />
+      <AddTeacherDrawer open={open} onClose={() => { setOpen(false); setEditing(null); }} editing={editing} />
 
       {resendTarget && (
         <ResendInviteDialog
@@ -262,8 +271,11 @@ const schema = z.object({
 });
 type TeacherForm = z.infer<typeof schema>;
 
-function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [createUser, { isLoading }] = useCreateUserMutation();
+function AddTeacherDrawer({ open, onClose, editing }: { open: boolean; onClose: () => void; editing: ManagedUser | null }) {
+  const isEditing = !!editing;
+  const [createUser, { isLoading: creating }] = useCreateUserMutation();
+  const [updateUser, { isLoading: updating }] = useUpdateUserMutation();
+  const isLoading = creating || updating;
   const [tempPasswordInfo, setTempPasswordInfo] = useState<{ name: string; phone: string; tempPassword: string; emailed: boolean } | null>(null);
   const [inviteSentInfo, setInviteSentInfo] = useState<{ name: string; email: string; emailDeliveryStatus: EmailDeliveryStatus; emailDeliveryError: string | null } | null>(null);
   const [domainIssue, setDomainIssue] = useState<{ domain: string; email: string } | null>(null);
@@ -272,8 +284,27 @@ function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => voi
     defaultValues: { firstName: '', lastName: '', phone: '', email: '' },
   });
 
+  // Re-seed on open, same pattern as StaffView's AddStaffDrawer — this
+  // drawer is shared between add and edit, so it must never trust
+  // whatever was left in the form from the last time it was open.
+  useEffect(() => {
+    if (!open) return;
+    reset(
+      editing
+        ? { firstName: editing.firstName, lastName: editing.lastName, phone: editing.phone, email: editing.email ?? '' }
+        : { firstName: '', lastName: '', phone: '', email: '' }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editing]);
+
   const submit = async (values: TeacherForm, confirmUnverifiedEmail?: boolean) => {
     try {
+      if (isEditing) {
+        await updateUser({ id: editing.id, body: { ...values, role: 'teacher' } }).unwrap();
+        toast.success('Teacher updated');
+        onClose();
+        return;
+      }
       const res = await createUser({ ...values, role: 'teacher', confirmUnverifiedEmail }).unwrap();
       toast.success('Teacher added');
       setDomainIssue(null);
@@ -295,14 +326,14 @@ function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => voi
         });
       }
     } catch (e: any) {
-      if (getErrorCode(e) === 'EMAIL_DOMAIN_UNVERIFIED') {
+      if (!isEditing && getErrorCode(e) === 'EMAIL_DOMAIN_UNVERIFIED') {
         const details = getErrorDetails<{ domain: string; email: string }>(e);
         if (details) {
           setDomainIssue(details);
           return;
         }
       }
-      toast.error(getErrorMessage(e, 'Could not add teacher'));
+      toast.error(getErrorMessage(e, `Could not ${isEditing ? 'update' : 'add'} teacher`));
     }
   };
 
@@ -314,10 +345,22 @@ function AddTeacherDrawer({ open, onClose }: { open: boolean; onClose: () => voi
       <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[440px]">
         <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
-            <h2 className="text-lg font-semibold">Add Teacher</h2>
+            <h2 className="text-lg font-semibold">{isEditing ? 'Edit Teacher' : 'Add Teacher'}</h2>
             <SheetClose className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></SheetClose>
           </div>
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+            {isEditing && editing && (
+              <div className="border-b border-border pb-4">
+                <Label>Photo</Label>
+                <div className="mt-2">
+                  <PhotoUpload
+                    userId={editing.id}
+                    photoUrl={editing.profilePhoto}
+                    initials={`${editing.firstName[0] ?? ''}${editing.lastName[0] ?? ''}`.toUpperCase()}
+                  />
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="firstName">First name</Label>

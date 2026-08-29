@@ -13,6 +13,11 @@ export interface ManagedUser {
   email: string | null;
   role: ManageableRole;
   isActive: boolean;
+  // Not currently returned by GET /users (list/create/update) — only
+  // populated after a successful upload via useUploadUserPhotoMutation's
+  // own response. Kept optional/nullable here so callers that do have it
+  // (or gain it later) can display it without a type change.
+  profilePhoto?: string | null;
   // false means an activation-link invite is still pending (see the
   // invite-based creation flow in user.service.ts) — the account can't log
   // in yet at all, regardless of `isActive`.
@@ -40,8 +45,31 @@ export interface CreateUserBody {
   confirmUnverifiedEmail?: boolean;
 }
 
+export type StaffCardRole = 'teacher' | 'staff' | 'accountant' | 'admin';
+
+export interface StaffIdCard {
+  id: string;
+  name: string;
+  role: StaffCardRole;
+  systemId: string;
+  profilePhoto: string | null;
+  subjectCount: number | null;
+  qr: string;
+}
+
+export interface StaffIdCardSheet {
+  institution: { name: string; logoUrl: string | null };
+  staff: StaffIdCard[];
+}
+
 export const usersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getStaffIdCards: builder.query<ApiObject<StaffIdCardSheet>, { role?: StaffCardRole } | void>({
+      query: (params) => {
+        const role = params?.role;
+        return `/users/id-cards${role ? `?role=${role}` : ''}`;
+      },
+    }),
     getUsers: builder.query<
       ApiArray<ManagedUser>,
       { role?: ManageableRole; search?: string; page?: number; limit?: number } | void
@@ -80,6 +108,21 @@ export const usersApi = baseApi.injectEndpoints({
       query: (id) => ({ url: `/users/${id}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Users', id: 'LIST' }],
     }),
+    // FormData body — mirrors institutionApi.ts's uploadInstitutionLogo
+    // exactly (fetchBaseQuery passes FormData straight through, browser
+    // sets the multipart boundary itself).
+    uploadUserPhoto: builder.mutation<ApiObject<{ profilePhoto: string }>, { userId: string; file: File }>({
+      query: ({ userId, file }) => {
+        const formData = new FormData();
+        formData.append('photo', file);
+        return { url: `/users/${userId}/photo`, method: 'POST', body: formData };
+      },
+      invalidatesTags: [{ type: 'Users', id: 'LIST' }, { type: 'Students', id: 'LIST' }, 'Students'],
+    }),
+    removeUserPhoto: builder.mutation<ApiObject<{ profilePhoto: null }>, { userId: string }>({
+      query: ({ userId }) => ({ url: `/users/${userId}/photo`, method: 'DELETE' }),
+      invalidatesTags: [{ type: 'Users', id: 'LIST' }, { type: 'Students', id: 'LIST' }, 'Students'],
+    }),
     bulkImportUsers: builder.mutation<
       ApiObject<{
         created: number;
@@ -110,4 +153,7 @@ export const {
   useDeleteUserMutation,
   useBulkImportUsersMutation,
   useResendInviteMutation,
+  useUploadUserPhotoMutation,
+  useRemoveUserPhotoMutation,
+  useGetStaffIdCardsQuery,
 } = usersApi;

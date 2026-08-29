@@ -12,16 +12,31 @@ export const metadata: Metadata = {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
-export interface VerifyResult {
-  valid: boolean;
-  reason?: string;
-  studentName?: string;
-  institutionName?: string;
-  institutionLogoUrl?: string | null;
-  className?: string | null;
-  sectionName?: string | null;
-  status?: string;
-}
+// Mirrors backend id-verification.service.ts's VerifyResult exactly — the
+// discriminator is `type`, present only when `valid` is true (an invalid
+// result never reveals whether it would have been a student or staff card).
+export type VerifyResult =
+  | { valid: false; reason?: string }
+  | {
+      valid: true;
+      type: 'student';
+      studentName: string;
+      institutionName: string;
+      institutionLogoUrl: string | null;
+      className: string | null;
+      sectionName: string | null;
+      status: string;
+    }
+  | {
+      valid: true;
+      type: 'staff';
+      personName: string;
+      institutionName: string;
+      institutionLogoUrl: string | null;
+      role: string;
+      department: string | null;
+      status: 'active' | 'inactive';
+    };
 
 async function fetchVerification(code: string): Promise<VerifyResult> {
   try {

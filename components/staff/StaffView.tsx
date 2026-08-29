@@ -42,6 +42,7 @@ import { InviteStatusBadge } from '@/components/users/InviteStatusBadge';
 import { InviteSentDialog } from '@/components/users/InviteSentDialog';
 import { DomainConfirmDialog } from '@/components/users/DomainConfirmDialog';
 import { ResendInviteDialog } from '@/components/users/ResendInviteDialog';
+import { PhotoUpload } from '@/components/shared/PhotoUpload';
 
 const PAGE_SIZE = 20;
 
@@ -356,6 +357,18 @@ function AddStaffDrawer({
             <SheetClose className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></SheetClose>
           </div>
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+            {isEditing && editing && (
+              <div className="border-b border-border pb-4">
+                <Label>Photo</Label>
+                <div className="mt-2">
+                  <PhotoUpload
+                    userId={editing.id}
+                    photoUrl={editing.profilePhoto}
+                    initials={`${editing.firstName[0] ?? ''}${editing.lastName[0] ?? ''}`.toUpperCase()}
+                  />
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="firstName">First name</Label>

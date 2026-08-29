@@ -5,10 +5,8 @@ import { CheckCircle2, ShieldAlert, ShieldOff, GraduationCap } from 'lucide-reac
 import { Logo } from '@/components/brand/Logo';
 import type { VerifyResult } from '@/app/verify/[code]/page';
 
-const ACTIVE_STATUSES = new Set(['active']);
-
 export function VerifyResultView({ result }: { result: VerifyResult }) {
-  const isActive = result.valid && result.status && ACTIVE_STATUSES.has(result.status);
+  const isActive = result.valid && result.status === 'active';
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
@@ -27,7 +25,7 @@ export function VerifyResultView({ result }: { result: VerifyResult }) {
       <div className="mt-8 flex flex-col items-center gap-1">
         <Logo size={26} textClassName="text-sm" />
         <p className="text-center text-[11px] text-muted-foreground">
-          Verified against Marksly&apos;s student records.
+          Verified against Marksly&apos;s records.
         </p>
       </div>
     </div>
@@ -51,7 +49,8 @@ function InstitutionBadge({ name, logoUrl }: { name: string; logoUrl?: string | 
   );
 }
 
-function ValidActiveState({ result }: { result: VerifyResult }) {
+function ValidActiveState({ result }: { result: Extract<VerifyResult, { valid: true }> }) {
+  const isStudent = result.type === 'student';
   return (
     <div className="text-center">
       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success-soft text-success">
@@ -67,15 +66,27 @@ function ValidActiveState({ result }: { result: VerifyResult }) {
       <InstitutionBadge name={result.institutionName ?? 'Institution'} logoUrl={result.institutionLogoUrl} />
 
       <div className="rounded-xl border border-border bg-background p-4 text-left">
-        <Row label="Student" value={result.studentName} />
-        <Row label="Class" value={result.className} />
-        <Row label="Section" value={result.sectionName} />
+        {isStudent ? (
+          <>
+            <Row label="Student" value={result.studentName} />
+            <Row label="Class" value={result.className} />
+            <Row label="Section" value={result.sectionName} />
+          </>
+        ) : (
+          <>
+            <Row label="Name" value={result.personName} />
+            <Row label="Role" value={result.role} className="capitalize" />
+            <Row label="Department" value={result.department} />
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-function ValidInactiveState({ result }: { result: VerifyResult }) {
+function ValidInactiveState({ result }: { result: Extract<VerifyResult, { valid: true }> }) {
+  const isStudent = result.type === 'student';
+  const personLabel = isStudent ? 'student' : 'staff member';
   return (
     <div className="text-center">
       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-warning-soft text-warning">
@@ -83,8 +94,8 @@ function ValidInactiveState({ result }: { result: VerifyResult }) {
       </div>
       <h1 className="text-xl font-bold tracking-tight text-foreground">Card Issued, Not Currently Active</h1>
       <p className="mx-auto mt-1.5 max-w-xs text-sm text-muted-foreground">
-        This ID was genuinely issued by {result.institutionName ?? 'the institution'}, but the student is no
-        longer currently enrolled{result.status ? ` (status: ${result.status})` : ''}.
+        This ID was genuinely issued by {result.institutionName ?? 'the institution'}, but the {personLabel} is no
+        longer currently {isStudent ? 'enrolled' : 'active'}{result.status ? ` (status: ${result.status})` : ''}.
       </p>
 
       <div className="my-6 h-px bg-border" />
@@ -92,10 +103,20 @@ function ValidInactiveState({ result }: { result: VerifyResult }) {
       <InstitutionBadge name={result.institutionName ?? 'Institution'} logoUrl={result.institutionLogoUrl} />
 
       <div className="rounded-xl border border-border bg-background p-4 text-left">
-        <Row label="Student" value={result.studentName} />
-        <Row label="Class" value={result.className} />
-        <Row label="Section" value={result.sectionName} />
-        <Row label="Status" value={result.status} />
+        {isStudent ? (
+          <>
+            <Row label="Student" value={result.studentName} />
+            <Row label="Class" value={result.className} />
+            <Row label="Section" value={result.sectionName} />
+          </>
+        ) : (
+          <>
+            <Row label="Name" value={result.personName} />
+            <Row label="Role" value={result.role} className="capitalize" />
+            <Row label="Department" value={result.department} />
+          </>
+        )}
+        <Row label="Status" value={result.status} className="capitalize" />
       </div>
     </div>
   );
@@ -116,12 +137,12 @@ function InvalidState() {
   );
 }
 
-function Row({ label, value }: { label: string; value?: string | null }) {
+function Row({ label, value, className }: { label: string; value?: string | null; className?: string }) {
   if (!value) return null;
   return (
     <div className="flex items-center justify-between gap-3 border-b border-border py-2 text-sm last:border-b-0">
       <span className="text-muted-foreground">{label}</span>
-      <span className="truncate font-medium text-foreground">{value}</span>
+      <span className={`truncate font-medium text-foreground ${className ?? ''}`}>{value}</span>
     </div>
   );
 }

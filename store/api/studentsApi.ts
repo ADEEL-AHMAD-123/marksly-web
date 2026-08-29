@@ -2,6 +2,10 @@ import { baseApi } from './baseApi';
 
 export interface StudentListItem {
   id: string;
+  // Only present on getStudent (single-record fetch) — the underlying
+  // User document's id, needed to call the user-scoped photo endpoints
+  // (POST/DELETE /users/:id/photo). Not returned by the list endpoint.
+  userId?: string | null;
   rollNumber: string;
   admissionNumber: string;
   name: string;

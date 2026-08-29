@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
+import { PhotoUpload } from '@/components/shared/PhotoUpload';
 import { getErrorMessage } from '@/lib/get-error-message';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import {
@@ -194,6 +195,18 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+            {isEdit && student?.userId && (
+              <div className="border-b border-border pb-4">
+                <Label>Photo</Label>
+                <div className="mt-2">
+                  <PhotoUpload
+                    userId={student.userId}
+                    photoUrl={student.profilePhoto}
+                    initials={`${student.firstName[0] ?? ''}${student.lastName[0] ?? ''}`.toUpperCase()}
+                  />
+                </div>
+              </div>
+            )}
             {noClasses && (
               <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning-soft px-3.5 py-3 text-sm text-warning">
                 <AlertCircle size={17} className="mt-0.5 shrink-0" />

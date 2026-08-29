@@ -17,39 +17,8 @@ import { QRCode } from '@/components/ui/qr-code';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetIdCardsQuery, type IdCard } from '@/store/api/studentsApi';
 import { useTerminology } from '@/lib/terminology';
-
-// CR80 (standard ID card) size: 85.6mm x 54mm, ratio ~1.586:1.
-const CARD_WIDTH_MM = 85.6;
-const CARD_HEIGHT_MM = 54;
-
-// The on-screen preview uses the same ratio at a larger, legible size; the
-// print stylesheet below pins every card to the REAL physical dimensions
-// (not just responsive flex/grid sizing) so what comes out of the printer is
-// an actual CR80-sized card, and lays out a fixed grid of them per page.
-const PRINT_CSS = `
-@media print {
-  @page { size: A4; margin: 10mm; }
-  body * { visibility: hidden !important; }
-  #id-card-print, #id-card-print * { visibility: visible !important; }
-  #id-card-print {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(2, ${CARD_WIDTH_MM}mm);
-    gap: 6mm;
-  }
-  .no-print { display: none !important; }
-  .id-card {
-    break-inside: avoid;
-    width: ${CARD_WIDTH_MM}mm !important;
-    height: ${CARD_HEIGHT_MM}mm !important;
-    box-shadow: none !important;
-    border: 1px solid #999 !important;
-  }
-}`;
+import { CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS } from '@/components/shared/idCardPrint';
+import { IdCardCredit } from '@/components/shared/IdCardCredit';
 
 export function IdCardsView() {
   const { data: classesRes } = useGetClassesQuery();
@@ -65,7 +34,7 @@ export function IdCardsView() {
 
   return (
     <div className="space-y-6">
-      <style dangerouslySetInnerHTML={{ __html: PRINT_CSS }} />
+      <style dangerouslySetInnerHTML={{ __html: ID_CARD_PRINT_CSS }} />
 
       <div className="no-print">
         <PageHeader
@@ -162,7 +131,13 @@ function IdCardItem({
       <div className="flex flex-1 gap-2.5 p-2.5">
         <div className="flex flex-1 flex-col gap-1.5 overflow-hidden">
           <div className="flex items-center gap-2">
-            <Avatar initials={`${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()} size="md" />
+            {student.profilePhoto ? (
+              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-border">
+                <Image src={student.profilePhoto} alt="" fill sizes="40px" className="object-cover" unoptimized />
+              </div>
+            ) : (
+              <Avatar initials={`${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()} size="md" />
+            )}
             <div className="min-w-0">
               <p className="truncate text-[13px] font-bold leading-tight text-foreground">{student.name}</p>
               <p className="truncate text-[10px] text-muted-foreground">{className ?? '—'}{section ? ` · ${section}` : ''}</p>
@@ -182,6 +157,10 @@ function IdCardItem({
               </div>
             )}
           </dl>
+
+          <div className="mt-auto pt-0.5">
+            <IdCardCredit />
+          </div>
         </div>
 
         {/* QR side panel — minimum ~2cm on-screen equivalent so it prints scannable at real card size */}
