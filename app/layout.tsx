@@ -59,6 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <ThemeScript />
+        <link rel="alternate" type="application/rss+xml" title="Marksly Blog" href="/feed.xml" />
       </head>
       <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
         <Providers>{children}</Providers>

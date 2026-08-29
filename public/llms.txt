@@ -20,6 +20,7 @@ Marksly is built specifically for how Pakistani institutions run day to day: loc
 ## Guides
 
 - [Blog](https://marksly.pk/blog): Practical guides on running a school or academy — digital attendance, fee collection, parent communication via WhatsApp, choosing school management software, exam/results management, QR ID cards.
+- [RSS feed](https://marksly.pk/feed.xml): Machine-readable feed of blog posts, for aggregators and crawlers that prefer it over HTML.
 
 ## Support
 
