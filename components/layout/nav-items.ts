@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, GraduationCap, BookOpen, CalendarCheck,
   DollarSign, FileText, Bell, BarChart2, Settings, School,
   Package, CalendarRange, CalendarClock, CreditCard, MessageSquare,
-  FlaskConical, Briefcase,
+  FlaskConical, Briefcase, HelpCircle,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -27,6 +27,7 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
     { label: 'Fees', href: '/admin/fees', icon: DollarSign },
     { label: 'Exams', href: '/admin/exams', icon: FileText },
+    { label: 'Question Bank', href: '/admin/question-bank', icon: HelpCircle },
     { label: 'Notices', href: '/admin/notices', icon: Bell },
     { label: 'Messaging', href: '/admin/messaging', icon: MessageSquare },
     { label: 'Reports', href: '/admin/reports', icon: BarChart2 },
@@ -39,6 +40,7 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Timetable', href: '/teacher/timetable', icon: CalendarClock },
     { label: 'Attendance', href: '/teacher/attendance', icon: CalendarCheck },
     { label: 'Exams', href: '/teacher/exams', icon: FileText },
+    { label: 'Question Bank', href: '/teacher/question-bank', icon: HelpCircle },
     { label: 'Notices', href: '/teacher/notices', icon: Bell },
   ],
   student: [
