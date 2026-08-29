@@ -122,6 +122,7 @@ export interface IdCard {
   name: string;
   rollNumber: string;
   admissionNumber: string;
+  systemId: string;
   gender: 'male' | 'female' | 'other';
   bloodGroup: string | null;
   profilePhoto: string | null;
@@ -129,7 +130,7 @@ export interface IdCard {
 }
 
 export interface IdCardSheet {
-  institution: { name: string; city: string | null };
+  institution: { name: string; city: string | null; logoUrl: string | null };
   className: string | null;
   section: string | null;
   termName: string | null;

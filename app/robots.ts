@@ -6,7 +6,7 @@ const BASE_URL = 'https://marksly.pk';
 // password-reset/verify-email token pages have no SEO value and shouldn't
 // be crawled or show up in search results — same disallow list for every
 // bot below, human or AI.
-const DASHBOARD_DISALLOW = ['/student', '/admin', '/superadmin', '/teacher', '/parent', '/accountant', '/verify-email', '/forgot-password/reset'];
+const DASHBOARD_DISALLOW = ['/student', '/admin', '/superadmin', '/teacher', '/parent', '/accountant', '/verify-email', '/forgot-password/reset', '/verify'];
 const MARKETING_ALLOW = [
   '/', '/login', '/register', '/pricing', '/features', '/help', '/contact', '/blog',
   '/school-management-system-pakistan', '/college-management-system-pakistan', '/education-management-system-pakistan',
