@@ -244,14 +244,14 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                                 onClick={() => setExpandedTermId(isExpanded ? null : t.termId)}
                                 className="flex w-full items-center justify-between gap-2 rounded-md py-1 text-left text-sm hover:bg-muted"
                               >
-                                <span className="flex items-center gap-1 text-muted-foreground">
+                                <span className="flex min-w-0 items-center gap-1 text-muted-foreground">
                                   <ChevronDown
                                     size={13}
                                     className={`shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                                   />
-                                  {t.termName || terminology.term}
+                                  <span className="truncate">{t.termName || terminology.term}</span>
                                 </span>
-                                <span className="font-medium text-foreground">
+                                <span className="shrink-0 whitespace-nowrap font-medium text-foreground">
                                   {t.gpa != null ? t.gpa.toFixed(2) : '—'}
                                   <span className="ml-1.5 text-xs font-normal text-muted-foreground">
                                     ({t.creditHours} cr.)
@@ -269,9 +269,9 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                                         <p className="py-1 text-xs text-muted-foreground">No gpa-scheme courses for this term.</p>
                                       ) : (
                                         termGpa.courses.map((c) => (
-                                          <div key={c.resultId} className="flex items-center justify-between py-1 text-xs">
-                                            <span className="text-muted-foreground">{c.subjectName}</span>
-                                            <span className="font-medium text-foreground">
+                                          <div key={c.resultId} className="flex items-center justify-between gap-2 py-1 text-xs">
+                                            <span className="min-w-0 truncate text-muted-foreground">{c.subjectName}</span>
+                                            <span className="shrink-0 whitespace-nowrap font-medium text-foreground">
                                               {c.gradePoints.toFixed(2)}
                                               <span className="ml-1 font-normal text-muted-foreground">({c.creditHours} cr.)</span>
                                             </span>

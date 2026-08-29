@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Send, Save, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import { ArrowLeft, Send, Save, CheckCircle2, AlertTriangle, Clock, PauseCircle, PlayCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import {
   Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
@@ -142,63 +143,80 @@ function GradeCell({
 
   if (scheme.type === 'cambridge') {
     return (
-      <div className="flex flex-col items-center gap-1.5">
+      <div className="flex w-full min-w-[9rem] flex-col items-center gap-2">
         <Badge variant="outline" className="text-muted-foreground">
           Predicted: {computed.grade}
         </Badge>
-        {editing ? (
-          <div className="flex items-center gap-1">
-            <input
-              autoFocus
-              value={draft}
-              onChange={(e) => setDraft(e.target.value.toUpperCase())}
-              maxLength={10}
-              placeholder="e.g. A*"
-              className="h-7 w-16 rounded-md border border-input bg-card text-center text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 px-1.5"
-              disabled={!resultId || !draft.trim()}
-              onClick={() => {
-                if (!resultId) return;
-                onSetOfficialGrade(studentId, resultId, draft.trim());
-                setEditing(false);
-              }}
+
+        <div className="flex w-full flex-col items-center gap-1.5 border-t border-border pt-2">
+          {editing ? (
+            <div className="flex items-center gap-1.5">
+              <input
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value.toUpperCase())}
+                maxLength={10}
+                placeholder="e.g. A*"
+                className="h-9 w-16 rounded-lg border border-input bg-card text-center text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-9"
+                disabled={!resultId || !draft.trim()}
+                onClick={() => {
+                  if (!resultId) return;
+                  onSetOfficialGrade(studentId, resultId, draft.trim());
+                  setEditing(false);
+                }}
+              >
+                Save
+              </Button>
+            </div>
+          ) : officialGrade ? (
+            <button
+              type="button"
+              onClick={() => { setDraft(officialGrade); setEditing(true); }}
+              className="inline-flex"
+              title="Edit official grade"
             >
-              Save
-            </Button>
-          </div>
-        ) : officialGrade ? (
+              <Badge variant="success">Official: {officialGrade}</Badge>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              disabled={!resultId}
+              className="inline-flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-50"
+              title={resultId ? 'Set official grade' : 'Save marks first'}
+            >
+              <Badge variant="warning" className="cursor-pointer">
+                <Clock size={11} /> Awaiting official
+              </Badge>
+            </button>
+          )}
+        </div>
+
+        <div className="flex w-full items-center justify-center border-t border-border pt-2">
           <button
             type="button"
-            onClick={() => { setDraft(officialGrade); setEditing(true); }}
-            className="inline-flex"
-            title="Edit official grade"
+            onClick={() => onTogglePending(studentId)}
+            title={status === 'pending' ? 'Result is withheld — click to release' : 'Withhold this result from publishing'}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors',
+              status === 'pending'
+                ? 'text-warning hover:bg-warning-soft'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            )}
           >
-            <Badge variant="success">Official: {officialGrade}</Badge>
+            {status === 'pending' ? (
+              <PlayCircle size={16} className="shrink-0" />
+            ) : (
+              <PauseCircle size={16} className="shrink-0" />
+            )}
+            {status === 'pending' ? 'Withheld' : 'Withhold'}
           </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            disabled={!resultId}
-            className="inline-flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-50"
-            title={resultId ? 'Set official grade' : 'Save marks first'}
-          >
-            <Badge variant="warning" className="cursor-pointer">
-              <Clock size={11} /> Awaiting official
-            </Badge>
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => onTogglePending(studentId)}
-          className="text-[10px] text-muted-foreground underline decoration-dotted hover:text-foreground"
-        >
-          {status === 'pending' ? 'Marked withheld' : 'Withhold result'}
-        </button>
+        </div>
       </div>
     );
   }
@@ -222,6 +240,30 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
   const [statuses, setStatuses] = useState<StatusState>({});
 
   const roster = data?.data;
+
+  // Horizontal-scroll fade cue for the results table: on narrow viewports the
+  // table scrolls sideways past the sticky Student column, and without a
+  // visual hint it's easy to miss that the Total/%/Grade columns exist
+  // offscreen. Mirrors the fade-cue approach used in import-csv-drawer's
+  // created-accounts list, adapted to track real scroll position (fades out
+  // once fully scrolled) rather than a static row-count heuristic, since the
+  // subject-column count varies per exam.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showScrollFade, setShowScrollFade] = useState(false);
+
+  const updateScrollFade = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const canScroll = el.scrollWidth > el.clientWidth + 1;
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+    setShowScrollFade(canScroll && !atEnd);
+  };
+
+  useEffect(() => {
+    updateScrollFade();
+    window.addEventListener('resize', updateScrollFade);
+    return () => window.removeEventListener('resize', updateScrollFade);
+  }, [roster]);
 
   // Only reseed local marks/statuses when we switch to a genuinely different
   // exam (or on first load). A background refetch of the SAME exam (e.g.
@@ -345,7 +387,8 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
           No students in this class/section yet.
         </Card>
       ) : (
-        <TableWrapper>
+        <div className="relative">
+          <TableWrapper ref={scrollRef} onScroll={updateScrollFade}>
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -406,7 +449,11 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
               })}
             </TableBody>
           </Table>
-        </TableWrapper>
+          </TableWrapper>
+          {showScrollFade && (
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-8 rounded-r-xl bg-gradient-to-l from-card to-transparent" />
+          )}
+        </div>
       )}
     </div>
   );

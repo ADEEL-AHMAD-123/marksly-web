@@ -49,28 +49,23 @@ export function ReportsView({ title = 'Reports' }: { title?: string }) {
   const r = data?.data;
 
   const termFilter = (
-    <Card className="p-4">
-      <div className="max-w-xs">
-        <Select value={termId} onValueChange={setTermId}>
-          <SelectTrigger><SelectValue placeholder="All terms" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All terms</SelectItem>
-            {terms.map((t) => (
-              <SelectItem key={t.id} value={t.id}>
-                {t.name}{t.status !== 'active' ? ` (${t.status})` : ''}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </Card>
+    <Select value={termId} onValueChange={setTermId}>
+      <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="All terms" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All terms</SelectItem>
+        {terms.map((t) => (
+          <SelectItem key={t.id} value={t.id}>
+            {t.name}{t.status !== 'active' ? ` (${t.status})` : ''}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 
   if (isLoading || !r) {
     return (
       <div className="space-y-6">
-        <PageHeader title={title} description="Insights across your institution." />
-        {termFilter}
+        <PageHeader title={title} description="Insights across your institution." actions={termFilter} />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => <Card key={i} className="p-5"><Skeleton className="h-16 w-full" /></Card>)}
         </div>
@@ -80,12 +75,11 @@ export function ReportsView({ title = 'Reports' }: { title?: string }) {
   }
 
   const { overview, attendanceTrend, feeCollection, studentsByClass, gradeDistribution } = r;
+  const schemeTypesWithData = Object.keys(gradeDistribution) as GradingSchemeType[];
 
   return (
     <div className="space-y-6">
-      <PageHeader title={title} description="Insights across your institution." />
-
-      {termFilter}
+      <PageHeader title={title} description="Insights across your institution." actions={termFilter} />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard label="Active Students" value={overview.activeStudents.toLocaleString('en-PK')} icon={GraduationCap} tone="primary" />
@@ -145,11 +139,17 @@ export function ReportsView({ title = 'Reports' }: { title?: string }) {
             scheme types (e.g. percentage_letter's "A" vs. pass_fail's
             "Pass") are never meaningful in the same chart, so each type
             that has results gets its own labeled section. */}
-        {(Object.keys(gradeDistribution) as GradingSchemeType[]).length ? (
-          (Object.keys(gradeDistribution) as GradingSchemeType[]).map((type) => {
+        {schemeTypesWithData.length ? (
+          schemeTypesWithData.map((type) => {
             const data = gradeDistribution[type] ?? [];
             return (
-              <Card key={type}>
+              <Card
+                key={type}
+                // A lone chart card shouldn't sit half-width next to an
+                // unrelated card — span the full row when it's the only
+                // scheme-type present.
+                className={schemeTypesWithData.length === 1 ? 'lg:col-span-2' : undefined}
+              >
                 <CardHeader>
                   <CardTitle>Grade Distribution — {SCHEME_TYPE_LABEL[type] ?? type}</CardTitle>
                   <CardDescription>Across entered results for this grading type</CardDescription>

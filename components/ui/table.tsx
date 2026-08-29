@@ -2,14 +2,16 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 /** Wrap a Table in this to get horizontal scroll on small screens. */
-export function TableWrapper({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return (
+export const TableWrapper = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
     <div
+      ref={ref}
       className={cn('w-full overflow-x-auto rounded-xl border border-border', className)}
       {...props}
     />
-  );
-}
+  )
+);
+TableWrapper.displayName = 'TableWrapper';
 
 export const Table = React.forwardRef<
   HTMLTableElement,

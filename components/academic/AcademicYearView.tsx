@@ -166,9 +166,26 @@ function TermsTab() {
       )}
 
       {isLoading ? (
-        <div className="space-y-3">
-          <Card className="p-5"><Skeleton className="h-24 w-full" /></Card>
-          <Card className="p-5"><Skeleton className="h-24 w-full" /></Card>
+        // Mirrors the real term card's shape (title bar, badge row, date
+        // line) rather than a generic block, so the loading → loaded swap
+        // doesn't visibly shape-shift — same idea as ClassesView's skeleton
+        // grid, adapted to this card's own layout.
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i} className="p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-4 w-2/3" />
+                  <div className="flex gap-1.5">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                  </div>
+                </div>
+                <Skeleton className="h-6 w-6 shrink-0 rounded-md" />
+              </div>
+              <Skeleton className="mt-2.5 h-3 w-1/2" />
+            </Card>
+          ))}
         </div>
       ) : terms.length === 0 ? (
         <Card>
@@ -845,20 +862,48 @@ function GradingSchemesTab() {
       </div>
 
       {isLoading ? (
+        // Mirrors the real scheme card's shape (title bar, type badge, repeat
+        // policy line) for the same reason as the Terms skeleton above.
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Card className="p-4"><Skeleton className="h-24 w-full" /></Card>
-          <Card className="p-4"><Skeleton className="h-24 w-full" /></Card>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i} className="p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </div>
+                <Skeleton className="h-6 w-6 shrink-0 rounded-md" />
+              </div>
+              <Skeleton className="mt-2.5 h-3 w-2/5" />
+            </Card>
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {schemes.map((s) => (
-            <Card key={s.id} className={cn('p-4', s.isDefault && 'border-primary/30')}>
+            <Card
+              key={s.id}
+              className={cn(
+                'relative p-4',
+                // "Default" is a distinct kind of highlight from a term's
+                // "Active" status (see TermGroup below, which keeps the plain
+                // border-primary/30 treatment) — this reuses the accent
+                // corner-ribbon vocabulary from PricingPlans' "Most popular"
+                // badge so the two featured states read as different things,
+                // not the same emphasis applied twice.
+                s.isDefault && 'border-accent/40 shadow-sm ring-1 ring-accent/20'
+              )}
+            >
+              {s.isDefault && (
+                <span className="absolute -top-2.5 left-4 rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-foreground shadow">
+                  Default
+                </span>
+              )}
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-foreground">{s.name}</p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <Badge variant="outline">{SCHEME_TYPE_INFO.find((t) => t.value === s.type)?.title ?? s.type}</Badge>
-                    {s.isDefault && <Badge variant="primary"><Star size={11} /> Default</Badge>}
                   </div>
                 </div>
                 <button
@@ -945,10 +990,12 @@ function PercentageLetterEditor({ bands, onChange }: { bands: PercentageLetterBa
       <Label>Grade bands</Label>
       <div className="space-y-2">
         {bands.map((b, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <Input value={b.grade} onChange={(e) => update(i, { grade: e.target.value })} placeholder="Grade" className="w-24" />
-            <Input type="number" value={b.minPercent} onChange={(e) => update(i, { minPercent: Number(e.target.value) })} placeholder="Min %" className="flex-1" />
-            <button type="button" onClick={() => remove(i)} className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-danger"><Trash2 size={14} /></button>
+          <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2 sm:contents">
+              <Input value={b.grade} onChange={(e) => update(i, { grade: e.target.value })} placeholder="Grade" className="w-24" />
+              <button type="button" onClick={() => remove(i)} className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-danger sm:order-last"><Trash2 size={14} /></button>
+            </div>
+            <Input type="number" value={b.minPercent} onChange={(e) => update(i, { minPercent: Number(e.target.value) })} placeholder="Min %" className="w-full sm:flex-1" />
           </div>
         ))}
       </div>
@@ -974,11 +1021,15 @@ function GpaEditor({
         <Label>Grade points</Label>
         <div className="space-y-2">
           {gradePoints.map((g, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Input value={g.grade} onChange={(e) => update(i, { grade: e.target.value })} placeholder="Grade" className="w-20" />
-              <Input type="number" value={g.minPercent} onChange={(e) => update(i, { minPercent: Number(e.target.value) })} placeholder="Min %" className="flex-1" />
-              <Input type="number" step="0.1" value={g.points} onChange={(e) => update(i, { points: Number(e.target.value) })} placeholder="Points" className="flex-1" />
-              <button type="button" onClick={() => remove(i)} className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-danger"><Trash2 size={14} /></button>
+            <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-2 sm:contents">
+                <Input value={g.grade} onChange={(e) => update(i, { grade: e.target.value })} placeholder="Grade" className="w-20" />
+                <button type="button" onClick={() => remove(i)} className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-danger sm:order-last"><Trash2 size={14} /></button>
+              </div>
+              <div className="flex flex-col gap-2 sm:contents">
+                <Input type="number" value={g.minPercent} onChange={(e) => update(i, { minPercent: Number(e.target.value) })} placeholder="Min %" className="w-full sm:flex-1" />
+                <Input type="number" step="0.1" value={g.points} onChange={(e) => update(i, { points: Number(e.target.value) })} placeholder="Points" className="w-full sm:flex-1" />
+              </div>
             </div>
           ))}
         </div>
@@ -1005,10 +1056,12 @@ function CambridgeEditor({ bands, onChange }: { bands: CambridgePredictedBand[];
       <Label>Predicted grade bands</Label>
       <div className="space-y-2">
         {bands.map((b, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <Input value={b.grade} onChange={(e) => update(i, { grade: e.target.value })} placeholder="Grade" className="w-24" />
-            <Input type="number" value={b.minPercent} onChange={(e) => update(i, { minPercent: Number(e.target.value) })} placeholder="Min %" className="flex-1" />
-            <button type="button" onClick={() => remove(i)} className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-danger"><Trash2 size={14} /></button>
+          <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2 sm:contents">
+              <Input value={b.grade} onChange={(e) => update(i, { grade: e.target.value })} placeholder="Grade" className="w-24" />
+              <button type="button" onClick={() => remove(i)} className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-danger sm:order-last"><Trash2 size={14} /></button>
+            </div>
+            <Input type="number" value={b.minPercent} onChange={(e) => update(i, { minPercent: Number(e.target.value) })} placeholder="Min %" className="w-full sm:flex-1" />
           </div>
         ))}
       </div>
