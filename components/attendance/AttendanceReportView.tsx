@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { useGetClassesQuery } from '@/store/api/classesApi';
+import { useGetTermsQuery } from '@/store/api/termsApi';
 import {
   useGetAttendanceReportQuery,
   type AttendanceStatus,
@@ -58,6 +59,12 @@ export function AttendanceReportView() {
   const [status, setStatus] = useState<AttendanceStatus | 'all'>('absent');
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
+  const [termId, setTermId] = useState('all');
+
+  const { data: termsRes } = useGetTermsQuery();
+  // Show ALL terms (not just active) — same as ExamsView/ReportsView, so
+  // e.g. a recently-closed term's attendance can still be pulled up.
+  const terms = termsRes?.data ?? [];
 
   const { data: classesRes } = useGetClassesQuery(undefined, { skip: isTeacher });
   const classes = useMemo<{ id: string; name: string; sections: { id: string; name: string }[] }[]>(() => {
@@ -87,13 +94,14 @@ export function AttendanceReportView() {
     classId: isTeacher ? undefined : classId || undefined,
     sectionId: isTeacher ? undefined : sectionId || undefined,
     status: status === 'all' ? undefined : status,
+    termId: termId === 'all' ? undefined : termId,
   });
   const rows = data?.data.rows ?? [];
 
   return (
     <div className="space-y-6">
       <Card className="p-4">
-        <div className={cn('grid grid-cols-1 gap-3', isTeacher ? 'sm:grid-cols-3' : 'sm:grid-cols-5')}>
+        <div className={cn('grid grid-cols-1 gap-3', isTeacher ? 'sm:grid-cols-4' : 'sm:grid-cols-6')}>
           <div>
             <Label htmlFor="from">From</Label>
             <input
@@ -149,6 +157,20 @@ export function AttendanceReportView() {
               <SelectContent>
                 {STATUS_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Term</Label>
+            <Select value={termId} onValueChange={setTermId}>
+              <SelectTrigger><SelectValue placeholder="All terms" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All terms</SelectItem>
+                {terms.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}{t.status !== 'active' ? ` (${t.status})` : ''}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>

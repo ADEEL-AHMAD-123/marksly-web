@@ -132,6 +132,7 @@ export interface IdCardSheet {
   institution: { name: string; city: string | null };
   className: string | null;
   section: string | null;
+  termName: string | null;
   students: IdCard[];
 }
 

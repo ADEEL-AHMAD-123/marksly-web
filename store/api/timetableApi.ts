@@ -14,6 +14,8 @@ export interface TimetableEntry {
   teacherId: string | null;
   teacher: string | null;
   room: string | null;
+  termId: string | null;
+  termName: string | null;
 }
 
 export interface TeachNow {

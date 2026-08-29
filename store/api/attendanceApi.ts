@@ -117,6 +117,7 @@ export interface AttendanceReportParams {
   classId?: string;
   sectionId?: string;
   status?: AttendanceStatus;
+  termId?: string;
 }
 
 export interface MarkBody {
@@ -165,6 +166,7 @@ export const attendanceApi = baseApi.injectEndpoints({
           classId: params?.classId,
           sectionId: params?.sectionId,
           status: params?.status,
+          termId: params?.termId,
         })}`,
       providesTags: [{ type: 'Attendance', id: 'REPORT' }],
     }),

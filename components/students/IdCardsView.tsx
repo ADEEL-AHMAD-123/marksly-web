@@ -16,6 +16,7 @@ import { LogoMark } from '@/components/brand/Logo';
 import { QRCode } from '@/components/ui/qr-code';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetIdCardsQuery, type IdCard } from '@/store/api/studentsApi';
+import { useTerminology } from '@/lib/terminology';
 
 // Print rules: hide the app chrome and show only the card sheet.
 const PRINT_CSS = `
@@ -83,7 +84,14 @@ export function IdCardsView() {
       ) : (
         <div id="id-card-print" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {students.map((s) => (
-            <IdCardItem key={s.id} student={s} institution={sheet!.institution.name} className={sheet!.className} section={sheet!.section} />
+            <IdCardItem
+              key={s.id}
+              student={s}
+              institution={sheet!.institution.name}
+              className={sheet!.className}
+              section={sheet!.section}
+              termName={sheet!.termName}
+            />
           ))}
         </div>
       )}
@@ -92,9 +100,10 @@ export function IdCardsView() {
 }
 
 function IdCardItem({
-  student, institution, className, section,
-}: { student: IdCard; institution: string; className: string | null; section: string | null }) {
+  student, institution, className, section, termName,
+}: { student: IdCard; institution: string; className: string | null; section: string | null; termName: string | null }) {
   const [first = '', last = ''] = student.name.split(' ');
+  const { term: termLabel } = useTerminology();
   return (
     <div className="id-card overflow-hidden rounded-xl border border-border bg-card">
       {/* Header band */}
@@ -115,6 +124,7 @@ function IdCardItem({
           <dl className="mt-1.5 space-y-0.5 text-xs">
             <Field label="Roll #" value={student.rollNumber} />
             <Field label="Adm #" value={student.admissionNumber} />
+            {termName && <Field label={termLabel} value={termName} />}
             {student.bloodGroup && (
               <div className="flex gap-1.5">
                 <dt className="text-muted-foreground">Blood</dt>
