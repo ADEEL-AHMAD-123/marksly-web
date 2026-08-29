@@ -22,7 +22,7 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Classes', href: '/admin/classes', icon: School },
     { label: 'Subjects', href: '/admin/subjects', icon: BookOpen },
     { label: 'Timetable', href: '/admin/timetable', icon: CalendarClock },
-    { label: 'Academic Year', href: '/admin/academic-year', icon: CalendarRange },
+    { label: 'Academic Terms', href: '/admin/academic-year', icon: CalendarRange },
     { label: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
     { label: 'Fees', href: '/admin/fees', icon: DollarSign },
     { label: 'Exams', href: '/admin/exams', icon: FileText },
