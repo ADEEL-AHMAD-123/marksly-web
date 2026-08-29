@@ -1,4 +1,7 @@
 import { baseApi } from './baseApi';
+import type { CumulativeGpaResult, TermGpaResult } from './studentsApi';
+
+export type { CumulativeGpaResult, TermGpaResult };
 
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'leave';
 
@@ -93,6 +96,18 @@ export const portalApi = baseApi.injectEndpoints({
       query: () => '/me/student/results',
       providesTags: ['Results'],
     }),
+    // Matches backend gpa.service.ts's CumulativeGpaResult/TermGpaResult
+    // shapes exactly (same as studentsApi's admin-facing equivalents) —
+    // null cgpa/gpa means "not applicable" (no gpa-scheme courses), not an
+    // error or zero.
+    myCgpa: builder.query<ApiObject<CumulativeGpaResult>, void>({
+      query: () => '/me/student/cgpa',
+      providesTags: [{ type: 'Students', id: 'CGPA-MINE' }],
+    }),
+    myTermGpa: builder.query<ApiObject<TermGpaResult>, string>({
+      query: (termId) => `/me/student/term-gpa/${termId}`,
+      providesTags: (_r, _e, termId) => [{ type: 'Students', id: `TERMGPA-MINE-${termId}` }],
+    }),
     myFees: builder.query<ApiObject<FeeItem[]>, void>({
       query: () => '/me/student/fees',
       providesTags: [{ type: 'Fees', id: 'MINE' }],
@@ -122,6 +137,14 @@ export const portalApi = baseApi.injectEndpoints({
       query: (id) => `/me/children/${id}/results`,
       providesTags: ['Results'],
     }),
+    childCgpa: builder.query<ApiObject<CumulativeGpaResult>, string>({
+      query: (id) => `/me/children/${id}/cgpa`,
+      providesTags: (_r, _e, id) => [{ type: 'Students', id: `CGPA-${id}` }],
+    }),
+    childTermGpa: builder.query<ApiObject<TermGpaResult>, { childId: string; termId: string }>({
+      query: ({ childId, termId }) => `/me/children/${childId}/term-gpa/${termId}`,
+      providesTags: (_r, _e, { childId, termId }) => [{ type: 'Students', id: `TERMGPA-${childId}-${termId}` }],
+    }),
     childFees: builder.query<ApiObject<FeeItem[]>, string>({
       query: (id) => `/me/children/${id}/fees`,
       providesTags: ['Fees'],
@@ -137,6 +160,8 @@ export const portalApi = baseApi.injectEndpoints({
 export const {
   useMyAttendanceQuery,
   useMyResultsQuery,
+  useMyCgpaQuery,
+  useMyTermGpaQuery,
   useMyFeesQuery,
   useMySubjectsQuery,
   useJoinSubjectMutation,
@@ -144,6 +169,8 @@ export const {
   useMyChildrenQuery,
   useChildAttendanceQuery,
   useChildResultsQuery,
+  useChildCgpaQuery,
+  useChildTermGpaQuery,
   useChildFeesQuery,
   useMyClassesQuery,
 } = portalApi;

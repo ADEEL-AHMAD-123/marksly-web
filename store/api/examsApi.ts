@@ -97,8 +97,14 @@ export interface SetOfficialGradeBody {
 
 export const examsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getExams: builder.query<ApiArray<ExamListItem>, { classId?: string } | void>({
-      query: (params) => `/exams${params?.classId ? `?classId=${params.classId}` : ''}`,
+    getExams: builder.query<ApiArray<ExamListItem>, { classId?: string; termId?: string } | void>({
+      query: (params) => {
+        const search = new URLSearchParams();
+        if (params?.classId) search.set('classId', params.classId);
+        if (params?.termId) search.set('termId', params.termId);
+        const qs = search.toString();
+        return `/exams${qs ? `?${qs}` : ''}`;
+      },
       providesTags: [{ type: 'Exams', id: 'LIST' }],
     }),
     createExam: builder.mutation<ApiObject<{ id: string }>, CreateExamBody>({

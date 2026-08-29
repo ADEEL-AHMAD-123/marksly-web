@@ -20,6 +20,7 @@ import {
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetExamsQuery, useCreateExamMutation, type ExamType } from '@/store/api/examsApi';
+import { useGetTermsQuery } from '@/store/api/termsApi';
 import { formatDate } from '@/lib/utils';
 import { ResultsEntry } from './ResultsEntry';
 
@@ -32,8 +33,13 @@ const TYPES: { value: ExamType; label: string }[] = [
 ];
 
 export function ExamsView({ title = 'Exams' }: { title?: string }) {
-  const { data, isLoading } = useGetExamsQuery();
+  const [termId, setTermId] = useState('all');
+  const { data, isLoading } = useGetExamsQuery({ termId: termId === 'all' ? undefined : termId });
   const exams = data?.data ?? [];
+  const { data: termsRes } = useGetTermsQuery();
+  // Show ALL terms (not just active) — a teacher may want to check exams
+  // from a recently-closed term.
+  const terms = termsRes?.data ?? [];
   const [addOpen, setAddOpen] = useState(false);
   const [activeExam, setActiveExam] = useState<string | null>(null);
 
@@ -48,6 +54,22 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
         description={isLoading ? 'Loading…' : `${exams.length} exams`}
         actions={<Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Create exam</Button>}
       />
+
+      <Card className="p-4">
+        <div className="max-w-xs">
+          <Select value={termId} onValueChange={setTermId}>
+            <SelectTrigger><SelectValue placeholder="All terms" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All terms</SelectItem>
+              {terms.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}{t.status !== 'active' ? ` (${t.status})` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </Card>
 
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

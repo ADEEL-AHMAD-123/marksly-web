@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Pencil, UserMinus, UserCheck, AlertCircle, Wallet, Printer, GraduationCap } from 'lucide-react';
+import { X, Pencil, UserMinus, UserCheck, AlertCircle, Wallet, Printer, GraduationCap, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import {
   useDeleteStudentMutation,
   useUpdateStudentMutation,
   useGetStudentCgpaQuery,
+  useGetStudentTermGpaQuery,
   type StudentListItem,
 } from '@/store/api/studentsApi';
 import { useGetFeeCardQuery } from '@/store/api/feesApi';
@@ -67,6 +68,14 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
   const [printingInvoiceId, setPrintingInvoiceId] = useState<string | null>(null);
   const { data: cgpaData, isFetching: cgpaLoading } = useGetStudentCgpaQuery(studentId as string, { skip: !studentId });
   const terminology = useTerminology();
+  // Accordion: only one term's course-level breakdown is fetched/shown at a
+  // time — lazily, only once that row is expanded (not all terms up front).
+  const [expandedTermId, setExpandedTermId] = useState<string | null>(null);
+  const { data: termGpaData, isFetching: termGpaLoading } = useGetStudentTermGpaQuery(
+    { studentId: studentId as string, termId: expandedTermId as string },
+    { skip: !studentId || !expandedTermId }
+  );
+  const termGpa = termGpaData?.data;
 
   const s = data?.data as any;
   const card = cardData?.data;
@@ -226,17 +235,61 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground">{cgpa!.totalCreditHours} credit hours total</p>
                       <div className="mt-3 space-y-1.5 border-t border-border pt-3">
-                        {cgpa!.termBreakdown.map((t) => (
-                          <div key={t.termId} className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">{t.termName || terminology.term}</span>
-                            <span className="font-medium text-foreground">
-                              {t.gpa != null ? t.gpa.toFixed(2) : '—'}
-                              <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                                ({t.creditHours} cr.)
-                              </span>
-                            </span>
-                          </div>
-                        ))}
+                        {cgpa!.termBreakdown.map((t) => {
+                          const isExpanded = expandedTermId === t.termId;
+                          return (
+                            <div key={t.termId}>
+                              <button
+                                type="button"
+                                onClick={() => setExpandedTermId(isExpanded ? null : t.termId)}
+                                className="flex w-full items-center justify-between gap-2 rounded-md py-1 text-left text-sm hover:bg-muted"
+                              >
+                                <span className="flex items-center gap-1 text-muted-foreground">
+                                  <ChevronDown
+                                    size={13}
+                                    className={`shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                  />
+                                  {t.termName || terminology.term}
+                                </span>
+                                <span className="font-medium text-foreground">
+                                  {t.gpa != null ? t.gpa.toFixed(2) : '—'}
+                                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                                    ({t.creditHours} cr.)
+                                  </span>
+                                </span>
+                              </button>
+
+                              {isExpanded && (
+                                <div className="ml-4 mt-1 mb-1 space-y-1 border-l border-border pl-3">
+                                  {termGpaLoading && !termGpa ? (
+                                    <Skeleton className="h-12 w-full" />
+                                  ) : termGpa ? (
+                                    <>
+                                      {termGpa.courses.length === 0 ? (
+                                        <p className="py-1 text-xs text-muted-foreground">No gpa-scheme courses for this term.</p>
+                                      ) : (
+                                        termGpa.courses.map((c) => (
+                                          <div key={c.resultId} className="flex items-center justify-between py-1 text-xs">
+                                            <span className="text-muted-foreground">{c.subjectName}</span>
+                                            <span className="font-medium text-foreground">
+                                              {c.gradePoints.toFixed(2)}
+                                              <span className="ml-1 font-normal text-muted-foreground">({c.creditHours} cr.)</span>
+                                            </span>
+                                          </div>
+                                        ))
+                                      )}
+                                      {termGpa.excludedPendingCount > 0 && (
+                                        <p className="pt-1 text-xs text-warning">
+                                          {termGpa.excludedPendingCount} result{termGpa.excludedPendingCount === 1 ? '' : 's'} pending an official grade, excluded from this GPA.
+                                        </p>
+                                      )}
+                                    </>
+                                  ) : null}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>

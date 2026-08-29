@@ -1,13 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import { GraduationCap, School, Wallet, CalendarCheck, Award, BarChart3 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { AreaTrendChart, BarsChart, DonutChart } from '@/components/charts/charts';
 import { useGetReportsQuery } from '@/store/api/reportsApi';
+import { useGetTermsQuery } from '@/store/api/termsApi';
 import { formatCurrency } from '@/lib/utils';
 import type { GradingSchemeType } from '@/store/api/gradingSchemesApi';
 
@@ -35,13 +40,37 @@ function Legend({ data }: { data: { name: string; value: number }[] }) {
 }
 
 export function ReportsView({ title = 'Reports' }: { title?: string }) {
-  const { data, isLoading } = useGetReportsQuery();
+  const [termId, setTermId] = useState('all');
+  const { data, isLoading } = useGetReportsQuery({ termId: termId === 'all' ? undefined : termId });
+  const { data: termsRes } = useGetTermsQuery();
+  // Show ALL terms (not just active) — an admin may want to review a
+  // recently-closed term's report.
+  const terms = termsRes?.data ?? [];
   const r = data?.data;
+
+  const termFilter = (
+    <Card className="p-4">
+      <div className="max-w-xs">
+        <Select value={termId} onValueChange={setTermId}>
+          <SelectTrigger><SelectValue placeholder="All terms" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All terms</SelectItem>
+            {terms.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                {t.name}{t.status !== 'active' ? ` (${t.status})` : ''}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </Card>
+  );
 
   if (isLoading || !r) {
     return (
       <div className="space-y-6">
         <PageHeader title={title} description="Insights across your institution." />
+        {termFilter}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => <Card key={i} className="p-5"><Skeleton className="h-16 w-full" /></Card>)}
         </div>
@@ -55,6 +84,8 @@ export function ReportsView({ title = 'Reports' }: { title?: string }) {
   return (
     <div className="space-y-6">
       <PageHeader title={title} description="Insights across your institution." />
+
+      {termFilter}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard label="Active Students" value={overview.activeStudents.toLocaleString('en-PK')} icon={GraduationCap} tone="primary" />

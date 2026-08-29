@@ -22,8 +22,8 @@ interface ApiObject<T> { success: boolean; data: T; message: string }
 
 export const reportsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getReports: builder.query<ApiObject<ReportsData>, void>({
-      query: () => '/reports/dashboard',
+    getReports: builder.query<ApiObject<ReportsData>, { termId?: string } | void>({
+      query: (params) => `/reports/dashboard${params?.termId ? `?termId=${params.termId}` : ''}`,
       // Bare (id-less) tags only refetch when a mutation explicitly
       // invalidates that SAME bare tag — RTK Query matches {type, id}
       // exactly, so a mutation that only invalidates e.g. {type: 'Fees',

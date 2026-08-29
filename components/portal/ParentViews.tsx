@@ -12,11 +12,13 @@ import {
 } from '@/components/ui/select';
 import { AttendanceHistory } from './AttendanceHistory';
 import { ResultsList } from './ResultsList';
+import { GpaSummary } from './GpaSummary';
 import { FeesList } from './FeesList';
 import {
   useMyChildrenQuery,
   useChildAttendanceQuery,
   useChildResultsQuery,
+  useChildCgpaQuery,
   useChildFeesQuery,
 } from '@/store/api/portalApi';
 import { formatCurrency, getInitials } from '@/lib/utils';
@@ -81,6 +83,7 @@ export function ParentScopedView({ kind }: { kind: Kind }) {
 
   const att = useChildAttendanceQuery(sel, { skip: kind !== 'attendance' || !sel });
   const res = useChildResultsQuery(sel, { skip: kind !== 'results' || !sel });
+  const cgpa = useChildCgpaQuery(sel, { skip: kind !== 'results' || !sel });
   const fee = useChildFeesQuery(sel, { skip: kind !== 'fees' || !sel });
 
   const meta = TITLES[kind];
@@ -112,7 +115,12 @@ export function ParentScopedView({ kind }: { kind: Kind }) {
               even though the data underneath hasn't changed. `isLoading`
               still covers switching to a child we haven't fetched yet. */}
           {kind === 'attendance' && <AttendanceHistory data={att.data?.data} isLoading={att.isLoading || !sel} />}
-          {kind === 'results' && <ResultsList data={res.data?.data} isLoading={res.isLoading || !sel} />}
+          {kind === 'results' && (
+            <>
+              <GpaSummary data={cgpa.data?.data} isLoading={cgpa.isLoading || !sel} />
+              <ResultsList data={res.data?.data} isLoading={res.isLoading || !sel} />
+            </>
+          )}
           {kind === 'fees' && <FeesList data={fee.data?.data} isLoading={fee.isLoading || !sel} />}
         </>
       )}
