@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Pencil, UserMinus, UserCheck, AlertCircle, Wallet, Printer } from 'lucide-react';
+import { X, Pencil, UserMinus, UserCheck, AlertCircle, Wallet, Printer, GraduationCap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
@@ -12,10 +12,12 @@ import {
   useGetStudentQuery,
   useDeleteStudentMutation,
   useUpdateStudentMutation,
+  useGetStudentCgpaQuery,
   type StudentListItem,
 } from '@/store/api/studentsApi';
 import { useGetFeeCardQuery } from '@/store/api/feesApi';
 import { useGetClassesQuery } from '@/store/api/classesApi';
+import { useTerminology } from '@/lib/terminology';
 import { getInitials, formatCurrency, formatDate } from '@/lib/utils';
 import { openAuthedPdf } from '@/lib/downloadFile';
 import { getErrorMessage } from '@/lib/get-error-message';
@@ -63,9 +65,17 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
   );
   const accessToken = useSelector((st: RootState) => st.auth.accessToken);
   const [printingInvoiceId, setPrintingInvoiceId] = useState<string | null>(null);
+  const { data: cgpaData, isFetching: cgpaLoading } = useGetStudentCgpaQuery(studentId as string, { skip: !studentId });
+  const terminology = useTerminology();
 
   const s = data?.data as any;
   const card = cardData?.data;
+  const cgpa = cgpaData?.data;
+  // The backend returns cgpa: null with an empty termBreakdown when the
+  // student has no gpa-scheme results at all (e.g. every class they've
+  // taken uses percentage_letter/cambridge/pass_fail instead) — not an
+  // error, just "not applicable". Don't show a confusing "CGPA: null".
+  const hasGpaData = !!cgpa && cgpa.cgpa != null && cgpa.termBreakdown.length > 0;
 
   const handlePrintSlip = async (invoiceId: string) => {
     setPrintingInvoiceId(invoiceId);
@@ -199,6 +209,38 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                     </div>
                   )}
                 </div>
+
+                {cgpaLoading && !cgpaData ? (
+                  <div className="mt-5">
+                    <Skeleton className="h-20 w-full" />
+                  </div>
+                ) : hasGpaData ? (
+                  <div className="mt-5">
+                    <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <GraduationCap size={12} /> CGPA
+                    </p>
+                    <div className="rounded-xl border border-border px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Cumulative</span>
+                        <span className="text-2xl font-bold text-foreground">{cgpa!.cgpa!.toFixed(2)}</span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{cgpa!.totalCreditHours} credit hours total</p>
+                      <div className="mt-3 space-y-1.5 border-t border-border pt-3">
+                        {cgpa!.termBreakdown.map((t) => (
+                          <div key={t.termId} className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">{t.termName || terminology.term}</span>
+                            <span className="font-medium text-foreground">
+                              {t.gpa != null ? t.gpa.toFixed(2) : '—'}
+                              <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                                ({t.creditHours} cr.)
+                              </span>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 {s.guardians?.length > 0 && (
                   <div className="mt-5">

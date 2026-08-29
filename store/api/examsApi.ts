@@ -1,6 +1,18 @@
 import { baseApi } from './baseApi';
+import type { GradingSchemeType, GradingSchemeConfig } from './gradingSchemesApi';
 
 export type ExamType = 'midterm' | 'final' | 'unit' | 'monthly' | 'board';
+
+// Mirrors backend exam.service.ts's getResultsRoster() — the class's own
+// scheme if assigned, else the institution's default. `null` only when
+// neither exists (should never happen for a properly-seeded institution,
+// but the client must not crash if it does).
+export interface ExamGradingScheme {
+  id: string;
+  name: string;
+  type: GradingSchemeType;
+  config: GradingSchemeConfig;
+}
 
 export interface ExamListItem {
   id: string;
@@ -30,8 +42,13 @@ export interface RosterStudentResult {
   marks: { name: string; obtained: number | null }[];
   totalObtained: number | null;
   percentage: number | null;
+  // Under a cambridge scheme this is the PREDICTED grade only.
   grade: string | null;
+  gradePoints: number | null;
+  officialGrade: string | null;
+  status: 'final' | 'pending' | null;
   isPassed: boolean | null;
+  resultId: string | null;
 }
 
 export interface ResultsRoster {
@@ -43,6 +60,7 @@ export interface ResultsRoster {
     published: boolean;
     subjects: ExamSubject[];
     totalMarks: number;
+    gradingScheme: ExamGradingScheme | null;
   };
   students: RosterStudentResult[];
 }
@@ -62,7 +80,13 @@ export interface CreateExamBody {
 
 export interface SaveResultsBody {
   examId: string;
-  records: { studentId: string; marks: { name: string; obtained: number }[] }[];
+  records: { studentId: string; marks: { name: string; obtained: number }[]; status?: 'final' | 'pending' }[];
+}
+
+export interface SetOfficialGradeBody {
+  resultId: string;
+  officialGrade: string;
+  keepPending?: boolean;
 }
 
 export const examsApi = baseApi.injectEndpoints({
@@ -107,6 +131,19 @@ export const examsApi = baseApi.injectEndpoints({
       // 'Results', id: examId}` alone.
       invalidatesTags: (_r, _e, id) => [{ type: 'Results', id }, { type: 'Exams', id: 'LIST' }, 'Results'],
     }),
+    // Admin-only (see exam.routes.ts) — records the real, official grade
+    // from an external authority (e.g. Cambridge), verbatim, never computed.
+    // Recording it also resolves a 'pending' status unless keepPending is set.
+    setOfficialGrade: builder.mutation<ApiObject<{ id: string; officialGrade: string; status: 'final' | 'pending' }>, SetOfficialGradeBody>({
+      query: ({ resultId, officialGrade, keepPending }) => ({
+        url: `/exams/results/${resultId}/official-grade`,
+        method: 'PATCH',
+        body: { officialGrade, keepPending },
+      }),
+      // We don't know the examId here, so invalidate the bare 'Results' tag —
+      // slightly broader than necessary but this is a low-frequency admin action.
+      invalidatesTags: ['Results'],
+    }),
   }),
 });
 
@@ -116,4 +153,5 @@ export const {
   useGetExamResultsQuery,
   useSaveExamResultsMutation,
   usePublishExamMutation,
+  useSetOfficialGradeMutation,
 } = examsApi;

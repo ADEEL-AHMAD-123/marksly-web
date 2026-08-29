@@ -23,7 +23,14 @@ export interface ResultItem {
   totalObtained: number;
   totalMarks: number;
   percentage: number;
+  // Under a cambridge scheme this is the PREDICTED grade only — see
+  // officialGrade below for the real result.
   grade: string;
+  gradePoints?: number | null;
+  officialGrade?: string | null;
+  // 'pending' = withheld (e.g. Cambridge official grade not in yet) — must
+  // not be presented to the student/parent as a final result.
+  status?: 'final' | 'pending' | null;
   isPassed: boolean;
   marks: { name: string; obtained: number; total: number }[];
 }
