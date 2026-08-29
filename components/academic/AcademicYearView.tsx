@@ -13,23 +13,31 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import {
-  useGetAcademicYearsQuery,
-  useCreateAcademicYearMutation,
-  useActivateAcademicYearMutation,
+  useGetTermsQuery,
+  useCreateTermMutation,
+  useUpdateTermMutation,
   usePreviewPromotionMutation,
   usePromoteStudentsMutation,
   useUndoPromotionMutation,
   type PromotionPreview,
-} from '@/store/api/academicYearsApi';
+} from '@/store/api/termsApi';
 import { useGetClassesQuery, type ClassItem } from '@/store/api/classesApi';
 import { useGetStudentsQuery } from '@/store/api/studentsApi';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getErrorMessage } from '@/lib/get-error-message';
 
+// TODO(frontend-redesign): this whole view still shows a flat list of
+// "years" with a single-active-at-a-time "Set active" action, but the
+// backend now supports multiple concurrent active Terms of different
+// types (academic_year/semester/trimester/short_session/custom) — a real
+// Terms UI (grouping by type, showing date ranges, allowing several active
+// at once, per-institution terminology via lib/terminology.ts) is coming
+// in the next pass. This pass only makes it compile and work correctly
+// against the new /terms API.
 export function AcademicYearView() {
-  const { data, isLoading } = useGetAcademicYearsQuery();
+  const { data, isLoading } = useGetTermsQuery();
   const years = data?.data ?? [];
-  const [activate] = useActivateAcademicYearMutation();
+  const [updateTerm] = useUpdateTermMutation();
   const [addOpen, setAddOpen] = useState(false);
   const [promoteOpen, setPromoteOpen] = useState(false);
   // Kept here (not inside PromoteDrawer) specifically so the Undo option
@@ -40,7 +48,7 @@ export function AcademicYearView() {
   const [undoPromotion, { isLoading: undoing }] = useUndoPromotionMutation();
 
   const setActive = async (id: string) => {
-    try { await activate(id).unwrap(); toast.success('Academic year activated'); }
+    try { await updateTerm({ id, body: { status: 'active' } }).unwrap(); toast.success('Term activated'); }
     catch (e: any) { toast.error(e?.data?.error?.message || 'Could not activate'); }
   };
 
@@ -96,11 +104,17 @@ export function AcademicYearView() {
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary-soft-foreground"><CalendarRange size={18} /></span>
                 <div>
                   <p className="font-semibold text-foreground">{y.name}</p>
-                  {y.isActive ? <Badge variant="success" className="mt-1">Active</Badge> : <span className="text-xs text-muted-foreground">Archived</span>}
+                  {y.status === 'active' ? (
+                    <Badge variant="success" className="mt-1">Active</Badge>
+                  ) : y.status === 'closed' ? (
+                    <span className="text-xs text-muted-foreground">Closed</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Upcoming</span>
+                  )}
                 </div>
               </div>
-              {!y.isActive && <Button variant="secondary" size="sm" onClick={() => setActive(y.id)}>Set active</Button>}
-              {y.isActive && <Check size={18} className="text-success" />}
+              {y.status !== 'active' && <Button variant="secondary" size="sm" onClick={() => setActive(y.id)}>Set active</Button>}
+              {y.status === 'active' && <Check size={18} className="text-success" />}
             </Card>
           ))}
         </div>
@@ -117,7 +131,7 @@ export function AcademicYearView() {
 }
 
 function AddYearDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [createYear, { isLoading }] = useCreateAcademicYearMutation();
+  const [createTerm, { isLoading }] = useCreateTermMutation();
   const nextDefault = () => { const y = new Date().getFullYear(); return `${y + 1}-${y + 2}`; };
   const [name, setName] = useState(nextDefault());
   const [activate, setActivate] = useState(false);
@@ -125,11 +139,13 @@ function AddYearDrawer({ open, onClose }: { open: boolean; onClose: () => void }
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createYear({ name, activate }).unwrap();
-      toast.success('Academic year created');
+      // type is omitted deliberately — the backend defaults it from the
+      // institution's academicStructure (see term.service.ts).
+      await createTerm({ name, status: activate ? 'active' : 'upcoming' }).unwrap();
+      toast.success('Term created');
       onClose();
     } catch (err: any) {
-      toast.error(err?.data?.error?.message || 'Could not create year');
+      toast.error(err?.data?.error?.message || 'Could not create term');
     }
   };
 
@@ -258,18 +274,39 @@ function PromoteDrawer({
     setPreview(null);
   };
 
-  const body = () => ({
-    items: rows
+  // termId is now required by the backend whenever items/graduateClassIds
+  // are non-empty (a promotion batch must say explicitly which term
+  // students are moving INTO — see term.validator.ts's promoteSchema).
+  // Derived from whichever destination class was picked, rather than
+  // adding a separate "target term" selector, since every toClassId
+  // already belongs to exactly one term.
+  const resolveTermId = (items: Row[], graduateClassIds: string[]): string | undefined => {
+    const fromItem = items.find((r) => r.toClassId)?.toClassId;
+    const classId = fromItem ?? graduateClassIds[0];
+    return classId ? classes.find((c) => c.id === classId)?.termId ?? undefined : undefined;
+  };
+
+  const body = () => {
+    const items = rows
       .filter((r) => r.fromClassId && r.fromSectionId && r.toClassId && r.toSectionId)
-      .map((r) => ({ ...r, excludeStudentIds: r.excludeStudentIds })),
-    graduateClassIds: graduate,
-    leavers: leavers.map((l) => ({ studentId: l.studentId, status: l.status, reason: l.reason.trim() || undefined })),
-  });
+      .map((r) => ({ ...r, excludeStudentIds: r.excludeStudentIds }));
+    const termId = resolveTermId(items, graduate);
+    return {
+      termId: termId ?? '',
+      items,
+      graduateClassIds: graduate,
+      leavers: leavers.map((l) => ({ studentId: l.studentId, status: l.status, reason: l.reason.trim() || undefined })),
+    };
+  };
 
   const review = async () => {
     const b = body();
     if (b.items.length === 0 && b.graduateClassIds.length === 0 && b.leavers.length === 0) {
       toast.error('Add at least one promotion, graduation, or leaver');
+      return;
+    }
+    if ((b.items.length > 0 || b.graduateClassIds.length > 0) && !b.termId) {
+      toast.error('Could not determine the target term for this batch — check the destination class(es)');
       return;
     }
     try {
@@ -407,7 +444,7 @@ function PromoteDrawer({
                           <Label className="text-xs">From class</Label>
                           <select className={selectCls} value={row.fromClassId} onChange={(e) => setRow(i, { fromClassId: e.target.value, fromSectionId: '', excludeStudentIds: [] })}>
                             <option value="">Select</option>
-                            {classes.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.academicYear}</option>)}
+                            {classes.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.termName ?? '—'}</option>)}
                           </select>
                         </div>
                         <div>
@@ -424,7 +461,7 @@ function PromoteDrawer({
                           <Label className="text-xs">To class</Label>
                           <select className={selectCls} value={row.toClassId} onChange={(e) => setRow(i, { toClassId: e.target.value, toSectionId: '' })}>
                             <option value="">Select</option>
-                            {classes.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.academicYear}</option>)}
+                            {classes.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.termName ?? '—'}</option>)}
                           </select>
                         </div>
                         <div>
@@ -459,7 +496,7 @@ function PromoteDrawer({
                     {classes.map((c: ClassItem) => (
                       <label key={c.id} className="flex items-center gap-2 text-sm text-foreground">
                         <input type="checkbox" checked={graduate.includes(c.id)} onChange={() => toggleGrad(c.id)} className="h-4 w-4 rounded border-input accent-[hsl(var(--primary))]" />
-                        {c.name} <span className="text-muted-foreground">· {c.academicYear}</span>
+                        {c.name} <span className="text-muted-foreground">· {c.termName ?? '—'}</span>
                       </label>
                     ))}
                   </div>

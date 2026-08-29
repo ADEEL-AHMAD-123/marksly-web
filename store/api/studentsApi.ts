@@ -86,6 +86,37 @@ export interface BulkImportResult {
   results: { row: number; status: 'created' | 'error'; name?: string; message?: string }[];
 }
 
+// Mirrors backend src/modules/academic/gpa.service.ts exactly.
+export interface GpaCourse {
+  subjectName: string;
+  creditHours: number;
+  gradePoints: number;
+  examId: string;
+  resultId: string;
+}
+
+export interface TermGpaResult {
+  termId: string;
+  gpa: number | null;
+  totalCreditHours: number;
+  courses: GpaCourse[];
+  excludedPendingCount: number;
+}
+
+export interface CgpaTermBreakdown {
+  termId: string;
+  termName: string;
+  gpa: number | null;
+  creditHours: number;
+}
+
+export interface CumulativeGpaResult {
+  cgpa: number | null;
+  totalCreditHours: number;
+  termBreakdown: CgpaTermBreakdown[];
+  excludedPendingCount: number;
+}
+
 export interface IdCard {
   id: string;
   name: string;
@@ -205,6 +236,17 @@ export const studentsApi = baseApi.injectEndpoints({
     getIdCards: builder.query<ApiObject<IdCardSheet>, { classId: string; sectionId: string }>({
       query: ({ classId, sectionId }) => `/students/cards?classId=${classId}&sectionId=${sectionId}`,
     }),
+
+    // Matches backend gpa.service.ts's TermGpaResult/CumulativeGpaResult
+    // shapes exactly (field-for-field) — do not rename.
+    getStudentCgpa: builder.query<ApiObject<CumulativeGpaResult>, string>({
+      query: (studentId) => `/students/${studentId}/cgpa`,
+      providesTags: (_r, _e, studentId) => [{ type: 'Students', id: `CGPA-${studentId}` }],
+    }),
+    getStudentTermGpa: builder.query<ApiObject<TermGpaResult>, { studentId: string; termId: string }>({
+      query: ({ studentId, termId }) => `/students/${studentId}/term-gpa/${termId}`,
+      providesTags: (_r, _e, { studentId, termId }) => [{ type: 'Students', id: `TERMGPA-${studentId}-${termId}` }],
+    }),
   }),
 });
 
@@ -217,4 +259,6 @@ export const {
   useDeleteStudentMutation,
   useBulkImportStudentsMutation,
   useGetIdCardsQuery,
+  useGetStudentCgpaQuery,
+  useGetStudentTermGpaQuery,
 } = studentsApi;

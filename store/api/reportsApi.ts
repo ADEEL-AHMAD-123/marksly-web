@@ -28,7 +28,7 @@ export const reportsApi = baseApi.injectEndpoints({
       // payments, exam publishing, student CRUD) has been checked to make
       // sure it also invalidates the matching bare tag — see the comments
       // next to those invalidatesTags in attendanceApi/feesApi/examsApi/
-      // studentsApi/academicYearsApi.
+      // studentsApi/termsApi.
       providesTags: ['Students', 'Attendance', 'Fees', 'Exams', 'Results'],
     }),
   }),

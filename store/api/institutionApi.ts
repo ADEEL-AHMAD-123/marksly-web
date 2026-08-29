@@ -13,6 +13,10 @@ export interface InstitutionProfile {
   contactPhone: string;
   logoUrl?: string;
   country: string;
+  // Drives the terminology system (see lib/terminology.ts) and is now the
+  // default source of a new term's `type` when created without one
+  // explicit (see backend term.service.ts's defaultTermTypeForInstitution()).
+  academicStructure: 'yearly' | 'semester' | 'short_session' | 'custom';
 }
 
 export interface UpdateInstitutionProfileBody {
@@ -22,6 +26,7 @@ export interface UpdateInstitutionProfileBody {
   province?: string;
   contactEmail?: string;
   contactPhone?: string;
+  academicStructure?: 'yearly' | 'semester' | 'short_session' | 'custom';
 }
 
 export const institutionApi = baseApi.injectEndpoints({

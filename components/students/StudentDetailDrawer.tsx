@@ -269,7 +269,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                       className="rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
                     >
                       <option value="">Class</option>
-                      {classes.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.academicYear}</option>)}
+                      {classes.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.termName ?? '—'}</option>)}
                     </select>
                     <select
                       value={reactivateSectionId}

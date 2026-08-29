@@ -13,7 +13,11 @@ export interface ClassItem {
   id: string;
   name: string;
   level: number;
-  academicYear: string;
+  // Backend's class.service.ts mapClass() sends both: termId (always a
+  // string, populated or not) and termName (only present when the `term`
+  // path was populated, which the list() query always does).
+  termId: string | null;
+  termName: string | null;
   isActive: boolean;
   sections: Section[];
 }
@@ -40,26 +44,31 @@ export interface SectionInput {
 export interface CreateClassBody {
   name: string;
   level: number;
-  academicYear?: string; // implicit (active year) — kept optional
+  // Required now — see class.validator.ts's createClassSchema. The caller
+  // must explicitly pick which term this class belongs to (no more
+  // implicit "the active year").
+  termId: string;
   sections: SectionInput[];
+  gradingSchemeId?: string;
 }
 
 export interface UpdateClassBody {
   name?: string;
   level?: number;
-  academicYear?: string;
+  termId?: string;
   isActive?: boolean;
+  gradingSchemeId?: string | null;
   sections?: SectionInput[];
 }
 
 export const classesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getClasses: builder.query<ApiArray<ClassItem>, { activeOnly?: boolean; all?: boolean; academicYearId?: string } | void>({
+    getClasses: builder.query<ApiArray<ClassItem>, { activeOnly?: boolean; all?: boolean; termId?: string } | void>({
       query: (params) => {
         const search = new URLSearchParams();
         if (params?.activeOnly) search.set('activeOnly', 'true');
         if (params?.all) search.set('all', 'true');
-        if (params?.academicYearId) search.set('academicYearId', params.academicYearId);
+        if (params?.termId) search.set('termId', params.termId);
         const qs = search.toString();
         return `/classes${qs ? `?${qs}` : ''}`;
       },

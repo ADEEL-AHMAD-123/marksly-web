@@ -23,11 +23,12 @@ import {
   type ClassItem,
 } from '@/store/api/classesApi';
 import { useGetUsersQuery } from '@/store/api/usersApi';
-import { useGetActiveYearQuery } from '@/store/api/academicYearsApi';
+import { useGetActiveTermsQuery } from '@/store/api/termsApi';
 
 const schema = z.object({
   name: z.string().min(1, 'Class name is required'),
   level: z.coerce.number({ invalid_type_error: 'Level must be a number' }).int().min(0).max(20),
+  termId: z.string().min(1, 'Select a term'),
   sections: z
     .array(
       z.object({
@@ -53,8 +54,11 @@ export function ClassesView() {
   const [createClass, { isLoading: creating }] = useCreateClassMutation();
   const [updateClass, { isLoading: updating }] = useUpdateClassMutation();
   const { data: teachersRes } = useGetUsersQuery({ role: 'teacher', limit: 100 });
-  const { data: activeYearRes } = useGetActiveYearQuery();
-  const activeYearName = activeYearRes?.data?.name ?? '—';
+  // termId is now required on every class (backend class.validator.ts) —
+  // since multiple terms can be active at once, default new classes to the
+  // most recently-started active term but let the admin pick another.
+  const { data: activeTermsRes } = useGetActiveTermsQuery();
+  const activeTerms = activeTermsRes?.data ?? [];
   const teachers = teachersRes?.data ?? [];
   const classes = data?.data ?? [];
 
@@ -62,7 +66,7 @@ export function ClassesView() {
     const q = query.trim().toLowerCase();
     if (!q) return classes;
     return classes.filter((c) =>
-      [c.name, c.academicYear, ...c.sections.map((s) => s.name)].some((v) => (v ?? '').toLowerCase().includes(q))
+      [c.name, c.termName, ...c.sections.map((s) => s.name)].some((v) => (v ?? '').toLowerCase().includes(q))
     );
   }, [classes, query]);
 
@@ -72,7 +76,7 @@ export function ClassesView() {
 
   const { register, control, handleSubmit, reset, formState: { errors } } = useForm<Form>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', level: 1, sections: [{ name: 'A', capacity: 40, teacherId: '' }] },
+    defaultValues: { name: '', level: 1, termId: '', sections: [{ name: 'A', capacity: 40, teacherId: '' }] },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'sections' });
 
@@ -82,12 +86,13 @@ export function ClassesView() {
       reset({
         name: editing.name,
         level: editing.level,
+        termId: editing.termId ?? '',
         sections: editing.sections.map((s) => ({ id: s.id, name: s.name, capacity: s.capacity ?? 40, teacherId: s.teacherId ?? '' })),
       });
     } else {
-      reset({ name: '', level: 1, sections: [{ name: 'A', capacity: 40, teacherId: '' }] });
+      reset({ name: '', level: 1, termId: activeTerms[0]?.id ?? '', sections: [{ name: 'A', capacity: 40, teacherId: '' }] });
     }
-  }, [open, editing, reset]);
+  }, [open, editing, reset, activeTerms]);
 
   const openAdd = () => { setEditing(null); setOpen(true); };
   const openEdit = (c: ClassItem) => { setEditing(c); setOpen(true); };
@@ -101,10 +106,10 @@ export function ClassesView() {
     }));
     try {
       if (editing) {
-        await updateClass({ id: editing.id, body: { name: values.name, level: values.level, sections } }).unwrap();
+        await updateClass({ id: editing.id, body: { name: values.name, level: values.level, termId: values.termId, sections } }).unwrap();
         toast.success('Class updated');
       } else {
-        await createClass({ name: values.name, level: values.level, sections }).unwrap();
+        await createClass({ name: values.name, level: values.level, termId: values.termId, sections }).unwrap();
         toast.success('Class created');
       }
       setOpen(false);
@@ -149,7 +154,7 @@ export function ClassesView() {
                       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary-soft-foreground"><School size={18} /></span>
                       <div>
                         <p className="font-semibold text-foreground">{c.name}</p>
-                        <p className="text-xs text-muted-foreground">{c.academicYear}</p>
+                        <p className="text-xs text-muted-foreground">{c.termName ?? '—'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
@@ -210,10 +215,16 @@ export function ClassesView() {
                   {errors.level && <p className="mt-1 text-xs text-danger">{errors.level.message}</p>}
                 </div>
                 <div>
-                  <Label>Academic year</Label>
-                  <div className="flex h-10 items-center rounded-lg border border-border bg-muted px-3 text-sm text-muted-foreground">
-                    {editing ? editing.academicYear : activeYearName}
-                  </div>
+                  <Label htmlFor="termId">Term</Label>
+                  <select
+                    id="termId"
+                    {...register('termId')}
+                    className="h-10 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">Select a term</option>
+                    {activeTerms.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                  {errors.termId && <p className="mt-1 text-xs text-danger">{errors.termId.message}</p>}
                 </div>
               </div>
 
