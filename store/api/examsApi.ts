@@ -2,6 +2,8 @@ import { baseApi } from './baseApi';
 import type { GradingSchemeType, GradingSchemeConfig } from './gradingSchemesApi';
 
 export type ExamType = 'midterm' | 'final' | 'unit' | 'monthly' | 'board';
+export type ExamMode = 'online' | 'physical' | 'oral' | 'practical' | 'project' | 'assignment';
+export type IntegrityMode = 'none' | 'flag_only' | 'fullscreen_lock';
 
 // Mirrors backend exam.service.ts's getResultsRoster() — the class's own
 // scheme if assigned, else the institution's default. `null` only when
@@ -18,6 +20,7 @@ export interface ExamListItem {
   id: string;
   title: string;
   type: ExamType;
+  mode: ExamMode;
   className: string | null;
   classId: string | null;
   // Legacy free-text label predating the Term migration. Backend
@@ -38,6 +41,7 @@ export interface ExamSubject {
   name: string;
   totalMarks: number;
   passingMarks: number;
+  notes?: string;
 }
 
 export interface RosterStudentResult {
@@ -76,12 +80,26 @@ interface ApiObject<T> { success: boolean; data: T; message: string }
 export interface CreateExamBody {
   title: string;
   type: ExamType;
+  mode?: ExamMode;
   classId: string;
   sectionId?: string;
   // Legacy free-text label, unused in UI — see ExamListItem.academicYear.
   academicYear?: string;
   examDate?: string;
-  subjects: { name: string; totalMarks: number; passingMarks?: number }[];
+  // Required for every mode EXCEPT 'online'.
+  subjects?: { name: string; totalMarks: number; passingMarks?: number; notes?: string }[];
+
+  // ─── Online-mode-only fields ──────────────────────────────────────
+  subjectName?: string;
+  questionIds?: string[];
+  durationMinutes?: number;
+  windowStart?: string;
+  windowEnd?: string;
+  shuffleQuestions?: boolean;
+  shuffleOptions?: boolean;
+  maxAttempts?: number;
+  integrityMode?: IntegrityMode;
+  autoSubmitOnTimeout?: boolean;
 }
 
 export interface SaveResultsBody {

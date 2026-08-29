@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, X, FileText, ClipboardList } from 'lucide-react';
+import { Plus, Trash2, X, FileText, ClipboardList, Laptop } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
@@ -19,8 +19,9 @@ import {
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { useGetClassesQuery } from '@/store/api/classesApi';
-import { useGetExamsQuery, useCreateExamMutation, type ExamType } from '@/store/api/examsApi';
+import { useGetExamsQuery, useCreateExamMutation, type ExamType, type ExamMode, type IntegrityMode } from '@/store/api/examsApi';
 import { useGetTermsQuery } from '@/store/api/termsApi';
+import { useGetQuestionsQuery } from '@/store/api/questionsApi';
 import { formatDate } from '@/lib/utils';
 import { ResultsEntry } from './ResultsEntry';
 
@@ -31,6 +32,27 @@ const TYPES: { value: ExamType; label: string }[] = [
   { value: 'monthly', label: 'Monthly' },
   { value: 'board', label: 'Board' },
 ];
+
+const MODES: { value: ExamMode; label: string }[] = [
+  { value: 'physical', label: 'Physical (paper exam, enter marks manually)' },
+  { value: 'online', label: 'Online (students take the test in the app)' },
+  { value: 'oral', label: 'Oral (viva / spoken assessment)' },
+  { value: 'practical', label: 'Practical (lab / hands-on assessment)' },
+  { value: 'project', label: 'Project (submitted work, graded manually)' },
+  { value: 'assignment', label: 'Assignment (take-home work, graded manually)' },
+];
+
+const INTEGRITY_MODES: { value: IntegrityMode; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'flag_only', label: 'Flag only' },
+  { value: 'fullscreen_lock', label: 'Fullscreen lock' },
+];
+
+function ModeBadge({ mode }: { mode: ExamMode }) {
+  if (mode === 'online') return <Badge variant="primary">Online</Badge>;
+  const label = MODES.find((m) => m.value === mode)?.label.split(' (')[0] ?? mode;
+  return <Badge variant="neutral" className="capitalize">{label}</Badge>;
+}
 
 export function ExamsView({ title = 'Exams' }: { title?: string }) {
   const [termId, setTermId] = useState('all');
@@ -81,24 +103,38 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {exams.map((e) => (
             <Card key={e.id} className="flex flex-col p-5">
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="font-semibold text-foreground">{e.title}</p>
                   <p className="text-xs capitalize text-muted-foreground">{e.type} · {e.className ?? '—'}</p>
                 </div>
-                {e.published
-                  ? <Badge variant="success">Published</Badge>
-                  : e.gradedCount > 0
-                    ? <Badge variant="primary">Graded</Badge>
-                    : <Badge variant="neutral">Pending</Badge>}
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <ModeBadge mode={e.mode} />
+                  {e.published
+                    ? <Badge variant="success">Published</Badge>
+                    : e.gradedCount > 0
+                      ? <Badge variant="primary">Graded</Badge>
+                      : <Badge variant="neutral">Pending</Badge>}
+                </div>
               </div>
               <div className="mt-3 flex-1 text-sm text-muted-foreground">
-                {e.subjectCount} subjects · {e.totalMarks} marks
+                {e.mode === 'online' ? 'Online exam' : `${e.subjectCount} subjects`} · {e.totalMarks} marks
                 {e.examDate && <span className="block">{formatDate(e.examDate)}</span>}
               </div>
-              <Button variant="secondary" size="sm" className="mt-4" onClick={() => setActiveExam(e.id)}>
-                <ClipboardList size={15} /> Enter results
-              </Button>
+              {e.mode === 'online' ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => toast('Attempt management is coming soon', { icon: 'ℹ️' })}
+                >
+                  <Laptop size={15} /> Manage attempts
+                </Button>
+              ) : (
+                <Button variant="secondary" size="sm" className="mt-4" onClick={() => setActiveExam(e.id)}>
+                  <ClipboardList size={15} /> Enter results
+                </Button>
+              )}
             </Card>
           ))}
         </div>
@@ -109,37 +145,125 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
   );
 }
 
-const schema = z.object({
-  title: z.string().min(1, 'Required'),
-  type: z.enum(['midterm', 'final', 'unit', 'monthly', 'board']),
-  classId: z.string().min(1, 'Select a class'),
-  examDate: z.string().optional(),
-  subjects: z.array(z.object({
-    name: z.string().min(1, 'Required'),
-    totalMarks: z.coerce.number().int().min(1, '≥ 1'),
-  })).min(1, 'Add at least one subject'),
+const subjectSchema = z.object({
+  name: z.string().min(1, 'Required'),
+  totalMarks: z.coerce.number().int().min(1, '≥ 1'),
+  notes: z.string().optional(),
 });
+
+const schema = z
+  .object({
+    title: z.string().min(1, 'Required'),
+    type: z.enum(['midterm', 'final', 'unit', 'monthly', 'board']),
+    mode: z.enum(['online', 'physical', 'oral', 'practical', 'project', 'assignment']),
+    classId: z.string().min(1, 'Select a class'),
+    examDate: z.string().optional(),
+    subjects: z.array(subjectSchema).optional(),
+
+    subjectName: z.string().optional(),
+    questionIds: z.array(z.string()).optional(),
+    durationMinutes: z.coerce.number().optional(),
+    windowStart: z.string().optional(),
+    windowEnd: z.string().optional(),
+    shuffleQuestions: z.boolean().optional(),
+    shuffleOptions: z.boolean().optional(),
+    maxAttempts: z.coerce.number().optional(),
+    integrityMode: z.enum(['none', 'flag_only', 'fullscreen_lock']).optional(),
+    autoSubmitOnTimeout: z.boolean().optional(),
+  })
+  .superRefine((d, ctx) => {
+    if (d.mode === 'online') {
+      if (!d.subjectName || !d.subjectName.trim()) {
+        ctx.addIssue({ code: 'custom', path: ['subjectName'], message: 'Subject is required' });
+      }
+      if (!d.questionIds || d.questionIds.length === 0) {
+        ctx.addIssue({ code: 'custom', path: ['questionIds'], message: 'Select at least one question' });
+      }
+      if (!d.durationMinutes || d.durationMinutes <= 0) {
+        ctx.addIssue({ code: 'custom', path: ['durationMinutes'], message: 'Duration must be > 0' });
+      }
+      if (!d.windowStart) {
+        ctx.addIssue({ code: 'custom', path: ['windowStart'], message: 'Start is required' });
+      }
+      if (!d.windowEnd) {
+        ctx.addIssue({ code: 'custom', path: ['windowEnd'], message: 'End is required' });
+      }
+      if (d.windowStart && d.windowEnd && new Date(d.windowEnd) <= new Date(d.windowStart)) {
+        ctx.addIssue({ code: 'custom', path: ['windowEnd'], message: 'End must be after start' });
+      }
+    } else if (!d.subjects || d.subjects.length === 0) {
+      ctx.addIssue({ code: 'custom', path: ['subjects'], message: 'Add at least one subject' });
+    }
+  });
 type ExamForm = z.infer<typeof schema>;
+
+const defaultValues: ExamForm = {
+  title: '',
+  type: 'midterm',
+  mode: 'physical',
+  classId: '',
+  examDate: '',
+  subjects: [{ name: 'Mathematics', totalMarks: 100, notes: '' }],
+  subjectName: '',
+  questionIds: [],
+  durationMinutes: 60,
+  windowStart: '',
+  windowEnd: '',
+  shuffleQuestions: false,
+  shuffleOptions: false,
+  maxAttempts: 1,
+  integrityMode: 'fullscreen_lock',
+  autoSubmitOnTimeout: true,
+};
 
 function CreateExamDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: classesRes } = useGetClassesQuery();
   const classes = classesRes?.data ?? [];
   const [createExam, { isLoading }] = useCreateExamMutation();
 
-  const { register, control, handleSubmit, reset, formState: { errors } } = useForm<ExamForm>({
+  const { register, control, handleSubmit, reset, watch, formState: { errors } } = useForm<ExamForm>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      title: '', type: 'midterm', classId: '', examDate: '',
-      subjects: [{ name: 'Mathematics', totalMarks: 100 }],
-    },
+    defaultValues,
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'subjects' });
+  const mode = watch('mode');
 
   const onSubmit = async (values: ExamForm) => {
     try {
-      await createExam({ ...values, examDate: values.examDate || undefined }).unwrap();
+      if (values.mode === 'online') {
+        await createExam({
+          title: values.title,
+          type: values.type,
+          mode: values.mode,
+          classId: values.classId,
+          examDate: values.examDate || undefined,
+          subjectName: values.subjectName,
+          questionIds: values.questionIds,
+          durationMinutes: values.durationMinutes,
+          windowStart: values.windowStart ? new Date(values.windowStart).toISOString() : undefined,
+          windowEnd: values.windowEnd ? new Date(values.windowEnd).toISOString() : undefined,
+          shuffleQuestions: values.shuffleQuestions,
+          shuffleOptions: values.shuffleOptions,
+          maxAttempts: values.maxAttempts,
+          integrityMode: values.integrityMode,
+          autoSubmitOnTimeout: values.autoSubmitOnTimeout,
+        }).unwrap();
+      } else {
+        await createExam({
+          title: values.title,
+          type: values.type,
+          mode: values.mode,
+          classId: values.classId,
+          examDate: values.examDate || undefined,
+          subjects: (values.subjects ?? []).map((s) => ({
+            name: s.name,
+            totalMarks: s.totalMarks,
+            notes: s.notes || undefined,
+          })),
+        }).unwrap();
+      }
       toast.success('Exam created');
-      reset({ title: '', type: 'midterm', classId: '', examDate: '', subjects: [{ name: 'Mathematics', totalMarks: 100 }] });
+      reset(defaultValues);
       onClose();
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not create exam');
@@ -148,7 +272,7 @@ function CreateExamDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[460px]">
+      <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[520px]">
         <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <h2 className="text-lg font-semibold">Create Exam</h2>
@@ -185,31 +309,55 @@ function CreateExamDrawer({ open, onClose }: { open: boolean; onClose: () => voi
                 {errors.classId && <p className="mt-1 text-xs text-danger">{errors.classId.message}</p>}
               </div>
             </div>
+
+            <div>
+              <Label>Mode</Label>
+              <Controller
+                control={control}
+                name="mode"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger><SelectValue placeholder="Select mode" /></SelectTrigger>
+                    <SelectContent>
+                      {MODES.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
             <div>
               <Label htmlFor="examDate">Exam date (optional)</Label>
               <input id="examDate" type="date" {...register('examDate')} className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
 
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <Label className="mb-0">Subjects</Label>
-                <button type="button" onClick={() => append({ name: '', totalMarks: 100 })} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                  <Plus size={13} /> Add
-                </button>
+            {mode !== 'online' ? (
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <Label className="mb-0">Subjects</Label>
+                  <button type="button" onClick={() => append({ name: '', totalMarks: 100, notes: '' })} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                    <Plus size={13} /> Add
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {fields.map((f, i) => (
+                    <div key={f.id} className="space-y-1.5 rounded-lg border border-border p-2">
+                      <div className="flex items-center gap-2">
+                        <Input placeholder="Subject" className="flex-1" {...register(`subjects.${i}.name` as const)} />
+                        <Input type="number" placeholder="Total" className="w-24" {...register(`subjects.${i}.totalMarks` as const)} />
+                        <button type="button" onClick={() => fields.length > 1 && remove(i)} disabled={fields.length <= 1} aria-label="Remove" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-danger-soft hover:text-danger disabled:opacity-40">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <Input placeholder="Optional — rubric notes, viva topics, practical setup, etc." {...register(`subjects.${i}.notes` as const)} />
+                    </div>
+                  ))}
+                </div>
+                {errors.subjects && <p className="mt-1 text-xs text-danger">{(errors.subjects as any).message || 'Check subjects'}</p>}
               </div>
-              <div className="space-y-2">
-                {fields.map((f, i) => (
-                  <div key={f.id} className="flex items-center gap-2">
-                    <Input placeholder="Subject" className="flex-1" {...register(`subjects.${i}.name` as const)} />
-                    <Input type="number" placeholder="Total" className="w-24" {...register(`subjects.${i}.totalMarks` as const)} />
-                    <button type="button" onClick={() => fields.length > 1 && remove(i)} disabled={fields.length <= 1} aria-label="Remove" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-danger-soft hover:text-danger disabled:opacity-40">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              {errors.subjects && <p className="mt-1 text-xs text-danger">{(errors.subjects as any).message || 'Check subjects'}</p>}
-            </div>
+            ) : (
+              <OnlineExamFields control={control} register={register} errors={errors} />
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
@@ -219,5 +367,139 @@ function CreateExamDrawer({ open, onClose }: { open: boolean; onClose: () => voi
         </form>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function OnlineExamFields({ control, register, errors }: { control: any; register: any; errors: any }) {
+  const [subjectFilter, setSubjectFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const { data: questionsRes, isLoading } = useGetQuestionsQuery({
+    subjectName: subjectFilter || undefined,
+    type: typeFilter === 'all' ? undefined : (typeFilter as any),
+    limit: 100,
+  });
+  const questions = questionsRes?.data ?? [];
+
+  return (
+    <Controller
+      control={control}
+      name="questionIds"
+      render={({ field }) => {
+        const selected: string[] = field.value ?? [];
+        const selectedQuestions = questions.filter((q) => selected.includes(q.id));
+        const totalMarks = selectedQuestions.reduce((s, q) => s + q.marks, 0);
+
+        const toggle = (id: string) => {
+          field.onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+        };
+
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="subjectName">Subject</Label>
+              <Input id="subjectName" placeholder="e.g. Physics" {...register('subjectName')} />
+              {errors.subjectName && <p className="mt-1 text-xs text-danger">{errors.subjectName.message}</p>}
+            </div>
+
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <Label className="mb-0">Questions</Label>
+                <span className="text-xs text-muted-foreground">Selected: {selected.length} · {totalMarks} marks</span>
+              </div>
+              <div className="mb-2 grid grid-cols-2 gap-2">
+                <Input
+                  placeholder="Filter by subject"
+                  value={subjectFilter}
+                  onChange={(e) => setSubjectFilter(e.target.value)}
+                />
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="all">All types</option>
+                  <option value="mcq_single">MCQ (single)</option>
+                  <option value="mcq_multi">MCQ (multi)</option>
+                  <option value="true_false">True / False</option>
+                  <option value="short_answer">Short answer</option>
+                  <option value="essay">Essay</option>
+                  <option value="fill_blank">Fill in the blank</option>
+                  <option value="numeric">Numeric</option>
+                </select>
+              </div>
+              <div className="max-h-56 space-y-1.5 overflow-y-auto rounded-lg border border-border p-2">
+                {isLoading ? (
+                  <p className="p-2 text-xs text-muted-foreground">Loading questions…</p>
+                ) : questions.length === 0 ? (
+                  <p className="p-2 text-xs text-muted-foreground">No questions found in the bank.</p>
+                ) : (
+                  questions.map((q) => (
+                    <label key={q.id} className="flex cursor-pointer items-start gap-2 rounded-md p-1.5 hover:bg-muted">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-input"
+                        checked={selected.includes(q.id)}
+                        onChange={() => toggle(q.id)}
+                      />
+                      <span className="flex-1 truncate text-sm text-foreground" title={q.text}>{q.text}</span>
+                      <Badge variant="outline" className="shrink-0">{q.type.replace('_', ' ')}</Badge>
+                      <span className="shrink-0 text-xs text-muted-foreground">{q.marks} pt</span>
+                    </label>
+                  ))
+                )}
+              </div>
+              {errors.questionIds && <p className="mt-1 text-xs text-danger">{errors.questionIds.message}</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="durationMinutes">Duration (minutes)</Label>
+                <Input id="durationMinutes" type="number" {...register('durationMinutes')} />
+                {errors.durationMinutes && <p className="mt-1 text-xs text-danger">{errors.durationMinutes.message}</p>}
+              </div>
+              <div>
+                <Label htmlFor="maxAttempts">Max attempts</Label>
+                <Input id="maxAttempts" type="number" {...register('maxAttempts')} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="windowStart">Window start</Label>
+                <input id="windowStart" type="datetime-local" {...register('windowStart')} className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                {errors.windowStart && <p className="mt-1 text-xs text-danger">{errors.windowStart.message}</p>}
+              </div>
+              <div>
+                <Label htmlFor="windowEnd">Window end</Label>
+                <input id="windowEnd" type="datetime-local" {...register('windowEnd')} className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                {errors.windowEnd && <p className="mt-1 text-xs text-danger">{errors.windowEnd.message}</p>}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="integrityMode">Integrity mode</Label>
+              <select id="integrityMode" {...register('integrityMode')} className="h-10 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                {INTEGRITY_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input type="checkbox" className="h-4 w-4 rounded border-input" {...register('shuffleQuestions')} />
+                Shuffle questions
+              </label>
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input type="checkbox" className="h-4 w-4 rounded border-input" {...register('shuffleOptions')} />
+                Shuffle options
+              </label>
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input type="checkbox" className="h-4 w-4 rounded border-input" {...register('autoSubmitOnTimeout')} />
+                Auto-submit on timeout
+              </label>
+            </div>
+          </div>
+        );
+      }}
+    />
   );
 }
