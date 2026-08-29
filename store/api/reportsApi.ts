@@ -1,4 +1,5 @@
 import { baseApi } from './baseApi';
+import type { GradingSchemeType } from './gradingSchemesApi';
 
 export interface ReportsData {
   overview: {
@@ -11,7 +12,10 @@ export interface ReportsData {
   attendanceTrend: { label: string; rate: number }[];
   feeCollection: { label: string; amount: number }[];
   studentsByClass: { name: string; value: number }[];
-  gradeDistribution: { name: string; value: number }[];
+  // Segmented by the effective GradingScheme type of the classes behind
+  // each result — see report.service.ts's gradeDistribution(). Only scheme
+  // types that actually have results are present as keys.
+  gradeDistribution: Partial<Record<GradingSchemeType, { name: string; value: number }[]>>;
 }
 
 interface ApiObject<T> { success: boolean; data: T; message: string }
@@ -29,7 +33,10 @@ export const reportsApi = baseApi.injectEndpoints({
       // sure it also invalidates the matching bare tag — see the comments
       // next to those invalidatesTags in attendanceApi/feesApi/examsApi/
       // studentsApi/termsApi.
-      providesTags: ['Students', 'Attendance', 'Fees', 'Exams', 'Results'],
+      // 'Classes' added — gradeDistribution now segments by each class's
+      // effective grading scheme type, so reassigning a class's
+      // gradingSchemeId (ClassesView.tsx) must also refresh this report.
+      providesTags: ['Students', 'Attendance', 'Fees', 'Exams', 'Results', 'Classes'],
     }),
   }),
 });

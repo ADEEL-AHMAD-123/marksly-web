@@ -9,6 +9,16 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { AreaTrendChart, BarsChart, DonutChart } from '@/components/charts/charts';
 import { useGetReportsQuery } from '@/store/api/reportsApi';
 import { formatCurrency } from '@/lib/utils';
+import type { GradingSchemeType } from '@/store/api/gradingSchemesApi';
+
+// Mirrors AcademicYearView.tsx's SCHEME_TYPE_INFO titles so a scheme type is
+// labeled identically everywhere in the product.
+const SCHEME_TYPE_LABEL: Record<GradingSchemeType, string> = {
+  percentage_letter: 'Percentage → Letter',
+  gpa: 'GPA',
+  cambridge: 'Cambridge',
+  pass_fail: 'Pass / Fail',
+};
 
 function Legend({ data }: { data: { name: string; value: number }[] }) {
   return (
@@ -100,22 +110,43 @@ export function ReportsView({ title = 'Reports' }: { title?: string }) {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Grade Distribution</CardTitle>
-            <CardDescription>Across published results</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {gradeDistribution.length ? (
-              <>
-                <DonutChart data={gradeDistribution} />
-                <Legend data={gradeDistribution} />
-              </>
-            ) : (
+        {/* One card per grading scheme type present — grades from different
+            scheme types (e.g. percentage_letter's "A" vs. pass_fail's
+            "Pass") are never meaningful in the same chart, so each type
+            that has results gets its own labeled section. */}
+        {(Object.keys(gradeDistribution) as GradingSchemeType[]).length ? (
+          (Object.keys(gradeDistribution) as GradingSchemeType[]).map((type) => {
+            const data = gradeDistribution[type] ?? [];
+            return (
+              <Card key={type}>
+                <CardHeader>
+                  <CardTitle>Grade Distribution — {SCHEME_TYPE_LABEL[type] ?? type}</CardTitle>
+                  <CardDescription>Across entered results for this grading type</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {data.length ? (
+                    <>
+                      <DonutChart data={data} />
+                      <Legend data={data} />
+                    </>
+                  ) : (
+                    <EmptyState icon={BarChart3} title="No results yet" description="Enter exam results to see grade spread." />
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Grade Distribution</CardTitle>
+              <CardDescription>Across published results</CardDescription>
+            </CardHeader>
+            <CardContent>
               <EmptyState icon={BarChart3} title="No results yet" description="Enter exam results to see grade spread." />
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

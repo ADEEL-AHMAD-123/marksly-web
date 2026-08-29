@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, School, Trash2, X, Users, AlertCircle, Layers, ChevronLeft, ChevronRight, Filter, Pencil, UserCog } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -24,11 +25,15 @@ import {
 } from '@/store/api/classesApi';
 import { useGetUsersQuery } from '@/store/api/usersApi';
 import { useGetActiveTermsQuery, useGetTermsQuery } from '@/store/api/termsApi';
+import { useGetGradingSchemesQuery } from '@/store/api/gradingSchemesApi';
 
 const schema = z.object({
   name: z.string().min(1, 'Class name is required'),
   level: z.coerce.number({ invalid_type_error: 'Level must be a number' }).int().min(0).max(20),
   termId: z.string().min(1, 'Select a term'),
+  // '' means "use institution default" — resolved server-side in
+  // grading-scheme.service.ts's resolveSchemeForClass().
+  gradingSchemeId: z.string().optional(),
   sections: z
     .array(
       z.object({
@@ -65,6 +70,13 @@ export function ClassesView() {
   // back to an unmatched/empty value and zod blocks saving ANY edit.
   const { data: allTermsRes } = useGetTermsQuery();
   const allTerms = allTermsRes?.data ?? [];
+  // Every scheme, of every type, is always selectable here — a class's
+  // grading scheme is deliberately independent of the institution's usual
+  // academicStructure (see class.model.ts's gradingSchemeId comment), so
+  // this must never be filtered by type.
+  const { data: gradingSchemesRes } = useGetGradingSchemesQuery();
+  const gradingSchemes = gradingSchemesRes?.data ?? [];
+  const defaultGradingScheme = gradingSchemes.find((s) => s.isDefault);
   const termOptions = useMemo(() => {
     const options = [...activeTerms];
     if (editing?.termId && !options.some((t) => t.id === editing.termId)) {
@@ -88,23 +100,27 @@ export function ClassesView() {
   const pageSafe = Math.min(page, totalPages);
   const paged = filtered.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
 
+  const [typeLockedError, setTypeLockedError] = useState<string | null>(null);
+
   const { register, control, handleSubmit, reset, formState: { errors } } = useForm<Form>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', level: 1, termId: '', sections: [{ name: 'A', capacity: 40, teacherId: '' }] },
+    defaultValues: { name: '', level: 1, termId: '', gradingSchemeId: '', sections: [{ name: 'A', capacity: 40, teacherId: '' }] },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'sections' });
 
   useEffect(() => {
     if (!open) return;
+    setTypeLockedError(null);
     if (editing) {
       reset({
         name: editing.name,
         level: editing.level,
         termId: editing.termId ?? '',
+        gradingSchemeId: editing.gradingSchemeId ?? '',
         sections: editing.sections.map((s) => ({ id: s.id, name: s.name, capacity: s.capacity ?? 40, teacherId: s.teacherId ?? '' })),
       });
     } else {
-      reset({ name: '', level: 1, termId: activeTerms[0]?.id ?? '', sections: [{ name: 'A', capacity: 40, teacherId: '' }] });
+      reset({ name: '', level: 1, termId: activeTerms[0]?.id ?? '', gradingSchemeId: '', sections: [{ name: 'A', capacity: 40, teacherId: '' }] });
     }
   }, [open, editing, reset, activeTerms]);
 
@@ -118,17 +134,43 @@ export function ClassesView() {
       capacity: s.capacity,
       teacherId: s.teacherId || undefined,
     }));
+    setTypeLockedError(null);
     try {
       if (editing) {
-        await updateClass({ id: editing.id, body: { name: values.name, level: values.level, termId: values.termId, sections } }).unwrap();
+        await updateClass({
+          id: editing.id,
+          body: {
+            name: values.name,
+            level: values.level,
+            termId: values.termId,
+            // '' (the "use institution default" option) is sent as `null`
+            // to explicitly unset any previously-assigned scheme, rather
+            // than being dropped from the body (which would leave it
+            // untouched instead).
+            gradingSchemeId: values.gradingSchemeId ? values.gradingSchemeId : null,
+            sections,
+          },
+        }).unwrap();
         toast.success('Class updated');
       } else {
-        await createClass({ name: values.name, level: values.level, termId: values.termId, sections }).unwrap();
+        await createClass({
+          name: values.name,
+          level: values.level,
+          termId: values.termId,
+          gradingSchemeId: values.gradingSchemeId || undefined,
+          sections,
+        }).unwrap();
         toast.success('Class created');
       }
       setOpen(false);
     } catch (e: any) {
-      toast.error(e?.data?.error?.message || 'Could not save class');
+      if (getErrorCode(e) === 'GRADING_SCHEME_TYPE_LOCKED') {
+        const msg = getErrorMessage(e, 'This class already has recorded results under a different grading type — its scheme type cannot be changed.');
+        setTypeLockedError(msg);
+        toast.error(msg);
+      } else {
+        toast.error(getErrorMessage(e, 'Could not save class'));
+      }
     }
   };
 
@@ -244,6 +286,30 @@ export function ClassesView() {
                   </select>
                   {errors.termId && <p className="mt-1 text-xs text-danger">{errors.termId.message}</p>}
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="gradingSchemeId">Grading scheme</Label>
+                <select
+                  id="gradingSchemeId"
+                  {...register('gradingSchemeId')}
+                  className="h-10 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">
+                    Use institution default{defaultGradingScheme ? ` (${defaultGradingScheme.name})` : ''}
+                  </option>
+                  {gradingSchemes.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Determines how marks are graded for this class — percentage/letter, GPA, Cambridge, or pass/fail.
+                </p>
+                {typeLockedError && (
+                  <p className="mt-1.5 text-xs text-danger">{typeLockedError}</p>
+                )}
               </div>
 
               <div>

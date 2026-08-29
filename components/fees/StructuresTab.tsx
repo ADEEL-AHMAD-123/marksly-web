@@ -136,8 +136,14 @@ function AddStructureDrawer({ open, onClose }: { open: boolean; onClose: () => v
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="academicYear">Academic year</Label>
-                <Input id="academicYear" {...register('academicYear')} />
+                <Label htmlFor="academicYear">Billing period label</Label>
+                <Input id="academicYear" {...register('academicYear')} placeholder="e.g. Fall 2026, or 2025-2026" />
+                {/* Free text on purpose — this is just a label shown on the
+                    structure card, independent of the institution's real
+                    Terms (Academic Years/Semesters/Sessions). It won't
+                    auto-track a term's name, so word it however makes sense
+                    for this fee structure rather than assuming it must
+                    match a term exactly. */}
                 {errors.academicYear && <p className="mt-1 text-xs text-danger">{errors.academicYear.message}</p>}
               </div>
               <div>
