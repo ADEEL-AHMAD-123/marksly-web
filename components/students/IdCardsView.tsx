@@ -2,7 +2,7 @@
 
 import { memo, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import { useGetIdCardsQuery, type IdCard } from '@/store/api/studentsApi';
 import { useTerminology } from '@/lib/terminology';
 import { CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS } from '@/components/shared/idCardPrint';
 import { IdCardCredit } from '@/components/shared/IdCardCredit';
+import { IdCardReadinessBanner } from '@/components/shared/IdCardReadinessBanner';
 
 export function IdCardsView() {
   const { data: classesRes } = useGetClassesQuery();
@@ -74,6 +75,18 @@ export function IdCardsView() {
       ) : students.length === 0 ? (
         <Card className="no-print"><EmptyState icon={IdCardIcon} title="No students" description="This section has no active students." /></Card>
       ) : (
+        <>
+          <IdCardReadinessBanner
+            people={students.map((s) => ({
+              id: s.id,
+              userId: s.userId,
+              name: s.name,
+              profilePhoto: s.profilePhoto,
+              context: [sheet!.className, sheet!.section].filter(Boolean).join(' · ') || undefined,
+            }))}
+            personLabel="student"
+            institutionLogoUrl={sheet!.institution.logoUrl}
+          />
         <div id="id-card-print" className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {students.map((s) => (
             <IdCardItem
@@ -86,6 +99,7 @@ export function IdCardsView() {
             />
           ))}
         </div>
+        </>
       )}
     </div>
   );
@@ -136,7 +150,15 @@ const IdCardItem = memo(function IdCardItem({
                 <Image src={student.profilePhoto} alt="" fill sizes="40px" className="object-cover" unoptimized />
               </div>
             ) : (
-              <Avatar initials={`${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()} size="md" />
+              <div className="relative shrink-0">
+                <Avatar initials={`${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()} size="md" />
+                <span
+                  title="No photo on file"
+                  className="no-print absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-card bg-warning text-warning-foreground"
+                >
+                  <ImageOff size={8} />
+                </span>
+              </div>
             )}
             <div className="min-w-0">
               <p className="truncate text-[13px] font-bold leading-tight text-foreground">{student.name}</p>

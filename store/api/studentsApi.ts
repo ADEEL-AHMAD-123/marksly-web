@@ -123,6 +123,10 @@ export interface CumulativeGpaResult {
 
 export interface IdCard {
   id: string;
+  // The underlying User document's id — needed to call the user-scoped
+  // photo endpoints (POST/DELETE /users/:id/photo), since Student's own
+  // `id` above is a different id entirely.
+  userId: string | null;
   name: string;
   rollNumber: string;
   admissionNumber: string;

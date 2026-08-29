@@ -2,7 +2,7 @@
 
 import { memo, useMemo } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { QRCode } from '@/components/ui/qr-code';
 import { useGetStaffIdCardsQuery, type StaffCardRole, type StaffIdCard } from '@/store/api/usersApi';
 import { CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS } from '@/components/shared/idCardPrint';
 import { IdCardCredit } from '@/components/shared/IdCardCredit';
+import { IdCardReadinessBanner } from '@/components/shared/IdCardReadinessBanner';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
@@ -90,11 +91,24 @@ export function StaffIdCardsView() {
       ) : staff.length === 0 ? (
         <Card className="no-print"><EmptyState icon={IdCardIcon} title="No staff found" description="No active members match this role yet." /></Card>
       ) : (
-        <div id="id-card-print" className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-          {staff.map((s) => (
-            <StaffIdCardItem key={s.id} member={s} institution={sheet!.institution} />
-          ))}
-        </div>
+        <>
+          <IdCardReadinessBanner
+            people={staff.map((s) => ({
+              id: s.id,
+              userId: s.id,
+              name: s.name,
+              profilePhoto: s.profilePhoto,
+              context: ROLE_STYLE[s.role]?.label ?? s.role,
+            }))}
+            personLabel="staff member"
+            institutionLogoUrl={sheet!.institution.logoUrl}
+          />
+          <div id="id-card-print" className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            {staff.map((s) => (
+              <StaffIdCardItem key={s.id} member={s} institution={sheet!.institution} />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -147,7 +161,15 @@ const StaffIdCardItem = memo(function StaffIdCardItem({
                 <Image src={member.profilePhoto} alt="" fill sizes="40px" className="object-cover" unoptimized />
               </div>
             ) : (
-              <Avatar initials={`${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()} size="md" />
+              <div className="relative shrink-0">
+                <Avatar initials={`${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()} size="md" />
+                <span
+                  title="No photo on file"
+                  className="no-print absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-card bg-warning text-warning-foreground"
+                >
+                  <ImageOff size={8} />
+                </span>
+              </div>
             )}
             <div className="min-w-0">
               <p className="truncate text-[13px] font-bold leading-tight text-foreground">{member.name}</p>
