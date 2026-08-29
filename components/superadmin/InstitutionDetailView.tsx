@@ -44,7 +44,22 @@ export function InstitutionDetailView({ id }: { id: string }) {
     if (!window.confirm(
       `Change this institution to the "${planType}" plan?\n\nThis is an administrative override — it takes effect immediately and does NOT record a payment. Use this for comp accounts or deals handled outside Marksly, not as a substitute for the institution actually paying.`
     )) return;
-    try { await update({ id, body: { planType } }).unwrap(); toast.success('Plan updated — no payment was recorded'); }
+    try {
+      const res = await update({ id, body: { planType } }).unwrap();
+      toast.success('Plan updated — no payment was recorded');
+      // Heads-up only (mirrors the self-serve downgrade warning in
+      // BillingView.tsx) — the override already applied immediately above,
+      // this can't block it, it just tells the superadmin the institution
+      // is now over the new plan's student limit so new student creation
+      // will be blocked until resolved.
+      const overStudentLimit = res?.data?.overStudentLimit;
+      if (overStudentLimit) {
+        toast(
+          `Heads up: this institution now has ${overStudentLimit} student${overStudentLimit === 1 ? '' : 's'} over the "${planType}" plan's limit. New student creation will be blocked until resolved.`,
+          { icon: '⚠️', duration: 8000 }
+        );
+      }
+    }
     catch { toast.error('Could not update plan'); }
   };
 

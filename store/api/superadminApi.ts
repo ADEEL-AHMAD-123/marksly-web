@@ -199,7 +199,7 @@ export const superadminApi = baseApi.injectEndpoints({
       },
     }),
     updateInstitution: builder.mutation<
-      ApiObject<unknown>,
+      ApiObject<{ id: string; overStudentLimit: number | null }>,
       { id: string; body: { status?: string; planType?: string } }
     >({
       query: ({ id, body }) => ({ url: `/superadmin/institutions/${id}`, method: 'PATCH', body }),
