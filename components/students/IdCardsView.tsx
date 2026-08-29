@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
@@ -91,7 +91,7 @@ export function IdCardsView() {
   );
 }
 
-function IdCardItem({
+const IdCardItem = memo(function IdCardItem({
   student, institution, className, section, termName,
 }: {
   student: IdCard;
@@ -171,7 +171,7 @@ function IdCardItem({
       </div>
     </div>
   );
-}
+});
 
 function Field({ label, value }: { label: string; value: string }) {
   return (

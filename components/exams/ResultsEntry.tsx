@@ -291,6 +291,39 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
     }
   }, [roster]);
 
+  // Seed any student that appears in a later refetch of the SAME exam but
+  // isn't in local state yet (e.g. a student added to the class after the
+  // roster was first loaded). This must only ADD entries for new students —
+  // it must never touch marks/statuses for students already seeded, or it
+  // would clobber unsaved edits/toggles a teacher has made. Without this,
+  // a newly-appearing student's real `status` from the server is never
+  // picked up and silently defaults to 'final' (see statuses[...] ?? 'final'
+  // below), which could un-withhold a result that should stay pending.
+  useEffect(() => {
+    if (!roster || seededExamIdRef.current !== roster.exam.id) return;
+    const missing = roster.students.filter((s) => !(s.studentId in marks));
+    if (missing.length === 0) return;
+
+    setMarks((prev) => {
+      const next = { ...prev };
+      missing.forEach((s) => {
+        const row: Record<string, string> = {};
+        s.marks.forEach((m) => {
+          row[m.name] = m.obtained === null ? '' : String(m.obtained);
+        });
+        next[s.studentId] = row;
+      });
+      return next;
+    });
+    setStatuses((prev) => {
+      const next = { ...prev };
+      missing.forEach((s) => {
+        next[s.studentId] = s.status === 'pending' ? 'pending' : 'final';
+      });
+      return next;
+    });
+  }, [roster, marks]);
+
   if (isLoading || !roster) {
     return <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>;
   }

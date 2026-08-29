@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import Image from 'next/image';
 import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
@@ -100,7 +100,7 @@ export function StaffIdCardsView() {
   );
 }
 
-function StaffIdCardItem({
+const StaffIdCardItem = memo(function StaffIdCardItem({
   member, institution,
 }: {
   member: StaffIdCard;
@@ -177,7 +177,7 @@ function StaffIdCardItem({
       </div>
     </div>
   );
-}
+});
 
 function Field({ label, value }: { label: string; value: string }) {
   return (

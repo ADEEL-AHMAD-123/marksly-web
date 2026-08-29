@@ -241,6 +241,7 @@ export const studentsApi = baseApi.injectEndpoints({
 
     getIdCards: builder.query<ApiObject<IdCardSheet>, { classId: string; sectionId: string }>({
       query: ({ classId, sectionId }) => `/students/cards?classId=${classId}&sectionId=${sectionId}`,
+      providesTags: [{ type: 'Students', id: 'LIST' }, 'Students'],
     }),
 
     // Matches backend gpa.service.ts's TermGpaResult/CumulativeGpaResult

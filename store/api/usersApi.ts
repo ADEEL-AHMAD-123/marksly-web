@@ -69,6 +69,7 @@ export const usersApi = baseApi.injectEndpoints({
         const role = params?.role;
         return `/users/id-cards${role ? `?role=${role}` : ''}`;
       },
+      providesTags: [{ type: 'Users', id: 'LIST' }],
     }),
     getUsers: builder.query<
       ApiArray<ManagedUser>,

@@ -85,6 +85,9 @@ export function PhotoUpload({ userId, photoUrl, initials, size = 'lg', className
         onDrop={(e) => {
           e.preventDefault();
           setDragOver(false);
+          if (e.dataTransfer.files && e.dataTransfer.files.length > 1) {
+            toast('Only the first file will be used');
+          }
           handleFile(e.dataTransfer.files?.[0]);
         }}
       >

@@ -403,7 +403,7 @@ function AddTeacherDrawer({ open, onClose, editing }: { open: boolean; onClose: 
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
             <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
-            <Button type="submit" loading={isLoading}>Add teacher</Button>
+            <Button type="submit" loading={isLoading}>{isEditing ? 'Save changes' : 'Add teacher'}</Button>
           </div>
         </form>
       </SheetContent>
