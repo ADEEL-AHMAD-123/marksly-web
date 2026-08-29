@@ -32,6 +32,10 @@ export interface StartAttemptResult {
   integrityMode: IntegrityMode;
   questionOrder: number[] | null;
   optionOrders: { questionIndex: number; order: number[] }[] | null;
+  // Backend's own clock at response time — used to compute a clock-skew
+  // offset (serverTime - Date.now()) once, so the countdown timer doesn't
+  // trust a possibly-wrong device clock (see ExamTakingView.tsx).
+  serverTime: string;
 }
 
 export interface AttemptQuestionOption {
@@ -77,6 +81,7 @@ export interface MyAttemptCurrent {
 }
 
 export interface MyAttemptState {
+  serverTime: string;
   exam: MyAttemptExam;
   questions: AttemptQuestion[];
   attempt: MyAttemptCurrent | null;
@@ -227,6 +232,11 @@ export const examAttemptApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { attemptId, examId }) => [
         { type: 'Exams', id: `ATTEMPT-DETAIL-${attemptId}` },
         { type: 'Exams', id: `ATTEMPTS-LIST-${examId}` },
+        // ExamsView.tsx's card grid (getExams, tag {type:'Exams', id:'LIST'})
+        // shows a gradedCount-derived badge — without this, a teacher who
+        // grades a question and navigates back to the exam grid sees a
+        // stale Pending/Graded status until an unrelated refetch happens.
+        { type: 'Exams', id: 'LIST' },
       ],
     }),
     publishAttemptResult: builder.mutation<ApiObject<PublishAttemptResultResponse>, { attemptId: string; examId: string }>({
@@ -234,6 +244,7 @@ export const examAttemptApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { attemptId, examId }) => [
         { type: 'Exams', id: `ATTEMPT-DETAIL-${attemptId}` },
         { type: 'Exams', id: `ATTEMPTS-LIST-${examId}` },
+        { type: 'Exams', id: 'LIST' },
         'Results',
       ],
     }),

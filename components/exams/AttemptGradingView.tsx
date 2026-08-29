@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Save, Send, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
@@ -33,6 +33,9 @@ function QuestionCard({
 }) {
   const [gradeManualAnswer, { isLoading: saving }] = useGradeManualAnswerMutation();
   const [draft, setDraft] = useState(question.awardedMarks != null ? String(question.awardedMarks) : '');
+  // Synchronous guard so two very fast clicks (same event-loop tick, before
+  // React re-renders with the mutation's isLoading flag) can't both fire.
+  const savingRef = useRef(false);
 
   useEffect(() => {
     setDraft(question.awardedMarks != null ? String(question.awardedMarks) : '');
@@ -41,16 +44,20 @@ function QuestionCard({
   const isManual = question.isManuallyGraded;
 
   const saveGrade = async () => {
+    if (savingRef.current) return;
     const marks = Number(draft);
     if (Number.isNaN(marks) || marks < 0 || marks > question.marks) {
       toast.error(`Marks must be between 0 and ${question.marks}`);
       return;
     }
+    savingRef.current = true;
     try {
       await gradeManualAnswer({ attemptId, examId, questionIndex: question.questionIndex, marks }).unwrap();
       toast.success('Grade saved');
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not save grade');
+    } finally {
+      savingRef.current = false;
     }
   };
 
@@ -128,6 +135,7 @@ export function AttemptGradingView({
 }) {
   const { data, isLoading } = useGetAttemptForGradingQuery(attemptId);
   const [publishAttemptResult, { isLoading: publishing }] = usePublishAttemptResultMutation();
+  const publishingRef = useRef(false);
 
   if (isLoading || !data) {
     return <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>;
@@ -138,12 +146,16 @@ export function AttemptGradingView({
   const readyToPublish = allGraded && (attempt.status === 'graded' || attempt.status === 'auto_graded');
 
   const publish = async () => {
+    if (publishingRef.current) return;
+    publishingRef.current = true;
     try {
       await publishAttemptResult({ attemptId, examId }).unwrap();
       toast.success('Result published to student');
       onBack();
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not publish result');
+    } finally {
+      publishingRef.current = false;
     }
   };
 

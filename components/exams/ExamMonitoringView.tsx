@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useRef, useState } from 'react';
 import { ArrowLeft, AlertTriangle, ClipboardCheck, Send } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,7 +47,6 @@ function statusBadge(status: AttemptStatus) {
 
 export function ExamMonitoringView({ examId, onBack }: { examId: string; onBack: () => void }) {
   const { data, isLoading } = useListAttemptsForExamQuery(examId, { pollingInterval: MONITORING_POLL_MS });
-  const [publishAttemptResult, { isLoading: publishing }] = usePublishAttemptResultMutation();
   const [gradingAttemptId, setGradingAttemptId] = useState<string | null>(null);
 
   const roster = data?.data;
@@ -70,15 +69,6 @@ export function ExamMonitoringView({ examId, onBack }: { examId: string; onBack:
   const startedCount = attempts.filter((a) => a.status === 'in_progress').length;
   const submittedCount = attempts.filter((a) => a.status !== 'in_progress').length;
   const flaggedCount = attempts.filter((a) => a.integrityFlagCount > 0).length;
-
-  const publish = async (attemptId: string) => {
-    try {
-      await publishAttemptResult({ attemptId, examId }).unwrap();
-      toast.success('Result published to student');
-    } catch (e: any) {
-      toast.error(e?.data?.error?.message || 'Could not publish result');
-    }
-  };
 
   return (
     <div className="space-y-4">
@@ -124,9 +114,8 @@ export function ExamMonitoringView({ examId, onBack }: { examId: string; onBack:
                   <AttemptRow
                     key={a.attemptId}
                     attempt={a}
-                    publishing={publishing}
+                    examId={examId}
                     onGrade={() => setGradingAttemptId(a.attemptId)}
-                    onPublish={() => publish(a.attemptId)}
                   />
                 ))}
               </TableBody>
@@ -138,20 +127,42 @@ export function ExamMonitoringView({ examId, onBack }: { examId: string; onBack:
   );
 }
 
-function AttemptRow({
-  attempt, publishing, onGrade, onPublish,
+const AttemptRow = memo(function AttemptRow({
+  attempt, examId, onGrade,
 }: {
   attempt: AttemptListItem;
-  publishing: boolean;
+  examId: string;
   onGrade: () => void;
-  onPublish: () => void;
 }) {
+  // Each row owns its own mutation instance — a single shared hook at the
+  // parent level would disable/spin EVERY row's Publish button the moment
+  // any one of them was clicked, since they'd all share the same isLoading
+  // flag.
+  const [publishAttemptResult, { isLoading: publishing }] = usePublishAttemptResultMutation();
+  // Synchronous guard against a double-click landing two requests before
+  // React re-renders with the mutation's isLoading flag — the `disabled`
+  // prop alone depends on a render happening first.
+  const publishingRef = useRef(false);
+
   const canGrade = attempt.status === 'needs_review' || attempt.status === 'graded';
   const canPublish = attempt.status === 'auto_graded' || attempt.status === 'graded';
 
   const flagTitle = attempt.integrityFlags
     .map((f) => `${f.type.replace('_', ' ')} — ${formatDate(f.at)}`)
     .join('\n');
+
+  const onPublish = async () => {
+    if (publishingRef.current) return;
+    publishingRef.current = true;
+    try {
+      await publishAttemptResult({ attemptId: attempt.attemptId, examId }).unwrap();
+      toast.success('Result published to student');
+    } catch (e: any) {
+      toast.error(e?.data?.error?.message || 'Could not publish result');
+    } finally {
+      publishingRef.current = false;
+    }
+  };
 
   return (
     <TableRow>
@@ -186,4 +197,4 @@ function AttemptRow({
       </TableCell>
     </TableRow>
   );
-}
+});

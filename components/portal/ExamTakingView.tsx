@@ -20,18 +20,26 @@ const AUTOSAVE_DELAY_MS = 800;
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
-function useCountdown(deadline: number | null) {
-  const [remainingMs, setRemainingMs] = useState<number | null>(deadline == null ? null : deadline - Date.now());
+// `clockOffsetMs` = serverTime - Date.now(), computed once when the server
+// response arrives — `Date.now() + clockOffsetMs` approximates the SERVER's
+// current time regardless of how wrong the device's own clock is. Without
+// this, a fast client clock would auto-submit early, and a slow one would
+// show a positive countdown even after the server's own deadline has
+// already passed (which the server enforces independently at submit time).
+function useCountdown(deadline: number | null, clockOffsetMs: number) {
+  const now = () => Date.now() + clockOffsetMs;
+  const [remainingMs, setRemainingMs] = useState<number | null>(deadline == null ? null : deadline - now());
 
   useEffect(() => {
     if (deadline == null) {
       setRemainingMs(null);
       return;
     }
-    setRemainingMs(deadline - Date.now());
-    const id = setInterval(() => setRemainingMs(deadline - Date.now()), 1000);
+    setRemainingMs(deadline - now());
+    const id = setInterval(() => setRemainingMs(deadline - now()), 1000);
     return () => clearInterval(id);
-  }, [deadline]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deadline, clockOffsetMs]);
 
   return remainingMs;
 }
@@ -74,6 +82,15 @@ export function ExamTakingView({ examId }: { examId: string }) {
   const saveTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const latestValues = useRef<Record<number, string | string[]>>({});
   const autoSubmitFired = useRef(false);
+  // Serializes autosave requests PER QUESTION — without this, if a save for
+  // question N is already in flight when a newer edit to the SAME question
+  // fires another save, network jitter could let the older request's
+  // response land last and silently overwrite the newer value with no
+  // error. Each entry is a promise chain: a new save for question N always
+  // waits for the previous in-flight save for question N to settle first.
+  const saveChains = useRef<Record<number, Promise<unknown>>>({});
+  const [submitFailed, setSubmitFailed] = useState(false);
+  const submitInFlight = useRef(false);
 
   // Pre-fill answers whenever the server attempt state arrives (initial load
   // / resume-on-refresh — see spec's "Resume" requirement).
@@ -85,6 +102,16 @@ export function ExamTakingView({ examId }: { examId: string }) {
     latestValues.current = { ...prefilled };
   }, [attempt?.id]);
 
+  // Clock-skew offset — computed once per fresh server response (not on
+  // every render), so the countdown ticks off an approximated SERVER clock
+  // rather than trusting the device's own, possibly-wrong, clock.
+  const clockOffsetRef = useRef(0);
+  useEffect(() => {
+    if (state?.serverTime) {
+      clockOffsetRef.current = new Date(state.serverTime).getTime() - Date.now();
+    }
+  }, [state?.serverTime]);
+
   // ─── Timer — computed from the SERVER's startedAt, not a client-local
   // fresh clock, so a resume after refresh keeps counting down correctly. ──
   const deadline = useMemo(() => {
@@ -94,18 +121,37 @@ export function ExamTakingView({ examId }: { examId: string }) {
     return Math.min(byDuration, byWindow);
   }, [attempt, exam]);
 
-  const remainingMs = useCountdown(attempt?.status === 'in_progress' ? deadline : null);
+  const remainingMs = useCountdown(attempt?.status === 'in_progress' ? deadline : null, clockOffsetRef.current);
 
+  // Submits with a few automatic retries on failure — never silently shows
+  // a "completed" screen unless the server actually confirmed the
+  // submission. On repeated failure, keeps the student on the test screen
+  // (fullscreen intact) with a persistent, dismiss-proof retry banner
+  // instead of lying about completion.
   const doSubmit = useCallback(
-    async (autoSubmitted: boolean) => {
+    async (autoSubmitted: boolean, attempts = 0) => {
       if (!attempt) return;
+      if (submitInFlight.current) return;
+      submitInFlight.current = true;
       try {
         await submitAttempt({ attemptId: attempt.id, examId, autoSubmitted }).unwrap();
-      } finally {
+        setSubmitFailed(false);
         if (document.fullscreenElement) {
           document.exitFullscreen().catch(() => {});
         }
         setCompletion({ timedOut: autoSubmitted });
+      } catch {
+        if (attempts < 4) {
+          const delay = Math.min(2000 * 2 ** attempts, 15_000);
+          submitInFlight.current = false;
+          setTimeout(() => doSubmit(autoSubmitted, attempts + 1), delay);
+        } else {
+          // Out of automatic retries — surface a persistent banner with a
+          // manual retry action rather than continuing to fail silently.
+          setSubmitFailed(true);
+        }
+      } finally {
+        submitInFlight.current = false;
       }
     },
     [attempt, examId, submitAttempt]
@@ -123,6 +169,19 @@ export function ExamTakingView({ examId }: { examId: string }) {
     autoSubmitFired.current = true;
     doSubmit(true);
   }, [remainingMs, attempt?.status, doSubmit]);
+
+  // Best-effort warning against losing an unsaved edit by closing the tab —
+  // browsers restrict custom messages, but the native confirmation is still
+  // meaningfully better than silently losing work mid-attempt.
+  useEffect(() => {
+    if (attempt?.status !== 'in_progress') return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [attempt?.status]);
 
   // ─── Integrity tracking ──────────────────────────────────────────────
   const integrityMode = exam?.integrityMode ?? 'none';
@@ -172,28 +231,40 @@ export function ExamTakingView({ examId }: { examId: string }) {
     };
   }, [isInProgress, integrityMode, attemptId, logIntegrityFlag]);
 
-  // ─── Autosave (debounced per-question, retries on failure) ───────────
+  // ─── Autosave (debounced per-question, serialized per-question, retries
+  // on failure) ──────────────────────────────────────────────────────────
   const persistAnswer = useCallback(
     (questionIndex: number, value: string | string[]) => {
       if (!attemptId) return;
       setSaveStatuses((s) => ({ ...s, [questionIndex]: 'saving' }));
-      saveAnswer({ attemptId, questionIndex, response: value })
-        .unwrap()
-        .then(() => {
-          // Only mark "saved" if this is still the latest value for the
-          // question — an even-newer edit already queued its own save.
-          if (latestValues.current[questionIndex] === value) {
-            setSaveStatuses((s) => ({ ...s, [questionIndex]: 'saved' }));
-          }
-        })
-        .catch(() => {
-          setSaveStatuses((s) => ({ ...s, [questionIndex]: 'error' }));
-          // Retry the latest known value for this question — never drops
-          // the student's edit.
-          saveTimers.current[questionIndex] = setTimeout(() => {
-            persistAnswer(questionIndex, latestValues.current[questionIndex]);
-          }, 2000);
-        });
+
+      const run = () =>
+        saveAnswer({ attemptId, questionIndex, response: value })
+          .unwrap()
+          .then(() => {
+            // Only mark "saved" if this is still the latest value for the
+            // question — an even-newer edit already queued its own save.
+            if (latestValues.current[questionIndex] === value) {
+              setSaveStatuses((s) => ({ ...s, [questionIndex]: 'saved' }));
+            }
+          })
+          .catch(() => {
+            setSaveStatuses((s) => ({ ...s, [questionIndex]: 'error' }));
+            // Retry the latest known value for this question — never drops
+            // the student's edit.
+            saveTimers.current[questionIndex] = setTimeout(() => {
+              persistAnswer(questionIndex, latestValues.current[questionIndex]);
+            }, 2000);
+          });
+
+      // Chain onto any still-in-flight save for the SAME question so
+      // requests for one question always land in the order they were
+      // initiated — otherwise network jitter could let an older in-flight
+      // save's response arrive after a newer one, silently overwriting the
+      // newer answer on the server with no error surfaced anywhere.
+      const previous = saveChains.current[questionIndex] ?? Promise.resolve();
+      const chained = previous.then(run, run);
+      saveChains.current[questionIndex] = chained;
     },
     [attemptId, saveAnswer]
   );
@@ -299,6 +370,24 @@ export function ExamTakingView({ examId }: { examId: string }) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      {submitFailed && (
+        <div className="flex flex-col items-center justify-between gap-2 bg-danger px-4 py-2 text-sm text-danger-foreground sm:flex-row">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" /> Couldn&apos;t submit your exam — check your connection and try again. Your answers are safe and still saved.
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-danger-foreground/40 text-danger-foreground hover:bg-danger-foreground/10"
+            onClick={() => {
+              setSubmitFailed(false);
+              doSubmit(autoSubmitFired.current);
+            }}
+          >
+            Retry submit
+          </Button>
+        </div>
+      )}
       {integrityBanner && (
         <div className="flex items-center justify-between gap-3 bg-warning px-4 py-2 text-sm text-warning-foreground">
           <span className="flex items-center gap-2">
@@ -317,12 +406,15 @@ export function ExamTakingView({ examId }: { examId: string }) {
         </div>
         <div className="flex items-center gap-4">
           <div
+            role="timer"
+            aria-live={remainingMs != null && remainingMs < 60_000 ? 'assertive' : 'polite'}
+            aria-label={remainingMs != null ? `${formatDuration(remainingMs)} remaining` : 'Loading time remaining'}
             className={cn(
               'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium tabular-nums',
               remainingMs != null && remainingMs < 60_000 ? 'bg-danger/10 text-danger' : 'bg-muted text-foreground'
             )}
           >
-            <Clock className="h-4 w-4" />
+            <Clock className="h-4 w-4" aria-hidden="true" />
             {remainingMs != null ? formatDuration(remainingMs) : '--:--'}
           </div>
           <Button variant="danger" size="sm" onClick={() => setShowSubmitConfirm(true)}>
@@ -339,6 +431,8 @@ export function ExamTakingView({ examId }: { examId: string }) {
             <button
               key={q.questionIndex}
               onClick={() => setCurrentIdx(i)}
+              aria-current={i === currentIdx ? 'true' : undefined}
+              aria-label={`Question ${i + 1}, ${answered ? 'answered' : 'not answered'}${i === currentIdx ? ', current question' : ''}`}
               className={cn(
                 'flex h-8 w-8 items-center justify-center rounded-md border text-xs font-medium transition-colors',
                 i === currentIdx
