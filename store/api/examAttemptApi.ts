@@ -88,6 +88,87 @@ export interface SubmitAttemptResult {
   totalAwarded: number;
 }
 
+// ─── Teacher/admin monitoring + grading (mirrors exam-attempt.service.ts's
+// listAttemptsForExam / getAttemptForGrading exactly) ────────────────────
+
+export interface IntegrityFlagEntry {
+  type: IntegrityFlagType;
+  at: string;
+}
+
+export interface AttemptListItem {
+  attemptId: string;
+  studentId: string;
+  studentName: string;
+  attemptNumber: number;
+  status: AttemptStatus;
+  startedAt: string;
+  submittedAt: string | null;
+  autoSubmitted: boolean;
+  totalAwarded: number | null;
+  integrityFlagCount: number;
+  integrityFlags: IntegrityFlagEntry[];
+}
+
+export interface AttemptsForExam {
+  exam: { id: string; title: string; subjectName: string | null; mode: ExamMode };
+  attempts: AttemptListItem[];
+}
+
+// Local, since examsApi's ExamMode isn't imported here — mirrors it exactly.
+export type ExamMode = 'online' | 'physical' | 'oral' | 'practical' | 'project' | 'assignment';
+
+export interface GradingQuestionOption {
+  text: string;
+  isCorrect: boolean;
+}
+
+export interface GradingQuestion {
+  questionIndex: number;
+  type: QuestionType;
+  text: string;
+  marks: number;
+  negativeMarks: number;
+  options?: GradingQuestionOption[];
+  correctAnswer: string | null;
+  studentResponse: string | string[] | null;
+  awardedMarks: number | null;
+  isManuallyGraded: boolean;
+}
+
+export interface AttemptGradingDetail {
+  attempt: {
+    id: string;
+    examId: string;
+    studentId: string;
+    studentName: string;
+    attemptNumber: number;
+    status: AttemptStatus;
+    startedAt: string;
+    submittedAt: string | null;
+    autoSubmitted: boolean;
+    totalAwarded: number;
+    integrityFlags: IntegrityFlagEntry[];
+  };
+  exam: { id: string; title: string; subjectName: string | null };
+  questions: GradingQuestion[];
+}
+
+export interface GradeManualAnswerResult {
+  id: string;
+  status: AttemptStatus;
+  totalAwarded: number;
+  gradedByUserId: string;
+}
+
+export interface PublishAttemptResultResponse {
+  id: string;
+  status: AttemptStatus;
+  percentage: number;
+  grade: string;
+  isPassed: boolean;
+}
+
 export const examAttemptApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     myOnlineExams: builder.query<ApiObject<MyOnlineExamItem[]>, void>({
@@ -127,6 +208,35 @@ export const examAttemptApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (_r, _e, { examId }) => [{ type: 'Exams', id: `ATTEMPT-${examId}` }, { type: 'Exams', id: 'ONLINE-MINE' }, 'Results'],
     }),
+
+    // ─── Teacher/admin monitoring + grading ──────────────────────────────
+    listAttemptsForExam: builder.query<ApiObject<AttemptsForExam>, string>({
+      query: (examId) => `/exams/${examId}/attempts`,
+      providesTags: (_r, _e, examId) => [{ type: 'Exams', id: `ATTEMPTS-LIST-${examId}` }],
+    }),
+    getAttemptForGrading: builder.query<ApiObject<AttemptGradingDetail>, string>({
+      query: (attemptId) => `/attempts/${attemptId}/grading-detail`,
+      providesTags: (_r, _e, attemptId) => [{ type: 'Exams', id: `ATTEMPT-DETAIL-${attemptId}` }],
+    }),
+    gradeManualAnswer: builder.mutation<ApiObject<GradeManualAnswerResult>, { attemptId: string; examId: string; questionIndex: number; marks: number }>({
+      query: ({ attemptId, questionIndex, marks }) => ({
+        url: `/attempts/${attemptId}/grade`,
+        method: 'PATCH',
+        body: { questionIndex, marks },
+      }),
+      invalidatesTags: (_r, _e, { attemptId, examId }) => [
+        { type: 'Exams', id: `ATTEMPT-DETAIL-${attemptId}` },
+        { type: 'Exams', id: `ATTEMPTS-LIST-${examId}` },
+      ],
+    }),
+    publishAttemptResult: builder.mutation<ApiObject<PublishAttemptResultResponse>, { attemptId: string; examId: string }>({
+      query: ({ attemptId }) => ({ url: `/attempts/${attemptId}/publish`, method: 'POST' }),
+      invalidatesTags: (_r, _e, { attemptId, examId }) => [
+        { type: 'Exams', id: `ATTEMPT-DETAIL-${attemptId}` },
+        { type: 'Exams', id: `ATTEMPTS-LIST-${examId}` },
+        'Results',
+      ],
+    }),
   }),
 });
 
@@ -137,4 +247,8 @@ export const {
   useSaveAnswerMutation,
   useLogIntegrityFlagMutation,
   useSubmitAttemptMutation,
+  useListAttemptsForExamQuery,
+  useGetAttemptForGradingQuery,
+  useGradeManualAnswerMutation,
+  usePublishAttemptResultMutation,
 } = examAttemptApi;

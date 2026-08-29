@@ -24,6 +24,7 @@ import { useGetTermsQuery } from '@/store/api/termsApi';
 import { useGetQuestionsQuery } from '@/store/api/questionsApi';
 import { formatDate } from '@/lib/utils';
 import { ResultsEntry } from './ResultsEntry';
+import { ExamMonitoringView } from './ExamMonitoringView';
 
 const TYPES: { value: ExamType; label: string }[] = [
   { value: 'midterm', label: 'Mid-term' },
@@ -64,9 +65,14 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
   const terms = termsRes?.data ?? [];
   const [addOpen, setAddOpen] = useState(false);
   const [activeExam, setActiveExam] = useState<string | null>(null);
+  const [monitoringExam, setMonitoringExam] = useState<string | null>(null);
 
   if (activeExam) {
     return <ResultsEntry examId={activeExam} onBack={() => setActiveExam(null)} />;
+  }
+
+  if (monitoringExam) {
+    return <ExamMonitoringView examId={monitoringExam} onBack={() => setMonitoringExam(null)} />;
   }
 
   return (
@@ -126,7 +132,7 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
                   variant="secondary"
                   size="sm"
                   className="mt-4"
-                  onClick={() => toast('Attempt management is coming soon', { icon: 'ℹ️' })}
+                  onClick={() => setMonitoringExam(e.id)}
                 >
                   <Laptop size={15} /> Manage attempts
                 </Button>
