@@ -254,36 +254,31 @@ export function BillingView() {
   const copy = (v: string) => { navigator.clipboard?.writeText(v); toast.success('Copied'); };
 
   const choosePlan = async (planKey: string) => {
-    // Warn BEFORE committing to a downgrade that would leave the
-    // institution over the target plan's student limit — previously this
-    // was only surfaced as a toast AFTER selectPlan() had already scheduled
-    // the change, so the admin had no chance to reconsider first.
+    // Tell the admin up front, before even attempting the request, that
+    // this downgrade won't go through — the backend now hard-blocks it
+    // (selectPlan() throws DOWNGRADE_EXCEEDS_STUDENT_LIMIT) rather than
+    // scheduling it and grandfathering the overage in, since that was the
+    // exact upgrade-then-downgrade loophole this check exists to close. No
+    // "continue anyway" option here — there's nothing to continue into.
     const targetPlan = plans.find((p) => p.key === planKey);
     const activeCount = b?.activeStudentCount ?? 0;
     if (targetPlan && targetPlan.studentsLimit > 0 && activeCount > targetPlan.studentsLimit) {
       const over = activeCount - targetPlan.studentsLimit;
-      const proceed = window.confirm(
-        `You currently have ${activeCount} active students, but ${targetPlan.name} only allows ${targetPlan.studentsLimit}. ` +
-        `Your existing students will stay active, but you won't be able to add ${over} more (or any new ones) until you're back under the limit. Continue anyway?`
+      toast.error(
+        `Can't switch to ${targetPlan.name}: you have ${activeCount} active students, ${over} more than this plan allows. Reduce active students to ${targetPlan.studentsLimit} or fewer first.`,
+        { duration: 7000 }
       );
-      if (!proceed) return;
+      return;
     }
 
     try {
       const res = await selectPlan({ planKey }).unwrap();
-      const { effective, overStudentLimit } = res.data;
+      const { effective } = res.data;
       if (effective === 'pending_payment') {
         toast.success('Plan selected — pay to activate it');
         setStep('payment'); // walk the admin straight to payment
       } else if (effective === 'next_renewal') {
-        if (overStudentLimit) {
-          toast(
-            `Scheduled — but you currently have ${overStudentLimit} more active student${overStudentLimit === 1 ? '' : 's'} than this plan allows. You won't be able to add new students once it takes effect until you're back under the limit.`,
-            { icon: '⚠️', duration: 7000 }
-          );
-        } else {
-          toast.success('Got it — this takes effect at your next renewal, no payment needed now');
-        }
+        toast.success('Got it — this takes effect at your next renewal, no payment needed now');
         setStep('summary');
       } else {
         toast.success('Plan updated');
