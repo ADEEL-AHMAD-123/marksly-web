@@ -18,7 +18,7 @@ import {
 
 const AUTOSAVE_DELAY_MS = 800;
 
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'closed';
 
 // `clockOffsetMs` = serverTime - Date.now(), computed once when the server
 // response arrives — `Date.now() + clockOffsetMs` approximates the SERVER's
@@ -248,7 +248,17 @@ export function ExamTakingView({ examId }: { examId: string }) {
               setSaveStatuses((s) => ({ ...s, [questionIndex]: 'saved' }));
             }
           })
-          .catch(() => {
+          .catch((e: any) => {
+            // ATTEMPT_WINDOW_CLOSED is permanent — the exam window has
+            // passed server-side, so retrying will never succeed and doing
+            // so anyway hammers the server forever while telling the
+            // student "retrying" as if it eventually will. Surface it as a
+            // distinct terminal state instead of the generic transient
+            // "error" one.
+            if (e?.data?.error?.code === 'ATTEMPT_WINDOW_CLOSED') {
+              setSaveStatuses((s) => ({ ...s, [questionIndex]: 'closed' }));
+              return;
+            }
             setSaveStatuses((s) => ({ ...s, [questionIndex]: 'error' }));
             // Retry the latest known value for this question — never drops
             // the student's edit.
@@ -545,6 +555,7 @@ function SaveIndicator({ status }: { status: SaveStatus }) {
   if (status === 'idle') return null;
   if (status === 'saving') return <span className="shrink-0 text-xs text-muted-foreground">Saving…</span>;
   if (status === 'error') return <span className="shrink-0 text-xs text-danger">Save failed — retrying</span>;
+  if (status === 'closed') return <span className="shrink-0 text-xs font-medium text-danger">Not saved — exam window closed</span>;
   return (
     <span className="flex shrink-0 items-center gap-1 text-xs text-success">
       <CheckCircle2 className="h-3.5 w-3.5" /> Saved
