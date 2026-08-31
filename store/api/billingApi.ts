@@ -26,6 +26,10 @@ export interface MyBilling {
   // a superadmin granted it directly with no payment collected. Null only
   // for very old institutions predating this tracking (no audit entry).
   planSource: 'payment' | 'self_serve_free' | 'scheduled_downgrade' | 'admin_override' | 'unknown' | null;
+  // Lets the plan picker warn BEFORE a downgrade is submitted if it would
+  // put the institution over the target plan's studentsLimit — compare
+  // against each BillingPlan's studentsLimit client-side.
+  activeStudentCount: number;
   // Set only when a different plan has been selected but not yet paid for —
   // `plan` always reflects what's actually active/entitled right now.
   pendingPlan: string | null;

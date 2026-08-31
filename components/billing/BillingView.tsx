@@ -254,6 +254,21 @@ export function BillingView() {
   const copy = (v: string) => { navigator.clipboard?.writeText(v); toast.success('Copied'); };
 
   const choosePlan = async (planKey: string) => {
+    // Warn BEFORE committing to a downgrade that would leave the
+    // institution over the target plan's student limit — previously this
+    // was only surfaced as a toast AFTER selectPlan() had already scheduled
+    // the change, so the admin had no chance to reconsider first.
+    const targetPlan = plans.find((p) => p.key === planKey);
+    const activeCount = b?.activeStudentCount ?? 0;
+    if (targetPlan && targetPlan.studentsLimit > 0 && activeCount > targetPlan.studentsLimit) {
+      const over = activeCount - targetPlan.studentsLimit;
+      const proceed = window.confirm(
+        `You currently have ${activeCount} active students, but ${targetPlan.name} only allows ${targetPlan.studentsLimit}. ` +
+        `Your existing students will stay active, but you won't be able to add ${over} more (or any new ones) until you're back under the limit. Continue anyway?`
+      );
+      if (!proceed) return;
+    }
+
     try {
       const res = await selectPlan({ planKey }).unwrap();
       const { effective, overStudentLimit } = res.data;
