@@ -14,6 +14,12 @@ export interface BillingPayment {
   // A chargeback was reported for this payment — separate from `status`,
   // since a dispute doesn't automatically mean the money was reversed.
   disputed?: boolean;
+  // 'plan' covers every pre-existing/subscription payment; 'whatsapp_credits'
+  // is a one-off credit-pack top-up, unrelated to the subscription cycle.
+  purpose?: 'plan' | 'whatsapp_credits';
+  // Ready-to-render label distinguishing the two — always render this
+  // instead of assuming every row is a generic subscription charge.
+  description?: string;
 }
 
 export interface MyBilling {
@@ -76,7 +82,12 @@ export interface BillingPlan {
 export interface PendingPayment {
   institutionId: string;
   institutionName: string;
-  planType: string;
+  // Null for a WhatsApp credit-pack payment — that purchase has nothing to
+  // do with which plan tier the institution is currently on, unlike a real
+  // plan payment. Fall back to `description` when this is null.
+  planType: string | null;
+  purpose?: 'plan' | 'whatsapp_credits';
+  description?: string;
   paymentId: string;
   amount: number;
   gateway: string;
@@ -87,6 +98,8 @@ export interface PendingPayment {
 export interface DisputedPayment {
   institutionId: string;
   institutionName: string;
+  purpose?: 'plan' | 'whatsapp_credits';
+  description?: string;
   paymentId: string;
   amount: number;
   gateway: string;

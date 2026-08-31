@@ -205,7 +205,7 @@ export function PendingPaymentsView() {
                 {rows.map((r) => (
                   <TableRow key={r.paymentId}>
                     <TableCell className="font-medium text-foreground">{r.institutionName}</TableCell>
-                    <TableCell className="capitalize text-muted-foreground">{r.planType}</TableCell>
+                    <TableCell className="capitalize text-muted-foreground">{r.planType ?? r.description ?? '—'}</TableCell>
                     <TableCell className="font-medium text-foreground">{formatCurrency(r.amount)}</TableCell>
                     <TableCell><Badge variant="neutral" className="capitalize">{r.gateway}</Badge></TableCell>
                     <TableCell className="max-w-[160px] truncate text-muted-foreground" title={r.reference ?? ''}>{r.reference ?? '—'}</TableCell>

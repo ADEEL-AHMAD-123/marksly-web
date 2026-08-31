@@ -218,6 +218,7 @@ export function SummaryStep({
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
                       <TableHead>Date & time</TableHead>
+                      <TableHead>Item</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Method</TableHead>
                       <TableHead>Reference</TableHead>
@@ -230,6 +231,7 @@ export function SummaryStep({
                       return (
                         <TableRow key={p.id ?? i}>
                           <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(p.paidAt ?? p.createdAt)}</TableCell>
+                          <TableCell className="text-muted-foreground">{p.description ?? 'Subscription payment'}</TableCell>
                           <TableCell className="font-medium text-foreground">{formatCurrency(p.amount)}</TableCell>
                           <TableCell className="capitalize text-muted-foreground">{p.gateway}</TableCell>
                           <TableCell className="max-w-[160px] truncate text-muted-foreground" title={p.reference ?? ''}>{p.reference ?? '—'}</TableCell>
