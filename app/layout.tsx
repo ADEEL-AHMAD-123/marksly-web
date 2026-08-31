@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import { Providers } from './providers';
 import { ThemeScript } from '@/components/theme/ThemeScript';
 import 'react-phone-number-input/style.css';
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
         <Providers>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );
