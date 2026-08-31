@@ -27,6 +27,14 @@ export interface SendResult {
   results: { to: string; status: string; error?: string }[];
 }
 
+export interface WhatsappCredits {
+  bundleAllowance: number;
+  bundleUsed: number;
+  bundleRemaining: number;
+  purchasedBalance: number;
+  totalAvailable: number;
+}
+
 interface ApiList<T> { success: boolean; data: T[]; message: string; meta?: any }
 interface ApiObject<T> { success: boolean; data: T; message: string }
 
@@ -48,7 +56,14 @@ export const messagingApi = baseApi.injectEndpoints({
     }),
     sendMessage: builder.mutation<ApiObject<SendResult>, { channel: Channel; recipients: string[]; message: string }>({
       query: (body) => ({ url: '/messaging/send', method: 'POST', body }),
-      invalidatesTags: [{ type: 'Messaging', id: 'LOG' }],
+      // A send can consume WhatsApp credits — refresh the balance alongside
+      // the log so the meter shown in MessagingView never lags behind an
+      // actual successful send.
+      invalidatesTags: [{ type: 'Messaging', id: 'LOG' }, { type: 'Messaging', id: 'WHATSAPP_CREDITS' }],
+    }),
+    getWhatsappCredits: builder.query<ApiObject<WhatsappCredits>, void>({
+      query: () => '/notifications/whatsapp-credits',
+      providesTags: [{ type: 'Messaging', id: 'WHATSAPP_CREDITS' }],
     }),
   }),
 });
@@ -57,4 +72,5 @@ export const {
   useGetMessagingStatusQuery,
   useGetMessageLogQuery,
   useSendMessageMutation,
+  useGetWhatsappCreditsQuery,
 } = messagingApi;

@@ -158,6 +158,15 @@ export const billingApi = baseApi.injectEndpoints({
       query: ({ gateway, gatewayTxnId }) => ({ url: `/billing/verify?gateway=${gateway}&gatewayTxnId=${encodeURIComponent(gatewayTxnId)}` }),
       invalidatesTags: [{ type: 'Billing', id: 'ME' }],
     }),
+    // WhatsApp credit pack purchase — same "settled vs redirectUrl" shape as
+    // the plan checkout above, follow the exact same never-assume-success
+    // handling on the caller side. Fixed pack only (Rs 1,000 / 500 credits),
+    // no catalog to fetch. Invalidates the credits balance query that lives
+    // in messagingApi (shared 'Messaging' tag type registered in baseApi).
+    whatsappCreditsCheckout: builder.mutation<ApiObject<{ settled: boolean; gateway: string; reference: string; redirectUrl?: string | null; gatewayTxnId?: string | null }>, { gateway: Gateway }>({
+      query: (body) => ({ url: '/billing/whatsapp-credits/checkout', method: 'POST', body }),
+      invalidatesTags: [{ type: 'Messaging', id: 'WHATSAPP_CREDITS' }],
+    }),
     submitBankTransfer: builder.mutation<ApiObject<{ ok: boolean }>, { reference: string; amount?: number }>({
       query: (body) => ({ url: '/billing/bank-transfer', method: 'POST', body }),
       invalidatesTags: [{ type: 'Billing', id: 'ME' }],
@@ -263,6 +272,7 @@ export const {
   useSelectPlanMutation,
   useRequestCustomPlanMutation,
   useBillingCheckoutMutation,
+  useWhatsappCreditsCheckoutMutation,
   useVerifyPaymentMutation,
   useSubmitBankTransferMutation,
   useStartAutoRenewMutation,
