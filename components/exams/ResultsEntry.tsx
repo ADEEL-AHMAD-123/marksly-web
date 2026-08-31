@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Send, Save, CheckCircle2, AlertTriangle, Clock, PauseCircle, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Send, Save, CheckCircle2, AlertTriangle, Clock, PauseCircle, PlayCircle, Paperclip } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import {
   useSetOfficialGradeMutation,
   type ExamGradingScheme,
 } from '@/store/api/examsApi';
+import { formatDate } from '@/lib/utils';
 
 /**
  * Mirrors backend grading-scheme.model.ts's computeGradeFromConfig() —
@@ -97,6 +98,9 @@ function computeGrade(scheme: ExamGradingScheme | null, percentage: number): Gra
 
 type MarksState = Record<string, Record<string, string>>; // studentId -> subject -> value
 type StatusState = Record<string, 'final' | 'pending'>;
+type AttachmentsState = Record<string, Record<string, string>>; // studentId -> subject -> url
+// studentId -> subject -> { gradedAt, attachmentUrl } as last seen from the server
+type AuditState = Record<string, Record<string, { gradedAt: string | null; attachmentUrl: string | null }>>;
 
 function GradeCell({
   scheme,
@@ -238,6 +242,9 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
   const [setOfficialGrade] = useSetOfficialGradeMutation();
   const [marks, setMarks] = useState<MarksState>({});
   const [statuses, setStatuses] = useState<StatusState>({});
+  const [attachments, setAttachments] = useState<AttachmentsState>({});
+  const [audit, setAudit] = useState<AuditState>({});
+  const [openAttachmentFor, setOpenAttachmentFor] = useState<string | null>(null); // `${studentId}:${subject}`
 
   const roster = data?.data;
 
@@ -278,15 +285,23 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
     if (roster && seededExamIdRef.current !== roster.exam.id) {
       const seed: MarksState = {};
       const seedStatus: StatusState = {};
+      const seedAttachments: AttachmentsState = {};
+      const seedAudit: AuditState = {};
       roster.students.forEach((s) => {
         seed[s.studentId] = {};
+        seedAttachments[s.studentId] = {};
+        seedAudit[s.studentId] = {};
         s.marks.forEach((m) => {
           seed[s.studentId][m.name] = m.obtained === null ? '' : String(m.obtained);
+          seedAttachments[s.studentId][m.name] = m.attachmentUrl ?? '';
+          seedAudit[s.studentId][m.name] = { gradedAt: m.gradedAt ?? null, attachmentUrl: m.attachmentUrl ?? null };
         });
         seedStatus[s.studentId] = s.status === 'pending' ? 'pending' : 'final';
       });
       setMarks(seed);
       setStatuses(seedStatus);
+      setAttachments(seedAttachments);
+      setAudit(seedAudit);
       seededExamIdRef.current = roster.exam.id;
     }
   }, [roster]);
@@ -322,6 +337,28 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
       });
       return next;
     });
+    setAttachments((prev) => {
+      const next = { ...prev };
+      missing.forEach((s) => {
+        const row: Record<string, string> = {};
+        s.marks.forEach((m) => {
+          row[m.name] = m.attachmentUrl ?? '';
+        });
+        next[s.studentId] = row;
+      });
+      return next;
+    });
+    setAudit((prev) => {
+      const next = { ...prev };
+      missing.forEach((s) => {
+        const row: Record<string, { gradedAt: string | null; attachmentUrl: string | null }> = {};
+        s.marks.forEach((m) => {
+          row[m.name] = { gradedAt: m.gradedAt ?? null, attachmentUrl: m.attachmentUrl ?? null };
+        });
+        next[s.studentId] = row;
+      });
+      return next;
+    });
   }, [roster, marks]);
 
   if (isLoading || !roster) {
@@ -335,6 +372,10 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
     let v = value.replace(/[^0-9.]/g, '');
     if (v !== '' && Number(v) > max) v = String(max);
     setMarks((prev) => ({ ...prev, [studentId]: { ...prev[studentId], [subject]: v } }));
+  };
+
+  const setAttachment = (studentId: string, subject: string, value: string) => {
+    setAttachments((prev) => ({ ...prev, [studentId]: { ...prev[studentId], [subject]: value } }));
   };
 
   const togglePending = (studentId: string) => {
@@ -358,10 +399,14 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
   const save = async () => {
     const records = students.map((s) => ({
       studentId: s.studentId,
-      marks: exam.subjects.map((sub) => ({
-        name: sub.name,
-        obtained: Number(marks[s.studentId]?.[sub.name]) || 0,
-      })),
+      marks: exam.subjects.map((sub) => {
+        const url = attachments[s.studentId]?.[sub.name]?.trim();
+        return {
+          name: sub.name,
+          obtained: Number(marks[s.studentId]?.[sub.name]) || 0,
+          ...(url ? { attachmentUrl: url } : {}),
+        };
+      }),
       status: statuses[s.studentId] ?? 'final',
     }));
     try {
@@ -453,16 +498,50 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
                         </Badge>
                       )}
                     </TableCell>
-                    {exam.subjects.map((sub) => (
-                      <TableCell key={sub.name} className="text-center">
-                        <input
-                          inputMode="numeric"
-                          value={marks[s.studentId]?.[sub.name] ?? ''}
-                          onChange={(e) => setMark(s.studentId, sub.name, e.target.value, sub.totalMarks)}
-                          className="h-9 w-16 rounded-lg border border-input bg-card text-center text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        />
-                      </TableCell>
-                    ))}
+                    {exam.subjects.map((sub) => {
+                      const cellKey = `${s.studentId}:${sub.name}`;
+                      const attachmentValue = attachments[s.studentId]?.[sub.name] ?? '';
+                      const auditEntry = audit[s.studentId]?.[sub.name];
+                      return (
+                        <TableCell key={sub.name} className="text-center align-top">
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="flex items-center gap-1">
+                              <input
+                                inputMode="numeric"
+                                value={marks[s.studentId]?.[sub.name] ?? ''}
+                                onChange={(e) => setMark(s.studentId, sub.name, e.target.value, sub.totalMarks)}
+                                className="h-9 w-16 rounded-lg border border-input bg-card text-center text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setOpenAttachmentFor(openAttachmentFor === cellKey ? null : cellKey)}
+                                title={attachmentValue ? 'Attachment linked' : 'Add attachment URL'}
+                                className={cn(
+                                  'flex h-9 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground',
+                                  attachmentValue && 'text-primary'
+                                )}
+                              >
+                                <Paperclip size={14} />
+                              </button>
+                            </div>
+                            {openAttachmentFor === cellKey && (
+                              <input
+                                type="url"
+                                placeholder="Attachment URL"
+                                value={attachmentValue}
+                                onChange={(e) => setAttachment(s.studentId, sub.name, e.target.value)}
+                                className="h-8 w-40 rounded-lg border border-input bg-card px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              />
+                            )}
+                            {auditEntry?.gradedAt && (
+                              <p className="text-[10px] leading-tight text-muted-foreground">
+                                Graded {formatDate(auditEntry.gradedAt)}
+                              </p>
+                            )}
+                          </div>
+                        </TableCell>
+                      );
+                    })}
                     <TableCell className="text-center font-medium text-foreground">{total}</TableCell>
                     <TableCell className="text-center text-muted-foreground">{pct}%</TableCell>
                     <TableCell className="text-center">

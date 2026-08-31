@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useRef, useState } from 'react';
-import { ArrowLeft, AlertTriangle, ClipboardCheck, Send } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, ClipboardCheck, Send, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import {
   type AttemptListItem,
   type AttemptStatus,
 } from '@/store/api/examAttemptApi';
+import { useGetExamAnalysisQuery } from '@/store/api/examsApi';
 import { AttemptGradingView } from './AttemptGradingView';
 import toast from 'react-hot-toast';
 
@@ -90,6 +91,8 @@ export function ExamMonitoringView({ examId, onBack }: { examId: string; onBack:
           {flaggedCount > 0 && <Badge variant="danger"><AlertTriangle size={11} /> {flaggedCount} flagged</Badge>}
         </div>
       </div>
+
+      <ExamAnalysisCard examId={examId} />
 
       {attempts.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">
@@ -198,3 +201,77 @@ const AttemptRow = memo(function AttemptRow({
     </TableRow>
   );
 });
+
+// Class-average / item-analysis summary — fetched separately from the
+// attempts roster so a slow aggregation query never blocks the roster table
+// from rendering. Silently renders nothing on error/empty (e.g. no
+// submissions yet) rather than showing a scary error card on a routine view.
+function ExamAnalysisCard({ examId }: { examId: string }) {
+  const { data, isLoading } = useGetExamAnalysisQuery(examId);
+  const [expanded, setExpanded] = useState(false);
+  const analysis = data?.data;
+
+  if (isLoading) {
+    return <Card className="p-4"><Skeleton className="h-16 w-full" /></Card>;
+  }
+  if (!analysis || analysis.totalAttempts === 0) {
+    return null;
+  }
+
+  const { overall, perQuestion } = analysis;
+
+  return (
+    <Card className="p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <BarChart3 size={16} /> Class analysis
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <Badge variant="neutral">{analysis.totalAttempts} submitted</Badge>
+          <Badge variant="primary">Avg {overall.average}</Badge>
+          <Badge variant="outline">Median {overall.median}</Badge>
+          <Badge variant="success">High {overall.highest}</Badge>
+          <Badge variant="danger">Low {overall.lowest}</Badge>
+        </div>
+      </div>
+
+      {perQuestion.length > 0 && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            {expanded ? 'Hide per-question breakdown' : 'Show per-question breakdown'}
+          </button>
+
+          {expanded && (
+            <div className="mt-2 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Question</TableHead>
+                    <TableHead className="text-center">Answered</TableHead>
+                    <TableHead className="text-center">Full marks %</TableHead>
+                    <TableHead className="text-center">Zero %</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {perQuestion.map((q) => (
+                    <TableRow key={q.questionIndex}>
+                      <TableCell>Q{q.questionIndex + 1}</TableCell>
+                      <TableCell className="text-center">{q.totalAnswered}</TableCell>
+                      <TableCell className="text-center">{q.fullMarksPercent}%</TableCell>
+                      <TableCell className="text-center">{q.zeroPercent}%</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}

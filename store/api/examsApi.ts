@@ -44,11 +44,23 @@ export interface ExamSubject {
   notes?: string;
 }
 
+export interface RosterMark {
+  name: string;
+  obtained: number | null;
+  // Populated automatically by the backend when a mark is saved (see
+  // result.model.ts's ISubjectMark) — the roster endpoint doesn't resolve
+  // gradedBy to a name today, so treat it as an opaque id (or absent) and
+  // never render it raw; gradedAt/attachmentUrl are safe to show directly.
+  gradedBy?: string | null;
+  gradedAt?: string | null;
+  attachmentUrl?: string | null;
+}
+
 export interface RosterStudentResult {
   studentId: string;
   name: string;
   rollNumber: string;
-  marks: { name: string; obtained: number | null }[];
+  marks: RosterMark[];
   totalObtained: number | null;
   percentage: number | null;
   // Under a cambridge scheme this is the PREDICTED grade only.
@@ -104,13 +116,78 @@ export interface CreateExamBody {
 
 export interface SaveResultsBody {
   examId: string;
-  records: { studentId: string; marks: { name: string; obtained: number }[]; status?: 'final' | 'pending' }[];
+  records: {
+    studentId: string;
+    marks: { name: string; obtained: number; attachmentUrl?: string }[];
+    status?: 'final' | 'pending';
+  }[];
 }
 
 export interface SetOfficialGradeBody {
   resultId: string;
   officialGrade: string;
   keepPending?: boolean;
+}
+
+// Partial edit — see exam.validator.ts's updateExamSchema. Every field is
+// optional; the online-mode "live exam" fields (questionIds/durationMinutes/
+// windowStart/windowEnd) are only guarded against in-progress attempts when
+// the exam's mode is 'online' — backend returns 409 EXAM_HAS_ACTIVE_ATTEMPTS
+// in that case.
+export interface UpdateExamBody {
+  title?: string;
+  academicYear?: string;
+  examDate?: string;
+  passingPercentage?: number;
+  subjects?: { name: string; totalMarks: number; passingMarks?: number; notes?: string }[];
+  questionIds?: string[];
+  durationMinutes?: number;
+  windowStart?: string;
+  windowEnd?: string;
+}
+
+// Same sanitized shape as getMyAttemptState's `questions` — no
+// isCorrect/correctAnswer — but no ExamAttempt is created and it works
+// regardless of windowStart/windowEnd (see exam-attempt.service.ts's
+// previewExam()).
+export interface ExamPreview {
+  exam: {
+    id: string;
+    title: string;
+    subjectName: string | null;
+    durationMinutes: number;
+    windowStart: string | null;
+    windowEnd: string | null;
+    integrityMode: IntegrityMode;
+    maxAttempts: number;
+  };
+  questions: {
+    questionIndex: number;
+    type: string;
+    text: string;
+    marks: number;
+    negativeMarks: number;
+    options?: { optionIndex: number; text: string }[];
+  }[];
+}
+
+// Mirrors exam-attempt.service.ts's getExamAnalysis() return shape exactly
+// — field names verified against the backend source, do not rename.
+export interface ExamAnalysis {
+  exam: { id: string; title: string; subjectName: string | null };
+  totalAttempts: number;
+  overall: {
+    average: number;
+    median: number;
+    highest: number;
+    lowest: number;
+  };
+  perQuestion: {
+    questionIndex: number;
+    totalAnswered: number;
+    fullMarksPercent: number;
+    zeroPercent: number;
+  }[];
 }
 
 export const examsApi = baseApi.injectEndpoints({
@@ -174,6 +251,29 @@ export const examsApi = baseApi.injectEndpoints({
       // slightly broader than necessary but this is a low-frequency admin action.
       invalidatesTags: ['Results'],
     }),
+    updateExam: builder.mutation<ApiObject<unknown>, { examId: string; body: UpdateExamBody }>({
+      query: ({ examId, body }) => ({ url: `/exams/${examId}`, method: 'PATCH', body }),
+      invalidatesTags: (_r, _e, { examId }) => [
+        { type: 'Exams', id: 'LIST' },
+        { type: 'Exams', id: `ATTEMPT-${examId}` },
+        { type: 'Results', id: examId },
+        'Exams',
+      ],
+    }),
+    deleteExam: builder.mutation<ApiObject<{ id: string; deleted: boolean }>, string>({
+      query: (examId) => ({ url: `/exams/${examId}`, method: 'DELETE' }),
+      invalidatesTags: [{ type: 'Exams', id: 'LIST' }, 'Exams'],
+    }),
+    // Teacher/admin "preview as student" — no ExamAttempt is created.
+    previewExam: builder.query<ApiObject<ExamPreview>, string>({
+      query: (examId) => `/exams/${examId}/preview`,
+      providesTags: (_r, _e, examId) => [{ type: 'Exams', id: `PREVIEW-${examId}` }],
+    }),
+    // Item-analysis / class-average aggregation for one online exam.
+    getExamAnalysis: builder.query<ApiObject<ExamAnalysis>, string>({
+      query: (examId) => `/exams/${examId}/analysis`,
+      providesTags: (_r, _e, examId) => [{ type: 'Exams', id: `ANALYSIS-${examId}` }],
+    }),
   }),
 });
 
@@ -184,4 +284,8 @@ export const {
   useSaveExamResultsMutation,
   usePublishExamMutation,
   useSetOfficialGradeMutation,
+  useUpdateExamMutation,
+  useDeleteExamMutation,
+  usePreviewExamQuery,
+  useGetExamAnalysisQuery,
 } = examsApi;

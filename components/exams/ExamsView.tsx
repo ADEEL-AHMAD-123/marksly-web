@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, X, FileText, ClipboardList, Laptop } from 'lucide-react';
+import { Plus, Trash2, X, FileText, ClipboardList, Laptop, Eye, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { useGetClassesQuery } from '@/store/api/classesApi';
-import { useGetExamsQuery, useCreateExamMutation, type ExamType, type ExamMode, type IntegrityMode } from '@/store/api/examsApi';
+import { useGetExamsQuery, useCreateExamMutation, usePreviewExamQuery, type ExamType, type ExamMode, type IntegrityMode } from '@/store/api/examsApi';
 import { useGetTermsQuery } from '@/store/api/termsApi';
 import { useGetQuestionsQuery } from '@/store/api/questionsApi';
 import { formatDate } from '@/lib/utils';
@@ -66,6 +66,7 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
   const [addOpen, setAddOpen] = useState(false);
   const [activeExam, setActiveExam] = useState<string | null>(null);
   const [monitoringExam, setMonitoringExam] = useState<string | null>(null);
+  const [previewExamId, setPreviewExamId] = useState<string | null>(null);
 
   if (activeExam) {
     return <ResultsEntry examId={activeExam} onBack={() => setActiveExam(null)} />;
@@ -128,14 +129,24 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
                 {e.examDate && <span className="block">{formatDate(e.examDate)}</span>}
               </div>
               {e.mode === 'online' ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="mt-4"
-                  onClick={() => setMonitoringExam(e.id)}
-                >
-                  <Laptop size={15} /> Manage attempts
-                </Button>
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setMonitoringExam(e.id)}
+                  >
+                    <Laptop size={15} /> Manage attempts
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-label="Preview exam as student"
+                    onClick={() => setPreviewExamId(e.id)}
+                  >
+                    <Eye size={15} />
+                  </Button>
+                </div>
               ) : (
                 <Button variant="secondary" size="sm" className="mt-4" onClick={() => setActiveExam(e.id)}>
                   <ClipboardList size={15} /> Enter results
@@ -147,6 +158,83 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
       )}
 
       <CreateExamDrawer open={addOpen} onClose={() => setAddOpen(false)} />
+      {previewExamId && (
+        <ExamPreviewModal examId={previewExamId} onClose={() => setPreviewExamId(null)} />
+      )}
+    </div>
+  );
+}
+
+/** Read-only "preview as student" — reuses previewExam's sanitized question
+ *  shape (no isCorrect/correctAnswer). Deliberately a lightweight standalone
+ *  modal rather than reusing ExamTakingView's full stateful engine (timer,
+ *  autosave, integrity tracking, submit) — none of that applies to a
+ *  no-attempt preview, and forcing it through that component would mean
+ *  threading a bunch of "is this a preview" branches through timer/autosave
+ *  logic that a real student attempt depends on. */
+function ExamPreviewModal({ examId, onClose }: { examId: string; onClose: () => void }) {
+  const { data, isLoading, isError } = usePreviewExamQuery(examId);
+  const preview = data?.data;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+      <Card className="flex max-h-[85vh] w-full max-w-2xl flex-col">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">
+              {preview ? preview.exam.title : 'Exam preview'}
+            </h2>
+            {preview?.exam.subjectName && (
+              <p className="text-xs text-muted-foreground">{preview.exam.subjectName}</p>
+            )}
+          </div>
+          <button onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Close preview">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : isError || !preview ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">Could not load exam preview.</p>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Duration: {preview.exam.durationMinutes} min · Max attempts: {preview.exam.maxAttempts} ·{' '}
+                {preview.questions.length} question{preview.questions.length === 1 ? '' : 's'}
+              </p>
+              {preview.questions.map((q, i) => (
+                <div key={q.questionIndex} className="rounded-lg border border-border p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Question {i + 1} · {q.marks} mark{q.marks === 1 ? '' : 's'}
+                    {q.negativeMarks ? ` · -${q.negativeMarks} if wrong` : ''}
+                  </p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">{q.text}</p>
+                  {q.options && q.options.length > 0 && (
+                    <ul className="mt-3 space-y-1.5">
+                      {q.options.map((opt) => (
+                        <li
+                          key={opt.optionIndex}
+                          className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground"
+                        >
+                          {opt.text}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
+          <Button variant="secondary" onClick={onClose}>Close</Button>
+        </div>
+      </Card>
     </div>
   );
 }

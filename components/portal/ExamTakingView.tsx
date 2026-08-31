@@ -363,6 +363,7 @@ export function ExamTakingView({ examId }: { examId: string }) {
     const v = answers[q.questionIndex];
     return v != null && (Array.isArray(v) ? v.length > 0 : v !== '');
   }).length;
+  const unansweredCount = questions.length - answeredCount;
 
   const currentQuestion = questions[currentIdx];
   const currentValue = normalizeResponse(currentQuestion.type, answers[currentQuestion.questionIndex]);
@@ -417,11 +418,29 @@ export function ExamTakingView({ examId }: { examId: string }) {
             <Clock className="h-4 w-4" aria-hidden="true" />
             {remainingMs != null ? formatDuration(remainingMs) : '--:--'}
           </div>
-          <Button variant="danger" size="sm" onClick={() => setShowSubmitConfirm(true)}>
+          <Button
+            variant="danger"
+            size="sm"
+            loading={isSubmitting}
+            onClick={() => {
+              if (unansweredCount > 0) {
+                setShowSubmitConfirm(true);
+              } else {
+                doSubmit(false);
+              }
+            }}
+          >
             Submit exam
           </Button>
         </div>
       </header>
+
+      {unansweredCount > 0 && (
+        <div className="flex items-center gap-2 bg-warning/10 px-4 py-2 text-sm text-warning-foreground sm:px-6">
+          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          You have {unansweredCount} unanswered question{unansweredCount === 1 ? '' : 's'}.
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-1.5 border-b border-border px-4 py-3 sm:px-6">
         {questions.map((q, i) => {
@@ -491,7 +510,13 @@ export function ExamTakingView({ examId }: { examId: string }) {
             <CardContent className="space-y-4 p-6">
               <h2 className="text-lg font-semibold text-foreground">Submit exam?</h2>
               <p className="text-sm text-muted-foreground">
-                You&apos;ve answered {answeredCount} of {questions.length} questions. Submit anyway?
+                You&apos;ve answered {answeredCount} of {questions.length} questions.
+                {unansweredCount > 0 && (
+                  <span className="mt-1 block font-medium text-warning">
+                    You have {unansweredCount} unanswered question{unansweredCount === 1 ? '' : 's'}.
+                  </span>
+                )}{' '}
+                Submit anyway?
               </p>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setShowSubmitConfirm(false)}>
