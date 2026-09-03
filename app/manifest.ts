@@ -8,10 +8,10 @@ import type { MetadataRoute } from 'next';
 // design here, just declaring them for the manifest spec.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Marksly — School & Campus Management Software',
+    name: 'Marksly Pakistan — School & Campus Management Software',
     short_name: 'Marksly',
     description:
-      'Marksly is the complete school management platform for academies, schools, colleges and universities.',
+      'Marksly is the complete Pakistan-based school management platform for academies, schools, colleges and universities.',
     start_url: '/',
     display: 'standalone',
     background_color: '#FAF8F3',

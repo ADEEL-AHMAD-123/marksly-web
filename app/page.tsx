@@ -11,11 +11,13 @@ import { HomePricingTeaser } from '@/components/marketing/HomePricingTeaser';
 import { HomeCta } from '@/components/marketing/HomeCta';
 
 export const metadata: Metadata = {
-  title: 'Marksly — School & Campus Management Software',
+  // "Marksly Pakistan" explicitly, not just "Marksly" — see layout.tsx's
+  // comment on disambiguating from the unrelated same-named marksly.in.
+  title: 'Marksly Pakistan — School & Campus Management Software',
   // Kept under ~160 chars — Bing/Google truncate longer descriptions in the
   // SERP snippet, and Bing Webmaster Tools flags it as an error outright.
   description:
-    'Marksly is a school management platform for academies, schools, colleges and universities — attendance, fees, exams, timetable, ID cards and parent messaging.',
+    'Marksly is a Pakistan-based school management platform for academies, schools, colleges and universities — attendance, fees, exams, timetable, ID cards and parent messaging.',
   alternates: { canonical: '/' },
 };
 
