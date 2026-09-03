@@ -73,10 +73,23 @@ const REVIEW_JSON_LD = {
   '@context': 'https://schema.org',
   '@graph': REVIEWS.map((r) => ({
     '@type': 'Review',
-    itemReviewed: { '@id': 'https://marksly.pk/#organization' },
+    // Google's structured-data validator checks each page's JSON-LD in
+    // isolation — a bare `{'@id': '...#organization'}` reference here can't
+    // be resolved back to the actual Organization defined on the homepage's
+    // separate JSON-LD block, so it shows up as "Invalid object type for
+    // field 'itemReviewed'" in Search Console. Inlining the full object
+    // (matching the SoftwareApplication entry in HomeJsonLd.tsx) makes this
+    // page's markup self-contained and valid on its own.
+    itemReviewed: {
+      '@type': 'SoftwareApplication',
+      name: 'Marksly',
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      url: 'https://marksly.pk',
+    },
     author: { '@type': 'Organization', name: r.school },
     reviewBody: r.quote,
-    publisher: { '@id': 'https://marksly.pk/#organization' },
+    publisher: { '@type': 'Organization', name: 'Marksly', url: 'https://marksly.pk' },
   })),
 };
 
