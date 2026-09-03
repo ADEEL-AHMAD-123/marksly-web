@@ -296,6 +296,7 @@ export function StudentsView() {
         sample={['Ali', 'Khan', '03001234567', 'ali@example.com', 'STD-2001', 'ADM-2001', 'Grade 5', 'A', 'male', '03009998888', 'Imran Khan', 'imran@example.com']}
         filename="students-template.csv"
         onImport={async (csv) => (await bulkImport({ csv }).unwrap()).data}
+        helpText={'Running more than one active term at once (e.g. overlapping semesters)? Add an optional "term" column with the exact term name if any class name exists in more than one active term — otherwise it can be left out.'}
       />
     </div>
   );
