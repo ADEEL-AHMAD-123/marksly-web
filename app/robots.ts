@@ -10,7 +10,7 @@ const DASHBOARD_DISALLOW = ['/student', '/admin', '/superadmin', '/teacher', '/p
 const MARKETING_ALLOW = [
   '/', '/login', '/register', '/pricing', '/features', '/help', '/contact', '/blog',
   '/school-management-system-pakistan', '/college-management-system-pakistan', '/education-management-system-pakistan',
-  '/best-school-management-software-pakistan', '/feed.xml',
+  '/best-school-management-software-pakistan', '/feed.xml', '/testimonials', '/privacy', '/terms',
 ];
 
 export default function robots(): MetadataRoute.Robots {

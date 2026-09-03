@@ -42,6 +42,12 @@ const schema = z.object({
     .min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Add an uppercase letter')
     .regex(/[0-9]/, 'Add a number'),
+  // Not sent to the backend (register() doesn't need it persisted anywhere
+  // — the acceptance itself is the consent, not a value worth storing per
+  // account) — this is purely a client-side gate requiring explicit
+  // agreement before submission, since there was previously no consent
+  // step at all despite Terms/Privacy pages existing.
+  acceptedTerms: z.literal(true, { errorMap: () => ({ message: 'You must agree to the Terms and Privacy Policy to continue' }) }),
 });
 
 type Form = z.infer<typeof schema>;
@@ -73,7 +79,7 @@ export function RegisterView() {
     watch,
     setValue,
     formState: { errors },
-  } = useForm<Form>({ resolver: zodResolver(schema), mode: 'onTouched', defaultValues: { country: 'PK' } });
+  } = useForm<Form>({ resolver: zodResolver(schema), mode: 'onTouched', defaultValues: { country: 'PK', acceptedTerms: false as unknown as true } });
 
   const password = watch('password') || '';
   const rules = [
@@ -82,7 +88,7 @@ export function RegisterView() {
     { ok: /[0-9]/.test(password), label: 'Number' },
   ];
 
-  const onSubmit = async (data: Form) => {
+  const onSubmit = async ({ acceptedTerms: _acceptedTerms, ...data }: Form) => {
     setFormError(null);
     try {
       const result = await registerInstitution(data).unwrap();
@@ -293,6 +299,28 @@ export function RegisterView() {
               </span>
             ))}
           </div>
+        </div>
+
+        {/* Explicit consent checkbox — there was previously no acceptance
+            step at all before creating an account that stores student,
+            staff and guardian data and (for paid plans) processes
+            payments. */}
+        <div>
+          <label className="flex items-start gap-2.5 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              {...register('acceptedTerms')}
+              aria-invalid={!!errors.acceptedTerms}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <span>
+              I agree to Marksly&apos;s{' '}
+              <Link href="/terms" target="_blank" className="font-medium text-primary hover:underline">Terms of Service</Link>
+              {' '}and{' '}
+              <Link href="/privacy" target="_blank" className="font-medium text-primary hover:underline">Privacy Policy</Link>.
+            </span>
+          </label>
+          {errors.acceptedTerms && <p className="mt-1.5 text-xs text-danger">{errors.acceptedTerms.message}</p>}
         </div>
 
         <Button type="submit" loading={isLoading} className="mt-1 w-full" size="lg">

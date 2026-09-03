@@ -49,6 +49,10 @@ export function MarketingFooter() {
         </div>
         <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-sidebar-border pt-6 text-xs text-sidebar-muted sm:flex-row">
           <p>© {new Date().getFullYear()} Marksly · marksly.pk</p>
+          <div className="flex items-center gap-4">
+            <Link href="/privacy" className="hover:text-sidebar-foreground">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-sidebar-foreground">Terms of Service</Link>
+          </div>
           <p>Made for schools, colleges and academies.</p>
         </div>
       </div>
