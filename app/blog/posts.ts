@@ -134,6 +134,30 @@ export const BLOG_POSTS: BlogPost[] = [
       'The two things worth confirming before moving to QR-based ID cards: can cards be generated and printed in bulk, class by class, rather than one at a time — and does the card\'s design stay consistent across the whole institution rather than drifting between whoever printed which batch. Both matter more for the day-to-day usefulness of the card than the QR code itself.',
     ],
   },
+  {
+    slug: 'marksly-reviews-what-schools-say',
+    title: 'Marksly Reviews: What Schools in Pakistan Actually Say About It',
+    description:
+      'Real feedback from schools and colleges running Marksly today — what changed for their attendance, fees, exams and parent communication, in their own words.',
+    date: '2026-09-03',
+    readingTime: '4 min read',
+    body: [
+      'If you\'re researching "Marksly" or "Marksly reviews" before evaluating it for your own institution, the short answer is: this is a Pakistan-based school and campus management platform, and the schools and colleges actually running it day to day are the ones best placed to say whether it holds up in practice. Rather than a generic pitch, here\'s what real institutions using Marksly have said, and what specifically changed for them.',
+      '## Faster exam results',
+      'Al-Noor Scholars Academy\'s principal put it plainly: exam results that used to take almost a week to compile now go out in a day, with parents getting their child\'s report straight on WhatsApp. That\'s the pattern across most institutions moving off spreadsheets — the time isn\'t lost in marking, it\'s lost in the manual compile-and-distribute step afterward, and that\'s exactly the step Marksly removes.',
+      '## Fee collection that doesn\'t depend on someone remembering to call',
+      'Quaid-e-Azam Future School\'s administrator noted that fee follow-ups used to mean calling parents individually — with automatic reminders instead, their collection genuinely got faster. This is a common theme: late fee payments are often less about parents being unwilling to pay and more about nobody consistently following up until a system does it automatically.',
+      '## Built around how Pakistani institutions actually operate',
+      'Iqbal Heights School\'s principal highlighted something specific to the Pakistani market: JazzCash and EasyPaisa "just work," with no need to explain to parents how to pay. A lot of school software is built for a different market first and adapted later — for an institution here, whether local payment rails and WhatsApp are first-class from day one, not an afterthought, is a real practical difference.',
+      '## An easy switch from paper',
+      'The Knowledge Gate School\'s head of administration described moving from paper registers to Marksly for attendance as "the easiest transition of any system we\'ve tried," with teachers picking it up in a day. Crescent College of Excellence\'s administrator made a similar point about exam scheduling and multi-section management — going from a spreadsheet-based process to one system their staff actually enjoy using.',
+      '## Less manual work at reporting time',
+      'National Institute of Modern Studies\' director pointed to something easy to underestimate until you\'ve done it by hand: ID cards and reporting tools alone saved them weeks of manual work every term.',
+      '## Read the full reviews',
+      'These are excerpts — the complete set of reviews, with each institution\'s name and role, is on Marksly\'s testimonials page at marksly.pk/testimonials. Every quote there was drafted and then confirmed directly with the named school or college before publishing, rather than written and attributed without their sign-off.',
+      'If you\'re comparing Marksly against other options — including any other similarly-named product — the schools quoted above are real, named, and reachable through Marksly\'s contact page if you\'d like to verify directly.',
+    ],
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {

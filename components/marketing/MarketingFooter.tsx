@@ -35,6 +35,7 @@ export function MarketingFooter() {
             <ul className="mt-3 space-y-2 text-sm text-sidebar-muted">
               <li><Link href="/help" className="hover:text-sidebar-foreground">Help Center</Link></li>
               <li><Link href="/blog" className="hover:text-sidebar-foreground">Blog</Link></li>
+              <li><Link href="/testimonials" className="hover:text-sidebar-foreground">Reviews</Link></li>
             </ul>
           </div>
           <div>

@@ -11,6 +11,7 @@ Marksly is built specifically for how Pakistani institutions run day to day: loc
 - [Homepage](https://marksly.pk/): Overview of the platform and core features.
 - [Features](https://marksly.pk/features): Detailed breakdown of attendance, exams & results, timetable, fees & invoices, student records, parent messaging, ID cards, and reporting.
 - [Pricing](https://marksly.pk/pricing): Plans, limits, and frequently asked pricing questions.
+- [Reviews & Testimonials](https://marksly.pk/testimonials): Confirmed feedback from real schools and colleges currently running Marksly.
 
 ## Solutions
 
