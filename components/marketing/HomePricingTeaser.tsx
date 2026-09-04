@@ -31,7 +31,25 @@ export function HomePricingTeaser() {
             View pricing <ArrowRight aria-hidden size={18} />
           </Link>
         </div>
-        <GrowthPlanCard />
+
+        {/* Previously only the Growth card showed here — a visitor scanning
+            quickly could miss that a free tier exists at all, even though
+            the paragraph to the left says so. A compact free-plan card next
+            to it makes that immediately visible, not just implied in text. */}
+        <div className="flex flex-col gap-4 text-left sm:flex-row lg:flex-col">
+          <div className="flex-1 rounded-2xl border border-sidebar-border bg-sidebar-accent/20 p-5 sm:p-6">
+            <p className="text-sm text-sidebar-muted">Free plan</p>
+            <p className="text-2xl font-bold sm:text-3xl">
+              Free<span className="text-sm font-normal text-sidebar-muted sm:text-base"> forever</span>
+            </p>
+            <p className="mt-3 text-[13px] text-sidebar-muted sm:text-sm">
+              Up to {freeLimit ? freeLimit.toLocaleString('en-PK') : '50'} students, no card required.
+            </p>
+          </div>
+          <div className="flex-1">
+            <GrowthPlanCard />
+          </div>
+        </div>
       </div>
     </section>
   );
