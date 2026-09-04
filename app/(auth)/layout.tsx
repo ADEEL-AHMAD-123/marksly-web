@@ -103,8 +103,16 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <Logo size={38} />
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
-            {children}
+          <div className="animate-auth-card-in overflow-hidden rounded-2xl border border-border bg-card shadow-[0_20px_50px_-20px_rgba(0,0,0,0.18)]">
+            {/* Tapered gold rule — same brand treatment as the marketing
+                header, so the auth flow doesn't feel like a separate,
+                unbranded template bolted onto the marketing site. */}
+            <div
+              aria-hidden
+              className="h-[2.5px] w-full"
+              style={{ background: 'linear-gradient(90deg, transparent 0%, hsl(var(--accent)) 20%, hsl(var(--accent)) 80%, transparent 100%)' }}
+            />
+            <div className="p-6 sm:p-8">{children}</div>
           </div>
 
           <p className="mt-8 text-center text-xs text-muted-foreground">

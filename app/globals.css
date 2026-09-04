@@ -393,6 +393,26 @@
 }
 
 /* ════════════════════════════════════════════════════════════════
+   Auth card entrance — a small, deliberate fade+rise on mount so the
+   login/register card feels placed rather than just appearing, the
+   kind of finishing touch that reads as "designed" rather than
+   template-default. Kept short (300ms) so it never feels like it's
+   in the way of actually signing in.
+   ════════════════════════════════════════════════════════════════ */
+@keyframes auth-card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-auth-card-in {
+  animation: auth-card-in 0.35s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-auth-card-in {
+    animation: none;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
    react-phone-number-input — restyled to match our token-driven
    input fields (see `fieldCls` in the register/login forms) instead
    of the library's default plain-HTML look. Class names below are

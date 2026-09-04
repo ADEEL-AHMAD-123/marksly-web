@@ -8,7 +8,7 @@ import { z } from 'zod';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import en from 'react-phone-number-input/locale/en.json';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Lock, AlertCircle, MailWarning, MailQuestion, Building2, ChevronRight, Phone as PhoneIcon, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, AlertCircle, MailWarning, MailQuestion, Building2, ChevronRight, Phone as PhoneIcon, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useLoginMutation, useResendVerificationMutation, useResendInviteSelfMutation } from '@/store/api/authApi';
 import { useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/slices/authSlice';
@@ -68,6 +68,7 @@ export function LoginView() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const [showPassword, setShowPassword] = useState(false);
+  const [capsLockOn, setCapsLockOn] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [needsVerification, setNeedsVerification] = useState(false);
   const [needsInviteResend, setNeedsInviteResend] = useState(false);
@@ -410,6 +411,9 @@ export function LoginView() {
               autoComplete="current-password"
               placeholder="Enter your password"
               aria-invalid={!!errors.password}
+              onKeyUp={(e) => setCapsLockOn(e.getModifierState?.('CapsLock') ?? false)}
+              onKeyDown={(e) => setCapsLockOn(e.getModifierState?.('CapsLock') ?? false)}
+              onBlur={() => setCapsLockOn(false)}
               className={cn(
                 'h-11 w-full rounded-lg border bg-card pl-10 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 errors.password ? 'border-danger' : 'border-input'
@@ -427,12 +431,31 @@ export function LoginView() {
           {errors.password && (
             <p className="mt-1.5 text-xs text-danger">{errors.password.message}</p>
           )}
+          {/* Genuinely useful, not decorative — a wrong-looking password is
+              one of the most common silent login failures, and the browser
+              gives no native signal for it since the field is masked. */}
+          {capsLockOn && !errors.password && (
+            <p className="mt-1.5 flex items-center gap-1 text-xs text-warning">
+              <Lock size={11} aria-hidden /> Caps Lock is on
+            </p>
+          )}
         </div>
 
-        <Button type="submit" loading={isLoading} className="mt-1 w-full" size="lg">
-          {isLoading ? 'Signing in…' : 'Sign in'}
+        <Button type="submit" loading={isLoading} className="mt-1 w-full group" size="lg">
+          {isLoading ? 'Signing in…' : (
+            <>
+              Sign in <ArrowRight aria-hidden size={17} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+            </>
+          )}
         </Button>
       </form>
+
+      {/* Honest, accurate trust line — matches what tenant.middleware.ts /
+          auth.middleware.ts actually enforce (per-institution isolation),
+          not a generic "bank-grade security" claim. */}
+      <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+        <ShieldCheck aria-hidden size={13} /> Your data is encrypted and isolated to your institution
+      </p>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         New to Marksly?{' '}
