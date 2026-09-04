@@ -24,7 +24,14 @@ import {
 import { useGetTermsQuery } from '@/store/api/termsApi';
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
-const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+// HEIC/HEIF included for iPhone photos of a physical stamp/signboard —
+// matches upload.middleware.ts's server-side allow-list. Some mobile
+// browsers report an empty/generic file.type for HEIC (inconsistent OS
+// support), so this also falls back to the file extension, same as the
+// backend does.
+const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif'];
+const HEIC_EXTENSION_RE = /\.(heic|heif)$/i;
+const isAllowedImageFile = (file: File) => ALLOWED_TYPES.includes(file.type) || HEIC_EXTENSION_RE.test(file.name);
 
 const profileSchema = z.object({
   name: z.string().trim().min(2, 'Name is required').max(120),
@@ -80,8 +87,8 @@ export function InstitutionProfileTab() {
     e.target.value = ''; // allow re-selecting the same file next time
     if (!file) return;
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error('Logo must be a PNG, JPEG, or WebP image');
+    if (!isAllowedImageFile(file)) {
+      toast.error('Logo must be a PNG, JPEG, WebP or HEIC image');
       return;
     }
     if (file.size > MAX_LOGO_BYTES) {
@@ -120,7 +127,7 @@ export function InstitutionProfileTab() {
         <CardHeader className="p-6 pb-4">
           <CardTitle className="flex items-center gap-2 text-lg"><ImageUp size={18} className="text-primary" /> Logo</CardTitle>
           <CardDescription>
-            Used on fee slips, payment receipts, and other documents parents receive. PNG, JPEG, or WebP, up to 2MB — automatically cropped and resized to a consistent square, no need to pre-crop it yourself.
+            Used on fee slips, payment receipts, and other documents parents receive. PNG, JPEG, WebP, or HEIC (iPhone photos), up to 2MB — automatically cropped and resized to a consistent square, no need to pre-crop it yourself.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 pt-0">
@@ -137,7 +144,7 @@ export function InstitutionProfileTab() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/png,image/jpeg,image/webp"
+                accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
                 className="hidden"
                 onChange={handleFileSelect}
               />

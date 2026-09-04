@@ -11,7 +11,9 @@ import { useUploadUserPhotoMutation, useRemoveUserPhotoMutation } from '@/store/
 // backend applies its own (larger, server-side) limits too, this is just
 // fast client-side feedback before a request is even made.
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
-const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif'];
+const HEIC_EXTENSION_RE = /\.(heic|heif)$/i;
+const isAllowedImageFile = (file: File) => ALLOWED_TYPES.includes(file.type) || HEIC_EXTENSION_RE.test(file.name);
 
 interface PhotoUploadProps {
   userId: string;
@@ -45,8 +47,8 @@ export function PhotoUpload({ userId, photoUrl, initials, size = 'lg', className
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error('Photo must be a PNG, JPEG, or WebP image');
+    if (!isAllowedImageFile(file)) {
+      toast.error('Photo must be a PNG, JPEG, WebP or HEIC image');
       return;
     }
     if (file.size > MAX_PHOTO_BYTES) {
@@ -114,7 +116,7 @@ export function PhotoUpload({ userId, photoUrl, initials, size = 'lg', className
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/png,image/jpeg,image/webp"
+          accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
