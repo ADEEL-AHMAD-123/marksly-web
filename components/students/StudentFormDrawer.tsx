@@ -19,6 +19,7 @@ import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { PhotoUpload } from '@/components/shared/PhotoUpload';
 import { getErrorMessage } from '@/lib/get-error-message';
 import { useGetClassesQuery } from '@/store/api/classesApi';
+import { useGetActiveTermsQuery } from '@/store/api/termsApi';
 import {
   useCreateStudentMutation,
   useUpdateStudentMutation,
@@ -88,6 +89,12 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   const isEdit = !!student;
   const { data: classesRes } = useGetClassesQuery(undefined, { skip: !!classesOverride });
   const classes = useMemo(() => classesOverride ?? classesRes?.data ?? [], [classesOverride, classesRes]);
+  // Only relevant when the admin's own class list is empty — a teacher
+  // restricted to classesOverride never needs to hear about terms, since
+  // they can't create classes/terms either way; their message is the
+  // separate "ask an admin" one below.
+  const { data: activeTermsRes } = useGetActiveTermsQuery(undefined, { skip: !!classesOverride });
+  const noActiveTerms = (activeTermsRes?.data?.length ?? 0) === 0;
   const [createStudent, { isLoading: creating }] = useCreateStudentMutation();
   const [updateStudent, { isLoading: updating }] = useUpdateStudentMutation();
 
@@ -213,7 +220,13 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 <span>
                   {classesOverride
                     ? "You're not assigned as the teacher of any class section yet — ask an admin to assign you to one."
-                    : 'Create a class first (Classes page) — students need a class and section.'}
+                    // Tells the admin the actual root cause when it's terms,
+                    // not classes — otherwise they'd go to the Classes page,
+                    // hit the same wall there, and have to find their way to
+                    // Academic Terms themselves as a second, undocumented hop.
+                    : noActiveTerms
+                      ? 'Set up your academic year first (Academic Terms page), then create a class — students need both.'
+                      : 'Create a class first (Classes page) — students need a class and section.'}
                 </span>
               </div>
             )}

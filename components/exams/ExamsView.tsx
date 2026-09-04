@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, X, FileText, ClipboardList, Laptop, Eye, Loader2 } from 'lucide-react';
+import { Plus, Trash2, X, FileText, ClipboardList, Laptop, Eye, Loader2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
@@ -313,6 +313,7 @@ const defaultValues: ExamForm = {
 function CreateExamDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: classesRes } = useGetClassesQuery();
   const classes = classesRes?.data ?? [];
+  const noClasses = classes.length === 0;
   const [createExam, { isLoading }] = useCreateExamMutation();
 
   const { register, control, handleSubmit, reset, watch, formState: { errors } } = useForm<ExamForm>({
@@ -374,6 +375,12 @@ function CreateExamDrawer({ open, onClose }: { open: boolean; onClose: () => voi
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+            {noClasses && (
+              <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning-soft px-3.5 py-3 text-sm text-warning">
+                <AlertCircle size={17} className="mt-0.5 shrink-0" />
+                <span>Create a class first (Classes page) — exams need a class to belong to.</span>
+              </div>
+            )}
             <div>
               <Label htmlFor="title">Title</Label>
               <Input id="title" placeholder="e.g. Mid-term 2026" {...register('title')} />
@@ -456,7 +463,7 @@ function CreateExamDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
             <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
-            <Button type="submit" loading={isLoading}>Create exam</Button>
+            <Button type="submit" loading={isLoading} disabled={noClasses}>Create exam</Button>
           </div>
         </form>
       </SheetContent>

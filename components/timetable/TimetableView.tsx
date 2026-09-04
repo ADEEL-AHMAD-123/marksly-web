@@ -74,7 +74,12 @@ export function TimetableView() {
         </div>
       </Card>
 
-      {!ready ? (
+      {classes.length === 0 ? (
+        // Distinct from the "pick one" empty state below — an empty class
+        // dropdown with the same generic "Select a class" message left an
+        // admin with nothing to actually select, no explanation why.
+        <Card><EmptyState icon={CalendarClock} title="No classes yet" description="Create a class first (Classes page) before building a timetable." /></Card>
+      ) : !ready ? (
         <Card><EmptyState icon={CalendarClock} title="Select a class and section" description="Choose a class and section to view or build its timetable." /></Card>
       ) : isFetching && entries.length === 0 ? (
         <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>
