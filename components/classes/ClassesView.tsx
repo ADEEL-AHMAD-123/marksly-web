@@ -87,6 +87,7 @@ export function ClassesView() {
   }, [activeTerms, allTerms, editing]);
   const teachers = teachersRes?.data ?? [];
   const classes = data?.data ?? [];
+  const noTerms = activeTerms.length === 0;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -258,6 +259,19 @@ export function ClassesView() {
             </div>
 
             <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+              {/* Same pattern as StudentFormDrawer's "no classes yet" guard —
+                  a class can't be created without a term to attach it to
+                  (termId is required server-side, class.service.ts's
+                  create() 400s with INVALID_TERM otherwise), but leaving the
+                  term dropdown just silently empty made that failure mode
+                  confusing rather than actionable. */}
+              {noTerms && (
+                <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning-soft px-3.5 py-3 text-sm text-warning">
+                  <AlertCircle size={17} className="mt-0.5 shrink-0" />
+                  <span>Set up your academic year first (Academic Terms page) — classes need a term to belong to.</span>
+                </div>
+              )}
+
               <div>
                 <Label htmlFor="name">Class name</Label>
                 <Input id="name" placeholder="e.g. Grade 5" {...register('name')} />
@@ -348,7 +362,7 @@ export function ClassesView() {
 
             <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
               <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
-              <Button type="submit" loading={creating || updating}>{editing ? 'Save changes' : 'Create class'}</Button>
+              <Button type="submit" loading={creating || updating} disabled={noTerms && !editing}>{editing ? 'Save changes' : 'Create class'}</Button>
             </div>
           </form>
         </SheetContent>

@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import {
   GraduationCap, TrendingUp, Plus, AlertTriangle,
-  School, DollarSign, Users, BookOpen, ImageUp,
+  School, DollarSign, Users, BookOpen, ImageUp, CalendarRange,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetUsersQuery } from '@/store/api/usersApi';
 import { useGetSubjectsQuery } from '@/store/api/subjectsApi';
 import { useGetMyInstitutionQuery } from '@/store/api/institutionApi';
+import { useGetActiveTermsQuery } from '@/store/api/termsApi';
 import { AdminDashboardStats } from '@/components/dashboards/AdminDashboardStats';
 import { OnboardingCard, type OnboardingStep } from '@/components/dashboards/AdminDashboardOnboarding';
 import { TodaysAttendanceCard } from '@/components/dashboards/AdminDashboardAttendance';
@@ -56,6 +57,13 @@ export function AdminDashboard() {
   const subjectCount = subjectsRes?.data?.length ?? 0;
   const { data: institutionRes, isLoading: institutionLoading } = useGetMyInstitutionQuery();
   const hasLogo = !!institutionRes?.data?.logoUrl;
+  // A class can't actually be created without an active term to attach it
+  // to (class.service.ts's create() 400s with INVALID_TERM otherwise) — so
+  // this has to come before the classes step in the checklist, not after
+  // it, or an admin would hit "Create your first class" and only discover
+  // the real blocker once they're already in that form.
+  const { data: activeTermsRes, isLoading: termsLoading } = useGetActiveTermsQuery();
+  const activeTermCount = activeTermsRes?.data?.length ?? 0;
 
   // Deliberately ONE-TIME SETUP tasks only — attendance was removed from
   // this list on purpose. It's a recurring daily routine (not a one-off
@@ -64,7 +72,7 @@ export function AdminDashboard() {
   // it would also have kept resurfacing the "Finish setting up" reminder
   // every single day regardless of how it was tracked, which isn't what
   // this checklist is for.
-  const onboardingLoading = statsLoading || classesLoading || teachersLoading || feeStructLoading || subjectsLoading || institutionLoading;
+  const onboardingLoading = statsLoading || classesLoading || teachersLoading || feeStructLoading || subjectsLoading || institutionLoading || termsLoading;
   const studentCount = stats?.total ?? 0;
 
   // Hints below deliberately surface the CSV bulk-import path on the two
@@ -87,7 +95,19 @@ export function AdminDashboard() {
       done: hasLogo,
       hint: 'Shows on ID cards, receipts and the sidebar — makes it look like your system, not a generic one.',
     },
-    { label: 'Create your first class & sections', href: '/admin/classes', icon: School, done: classCount > 0 },
+    {
+      label: 'Set up your academic year',
+      href: '/admin/academic-year',
+      icon: CalendarRange,
+      done: activeTermCount > 0,
+    },
+    {
+      label: 'Create your first class & sections',
+      href: '/admin/classes',
+      icon: School,
+      done: classCount > 0,
+      hint: activeTermCount === 0 ? 'Needs an academic year set up first.' : undefined,
+    },
     {
       label: 'Add your teachers',
       href: '/admin/teachers',
