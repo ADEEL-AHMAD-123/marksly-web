@@ -15,25 +15,52 @@ export function HomeHero() {
         style={{ background: 'radial-gradient(60% 50% at 80% 0%, hsl(var(--primary)) 0%, transparent 70%), radial-gradient(40% 40% at 5% 15%, hsl(var(--accent)) 0%, transparent 70%)' }}
       />
 
-      <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 px-5 pb-16 pt-16 md:pb-24 md:pt-24 lg:grid-cols-[1.1fr_1fr]">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 px-5 pb-16 pt-16 md:pb-20 md:pt-20 lg:grid-cols-[1.1fr_1fr] lg:pb-16 lg:pt-16">
         {/* Left: copy */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-            Marksly for schools & colleges
+            For schools & colleges in Pakistan
           </p>
           <h1 className="mt-4 text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl sm:leading-[1.05] md:text-6xl">
             The operating system<br className="hidden sm:block" /> for your <span className="text-primary">institution</span>
           </h1>
+
+          {/* Mobile: one short, scannable line — the full descriptive sentence
+              below is deliberately hidden here (not deleted) so a first-time
+              phone visitor reaches the CTA in one glance instead of reading
+              a dense paragraph first. Desktop has the room, so it gets the
+              fuller version instead. */}
+          <p className="mt-4 max-w-md text-base leading-relaxed text-muted-foreground sm:hidden">
+            One connected system to run your school — students, fees, exams and more.
+          </p>
+
+          {/* Keyword chips — present on every breakpoint (including mobile)
+              so the feature keywords stay in the page for search/AI
+              crawlers even where the long prose sentence is hidden. Scans
+              far faster than a paragraph on a small screen. */}
+          <div className="mt-3 flex flex-wrap gap-1.5 sm:mt-5">
+            {['Students', 'Attendance', 'Fees', 'Exams', 'Timetable', 'ID Cards', 'Parent Messaging'].map((f) => (
+              <span
+                key={f}
+                className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground sm:text-xs"
+              >
+                {f}
+              </span>
+            ))}
+          </div>
+
           {/* A plain, quotable definition sentence, not just marketing copy —
               deliberately phrased the way an AI Overview / answer engine
               extracts a first-line definition, so it has an accurate,
-              on-brand sentence to pull from rather than guessing. */}
-          <p className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
+              on-brand sentence to pull from rather than guessing. Desktop
+              only — see the short mobile version above. */}
+          <p className="mt-5 hidden max-w-md text-base leading-relaxed text-muted-foreground sm:block sm:text-lg">
             Marksly is a school and campus management system for academies, schools, colleges
             and universities in Pakistan — students, attendance, fees, exams, timetable, ID cards
             and parent messaging, one connected system.
           </p>
-          <div className="mt-8 flex flex-col gap-3 sm:mt-9 sm:flex-row">
+
+          <div className="mt-6 flex flex-col gap-3 sm:mt-9 sm:flex-row">
             <Link href="/register" className={`${buttonVariants({ size: 'lg' })} w-full sm:w-auto`}>
               Start free trial <ArrowRight aria-hidden size={18} />
             </Link>
@@ -43,7 +70,7 @@ export function HomeHero() {
           </div>
 
           {/* Inline stat bar — grid on mobile (no orphaned dividers when wrapping), dividers only once there's room to sit in one row */}
-          <div className="mt-10 grid grid-cols-3 gap-x-3 gap-y-4 sm:mt-12 sm:flex sm:flex-wrap sm:items-start sm:gap-x-8">
+          <div className="mt-8 grid grid-cols-3 gap-x-3 gap-y-4 sm:mt-12 sm:flex sm:flex-wrap sm:items-start sm:gap-x-8">
             {[
               { value: 'Free', label: 'up to 50 students' },
               { value: '<10 min', label: 'to get started' },
@@ -51,7 +78,7 @@ export function HomeHero() {
             ].map((s, i) => (
               <div key={s.label} className={i > 0 ? 'sm:border-l sm:border-border sm:pl-8' : ''}>
                 <p className="text-lg font-bold text-primary sm:text-xl">{s.value}</p>
-                <p className="text-[11px] leading-snug text-muted-foreground sm:text-xs">{s.label}</p>
+                <p className="text-xs leading-snug text-muted-foreground">{s.label}</p>
               </div>
             ))}
           </div>
@@ -72,10 +99,11 @@ export function HomeHero() {
                 ))}
               </div>
               <div className="flex-1 p-5">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   {[
                     { label: 'Students', value: '1,248', icon: GraduationCap },
                     { label: 'Attendance', value: '96%', icon: CalendarCheck },
+                    { label: 'Fees collected', value: '92%', icon: Wallet },
                   ].map((s) => (
                     <div key={s.label} className="rounded-xl border border-border bg-card p-3.5">
                       <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary-soft text-primary">
@@ -88,7 +116,7 @@ export function HomeHero() {
                 </div>
 
                 {/* recent activity feed — feels like a real product, not a stat-tile cliché */}
-                <div className="mt-3 rounded-xl border border-border bg-card p-4">
+                <div className="mt-4 rounded-xl border border-border bg-card p-4">
                   <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
                     <Activity aria-hidden size={12} /> Recent activity
                   </p>
