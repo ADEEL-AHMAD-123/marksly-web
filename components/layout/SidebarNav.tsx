@@ -7,6 +7,7 @@ import { useAppSelector } from '@/store/hooks';
 import { cn, getInitials } from '@/lib/utils';
 import { NAV_ITEMS } from './nav-items';
 import { LogoMark } from '@/components/brand/Logo';
+import { useGetMyInstitutionQuery } from '@/store/api/institutionApi';
 
 interface SidebarNavProps {
   collapsed?: boolean;
@@ -24,18 +25,44 @@ export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }:
   const role = user?.role || 'admin';
   const items = NAV_ITEMS[role] || NAV_ITEMS.admin;
 
+  // Super admins manage the whole platform, not one institution — they keep
+  // the generic Marksly wordmark. Every other role is scoped to a single
+  // institution, so the sidebar (the one element visible on literally every
+  // page) should show THEIR school's own identity, not a generic product
+  // logo — that's the difference between a tool that feels borrowed and one
+  // that feels owned. Skipped entirely for superadmin so this query never
+  // fires for a role that has no institutionId to look up.
+  const isSuperadmin = role === 'superadmin';
+  const { data: institutionRes } = useGetMyInstitutionQuery(undefined, { skip: isSuperadmin });
+  const institution = institutionRes?.data;
+
   return (
     <div className="flex h-full flex-col">
-      {/* Logo */}
+      {/* Logo — institution's own logo + name once loaded, falling back to
+          the Marksly mark while the request is in flight or if no logo has
+          been uploaded yet, so this never flashes empty. */}
       <div
         className={cn(
           'flex h-16 shrink-0 items-center gap-2.5 border-b border-sidebar-border px-4 lg:h-[70px] lg:px-5',
           collapsed && 'justify-center px-0 lg:px-0'
         )}
       >
-        <LogoMark size={34} variant="plain" className="shrink-0 lg:h-9 lg:w-9" />
+        {!isSuperadmin && institution?.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={institution.logoUrl}
+            alt={`${institution.name} logo`}
+            width={34}
+            height={34}
+            className="h-[34px] w-[34px] shrink-0 rounded-lg object-cover lg:h-9 lg:w-9"
+          />
+        ) : (
+          <LogoMark size={34} variant="plain" className="shrink-0 lg:h-9 lg:w-9" />
+        )}
         {!collapsed && (
-          <span className="text-lg font-bold tracking-tight lg:text-xl">Marksly</span>
+          <span className="truncate text-lg font-bold tracking-tight lg:text-xl">
+            {!isSuperadmin && institution?.name ? institution.name : 'Marksly'}
+          </span>
         )}
       </div>
 
@@ -71,6 +98,14 @@ export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }:
           );
         })}
       </nav>
+
+      {/* Subtle "Powered by" line — only shown once the institution's own
+          branding has actually replaced the header above, so the platform
+          identity doesn't just vanish, but stays out of the way of the
+          admin's own school identity being the dominant thing they see. */}
+      {!isSuperadmin && institution?.logoUrl && !collapsed && (
+        <p className="px-4 pb-1 text-[11px] text-sidebar-muted/70 lg:px-5">Powered by Marksly</p>
+      )}
 
       {/* User */}
       {user && (

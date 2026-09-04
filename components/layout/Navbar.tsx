@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher';
 import { Avatar } from '@/components/ui/avatar';
 import { LogoMark } from '@/components/brand/Logo';
+import { useGetMyInstitutionQuery } from '@/store/api/institutionApi';
 import { getInitials } from '@/lib/utils';
 import { roleHome, ROLE_LABELS } from '@/lib/role-routes';
 import { useLayout } from './layout-context';
@@ -30,6 +31,13 @@ export function Navbar() {
   const [logoutMutation] = useLogoutMutation();
   const [switchRole, { isLoading: switching }] = useSwitchRoleMutation();
   const { setMobileOpen } = useLayout();
+  // Same institution-branding swap as SidebarNav's header — keeps the
+  // mobile top-bar mark consistent with the drawer instead of showing the
+  // generic Marksly mark in the collapsed bar and the school's own logo
+  // the moment the drawer opens, which would look like a glitch.
+  const isSuperadmin = user?.role === 'superadmin';
+  const { data: institutionRes } = useGetMyInstitutionQuery(undefined, { skip: isSuperadmin });
+  const institution = institutionRes?.data;
 
   const handleLogout = async () => {
     try {
@@ -78,7 +86,12 @@ export function Navbar() {
         >
           <Menu className="h-6 w-6" />
         </button>
-        <LogoMark size={26} variant="plain" className="text-foreground" />
+        {!isSuperadmin && institution?.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={institution.logoUrl} alt={`${institution.name} logo`} width={26} height={26} className="h-[26px] w-[26px] rounded-md object-cover" />
+        ) : (
+          <LogoMark size={26} variant="plain" className="text-foreground" />
+        )}
       </div>
 
       <div className="flex-1" />

@@ -32,6 +32,8 @@ export interface Invoice {
 
 export interface FeesSummary {
   collectedThisMonth: number;
+  collectedToday: number;
+  paymentsToday: number;
   outstanding: number;
   pendingInvoices: number;
 }

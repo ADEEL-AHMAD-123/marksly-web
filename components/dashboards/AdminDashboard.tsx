@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import {
   GraduationCap, TrendingUp, Plus, AlertTriangle,
-  School, DollarSign, Users, BookOpen,
+  School, DollarSign, Users, BookOpen, ImageUp,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { useGetReportsQuery } from '@/store/api/reportsApi';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetUsersQuery } from '@/store/api/usersApi';
 import { useGetSubjectsQuery } from '@/store/api/subjectsApi';
+import { useGetMyInstitutionQuery } from '@/store/api/institutionApi';
 import { AdminDashboardStats } from '@/components/dashboards/AdminDashboardStats';
 import { OnboardingCard, type OnboardingStep } from '@/components/dashboards/AdminDashboardOnboarding';
 import { TodaysAttendanceCard } from '@/components/dashboards/AdminDashboardAttendance';
@@ -53,6 +54,8 @@ export function AdminDashboard() {
   const feeStructureCount = feeStructRes?.data?.length ?? 0;
   const { data: subjectsRes, isLoading: subjectsLoading } = useGetSubjectsQuery();
   const subjectCount = subjectsRes?.data?.length ?? 0;
+  const { data: institutionRes, isLoading: institutionLoading } = useGetMyInstitutionQuery();
+  const hasLogo = !!institutionRes?.data?.logoUrl;
 
   // Deliberately ONE-TIME SETUP tasks only — attendance was removed from
   // this list on purpose. It's a recurring daily routine (not a one-off
@@ -61,7 +64,7 @@ export function AdminDashboard() {
   // it would also have kept resurfacing the "Finish setting up" reminder
   // every single day regardless of how it was tracked, which isn't what
   // this checklist is for.
-  const onboardingLoading = statsLoading || classesLoading || teachersLoading || feeStructLoading || subjectsLoading;
+  const onboardingLoading = statsLoading || classesLoading || teachersLoading || feeStructLoading || subjectsLoading || institutionLoading;
   const studentCount = stats?.total ?? 0;
 
   // Hints below deliberately surface the CSV bulk-import path on the two
@@ -72,6 +75,18 @@ export function AdminDashboard() {
   // and user.service.ts's bulkImport() already support this; the gap was
   // that nothing on this checklist told a first-time admin it exists.
   const ONBOARDING_STEPS: OnboardingStep[] = [
+    // First on the list, deliberately — before any real class/student data
+    // exists, this is the one step that makes the rest of the product feel
+    // like the institution's own system rather than a shared, generic
+    // template. It's also what shows up on ID cards, receipts, and the
+    // sidebar the moment it's set, so doing it first pays off immediately.
+    {
+      label: "Add your institution's logo",
+      href: '/admin/settings',
+      icon: ImageUp,
+      done: hasLogo,
+      hint: 'Shows on ID cards, receipts and the sidebar — makes it look like your system, not a generic one.',
+    },
     { label: 'Create your first class & sections', href: '/admin/classes', icon: School, done: classCount > 0 },
     {
       label: 'Add your teachers',
@@ -119,8 +134,6 @@ export function AdminDashboard() {
   // yet, say.
   const isNewInstitution = !onboardingLoading && !anyStepDone;
 
-  const totalSections = classesRes?.data?.reduce((sum, c) => sum + (c.sections?.length ?? 0), 0) ?? 0;
-
   return (
     <div className="space-y-6">
       {overLimit && (
@@ -152,14 +165,16 @@ export function AdminDashboard() {
         }
       />
 
-      {/* Stats — always real, even at zero */}
+      {/* Stats — always real, even at zero. Leads with "today" signals
+          (attendance coverage, fees collected today) rather than static
+          setup/balance numbers — see AdminDashboardStats's own comment. */}
       <AdminDashboardStats
         totalStudents={totalStudents}
         newThisMonth={stats?.newThisMonth}
-        classesLoading={classesLoading}
-        classCount={classCount}
-        totalSections={totalSections}
+        coverage={coverage}
+        coverageLoading={coverageLoading}
         fees={fees}
+        onMarkAttendance={() => router.push('/admin/attendance')}
       />
 
       {isNewInstitution ? (
