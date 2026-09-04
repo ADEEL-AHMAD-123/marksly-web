@@ -64,9 +64,22 @@ export function AdminDashboard() {
   const onboardingLoading = statsLoading || classesLoading || teachersLoading || feeStructLoading || subjectsLoading;
   const studentCount = stats?.total ?? 0;
 
+  // Hints below deliberately surface the CSV bulk-import path on the two
+  // steps where it matters most (teachers, students) — a real school
+  // migrating from a spreadsheet or paper register has 50-1000+ existing
+  // records, and "add one at a time" reads as a dealbreaker of a first
+  // impression if that's all a new admin sees. Both student.service.ts's
+  // and user.service.ts's bulkImport() already support this; the gap was
+  // that nothing on this checklist told a first-time admin it exists.
   const ONBOARDING_STEPS: OnboardingStep[] = [
     { label: 'Create your first class & sections', href: '/admin/classes', icon: School, done: classCount > 0 },
-    { label: 'Add your teachers', href: '/admin/teachers', icon: Users, done: teacherCount > 0 },
+    {
+      label: 'Add your teachers',
+      href: '/admin/teachers',
+      icon: Users,
+      done: teacherCount > 0,
+      hint: 'Already have a staff list? Import it as a CSV in one go.',
+    },
     {
       label: 'Add your subjects',
       href: '/admin/subjects',
@@ -78,7 +91,13 @@ export function AdminDashboard() {
       // and only once both classes and teachers actually exist to assign.
       hint: classCount > 0 && teacherCount > 0 ? 'Tip: assign a teacher to each subject here.' : undefined,
     },
-    { label: 'Add your students', href: '/admin/students', icon: GraduationCap, done: studentCount > 0 },
+    {
+      label: 'Add your students',
+      href: '/admin/students',
+      icon: GraduationCap,
+      done: studentCount > 0,
+      hint: 'Migrating from a register or spreadsheet? Bulk-import your student list as a CSV.',
+    },
     { label: 'Set up fee structures', href: '/admin/fees', icon: DollarSign, done: feeStructureCount > 0 },
   ];
   const allStepsDone = ONBOARDING_STEPS.every((s) => s.done);
