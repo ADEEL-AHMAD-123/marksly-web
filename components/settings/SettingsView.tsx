@@ -3,7 +3,7 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, Palette, Landmark, UserCircle, Building2, ShieldCheck, CreditCard } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
@@ -29,11 +29,24 @@ export function SettingsView() {
   const isSuperadmin = user?.role === 'superadmin';
   const isAdmin = user?.role === 'admin';
 
+  // Deep-link support for "?tab=institution" — the dashboard's onboarding
+  // checklist links here to get an admin straight to the logo upload
+  // field, and landing on the (unrelated) Profile tab instead defeated the
+  // point of that link entirely. Read directly from window.location rather
+  // than next/navigation's useSearchParams so this component doesn't need
+  // a Suspense boundary just for what's a one-time initial-tab read, not
+  // something that needs to react to URL changes after mount.
+  const [initialTab, setInitialTab] = useState('profile');
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab) setInitialTab(tab);
+  }, []);
+
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 lg:space-y-8">
       <PageHeader title="Settings" description="Manage your account and preferences." />
 
-      <Tabs defaultValue="profile" className="lg:flex lg:items-start lg:gap-10">
+      <Tabs key={initialTab} defaultValue={initialTab} className="lg:flex lg:items-start lg:gap-10">
         {/* On phones/tablets this renders as the familiar horizontal pill
             row. From lg up it becomes a vertical settings nav down the
             left side (the pattern most SaaS settings pages use) so the

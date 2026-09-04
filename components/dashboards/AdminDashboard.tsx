@@ -82,7 +82,7 @@ export function AdminDashboard() {
     // sidebar the moment it's set, so doing it first pays off immediately.
     {
       label: "Add your institution's logo",
-      href: '/admin/settings',
+      href: '/admin/settings?tab=institution',
       icon: ImageUp,
       done: hasLogo,
       hint: 'Shows on ID cards, receipts and the sidebar — makes it look like your system, not a generic one.',
