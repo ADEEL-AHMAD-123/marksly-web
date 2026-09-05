@@ -17,6 +17,7 @@ import { useGetUsersQuery } from '@/store/api/usersApi';
 import { useGetSubjectsQuery } from '@/store/api/subjectsApi';
 import { useGetMyInstitutionQuery } from '@/store/api/institutionApi';
 import { useGetActiveTermsQuery } from '@/store/api/termsApi';
+import { useTerminology } from '@/lib/terminology';
 import { AdminDashboardStats } from '@/components/dashboards/AdminDashboardStats';
 import { OnboardingCard, type OnboardingStep } from '@/components/dashboards/AdminDashboardOnboarding';
 import { TodaysAttendanceCard } from '@/components/dashboards/AdminDashboardAttendance';
@@ -64,6 +65,7 @@ export function AdminDashboard() {
   const feeStructureCount = feeStructRes?.data?.length ?? 0;
   const { data: subjectsRes, isLoading: subjectsLoading } = useGetSubjectsQuery();
   const subjectCount = subjectsRes?.data?.length ?? 0;
+  const terminology = useTerminology();
   const { data: institutionRes, isLoading: institutionLoading } = useGetMyInstitutionQuery();
   const hasLogo = !!institutionRes?.data?.logoUrl;
   // A class can't actually be created without an active term to attach it
@@ -111,7 +113,7 @@ export function AdminDashboard() {
       done: activeTermCount > 0,
     },
     {
-      label: 'Create your first class & sections',
+      label: `Create your first ${terminology.classUnit.toLowerCase()} & ${terminology.sectionPlural.toLowerCase()}`,
       href: '/admin/classes',
       icon: School,
       done: classCount > 0,
