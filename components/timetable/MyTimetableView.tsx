@@ -57,7 +57,7 @@ export function MyTimetableView({ role }: { role: 'teacher' | 'student' }) {
                         <p className="flex items-center gap-1 text-xs font-medium text-foreground"><Clock size={12} /> {e.startTime}–{e.endTime}</p>
                         {showTerm && e.termName && <Badge variant="neutral" className="shrink-0">{e.termName}</Badge>}
                       </div>
-                      <p className="mt-1 text-sm font-medium text-foreground">{e.subject ?? 'Class'}</p>
+                      <p className="mt-1 text-sm font-medium text-foreground">{e.subject ?? 'Period'}</p>
                       <p className="text-xs text-muted-foreground">
                         {role === 'teacher' ? `${e.className ?? ''} ${e.section ?? ''}`.trim() : (e.teacher ?? 'Unassigned')}
                         {e.room ? <> · <MapPin size={10} className="inline" /> {e.room}</> : null}

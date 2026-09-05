@@ -29,7 +29,7 @@ export function TeachNowCard() {
             <div className="flex items-center justify-between">
               <Badge variant="primary" className="gap-1"><Clock size={12} /> Now · {active.startTime}–{active.endTime}</Badge>
             </div>
-            <p className="mt-2 text-lg font-semibold text-foreground">{active.subject ?? 'Class'} — {active.className} {active.section}</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">{active.subject ?? 'Period'} — {active.className} {active.section}</p>
             {active.room && <p className="text-sm text-muted-foreground">Room {active.room}</p>}
             <Link href={`/teacher/attendance?period=${active.id}`} className={`${buttonVariants({ size: 'sm' })} mt-3`}>
               Mark attendance <ArrowRight size={15} />
@@ -38,7 +38,7 @@ export function TeachNowCard() {
         ) : upcoming ? (
           <div className="rounded-xl border border-border p-4">
             <Badge variant="neutral" className="gap-1"><Clock size={12} /> Next · {upcoming.startTime}</Badge>
-            <p className="mt-2 font-medium text-foreground">{upcoming.subject ?? 'Class'} — {upcoming.className} {upcoming.section}</p>
+            <p className="mt-2 font-medium text-foreground">{upcoming.subject ?? 'Period'} — {upcoming.className} {upcoming.section}</p>
           </div>
         ) : (
           <p className="py-2 text-sm text-muted-foreground">No more classes scheduled today.</p>
@@ -51,7 +51,7 @@ export function TeachNowCard() {
               {d.today.map((e) => (
                 <li key={e.id} className="flex items-center gap-3 py-2 text-sm first:pt-0 last:pb-0">
                   <span className="w-24 shrink-0 text-xs font-medium text-foreground">{e.startTime}–{e.endTime}</span>
-                  <span className="min-w-0 flex-1 truncate text-foreground">{e.subject ?? 'Class'} · {e.className} {e.section}</span>
+                  <span className="min-w-0 flex-1 truncate text-foreground">{e.subject ?? 'Period'} · {e.className} {e.section}</span>
                   {e.room && <span className="text-xs text-muted-foreground">Room {e.room}</span>}
                 </li>
               ))}
