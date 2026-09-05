@@ -164,22 +164,20 @@ function TermsTab() {
 
   return (
     <div className="space-y-6">
-      {/* Only relevant before the first term exists — that's the one moment
-          the Settings "Academic structure" picker (Class vs Course wording,
-          default term type) still matters, since it locks permanently the
-          moment a term is created here. Surfaced right where an admin is
-          actually about to create their first term, rather than leaving
-          them to discover a separate, easy-to-miss Settings option only
-          after already picking a term type here that may not match. */}
+      {/* Low-key, not a required pre-step — the wording/default term type
+          is already auto-set from the institution type chosen at
+          registration, so most admins never need to touch this. This is
+          just a "psst, in case it guessed wrong" pointer, shown only while
+          it's still changeable (before the first term locks it in). */}
       {terms.length === 0 && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary-soft/40 px-3.5 py-3 text-sm text-primary-soft-foreground">
+        <div className="flex items-start gap-2.5 rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-sm text-muted-foreground">
           <Info size={17} className="mt-0.5 shrink-0" />
           <span>
-            Before adding your first term, check your{' '}
-            <Link href="/admin/settings?tab=institution" className="font-medium underline underline-offset-2">
+            Using different wording — like &quot;Course&quot; instead of &quot;Class&quot;? That comes from your{' '}
+            <Link href="/admin/settings?tab=institution" className="font-medium text-primary underline underline-offset-2">
               Academic Structure
             </Link>{' '}
-            in Settings — it sets the default term type and locks permanently once your first term is created here.
+            setting, which locks once you create your first term below.
           </span>
         </div>
       )}

@@ -269,7 +269,8 @@ function AcademicStructureCard() {
       <CardHeader className="p-6 pb-4">
         <CardTitle className="text-lg">Academic structure</CardTitle>
         <CardDescription>
-          Determines how {`terms/years/sessions`} are organized, and the language used across the app (e.g. "Class" vs "Course").
+          Already set based on the institution type you chose when registering — changes the wording used across the whole
+          app (e.g. &quot;Class&quot; vs &quot;Course&quot;, &quot;Section&quot; vs &quot;Batch&quot;). Only change this if it guessed wrong.
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 pt-0">
