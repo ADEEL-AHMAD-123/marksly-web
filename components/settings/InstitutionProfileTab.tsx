@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -288,6 +289,13 @@ function AcademicStructureCard() {
               </div>
               <p className="mt-1.5 text-xs text-muted-foreground">
                 Locked once your first term is created — contact support if this needs to change.
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Manage your actual academic years, semesters and sessions on the{' '}
+                <Link href="/admin/academic-year" className="font-medium text-primary hover:underline">
+                  Academic Terms
+                </Link>{' '}
+                page.
               </p>
             </div>
           </div>

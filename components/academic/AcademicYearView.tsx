@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   CalendarRange, Plus, ArrowRight, X, GraduationCap, AlertTriangle, Undo2, ChevronLeft,
   Pencil, Lock, Star, Info, Trash2, Award,
@@ -163,6 +164,26 @@ function TermsTab() {
 
   return (
     <div className="space-y-6">
+      {/* Only relevant before the first term exists — that's the one moment
+          the Settings "Academic structure" picker (Class vs Course wording,
+          default term type) still matters, since it locks permanently the
+          moment a term is created here. Surfaced right where an admin is
+          actually about to create their first term, rather than leaving
+          them to discover a separate, easy-to-miss Settings option only
+          after already picking a term type here that may not match. */}
+      {terms.length === 0 && (
+        <div className="flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary-soft/40 px-3.5 py-3 text-sm text-primary-soft-foreground">
+          <Info size={17} className="mt-0.5 shrink-0" />
+          <span>
+            Before adding your first term, check your{' '}
+            <Link href="/admin/settings?tab=institution" className="font-medium underline underline-offset-2">
+              Academic Structure
+            </Link>{' '}
+            in Settings — it sets the default term type and locks permanently once your first term is created here.
+          </span>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button variant="secondary" size="sm" onClick={() => setPromoteOpen(true)}>
           <GraduationCap size={16} /> Promote students
