@@ -8,6 +8,7 @@ export interface Terminology {
   classUnit: string;
   classUnitPlural: string;
   section: string;
+  sectionPlural: string;
   gradeLevel: string;
 }
 
@@ -20,6 +21,7 @@ const DEFAULT_TERMINOLOGY: Terminology = {
   classUnit: 'Class',
   classUnitPlural: 'Classes',
   section: 'Section',
+  sectionPlural: 'Sections',
   gradeLevel: 'Grade',
 };
 
@@ -32,6 +34,7 @@ const TERMINOLOGY_BY_STRUCTURE: Record<AcademicStructure, Terminology> = {
     classUnit: 'Class',
     classUnitPlural: 'Classes',
     section: 'Section',
+    sectionPlural: 'Sections',
     gradeLevel: 'Grade',
   },
   // Colleges/universities running overlapping Fall/Spring/Summer terms —
@@ -42,6 +45,7 @@ const TERMINOLOGY_BY_STRUCTURE: Record<AcademicStructure, Terminology> = {
     classUnit: 'Course',
     classUnitPlural: 'Courses',
     section: 'Section',
+    sectionPlural: 'Sections',
     gradeLevel: 'Year',
   },
   // Academies/training centers running short, often concurrent batches —
@@ -52,6 +56,7 @@ const TERMINOLOGY_BY_STRUCTURE: Record<AcademicStructure, Terminology> = {
     classUnit: 'Course',
     classUnitPlural: 'Courses',
     section: 'Batch',
+    sectionPlural: 'Batches',
     gradeLevel: 'Level',
   },
   // Institutions with a bespoke/mixed structure — generic fallback that
@@ -62,6 +67,7 @@ const TERMINOLOGY_BY_STRUCTURE: Record<AcademicStructure, Terminology> = {
     classUnit: 'Class',
     classUnitPlural: 'Classes',
     section: 'Section',
+    sectionPlural: 'Sections',
     gradeLevel: 'Level',
   },
 };

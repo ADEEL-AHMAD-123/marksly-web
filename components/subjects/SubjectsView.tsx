@@ -33,10 +33,12 @@ import {
   useRejectEnrollmentMutation,
 } from '@/store/api/subjectsApi';
 import { getErrorMessage } from '@/lib/get-error-message';
+import { useTerminology } from '@/lib/terminology';
 
 const PAGE_SIZE = 10;
 
 export function SubjectsView() {
+  const terminology = useTerminology();
   const { data, isLoading } = useGetSubjectsQuery();
   const subjects = data?.data ?? [];
   const [open, setOpen] = useState(false);
@@ -87,7 +89,7 @@ export function SubjectsView() {
           <SearchInput
             value={query}
             onChange={(v) => { setQuery(v); setPage(1); }}
-            placeholder="Search by name, code, class or teacher…"
+            placeholder={`Search by name, code, ${terminology.classUnit.toLowerCase()} or teacher…`}
           />
           {unassignedCount > 0 && (
             <button
@@ -120,7 +122,7 @@ export function SubjectsView() {
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Subject</TableHead>
                     <TableHead>Code</TableHead>
-                    <TableHead>Class</TableHead>
+                    <TableHead>{terminology.classUnit}</TableHead>
                     <TableHead>Teacher</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead />
@@ -131,7 +133,7 @@ export function SubjectsView() {
                     <TableRow key={s.id}>
                       <TableCell className="font-medium text-foreground">{s.name}</TableCell>
                       <TableCell className="text-muted-foreground">{s.code ?? '—'}</TableCell>
-                      <TableCell className="text-muted-foreground">{s.className ?? 'All'}</TableCell>
+                      <TableCell className="text-muted-foreground">{s.className ?? `All ${terminology.classUnitPlural.toLowerCase()}`}</TableCell>
                       <TableCell>
                         {s.teacherName ? (
                           <span className="text-muted-foreground">{s.teacherName}</span>
@@ -172,7 +174,7 @@ export function SubjectsView() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-foreground">{s.name}</p>
-                    <p className="text-xs text-muted-foreground">{s.code ? `${s.code} · ` : ''}{s.className ?? 'All classes'}{s.teacherName ? ` · ${s.teacherName}` : ''}</p>
+                    <p className="text-xs text-muted-foreground">{s.code ? `${s.code} · ` : ''}{s.className ?? `All ${terminology.classUnitPlural.toLowerCase()}`}{s.teacherName ? ` · ${s.teacherName}` : ''}</p>
                   </div>
                   <Badge variant={s.isElective ? 'warning' : 'neutral'}>{s.isElective ? 'Elective' : 'Core'}</Badge>
                 </div>
@@ -264,6 +266,7 @@ const schema = z.object({
 type SubjectForm = z.infer<typeof schema>;
 
 function AddSubjectDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const terminology = useTerminology();
   const { data: classesRes } = useGetClassesQuery();
   const { data: teachersRes } = useGetUsersQuery({ role: 'teacher', limit: 100 });
   const classes = classesRes?.data ?? [];
@@ -314,15 +317,15 @@ function AddSubjectDrawer({ open, onClose }: { open: boolean; onClose: () => voi
               </div>
             </div>
             <div>
-              <Label>Class (optional)</Label>
+              <Label>{terminology.classUnit} (optional)</Label>
               <Controller
                 control={control}
                 name="classId"
                 render={({ field }) => (
                   <Select value={field.value || 'all'} onValueChange={(v) => field.onChange(v === 'all' ? '' : v)}>
-                    <SelectTrigger><SelectValue placeholder="All classes" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={`All ${terminology.classUnitPlural.toLowerCase()}`} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All classes</SelectItem>
+                      <SelectItem value="all">All {terminology.classUnitPlural.toLowerCase()}</SelectItem>
                       {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                     </SelectContent>
                   </Select>

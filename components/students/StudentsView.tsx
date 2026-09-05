@@ -27,6 +27,7 @@ import { ImportCsvDrawer } from '@/components/ui/import-csv-drawer';
 import { getInitials, formatDate } from '@/lib/utils';
 import { StudentFormDrawer } from './StudentFormDrawer';
 import { StudentDetailDrawer } from './StudentDetailDrawer';
+import { useTerminology } from '@/lib/terminology';
 
 const statusBadge: Record<
   StudentListItem['status'],
@@ -43,6 +44,7 @@ const statusBadge: Record<
 const PAGE_SIZE = 20;
 
 export function StudentsView() {
+  const terminology = useTerminology();
   const [query, setQuery] = useState(() =>
     typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('q') ?? ''
   );
@@ -161,7 +163,7 @@ export function StudentsView() {
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Student</TableHead>
-                    <TableHead>Class</TableHead>
+                    <TableHead>{terminology.classUnit}</TableHead>
                     <TableHead>Guardian</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>

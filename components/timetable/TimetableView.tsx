@@ -20,10 +20,12 @@ import { useGetUsersQuery } from '@/store/api/usersApi';
 import {
   useGetTimetableQuery, useCreateEntryMutation, useDeleteEntryMutation,
 } from '@/store/api/timetableApi';
+import { useTerminology } from '@/lib/terminology';
 
 export const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export function TimetableView() {
+  const terminology = useTerminology();
   const { data: classesRes } = useGetClassesQuery();
   const classes = classesRes?.data ?? [];
   const [classId, setClassId] = useState('');
@@ -51,23 +53,23 @@ export function TimetableView() {
     <div className="space-y-6">
       <PageHeader
         title="Timetable"
-        description="Build the weekly schedule per section."
+        description={`Build the weekly schedule per ${terminology.section.toLowerCase()}.`}
         actions={ready ? <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Add period</Button> : undefined}
       />
 
       <Card className="p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <Label>Class</Label>
+            <Label>{terminology.classUnit}</Label>
             <Select value={classId} onValueChange={(v) => { setClassId(v); setSectionId(''); }}>
-              <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={`Select ${terminology.classUnit.toLowerCase()}`} /></SelectTrigger>
               <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Section</Label>
+            <Label>{terminology.section}</Label>
             <Select value={sectionId} onValueChange={setSectionId} disabled={!classId}>
-              <SelectTrigger><SelectValue placeholder="Section" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={terminology.section} /></SelectTrigger>
               <SelectContent>{sections.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -78,9 +80,9 @@ export function TimetableView() {
         // Distinct from the "pick one" empty state below — an empty class
         // dropdown with the same generic "Select a class" message left an
         // admin with nothing to actually select, no explanation why.
-        <Card><EmptyState icon={CalendarClock} title="No classes yet" description="Create a class first (Classes page) before building a timetable." /></Card>
+        <Card><EmptyState icon={CalendarClock} title={`No ${terminology.classUnitPlural.toLowerCase()} yet`} description={`Create a ${terminology.classUnit.toLowerCase()} first (${terminology.classUnitPlural} page) before building a timetable.`} /></Card>
       ) : !ready ? (
-        <Card><EmptyState icon={CalendarClock} title="Select a class and section" description="Choose a class and section to view or build its timetable." /></Card>
+        <Card><EmptyState icon={CalendarClock} title={`Select a ${terminology.classUnit.toLowerCase()} and ${terminology.section.toLowerCase()}`} description={`Choose a ${terminology.classUnit.toLowerCase()} and ${terminology.section.toLowerCase()} to view or build its timetable.`} /></Card>
       ) : isFetching && entries.length === 0 ? (
         <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>
       ) : (

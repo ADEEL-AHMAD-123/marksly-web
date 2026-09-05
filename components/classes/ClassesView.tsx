@@ -25,6 +25,7 @@ import {
 } from '@/store/api/classesApi';
 import { useGetUsersQuery } from '@/store/api/usersApi';
 import { useGetActiveTermsQuery, useGetTermsQuery } from '@/store/api/termsApi';
+import { useTerminology } from '@/lib/terminology';
 import { useGetGradingSchemesQuery } from '@/store/api/gradingSchemesApi';
 
 const schema = z.object({
@@ -51,6 +52,7 @@ type Form = z.infer<typeof schema>;
 const PAGE_SIZE = 9;
 
 export function ClassesView() {
+  const terminology = useTerminology();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ClassItem | null>(null);
   const [query, setQuery] = useState('');
@@ -178,27 +180,27 @@ export function ClassesView() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Classes"
-        description={isLoading ? 'Loading…' : `${filtered.length} of ${classes.length} classes`}
-        actions={<Button size="sm" onClick={openAdd}><Plus size={16} /> Add Class</Button>}
+        title={terminology.classUnitPlural}
+        description={isLoading ? 'Loading…' : `${filtered.length} of ${classes.length} ${terminology.classUnitPlural.toLowerCase()}`}
+        actions={<Button size="sm" onClick={openAdd}><Plus size={16} /> Add {terminology.classUnit}</Button>}
       />
 
       {!isLoading && !isError && classes.length > 0 && (
         <Card className="p-4">
-          <SearchInput value={query} onChange={(v) => { setQuery(v); setPage(1); }} placeholder="Search by class name, year or section…" />
+          <SearchInput value={query} onChange={(v) => { setQuery(v); setPage(1); }} placeholder={`Search by ${terminology.classUnit.toLowerCase()} name, year or ${terminology.section.toLowerCase()}…`} />
         </Card>
       )}
 
       {isError ? (
-        <Card><EmptyState icon={AlertCircle} title="Couldn't load classes" description="Check that the API is running and try again." action={<Button variant="secondary" size="sm" onClick={() => refetch()}>Retry</Button>} /></Card>
+        <Card><EmptyState icon={AlertCircle} title={`Couldn't load ${terminology.classUnitPlural.toLowerCase()}`} description="Check that the API is running and try again." action={<Button variant="secondary" size="sm" onClick={() => refetch()}>Retry</Button>} /></Card>
       ) : isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => <Card key={i} className="p-5"><Skeleton className="h-24 w-full" /></Card>)}
         </div>
       ) : classes.length === 0 ? (
-        <Card><EmptyState icon={School} title="No classes yet" description="Create your first class and sections so you can start enrolling students." action={<Button size="sm" onClick={openAdd}><Plus size={16} /> Add Class</Button>} /></Card>
+        <Card><EmptyState icon={School} title={`No ${terminology.classUnitPlural.toLowerCase()} yet`} description={`Create your first ${terminology.classUnit.toLowerCase()} and ${terminology.sectionPlural.toLowerCase()} so you can start enrolling students.`} action={<Button size="sm" onClick={openAdd}><Plus size={16} /> Add {terminology.classUnit}</Button>} /></Card>
       ) : filtered.length === 0 ? (
-        <Card><EmptyState icon={Filter} title="No classes match your search" description="Try a different term." action={<Button variant="secondary" size="sm" onClick={() => setQuery('')}>Clear search</Button>} /></Card>
+        <Card><EmptyState icon={Filter} title={`No ${terminology.classUnitPlural.toLowerCase()} match your search`} description="Try a different term." action={<Button variant="secondary" size="sm" onClick={() => setQuery('')}>Clear search</Button>} /></Card>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -254,7 +256,7 @@ export function ClassesView() {
         <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[460px]">
           <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <h2 className="text-lg font-semibold">{editing ? 'Edit Class' : 'Add Class'}</h2>
+              <h2 className="text-lg font-semibold">{editing ? `Edit ${terminology.classUnit}` : `Add ${terminology.classUnit}`}</h2>
               <SheetClose className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></SheetClose>
             </div>
 
@@ -273,7 +275,7 @@ export function ClassesView() {
               )}
 
               <div>
-                <Label htmlFor="name">Class name</Label>
+                <Label htmlFor="name">{terminology.classUnit} name</Label>
                 <Input id="name" placeholder="e.g. Grade 5" {...register('name')} />
                 {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
               </div>

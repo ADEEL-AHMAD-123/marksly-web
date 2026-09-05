@@ -20,6 +20,7 @@ import { PhotoUpload } from '@/components/shared/PhotoUpload';
 import { getErrorMessage } from '@/lib/get-error-message';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetActiveTermsQuery } from '@/store/api/termsApi';
+import { useTerminology } from '@/lib/terminology';
 import {
   useCreateStudentMutation,
   useUpdateStudentMutation,
@@ -86,6 +87,7 @@ interface Props {
 }
 
 export function StudentFormDrawer({ open, onClose, student, classesOverride }: Props) {
+  const terminology = useTerminology();
   const isEdit = !!student;
   const { data: classesRes } = useGetClassesQuery(undefined, { skip: !!classesOverride });
   const classes = useMemo(() => classesOverride ?? classesRes?.data ?? [], [classesOverride, classesRes]);
@@ -219,14 +221,14 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 <AlertCircle size={17} className="mt-0.5 shrink-0" />
                 <span>
                   {classesOverride
-                    ? "You're not assigned as the teacher of any class section yet — ask an admin to assign you to one."
+                    ? `You're not assigned as the teacher of any ${terminology.classUnit.toLowerCase()} ${terminology.section.toLowerCase()} yet — ask an admin to assign you to one.`
                     // Tells the admin the actual root cause when it's terms,
                     // not classes — otherwise they'd go to the Classes page,
                     // hit the same wall there, and have to find their way to
                     // Academic Terms themselves as a second, undocumented hop.
                     : noActiveTerms
-                      ? 'Set up your academic year first (Academic Terms page), then create a class — students need both.'
-                      : 'Create a class first (Classes page) — students need a class and section.'}
+                      ? `Set up your academic year first (Academic Terms page), then create a ${terminology.classUnit.toLowerCase()} — students need both.`
+                      : `Create a ${terminology.classUnit.toLowerCase()} first (${terminology.classUnitPlural} page) — students need a ${terminology.classUnit.toLowerCase()} and ${terminology.section.toLowerCase()}.`}
                 </span>
               </div>
             )}
@@ -289,7 +291,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Class</Label>
+                <Label>{terminology.classUnit}</Label>
                 <Controller
                   control={control}
                   name="classId"
@@ -298,7 +300,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                       value={field.value}
                       onValueChange={(v) => { field.onChange(v); setValue('sectionId', ''); }}
                     >
-                      <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={`Select ${terminology.classUnit.toLowerCase()}`} /></SelectTrigger>
                       <SelectContent>
                         {classes.map((c) => (
                           <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -310,13 +312,13 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 {errors.classId && <p className="mt-1 text-xs text-danger">{errors.classId.message}</p>}
               </div>
               <div>
-                <Label>Section</Label>
+                <Label>{terminology.section}</Label>
                 <Controller
                   control={control}
                   name="sectionId"
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange} disabled={!selectedClassId}>
-                      <SelectTrigger><SelectValue placeholder="Section" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={terminology.section} /></SelectTrigger>
                       <SelectContent>
                         {sections.map((s) => (
                           <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
