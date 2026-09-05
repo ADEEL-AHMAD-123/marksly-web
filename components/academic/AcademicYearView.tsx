@@ -70,6 +70,16 @@ const STRUCTURE_DEFAULT_TERM_TYPE: Record<string, TermType> = {
 };
 
 export function AcademicYearView() {
+  // Deep-linkable via ?tab=grading (e.g. from ResultsEntry's "set up a
+  // grading scheme" link when no scheme is configured) — read via
+  // window.location.search instead of useSearchParams to avoid that hook's
+  // Suspense-boundary requirement, same pattern as SettingsView's tab param.
+  const [initialTab, setInitialTab] = useState('terms');
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab === 'grading') setInitialTab('grading');
+  }, []);
+
   // Deliberately NOT terminology.termPlural here (which would say e.g.
   // "Academic Years" for a yearly-structured institution) — that label only
   // makes sense if every term is the same type, but this page's own Add
@@ -87,7 +97,7 @@ export function AcademicYearView() {
         title="Academic Terms & Grading"
         description="Manage academic years, semesters and sessions, promote students, and configure grading schemes."
       />
-      <Tabs defaultValue="terms">
+      <Tabs key={initialTab} defaultValue={initialTab}>
         <TabsList className="h-auto gap-1.5 bg-transparent p-0">
           <TabsTrigger
             value="terms"

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { ArrowLeft, Send, Save, CheckCircle2, AlertTriangle, Clock, PauseCircle, PlayCircle, Paperclip } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
@@ -443,20 +444,46 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" loading={saving} onClick={save}>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={saving}
+            onClick={save}
+            disabled={!scheme}
+            title={scheme ? undefined : 'Set up a grading scheme first — results can\'t be saved without one'}
+          >
             <Save size={16} /> Save
           </Button>
-          <Button size="sm" loading={publishing} onClick={publish} disabled={exam.published}>
+          <Button
+            size="sm"
+            loading={publishing}
+            onClick={publish}
+            disabled={exam.published || !scheme}
+            title={!scheme && !exam.published ? 'Set up a grading scheme first — results can\'t be published without one' : undefined}
+          >
             {exam.published ? <><CheckCircle2 size={16} /> Published</> : <><Send size={16} /> Publish</>}
           </Button>
         </div>
       </div>
 
+      {/* Disables Save/Publish above rather than just warning — the backend
+          actually rejects saving results with no grading scheme resolved
+          (a Result's `grade` field is required, so there's nothing valid to
+          store), so letting an admin type marks and only discover that at
+          save time would be a dead end. Blocking it upfront with a direct
+          fix is the same pattern noClasses/noActiveTerms banners use
+          elsewhere in this codebase. */}
       {!scheme && (
-        <Card className="flex items-center gap-2 border-danger/40 bg-danger-soft p-4 text-sm text-danger">
-          <AlertTriangle size={16} className="shrink-0" />
-          No grading scheme is configured for this institution/class. Marks can still be entered, but grades
-          cannot be computed until a grading scheme is set up in Settings.
+        <Card className="flex items-start gap-2.5 border-danger/40 bg-danger-soft p-4 text-sm text-danger">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          <span>
+            No grading scheme is configured for this institution — marks can be typed in below, but can&apos;t be
+            saved until one exists.{' '}
+            <Link href="/admin/academic-year?tab=grading" className="font-medium underline underline-offset-2">
+              Set up a grading scheme
+            </Link>
+            {' '}(every institution normally gets a default one automatically — seeing this is unusual).
+          </span>
         </Card>
       )}
 
