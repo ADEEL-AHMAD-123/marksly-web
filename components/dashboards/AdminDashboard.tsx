@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useGetStudentStatsQuery } from '@/store/api/studentsApi';
 import { useGetAttendanceCoverageTodayQuery } from '@/store/api/attendanceApi';
 import { useGetFeesSummaryQuery, useGetFeeStructuresQuery } from '@/store/api/feesApi';
@@ -205,7 +206,16 @@ export function AdminDashboard() {
         onMarkAttendance={() => router.push('/admin/attendance')}
       />
 
-      {isNewInstitution ? (
+      {onboardingLoading ? (
+        // Every "done" flag defaults to false/0 until its query actually
+        // resolves — rendering the checklist before then showed EVERY step
+        // as incomplete for a moment (a full 7-item card), then snapped
+        // down to however many were actually left once the real data
+        // arrived. That flash was confusing on every single refresh, not a
+        // one-off glitch — so nothing checklist-shaped renders at all until
+        // every step's real status is known, just a same-sized placeholder.
+        <Skeleton className="h-40 w-full rounded-2xl" />
+      ) : isNewInstitution ? (
         <OnboardingCard
           variant="new"
           steps={ONBOARDING_STEPS}
