@@ -40,14 +40,38 @@ export function Navbar() {
   const institution = institutionRes?.data;
 
   const handleLogout = async () => {
+    // The refresh-token cookie is httpOnly — only the server can clear it,
+    // so a network failure here means it's still sitting in the browser
+    // valid even though this tab is about to look logged out. Previously
+    // this always showed "Logged out successfully" regardless, which on a
+    // dropped connection (or a shared device someone walks away from mid-
+    // logout) was actively misleading: reloading the page would silently
+    // sign back in via that still-valid cookie (see AuthBootstrap.tsx). This
+    // tab's own state is still cleared either way — an access token that
+    // might be revoked server-side shouldn't keep being used locally — but
+    // the message now says which actually happened, and offline gets one
+    // retry once connectivity returns so the server-side session doesn't
+    // just stay valid forever unnoticed.
+    let reachedServer = false;
     try {
       await logoutMutation().unwrap();
+      reachedServer = true;
     } catch {
-      /* ignore network errors on logout */
+      if (typeof window !== 'undefined') {
+        const retryOnceOnline = () => {
+          logoutMutation().catch(() => {});
+          window.removeEventListener('online', retryOnceOnline);
+        };
+        window.addEventListener('online', retryOnceOnline);
+      }
     } finally {
       dispatch(logout());
       router.replace('/login');
-      toast.success('Logged out successfully');
+      if (reachedServer) {
+        toast.success('Logged out successfully');
+      } else {
+        toast.error("Signed out on this device, but couldn't reach the server to confirm — on a shared device, please also close the browser.");
+      }
     }
   };
 

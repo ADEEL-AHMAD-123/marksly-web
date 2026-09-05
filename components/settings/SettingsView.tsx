@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateUser } from '@/store/slices/authSlice';
-import { useUpdateProfileMutation, useChangePasswordMutation } from '@/store/api/authApi';
+import { useUpdateProfileMutation, useChangePasswordMutation, useRequestEmailChangeMutation } from '@/store/api/authApi';
 import { useGetBankDetailsQuery, useUpdateBankDetailsMutation } from '@/store/api/superadminApi';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { THEMES } from '@/lib/themes';
@@ -105,9 +105,6 @@ const settingsTabTriggerClass = cn(
 const profileSchema = z.object({
   firstName: z.string().min(1, 'Required'),
   lastName: z.string().min(1, 'Required'),
-  // Required — email is mandatory system-wide (the only working
-  // self-service password-recovery path), so it can no longer be cleared.
-  email: z.string().email('Enter a valid email address'),
   // Accounts created before the country-aware phone input (see
   // register/page.tsx) may still hold a legacy local-format number here —
   // don't hard-fail validation on those until the person actually edits
@@ -129,7 +126,6 @@ function ProfileTab() {
     defaultValues: {
       firstName: user?.firstName ?? '',
       lastName: user?.lastName ?? '',
-      email: user?.email ?? '',
       phone: user?.phone ?? '',
     },
   });
@@ -145,53 +141,122 @@ function ProfileTab() {
   };
 
   return (
-    <Card className="max-w-2xl">
+    <div className="max-w-2xl space-y-6">
+      <Card>
+        <CardHeader className="p-6 pb-4">
+          <CardTitle className="text-lg">Profile</CardTitle>
+          <CardDescription>Update your personal information.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-6 pt-0">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="firstName">First name</Label>
+                <Input id="firstName" {...register('firstName')} />
+                {errors.firstName && <p className="mt-1 text-xs text-danger">{errors.firstName.message}</p>}
+              </div>
+              <div>
+                <Label htmlFor="lastName">Last name</Label>
+                <Input id="lastName" {...register('lastName')} />
+                {errors.lastName && <p className="mt-1 text-xs text-danger">{errors.lastName.message}</p>}
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="phone">Phone</Label>
+              <Controller
+                control={control}
+                name="phone"
+                render={({ field }) => (
+                  <PhoneInput
+                    id="phone"
+                    international
+                    labels={en}
+                    defaultCountry="PK"
+                    value={field.value}
+                    onChange={(v) => field.onChange(v ?? '')}
+                    className={cn(errors.phone && 'PhoneInput-danger')}
+                  />
+                )}
+              />
+              {errors.phone && <p className="mt-1 text-xs text-danger">{errors.phone.message}</p>}
+            </div>
+            <div className="flex justify-end">
+              <Button type="submit" loading={isLoading}>Save changes</Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <EmailChangeCard currentEmail={user?.email ?? ''} />
+    </div>
+  );
+}
+
+/* ── Email change ──────────────────────────────────────────────────────────
+   Deliberately its own card/form, not a field on the profile form above —
+   changing the email needs the current password re-entered and only takes
+   effect once a confirmation link sent to the NEW address is clicked (see
+   auth.service.ts's requestEmailChange()/confirmEmailChange()). Folding
+   that into a plain "Save changes" button would either need to always
+   demand a password for an unrelated name/phone edit, or silently skip the
+   password check — this keeps the two clearly separate instead. */
+const emailChangeSchema = z.object({
+  newEmail: z.string().trim().toLowerCase().email('Enter a valid email address'),
+  currentPassword: z.string().min(1, 'Enter your current password'),
+});
+type EmailChangeForm = z.infer<typeof emailChangeSchema>;
+
+function EmailChangeCard({ currentEmail }: { currentEmail: string }) {
+  const [requestEmailChange, { isLoading }] = useRequestEmailChangeMutation();
+  const [sent, setSent] = useState<string | null>(null);
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<EmailChangeForm>({
+    resolver: zodResolver(emailChangeSchema),
+    defaultValues: { newEmail: '', currentPassword: '' },
+  });
+
+  const onSubmit = async (values: EmailChangeForm) => {
+    try {
+      await requestEmailChange(values).unwrap();
+      setSent(values.newEmail);
+      reset();
+    } catch (e: any) {
+      toast.error(e?.data?.error?.message || 'Could not request email change');
+    }
+  };
+
+  return (
+    <Card>
       <CardHeader className="p-6 pb-4">
-        <CardTitle className="text-lg">Profile</CardTitle>
-        <CardDescription>Update your personal information.</CardDescription>
+        <CardTitle className="text-lg">Email address</CardTitle>
+        <CardDescription>
+          Currently <span className="font-medium text-foreground">{currentEmail || 'not set'}</span> — this is also
+          where password-reset links are sent, so changing it requires your current password and confirming you own
+          the new inbox.
+        </CardDescription>
       </CardHeader>
       <CardContent className="p-6 pt-0">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {sent ? (
+          <p className="rounded-lg border border-success/30 bg-success-soft px-3.5 py-3 text-sm text-success">
+            Check <span className="font-medium">{sent}</span> for a confirmation link — your email won&apos;t change
+            until you click it.
+          </p>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div>
-              <Label htmlFor="firstName">First name</Label>
-              <Input id="firstName" {...register('firstName')} />
-              {errors.firstName && <p className="mt-1 text-xs text-danger">{errors.firstName.message}</p>}
+              <Label htmlFor="newEmail">New email address</Label>
+              <Input id="newEmail" type="email" dir="ltr" {...register('newEmail')} />
+              {errors.newEmail && <p className="mt-1 text-xs text-danger">{errors.newEmail.message}</p>}
             </div>
             <div>
-              <Label htmlFor="lastName">Last name</Label>
-              <Input id="lastName" {...register('lastName')} />
-              {errors.lastName && <p className="mt-1 text-xs text-danger">{errors.lastName.message}</p>}
+              <Label htmlFor="emailChangePassword">Current password</Label>
+              <Input id="emailChangePassword" type="password" autoComplete="current-password" {...register('currentPassword')} />
+              {errors.currentPassword && <p className="mt-1 text-xs text-danger">{errors.currentPassword.message}</p>}
             </div>
-          </div>
-          <div>
-            <Label htmlFor="phone">Phone</Label>
-            <Controller
-              control={control}
-              name="phone"
-              render={({ field }) => (
-                <PhoneInput
-                  id="phone"
-                  international
-                  labels={en}
-                  defaultCountry="PK"
-                  value={field.value}
-                  onChange={(v) => field.onChange(v ?? '')}
-                  className={cn(errors.phone && 'PhoneInput-danger')}
-                />
-              )}
-            />
-            {errors.phone && <p className="mt-1 text-xs text-danger">{errors.phone.message}</p>}
-          </div>
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" dir="ltr" {...register('email')} />
-            {errors.email && <p className="mt-1 text-xs text-danger">{errors.email.message}</p>}
-          </div>
-          <div className="flex justify-end">
-            <Button type="submit" loading={isLoading}>Save changes</Button>
-          </div>
-        </form>
+            <div className="flex justify-end">
+              <Button type="submit" loading={isLoading}>Send confirmation link</Button>
+            </div>
+          </form>
+        )}
       </CardContent>
     </Card>
   );

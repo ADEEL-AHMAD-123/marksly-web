@@ -89,9 +89,19 @@ export const authApi = baseApi.injectEndpoints({
     }),
     updateProfile: builder.mutation<
       { success: boolean; data: LoginResponse['data']['user']; message: string },
-      { firstName?: string; lastName?: string; email?: string; phone?: string }
+      { firstName?: string; lastName?: string; phone?: string }
     >({
       query: (body) => ({ url: '/auth/profile', method: 'PATCH', body }),
+    }),
+    // Email is a separate, password-confirmed, new-inbox-verified flow now —
+    // see auth.service.ts's requestEmailChange()/confirmEmailChange() for
+    // why. The email doesn't actually change until the confirmation link
+    // (confirmEmailChange, below) is clicked.
+    requestEmailChange: builder.mutation<void, { newEmail: string; currentPassword: string }>({
+      query: (body) => ({ url: '/auth/request-email-change', method: 'POST', body }),
+    }),
+    confirmEmailChange: builder.mutation<{ success: boolean; data: { email: string }; message: string }, { token: string }>({
+      query: (body) => ({ url: '/auth/confirm-email-change', method: 'POST', body }),
     }),
     getMe: builder.query<any, void>({
       query: () => '/auth/me',
@@ -115,6 +125,8 @@ export const {
   useAcceptInviteMutation,
   useChangePasswordMutation,
   useUpdateProfileMutation,
+  useRequestEmailChangeMutation,
+  useConfirmEmailChangeMutation,
   useGetMeQuery,
   useSwitchRoleMutation,
 } = authApi;
