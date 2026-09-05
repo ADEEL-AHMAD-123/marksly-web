@@ -20,7 +20,7 @@ import { PhotoUpload } from '@/components/shared/PhotoUpload';
 import { getErrorMessage } from '@/lib/get-error-message';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetActiveTermsQuery } from '@/store/api/termsApi';
-import { useTerminology } from '@/lib/terminology';
+import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
 import {
   useCreateStudentMutation,
   useUpdateStudentMutation,
@@ -72,6 +72,7 @@ interface ClassOption {
   id: string;
   name: string;
   sections: { id: string; name: string }[];
+  termType?: string | null;
 }
 
 interface Props {
@@ -118,10 +119,12 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   });
 
   const selectedClassId = watch('classId');
-  const sections = useMemo(
-    () => classes.find((c) => c.id === selectedClassId)?.sections ?? [],
-    [classes, selectedClassId]
-  );
+  const selectedClass = useMemo(() => classes.find((c) => c.id === selectedClassId), [classes, selectedClassId]);
+  const sections = selectedClass?.sections ?? [];
+  // Once a class is actually picked, prefer its own term's wording (e.g. a
+  // short-session course should say "Batch") over the institution-wide
+  // default terminology below.
+  const sectionLabel = getTerminologyForTermType(selectedClass?.termType)?.section ?? terminology.section;
 
   // Prefill on open
   useEffect(() => {
@@ -312,13 +315,13 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 {errors.classId && <p className="mt-1 text-xs text-danger">{errors.classId.message}</p>}
               </div>
               <div>
-                <Label>{terminology.section}</Label>
+                <Label>{sectionLabel}</Label>
                 <Controller
                   control={control}
                   name="sectionId"
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange} disabled={!selectedClassId}>
-                      <SelectTrigger><SelectValue placeholder={terminology.section} /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={sectionLabel} /></SelectTrigger>
                       <SelectContent>
                         {sections.map((s) => (
                           <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>

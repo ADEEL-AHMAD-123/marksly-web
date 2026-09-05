@@ -16,7 +16,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { QRCode } from '@/components/ui/qr-code';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetIdCardsQuery, type IdCard } from '@/store/api/studentsApi';
-import { useTerminology } from '@/lib/terminology';
+import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
 import { CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS } from '@/components/shared/idCardPrint';
 import { IdCardCredit } from '@/components/shared/IdCardCredit';
 import { IdCardReadinessBanner } from '@/components/shared/IdCardReadinessBanner';
@@ -27,7 +27,11 @@ export function IdCardsView() {
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
 
-  const sections = useMemo(() => classes.find((c) => c.id === classId)?.sections ?? [], [classes, classId]);
+  const selectedClass = useMemo(() => classes.find((c) => c.id === classId), [classes, classId]);
+  const sections = selectedClass?.sections ?? [];
+  // Prefer the selected class's own term-type wording (e.g. "Batch" for a
+  // short-session course) once one is actually picked.
+  const sectionLabel = getTerminologyForTermType(selectedClass?.termType)?.section ?? 'Section';
   const ready = !!classId && !!sectionId;
   const { data, isFetching } = useGetIdCardsQuery({ classId, sectionId }, { skip: !ready });
   const sheet = data?.data;
@@ -59,9 +63,9 @@ export function IdCardsView() {
             </Select>
           </div>
           <div>
-            <Label>Section</Label>
+            <Label>{sectionLabel}</Label>
             <Select value={sectionId} onValueChange={setSectionId} disabled={!classId}>
-              <SelectTrigger><SelectValue placeholder="Section" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={sectionLabel} /></SelectTrigger>
               <SelectContent>{sections.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>

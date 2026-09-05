@@ -20,7 +20,7 @@ import { useGetUsersQuery } from '@/store/api/usersApi';
 import {
   useGetTimetableQuery, useCreateEntryMutation, useDeleteEntryMutation,
 } from '@/store/api/timetableApi';
-import { useTerminology } from '@/lib/terminology';
+import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
 
 export const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -33,7 +33,12 @@ export function TimetableView() {
   const [addOpen, setAddOpen] = useState(false);
   const [deleteEntry] = useDeleteEntryMutation();
 
-  const sections = useMemo(() => classes.find((c) => c.id === classId)?.sections ?? [], [classes, classId]);
+  const selectedClass = useMemo(() => classes.find((c) => c.id === classId), [classes, classId]);
+  const sections = selectedClass?.sections ?? [];
+  // Once a class is actually picked, prefer its own term's wording (e.g. a
+  // short-session course should say "Batch") over the institution-wide
+  // default — falls back to the generic default while nothing is selected.
+  const sectionLabel = getTerminologyForTermType(selectedClass?.termType)?.section ?? terminology.section;
   const ready = !!classId && !!sectionId;
   const { data, isFetching } = useGetTimetableQuery({ classId, sectionId }, { skip: !ready });
   const entries = data?.data ?? [];
@@ -53,7 +58,7 @@ export function TimetableView() {
     <div className="space-y-6">
       <PageHeader
         title="Timetable"
-        description={`Build the weekly schedule per ${terminology.section.toLowerCase()}.`}
+        description={`Build the weekly schedule per ${sectionLabel.toLowerCase()}.`}
         actions={ready ? <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Add period</Button> : undefined}
       />
 
@@ -67,9 +72,9 @@ export function TimetableView() {
             </Select>
           </div>
           <div>
-            <Label>{terminology.section}</Label>
+            <Label>{sectionLabel}</Label>
             <Select value={sectionId} onValueChange={setSectionId} disabled={!classId}>
-              <SelectTrigger><SelectValue placeholder={terminology.section} /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={sectionLabel} /></SelectTrigger>
               <SelectContent>{sections.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -82,7 +87,7 @@ export function TimetableView() {
         // admin with nothing to actually select, no explanation why.
         <Card><EmptyState icon={CalendarClock} title={`No ${terminology.classUnitPlural.toLowerCase()} yet`} description={`Create a ${terminology.classUnit.toLowerCase()} first (${terminology.classUnitPlural} page) before building a timetable.`} /></Card>
       ) : !ready ? (
-        <Card><EmptyState icon={CalendarClock} title={`Select a ${terminology.classUnit.toLowerCase()} and ${terminology.section.toLowerCase()}`} description={`Choose a ${terminology.classUnit.toLowerCase()} and ${terminology.section.toLowerCase()} to view or build its timetable.`} /></Card>
+        <Card><EmptyState icon={CalendarClock} title={`Select a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()}`} description={`Choose a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()} to view or build its timetable.`} /></Card>
       ) : isFetching && entries.length === 0 ? (
         <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>
       ) : (

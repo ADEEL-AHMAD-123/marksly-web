@@ -80,6 +80,34 @@ export function getTerminology(academicStructure: AcademicStructure | undefined 
   return TERMINOLOGY_BY_STRUCTURE[academicStructure] ?? DEFAULT_TERMINOLOGY;
 }
 
+// A term's own `type` (see marksly-api's term.model.ts) is more specific
+// than the institution's academicStructure — an institution can genuinely
+// run mixed term types at once (e.g. yearly classes alongside a
+// short-session course), so once a *specific* class/term is in view, its
+// own type should win over the institution-wide guess.
+type TermType = 'academic_year' | 'semester' | 'trimester' | 'short_session' | 'custom';
+
+const STRUCTURE_BY_TERM_TYPE: Record<TermType, AcademicStructure> = {
+  academic_year: 'yearly',
+  semester: 'semester',
+  trimester: 'semester',
+  short_session: 'short_session',
+  custom: 'custom',
+};
+
+/** Terminology for one specific term's type, when known — use this once a
+ *  specific class/term is selected (e.g. in a class picker), instead of the
+ *  institution-wide useTerminology(), so mixed-structure institutions show
+ *  the right word ("Batch" for a short-session course) for that item
+ *  specifically. Returns null when the type isn't known yet (nothing
+ *  selected, or an older class predating this field), so callers can fall
+ *  back to the institution-wide terminology in that case. */
+export function getTerminologyForTermType(termType: string | null | undefined): Terminology | null {
+  if (!termType) return null;
+  const structure = STRUCTURE_BY_TERM_TYPE[termType as TermType];
+  return structure ? TERMINOLOGY_BY_STRUCTURE[structure] : null;
+}
+
 /** Reads the current user's institution (via the same
  *  useGetMyInstitutionQuery RTK Query hook already used elsewhere, e.g.
  *  components/settings/InstitutionProfileTab.tsx — RTK Query dedupes/caches

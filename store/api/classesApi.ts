@@ -18,6 +18,12 @@ export interface ClassItem {
   // path was populated, which the list() query always does).
   termId: string | null;
   termName: string | null;
+  // The term's own type ('academic_year' | 'semester' | 'trimester' |
+  // 'short_session' | 'custom') — lets the frontend pick the right wording
+  // ("Class" vs "Course", "Section" vs "Batch") for this specific class,
+  // since an institution can genuinely mix term types (see lib/terminology.ts's
+  // getTerminologyForTermType()).
+  termType: string | null;
   // The class's own assigned grading scheme, if any — null when unset,
   // meaning it falls back to the institution's default scheme (see
   // backend's grading-scheme.service.ts resolveSchemeForClass()).
