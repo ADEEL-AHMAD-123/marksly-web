@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { IdCardsView } from '@/components/students/IdCardsView';
+import { IdCardsHub } from '@/components/students/IdCardsHub';
 
 export const metadata: Metadata = { title: 'ID Cards' };
 
 export default function Page() {
-  return <IdCardsView />;
+  return <IdCardsHub />;
 }

@@ -3,7 +3,6 @@
 import { memo, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff } from 'lucide-react';
-import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -42,17 +41,11 @@ export function IdCardsView() {
     <div className="space-y-6">
       <style dangerouslySetInnerHTML={{ __html: ID_CARD_PRINT_CSS }} />
 
-      <div className="no-print">
-        <PageHeader
-          title="ID Cards"
-          description="Generate and print student ID cards with a scannable, verifiable QR code."
-          actions={
-            students.length > 0
-              ? <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print {students.length} cards</Button>
-              : undefined
-          }
-        />
-      </div>
+      {students.length > 0 && (
+        <div className="no-print flex justify-end">
+          <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print {students.length} cards</Button>
+        </div>
+      )}
 
       <Card className="p-4 no-print">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

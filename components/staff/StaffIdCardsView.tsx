@@ -3,7 +3,6 @@
 import { memo, useMemo } from 'react';
 import Image from 'next/image';
 import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff } from 'lucide-react';
-import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -62,17 +61,11 @@ export function StaffIdCardsView() {
     <div className="space-y-6">
       <style dangerouslySetInnerHTML={{ __html: ID_CARD_PRINT_CSS }} />
 
-      <div className="no-print">
-        <PageHeader
-          title="Staff ID Cards"
-          description="Generate and print ID cards for teachers, staff, accountants, and admins with a scannable, verifiable QR code."
-          actions={
-            staff.length > 0
-              ? <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print {staff.length} cards</Button>
-              : undefined
-          }
-        />
-      </div>
+      {staff.length > 0 && (
+        <div className="no-print flex justify-end">
+          <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print {staff.length} cards</Button>
+        </div>
+      )}
 
       <Card className="p-4 no-print">
         <div className="max-w-xs">

@@ -19,7 +19,6 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'ID Cards', href: '/admin/id-cards', icon: CreditCard },
     { label: 'Teachers', href: '/admin/teachers', icon: Users },
     { label: 'Staff', href: '/admin/staff', icon: Briefcase },
-    { label: 'Staff ID Cards', href: '/admin/staff-id-cards', icon: CreditCard },
     { label: 'Classes', href: '/admin/classes', icon: School },
     { label: 'Subjects', href: '/admin/subjects', icon: BookOpen },
     { label: 'Timetable', href: '/admin/timetable', icon: CalendarClock },

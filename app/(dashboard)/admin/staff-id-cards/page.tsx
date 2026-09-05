@@ -1,8 +1,7 @@
-import type { Metadata } from 'next';
-import { StaffIdCardsView } from '@/components/staff/StaffIdCardsView';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = { title: 'Staff ID Cards' };
-
+// Staff ID cards moved into the "Staff" tab of the unified ID Cards page —
+// this route just forwards any old links/bookmarks there instead of 404ing.
 export default function Page() {
-  return <StaffIdCardsView />;
+  redirect('/admin/id-cards?tab=staff');
 }
