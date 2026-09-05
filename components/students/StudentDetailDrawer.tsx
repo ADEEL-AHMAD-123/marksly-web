@@ -363,7 +363,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                       onChange={(e) => { setReactivateClassId(e.target.value); setReactivateSectionId(''); }}
                       className="rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
                     >
-                      <option value="">Class</option>
+                      <option value="">{terminology.classUnit}</option>
                       {classes.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.termName ?? '—'}</option>)}
                     </select>
                     <select
@@ -372,7 +372,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                       disabled={!reactivateClassId}
                       className="rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
                     >
-                      <option value="">Section</option>
+                      <option value="">{terminology.section}</option>
                       {reactivateSections.map((sec) => <option key={sec.id} value={sec.id}>{sec.name}</option>)}
                     </select>
                   </div>
