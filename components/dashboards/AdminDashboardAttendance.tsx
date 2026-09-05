@@ -10,6 +10,7 @@ import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
 } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useTerminology } from '@/lib/terminology';
 import type { AttendanceCoverage } from '@/store/api/attendanceApi';
 
 /**
@@ -34,6 +35,7 @@ export function TodaysAttendanceCard({
   loading: boolean;
   onMarkAttendance: () => void;
 }) {
+  const terminology = useTerminology();
   const totalSections = coverage?.totalSections ?? 0;
   const markedSections = coverage?.markedSections ?? 0;
   const pct = totalSections > 0 ? Math.round((markedSections / totalSections) * 100) : 0;
@@ -49,8 +51,8 @@ export function TodaysAttendanceCard({
               {loading
                 ? 'Loading…'
                 : totalSections === 0
-                  ? 'No classes with sections yet'
-                  : `${markedSections} of ${totalSections} section${totalSections === 1 ? '' : 's'} marked · ${pct}% coverage`}
+                  ? `No ${terminology.classUnitPlural.toLowerCase()} with ${terminology.sectionPlural.toLowerCase()} yet`
+                  : `${markedSections} of ${totalSections} ${(totalSections === 1 ? terminology.section : terminology.sectionPlural).toLowerCase()} marked · ${pct}% coverage`}
             </CardDescription>
           </div>
           {!loading && totalSections > 0 && coverage!.unmarkedSections > 0 && (
@@ -74,8 +76,8 @@ export function TodaysAttendanceCard({
         ) : totalSections === 0 ? (
           <EmptyState
             icon={Layers}
-            title="No sections to track yet"
-            description="Once you've created classes and sections, today's attendance coverage will show up here."
+            title={`No ${terminology.sectionPlural.toLowerCase()} to track yet`}
+            description={`Once you've created ${terminology.classUnitPlural.toLowerCase()} and ${terminology.sectionPlural.toLowerCase()}, today's attendance coverage will show up here.`}
           />
         ) : (
           <div className="space-y-5">

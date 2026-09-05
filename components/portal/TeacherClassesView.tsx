@@ -9,8 +9,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useMyClassesQuery } from '@/store/api/portalApi';
 import { StudentFormDrawer } from '@/components/students/StudentFormDrawer';
+import { useTerminology } from '@/lib/terminology';
 
 export function TeacherClassesView() {
+  const terminology = useTerminology();
   const { data, isLoading } = useMyClassesQuery();
   const classes = data?.data ?? [];
   const [addOpen, setAddOpen] = useState(false);
@@ -18,8 +20,8 @@ export function TeacherClassesView() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="My Classes"
-        description="Classes and sections you teach."
+        title={`My ${terminology.classUnitPlural}`}
+        description={`${terminology.classUnitPlural} and ${terminology.sectionPlural.toLowerCase()} you teach.`}
         actions={
           classes.length > 0 ? (
             <Button size="sm" onClick={() => setAddOpen(true)}>
@@ -40,7 +42,7 @@ export function TeacherClassesView() {
           {Array.from({ length: 3 }).map((_, i) => <Card key={i} className="p-5"><Skeleton className="h-28 w-full" /></Card>)}
         </div>
       ) : classes.length === 0 ? (
-        <Card><EmptyState icon={School} title="No classes assigned" description="You'll see classes here once you're assigned to sections." /></Card>
+        <Card><EmptyState icon={School} title={`No ${terminology.classUnitPlural.toLowerCase()} assigned`} description={`You'll see ${terminology.classUnitPlural.toLowerCase()} here once you're assigned to ${terminology.sectionPlural.toLowerCase()}.`} /></Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {classes.map((c) => {

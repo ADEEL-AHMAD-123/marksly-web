@@ -25,6 +25,7 @@ import {
   type FeeStructure,
 } from '@/store/api/feesApi';
 import { formatCurrency } from '@/lib/utils';
+import { useTerminology } from '@/lib/terminology';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -98,6 +99,7 @@ type StructForm = z.infer<typeof structSchema>;
 function defaultYear() { const y = new Date().getFullYear(); return `${y}-${y + 1}`; }
 
 function AddStructureDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const terminology = useTerminology();
   const { data: classesRes } = useGetClassesQuery();
   const classes = classesRes?.data ?? [];
   const [createStructure, { isLoading }] = useCreateFeeStructureMutation();
@@ -147,15 +149,15 @@ function AddStructureDrawer({ open, onClose }: { open: boolean; onClose: () => v
                 {errors.academicYear && <p className="mt-1 text-xs text-danger">{errors.academicYear.message}</p>}
               </div>
               <div>
-                <Label>Class (optional)</Label>
+                <Label>{terminology.classUnit} (optional)</Label>
                 <Controller
                   control={control}
                   name="classId"
                   render={({ field }) => (
                     <Select value={field.value || 'all'} onValueChange={(v) => field.onChange(v === 'all' ? '' : v)}>
-                      <SelectTrigger><SelectValue placeholder="All classes" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={`All ${terminology.classUnitPlural.toLowerCase()}`} /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All classes</SelectItem>
+                        <SelectItem value="all">All {terminology.classUnitPlural.toLowerCase()}</SelectItem>
                         {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
