@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   CalendarRange, Plus, ArrowRight, X, GraduationCap, AlertTriangle, Undo2, ChevronLeft,
-  Pencil, Lock, Star, Info, Trash2,
+  Pencil, Lock, Star, Info, Trash2, Award,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
@@ -69,17 +69,37 @@ const STRUCTURE_DEFAULT_TERM_TYPE: Record<string, TermType> = {
 };
 
 export function AcademicYearView() {
-  const terminology = useTerminology();
+  // Deliberately NOT terminology.termPlural here (which would say e.g.
+  // "Academic Years" for a yearly-structured institution) — that label only
+  // makes sense if every term is the same type, but this page's own Add
+  // Term form lets an admin freely mix academic years, semesters, and short
+  // sessions side by side (see STRUCTURE_DEFAULT_TERM_TYPE — it's only a
+  // *default* for the create form, never a lock). A school running both a
+  // yearly track and a short course, say, would see a page literally
+  // labeled "Academic Years" that also lists their short sessions — a
+  // mismatch between the label and what's actually on the page. "Academic
+  // Terms" covers every term type without implying only one exists, and
+  // matches this page's own <title> (see admin/academic-year/page.tsx).
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`${terminology.termPlural} & Grading`}
-        description={`Manage ${terminology.termPlural.toLowerCase()}, promote students, and configure grading schemes.`}
+        title="Academic Terms & Grading"
+        description="Manage academic years, semesters and sessions, promote students, and configure grading schemes."
       />
       <Tabs defaultValue="terms">
-        <TabsList>
-          <TabsTrigger value="terms">{terminology.termPlural}</TabsTrigger>
-          <TabsTrigger value="grading">Grading Schemes</TabsTrigger>
+        <TabsList className="h-auto gap-1.5 bg-transparent p-0">
+          <TabsTrigger
+            value="terms"
+            className="gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground shadow-none data-[state=active]:border-primary/30 data-[state=active]:bg-primary-soft data-[state=active]:text-primary-soft-foreground"
+          >
+            <CalendarRange size={16} /> Academic Terms
+          </TabsTrigger>
+          <TabsTrigger
+            value="grading"
+            className="gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground shadow-none data-[state=active]:border-primary/30 data-[state=active]:bg-primary-soft data-[state=active]:text-primary-soft-foreground"
+          >
+            <Award size={16} /> Grading Schemes
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="terms"><TermsTab /></TabsContent>
         <TabsContent value="grading"><GradingSchemesTab /></TabsContent>
@@ -251,6 +271,20 @@ function TermGroup({ label, terms, onEdit, emphasize }: { label: string; terms: 
   );
 }
 
+// The API returns startDate/endDate as full ISO datetimes (e.g.
+// "2026-09-01T00:00:00.000Z"), but a native <input type="date"> only
+// accepts the exact "YYYY-MM-DD" shape — anything else and the browser
+// silently renders the field as empty rather than erroring. That's exactly
+// what was happening here: opening Edit looked like the dates had been
+// wiped, when really they were just in a format the date input couldn't
+// display, forcing an admin to re-type dates that were never actually lost
+// (until they did, by saving over the blank-looking field).
+function toDateInputValue(value?: string | null): string {
+  if (!value) return '';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+}
+
 function TermFormSheet({
   mode, term, open, onClose,
 }: {
@@ -279,8 +313,8 @@ function TermFormSheet({
     if (mode === 'edit' && term) {
       setName(term.name);
       setType(term.type);
-      setStartDate(term.startDate ?? '');
-      setEndDate(term.endDate ?? '');
+      setStartDate(toDateInputValue(term.startDate));
+      setEndDate(toDateInputValue(term.endDate));
       setStatus(term.status);
     } else {
       setName('');

@@ -47,7 +47,15 @@ export function AdminDashboard() {
   // against actual data (not a static list that never updates), so a step
   // that's already been completed shows as done immediately rather than
   // continuing to tell the admin to do something they already did.
-  const { data: classesRes, isLoading: classesLoading } = useGetClassesQuery({ all: true });
+  // Deliberately NOT { all: true } — that variant includes classes tied to
+  // any term ever, even closed/upcoming ones, which is exactly the bug this
+  // comment is here to prevent regressing: a class left over in an old,
+  // no-longer-active term made this step silently show as "done" while the
+  // actual Classes page (which correctly only shows classes in currently
+  // active terms — see class.service.ts's list()) still showed zero. The
+  // checklist must match what the admin actually sees when they click
+  // through, not a superset of it.
+  const { data: classesRes, isLoading: classesLoading } = useGetClassesQuery();
   const classCount = classesRes?.data?.length ?? 0;
   const { data: teachersRes, isLoading: teachersLoading } = useGetUsersQuery({ role: 'teacher', limit: 1 });
   const teacherCount = (teachersRes as any)?.meta?.total ?? teachersRes?.data?.length ?? 0;
