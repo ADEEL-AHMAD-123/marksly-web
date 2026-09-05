@@ -180,7 +180,11 @@ export const billingApi = baseApi.injectEndpoints({
       query: (body) => ({ url: '/billing/whatsapp-credits/checkout', method: 'POST', body }),
       invalidatesTags: [{ type: 'Messaging', id: 'WHATSAPP_CREDITS' }],
     }),
-    submitBankTransfer: builder.mutation<ApiObject<{ ok: boolean }>, { reference: string; amount?: number }>({
+    // `amount` is intentionally not part of this request — the backend
+    // always uses the subscription's own server-calculated amount due, so
+    // there's nothing for a client to send here. See billing.controller.ts's
+    // bankSchema.
+    submitBankTransfer: builder.mutation<ApiObject<{ ok: boolean }>, { reference: string }>({
       query: (body) => ({ url: '/billing/bank-transfer', method: 'POST', body }),
       invalidatesTags: [{ type: 'Billing', id: 'ME' }],
     }),
