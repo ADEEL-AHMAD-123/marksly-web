@@ -41,6 +41,19 @@ export function PayoutAccountTab() {
 
   const handleSave = async () => {
     if (!accountTitle.trim()) return toast.error('Enter the account title');
+    // Mirrors the backend's own required-field rule per method (see
+    // fee-online.validator.ts's payoutAccountSchema) — without this, the
+    // form would happily submit (and the old backend would happily accept)
+    // a bank account with no bank name/account number/IBAN, or a wallet
+    // method with no wallet number: an unusable payout destination that a
+    // superadmin could still mark "verified". See the fees-online audit's
+    // P2 finding.
+    if (method === 'bank') {
+      if (!bankName.trim()) return toast.error('Enter the bank name');
+      if (!accountNumber.trim() && !iban.trim()) return toast.error('Enter an account number or IBAN');
+    } else if (!walletNumber.trim()) {
+      return toast.error(`Enter the ${method === 'jazzcash' ? 'JazzCash' : 'EasyPaisa'} number`);
+    }
     try {
       await save({
         method,
@@ -104,11 +117,11 @@ export function PayoutAccountTab() {
               <Input id="bankName" value={bankName} onChange={(e) => setBankName(e.target.value)} />
             </div>
             <div>
-              <Label htmlFor="accountNumber">Account number</Label>
+              <Label htmlFor="accountNumber">Account number (or IBAN below)</Label>
               <Input id="accountNumber" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} />
             </div>
             <div>
-              <Label htmlFor="iban">IBAN (optional)</Label>
+              <Label htmlFor="iban">IBAN (or account number above)</Label>
               <Input id="iban" value={iban} onChange={(e) => setIban(e.target.value)} />
             </div>
           </>
