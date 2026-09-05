@@ -23,6 +23,7 @@ import { useGetExamsQuery, useCreateExamMutation, usePreviewExamQuery, type Exam
 import { useGetTermsQuery } from '@/store/api/termsApi';
 import { useGetQuestionsQuery } from '@/store/api/questionsApi';
 import { formatDate } from '@/lib/utils';
+import { useTerminology } from '@/lib/terminology';
 import { ResultsEntry } from './ResultsEntry';
 import { ExamMonitoringView } from './ExamMonitoringView';
 
@@ -311,6 +312,7 @@ const defaultValues: ExamForm = {
 };
 
 function CreateExamDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const terminology = useTerminology();
   const { data: classesRes } = useGetClassesQuery();
   const classes = classesRes?.data ?? [];
   const noClasses = classes.length === 0;
@@ -378,7 +380,7 @@ function CreateExamDrawer({ open, onClose }: { open: boolean; onClose: () => voi
             {noClasses && (
               <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning-soft px-3.5 py-3 text-sm text-warning">
                 <AlertCircle size={17} className="mt-0.5 shrink-0" />
-                <span>Create a class first (Classes page) — exams need a class to belong to.</span>
+                <span>Create a {terminology.classUnit.toLowerCase()} first ({terminology.classUnitPlural} page) — exams need a {terminology.classUnit.toLowerCase()} to belong to.</span>
               </div>
             )}
             <div>
@@ -394,13 +396,13 @@ function CreateExamDrawer({ open, onClose }: { open: boolean; onClose: () => voi
                 </select>
               </div>
               <div>
-                <Label>Class</Label>
+                <Label>{terminology.classUnit}</Label>
                 <Controller
                   control={control}
                   name="classId"
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={`Select ${terminology.classUnit.toLowerCase()}`} /></SelectTrigger>
                       <SelectContent>
                         {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                       </SelectContent>

@@ -19,6 +19,7 @@ import {
 } from '@/store/api/attendanceApi';
 import { useAppSelector } from '@/store/hooks';
 import { cn } from '@/lib/utils';
+import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -51,6 +52,7 @@ function waLink(phone: string): string {
 }
 
 export function AttendanceReportView() {
+  const terminology = useTerminology();
   const role = useAppSelector((s) => s.auth.user?.role);
   const isTeacher = role === 'teacher';
 
@@ -67,19 +69,19 @@ export function AttendanceReportView() {
   const terms = termsRes?.data ?? [];
 
   const { data: classesRes } = useGetClassesQuery(undefined, { skip: isTeacher });
-  const classes = useMemo<{ id: string; name: string; sections: { id: string; name: string }[] }[]>(() => {
+  const classes = useMemo<{ id: string; name: string; termType: string | null; sections: { id: string; name: string }[] }[]>(() => {
     if (isTeacher) return [];
     const src: any[] = classesRes?.data ?? [];
     return src.map((c) => ({
       id: c.id,
       name: c.name,
+      termType: c.termType ?? null,
       sections: (c.sections ?? []).map((s: any) => ({ id: s.id, name: s.name })),
     }));
   }, [isTeacher, classesRes]);
-  const sections = useMemo(
-    () => classes.find((c) => c.id === classId)?.sections ?? [],
-    [classes, classId]
-  );
+  const selectedClass = useMemo(() => classes.find((c) => c.id === classId), [classes, classId]);
+  const sections = selectedClass?.sections ?? [];
+  const sectionLabel = getTerminologyForTermType(selectedClass?.termType)?.section ?? terminology.section;
 
   // `isFetching` would also flip true on a background refocus-refetch (see
   // baseApi.ts's refetchOnFocus) with the exact same filters still applied,
@@ -127,9 +129,9 @@ export function AttendanceReportView() {
           {!isTeacher && (
             <>
               <div>
-                <Label>Class</Label>
+                <Label>{terminology.classUnit}</Label>
                 <Select value={classId} onValueChange={(v) => { setClassId(v); setSectionId(''); }}>
-                  <SelectTrigger><SelectValue placeholder="All classes" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={`All ${terminology.classUnitPlural.toLowerCase()}`} /></SelectTrigger>
                   <SelectContent>
                     {classes.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -138,9 +140,9 @@ export function AttendanceReportView() {
                 </Select>
               </div>
               <div>
-                <Label>Section</Label>
+                <Label>{sectionLabel}</Label>
                 <Select value={sectionId} onValueChange={setSectionId} disabled={!classId}>
-                  <SelectTrigger><SelectValue placeholder="All sections" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={`All ${sectionLabel.toLowerCase()}${sectionLabel.toLowerCase().endsWith('s') ? '' : 's'}`} /></SelectTrigger>
                   <SelectContent>
                     {sections.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>

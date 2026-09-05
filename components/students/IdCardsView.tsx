@@ -22,6 +22,7 @@ import { IdCardCredit } from '@/components/shared/IdCardCredit';
 import { IdCardReadinessBanner } from '@/components/shared/IdCardReadinessBanner';
 
 export function IdCardsView() {
+  const terminology = useTerminology();
   const { data: classesRes } = useGetClassesQuery();
   const classes = classesRes?.data ?? [];
   const [classId, setClassId] = useState('');
@@ -56,9 +57,9 @@ export function IdCardsView() {
       <Card className="p-4 no-print">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <Label>Class</Label>
+            <Label>{terminology.classUnit}</Label>
             <Select value={classId} onValueChange={(v) => { setClassId(v); setSectionId(''); }}>
-              <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={`Select ${terminology.classUnit.toLowerCase()}`} /></SelectTrigger>
               <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>

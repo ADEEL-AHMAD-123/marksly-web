@@ -26,6 +26,7 @@ import {
 } from '@/store/api/attendanceApi';
 import { useAppSelector } from '@/store/hooks';
 import { cn, getInitials } from '@/lib/utils';
+import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
 import { AttendanceReportView } from './AttendanceReportView';
 
 const STATUSES: { key: AttendanceStatus; label: string; active: string }[] = [
@@ -51,6 +52,7 @@ interface PeriodOption {
 }
 
 export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
+  const terminology = useTerminology();
   const role = useAppSelector((s) => s.auth.user?.role);
   const isTeacher = role === 'teacher';
   const searchParams = useSearchParams();
@@ -78,21 +80,21 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
   // ─── Admin/staff flow: pick class → section → then a period from that
   // section's timetable for the selected date's day of week ────────────────
   const { data: allClassesRes } = useGetClassesQuery(undefined, { skip: isTeacher });
-  const classes = useMemo<{ id: string; name: string; sections: { id: string; name: string }[] }[]>(() => {
+  const classes = useMemo<{ id: string; name: string; termType: string | null; sections: { id: string; name: string }[] }[]>(() => {
     const src: any[] = allClassesRes?.data ?? [];
     return src.map((c) => ({
       id: c.id,
       name: c.name,
+      termType: c.termType ?? null,
       sections: (c.sections ?? []).map((s: any) => ({ id: s.id, name: s.name })),
     }));
   }, [allClassesRes]);
 
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
-  const sections = useMemo(
-    () => classes.find((c) => c.id === classId)?.sections ?? [],
-    [classes, classId]
-  );
+  const selectedClass = useMemo(() => classes.find((c) => c.id === classId), [classes, classId]);
+  const sections = selectedClass?.sections ?? [];
+  const sectionLabel = getTerminologyForTermType(selectedClass?.termType)?.section ?? terminology.section;
 
   const { data: timetableRes, isLoading: loadingTimetable } = useGetTimetableQuery(
     { classId, sectionId },
@@ -233,9 +235,9 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
           {!isTeacher && (
             <>
               <div>
-                <Label>Class</Label>
+                <Label>{terminology.classUnit}</Label>
                 <Select value={classId} onValueChange={(v) => { setClassId(v); setSectionId(''); }}>
-                  <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={`Select ${terminology.classUnit.toLowerCase()}`} /></SelectTrigger>
                   <SelectContent>
                     {classes.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -244,9 +246,9 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                 </Select>
               </div>
               <div>
-                <Label>Section</Label>
+                <Label>{sectionLabel}</Label>
                 <Select value={sectionId} onValueChange={setSectionId} disabled={!classId}>
-                  <SelectTrigger><SelectValue placeholder="Section" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={sectionLabel} /></SelectTrigger>
                   <SelectContent>
                     {sections.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -277,7 +279,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
               <Skeleton className="mt-1.5 h-10 w-full" />
             ) : periods.length === 0 ? (
               <p className="mt-1.5 text-sm text-muted-foreground">
-                No periods scheduled {isTeacher ? 'for you' : 'for this section'} on this day.
+                No periods scheduled {isTeacher ? 'for you' : `for this ${sectionLabel.toLowerCase()}`} on this day.
               </p>
             ) : (
               <div className="mt-1.5 flex flex-wrap gap-2">
@@ -314,8 +316,8 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
         <Card>
           <EmptyState
             icon={Users}
-            title="No classes yet"
-            description="Create a class with sections first, then you can mark attendance."
+            title={`No ${terminology.classUnitPlural.toLowerCase()} yet`}
+            description={`Create a ${terminology.classUnit.toLowerCase()} with ${terminology.sectionPlural.toLowerCase()} first, then you can mark attendance.`}
           />
         </Card>
       ) : !ready ? (
@@ -324,8 +326,8 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
             icon={CalendarCheck}
             title="Select a period"
             description={isTeacher
-              ? 'Pick the class and time you\'re currently teaching to take attendance for it.'
-              : 'Choose a class, section, date and period to load the student roster.'}
+              ? `Pick the ${terminology.classUnit.toLowerCase()} and time you're currently teaching to take attendance for it.`
+              : `Choose a ${terminology.classUnit.toLowerCase()}, ${terminology.section.toLowerCase()}, date and period to load the student roster.`}
           />
         </Card>
       ) : isError ? (
