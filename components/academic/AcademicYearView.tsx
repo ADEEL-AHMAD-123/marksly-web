@@ -967,9 +967,17 @@ function GradingSchemesTab() {
                   <Pencil size={14} />
                 </button>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Repeat policy: {s.repeatPolicy === 'replace' ? 'Replace' : 'Average'}
-              </p>
+              {/* Only shown for GPA schemes — the only type this setting
+                  actually affects (see grading-scheme.model.ts's comment on
+                  repeatPolicy). Showing it on every scheme regardless of
+                  type was exactly what made this confusing: it looked like
+                  a real setting on a percentage/Cambridge/pass-fail scheme
+                  too, when it's silently ignored there. */}
+              {s.type === 'gpa' && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Retaken course: {s.repeatPolicy === 'replace' ? 'replaces old CGPA grade' : 'averaged with old CGPA grade'}
+                </p>
+              )}
               {!s.isDefault && (
                 <Button
                   variant="secondary"
@@ -1005,11 +1013,18 @@ function seedConfigFor(type: GradingSchemeType): GradingSchemeConfig {
   }
 }
 
+// Only meaningful for GPA schemes — see grading-scheme.model.ts's comment
+// on repeatPolicy. Non-GPA schemes (percentage/letter, Cambridge, pass/fail)
+// silently ignore this setting entirely, so both forms below only render
+// this selector once `type === 'gpa'`, instead of showing a control that
+// looks like it does something on every scheme type when it only actually
+// affects one.
 function RepeatPolicySelector({ value, onChange }: { value: RepeatPolicy; onChange: (v: RepeatPolicy) => void }) {
   return (
     <div>
-      <Label>Repeat policy</Label>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <Label>If a student retakes a failed/repeated course</Label>
+      <p className="mt-0.5 text-xs text-muted-foreground">How the new attempt's grade points fold into their CGPA.</p>
+      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
         {(['replace', 'average'] as RepeatPolicy[]).map((opt) => (
           <button
             key={opt}
@@ -1020,16 +1035,15 @@ function RepeatPolicySelector({ value, onChange }: { value: RepeatPolicy; onChan
               value === opt ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border text-foreground hover:bg-muted'
             )}
           >
-            <span className="font-medium capitalize">{opt}</span>
+            <span className="font-medium">{opt === 'replace' ? 'Replace old grade' : 'Average both attempts'}</span>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {opt === 'replace'
-                ? 'A repeated result replaces the previous attempt entirely.'
-                : 'A repeated result is averaged together with the previous attempt.'}
+                ? "Only the new attempt's grade points count — as if the failed try never happened."
+                : "The old and new attempts' grade points are averaged together."}
             </p>
           </button>
         ))}
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">Mainly relevant for GPA schemes, but applies to any type.</p>
     </div>
   );
 }
@@ -1289,7 +1303,7 @@ function GradingSchemeCreateSheet({ open, onClose }: { open: boolean; onClose: (
                 </div>
                 <ConfigEditor type={type} config={config} onChange={handleConfigChange} />
                 {configError && <p className="text-xs text-danger">{configError}</p>}
-                <RepeatPolicySelector value={repeatPolicy} onChange={setRepeatPolicy} />
+                {type === 'gpa' && <RepeatPolicySelector value={repeatPolicy} onChange={setRepeatPolicy} />}
               </div>
               <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
                 <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
@@ -1370,7 +1384,7 @@ function GradingSchemeEditSheet({ scheme, open, onClose }: { scheme: GradingSche
             </div>
             <ConfigEditor type={scheme.type} config={config} onChange={handleConfigChange} />
             {configError && <p className="text-xs text-danger">{configError}</p>}
-            <RepeatPolicySelector value={repeatPolicy} onChange={setRepeatPolicy} />
+            {scheme.type === 'gpa' && <RepeatPolicySelector value={repeatPolicy} onChange={setRepeatPolicy} />}
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
             <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
