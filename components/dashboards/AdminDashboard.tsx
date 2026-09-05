@@ -185,14 +185,20 @@ export function AdminDashboard() {
             : "Welcome back — here's an overview of your institution."
         }
         actions={
-          <>
-            <Button variant="secondary" size="sm" onClick={() => router.push('/admin/students')}>
-              <Plus size={16} /> Add Student
-            </Button>
-            <Button variant="primary" size="sm" onClick={() => router.push('/admin/reports')}>
-              <TrendingUp size={16} /> Reports
-            </Button>
-          </>
+          isNewInstitution ? undefined : (
+            // Hidden during the full-page onboarding flow above — with no
+            // active term/class yet, both of these would just dead-end in a
+            // "set up your academic year first" wall the moment they're
+            // clicked, before the admin's even seen that requirement.
+            <>
+              <Button variant="secondary" size="sm" onClick={() => router.push('/admin/students')}>
+                <Plus size={16} /> Add Student
+              </Button>
+              <Button variant="primary" size="sm" onClick={() => router.push('/admin/reports')}>
+                <TrendingUp size={16} /> Reports
+              </Button>
+            </>
+          )
         }
       />
 

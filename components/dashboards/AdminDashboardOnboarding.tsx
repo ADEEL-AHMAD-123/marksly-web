@@ -139,8 +139,8 @@ export function OnboardingCard({
               <CardDescription>{description}</CardDescription>
             </div>
           </div>
-          <span className="hidden shrink-0 text-sm font-medium text-muted-foreground sm:block">
-            {doneCount} of {totalSteps} done
+          <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground sm:bg-transparent sm:px-0 sm:py-0 sm:text-sm">
+            {doneCount}/{totalSteps} <span className="hidden sm:inline"> done</span>
           </span>
         </div>
         <OnboardingProgressBar doneCount={doneCount} totalSteps={totalSteps} />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CalendarClock, Plus, Trash2, X, Clock, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
@@ -31,6 +31,10 @@ export function TimetableView() {
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
   const [addOpen, setAddOpen] = useState(false);
+  // Set when a specific day's "+" is clicked, so the drawer opens with that
+  // day preselected instead of always defaulting to Monday — filling out a
+  // whole week one period at a time was needlessly fiddly otherwise.
+  const [addDay, setAddDay] = useState('1');
   const [deleteEntry] = useDeleteEntryMutation();
 
   const selectedClass = useMemo(() => classes.find((c) => c.id === classId), [classes, classId]);
@@ -99,7 +103,17 @@ export function TimetableView() {
             }
             return (
               <Card key={day} className="p-4">
-                <p className="mb-3 text-sm font-semibold text-foreground">{day}</p>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">{day}</p>
+                  <button
+                    type="button"
+                    onClick={() => { setAddDay(String(idx)); setAddOpen(true); }}
+                    aria-label={`Add period on ${day}`}
+                    className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <Plus size={15} />
+                  </button>
+                </div>
                 {periods.length === 0 ? (
                   <p className="py-4 text-center text-xs text-muted-foreground">No periods</p>
                 ) : (
@@ -124,19 +138,25 @@ export function TimetableView() {
         </div>
       )}
 
-      <AddPeriodDrawer open={addOpen} onClose={() => setAddOpen(false)} classId={classId} sectionId={sectionId} />
+      <AddPeriodDrawer open={addOpen} onClose={() => setAddOpen(false)} classId={classId} sectionId={sectionId} initialDay={addDay} />
     </div>
   );
 }
 
-function AddPeriodDrawer({ open, onClose, classId, sectionId }: { open: boolean; onClose: () => void; classId: string; sectionId: string }) {
+function AddPeriodDrawer({ open, onClose, classId, sectionId, initialDay }: { open: boolean; onClose: () => void; classId: string; sectionId: string; initialDay: string }) {
   const { data: subjectsRes } = useGetSubjectsQuery();
   const { data: teachersRes } = useGetUsersQuery({ role: 'teacher', limit: 100 });
   const subjects = subjectsRes?.data ?? [];
   const teachers = teachersRes?.data ?? [];
   const [createEntry, { isLoading }] = useCreateEntryMutation();
 
-  const [dayOfWeek, setDayOfWeek] = useState('1');
+  const [dayOfWeek, setDayOfWeek] = useState(initialDay);
+  // Re-sync whenever the drawer is (re)opened via a specific day's "+" —
+  // the component instance stays mounted between opens, so without this the
+  // dropdown would keep showing whatever day was picked last time.
+  useEffect(() => {
+    if (open) setDayOfWeek(initialDay);
+  }, [open, initialDay]);
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('09:45');
   const [subjectId, setSubjectId] = useState('');

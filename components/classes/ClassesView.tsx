@@ -29,7 +29,11 @@ import { useTerminology } from '@/lib/terminology';
 import { useGetGradingSchemesQuery } from '@/store/api/gradingSchemesApi';
 
 const schema = z.object({
-  name: z.string().min(1, 'Class name is required'),
+  // Generic on purpose — this schema is created once at module scope, before
+  // any component has read the institution's terminology, so it can't say
+  // "Class name" vs "Course name" correctly. Saying "Class" unconditionally
+  // was wrong for any institution using "Course" wording.
+  name: z.string().min(1, 'Name is required'),
   level: z.coerce.number({ invalid_type_error: 'Level must be a number' }).int().min(0).max(20),
   termId: z.string().min(1, 'Select a term'),
   // '' means "use institution default" — resolved server-side in
@@ -270,13 +274,13 @@ export function ClassesView() {
               {noTerms && (
                 <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning-soft px-3.5 py-3 text-sm text-warning">
                   <AlertCircle size={17} className="mt-0.5 shrink-0" />
-                  <span>Set up your academic year first (Academic Terms page) — classes need a term to belong to.</span>
+                  <span>Set up your academic year first (Academic Terms page) — {terminology.classUnitPlural.toLowerCase()} need a term to belong to.</span>
                 </div>
               )}
 
               <div>
                 <Label htmlFor="name">{terminology.classUnit} name</Label>
-                <Input id="name" placeholder="e.g. Grade 5" {...register('name')} />
+                <Input id="name" placeholder={terminology.classUnit === 'Course' ? 'e.g. Web Development Basics' : 'e.g. Grade 5'} {...register('name')} />
                 {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
               </div>
 
