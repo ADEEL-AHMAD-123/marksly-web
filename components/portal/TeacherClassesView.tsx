@@ -34,7 +34,7 @@ export function TeacherClassesView() {
       <StudentFormDrawer
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        classesOverride={classes.map((c) => ({ id: c.id, name: c.name, sections: c.sections }))}
+        classesOverride={classes.map((c) => ({ id: c.id, name: c.name, termType: c.termType, sections: c.sections }))}
       />
 
       {isLoading ? (

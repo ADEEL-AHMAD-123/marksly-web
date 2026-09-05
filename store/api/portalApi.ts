@@ -65,6 +65,7 @@ export interface TeacherClass {
   name: string;
   termId: string | null;
   termName: string | null;
+  termType: string | null;
   sections: { id: string; name: string; students: number }[];
 }
 
