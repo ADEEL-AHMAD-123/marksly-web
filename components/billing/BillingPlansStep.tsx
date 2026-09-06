@@ -8,6 +8,14 @@ import { Badge } from '@/components/ui/badge';
 import { cn, formatCurrency } from '@/lib/utils';
 import { RequestCustomPlanDialog } from './RequestCustomPlanDialog';
 
+// storageGB can be a fraction (e.g. 0.1 = 100MB) — real usage here is just
+// institution logos + per-user profile photos, so tiers are genuinely
+// sub-1GB rather than rounded up to a dishonest "1 GB".
+function formatStorage(storageGB: number): string {
+  if (storageGB < 1) return `${Math.round(storageGB * 1024)} MB storage`;
+  return `${storageGB} GB storage`;
+}
+
 /* ── Step 2: plans — shown only when the admin asks to view/change plans ── */
 export function PlansStep({
   plans, currentPlan, pendingPlan, scheduledPlan, selecting, onBack, onChoose,
@@ -93,7 +101,7 @@ export function PlansStep({
                   <div className="my-4 h-px bg-border" />
                   <ul className="flex-1 space-y-2 text-xs text-muted-foreground">
                     <li className="flex items-center gap-1.5"><Check size={13} className="text-success" /> Up to {p.studentsLimit.toLocaleString('en-PK')} students</li>
-                    <li className="flex items-center gap-1.5"><Check size={13} className="text-success" /> {p.storageGB} GB storage</li>
+                    <li className="flex items-center gap-1.5"><Check size={13} className="text-success" /> {formatStorage(p.storageGB)}</li>
                     {p.features.map((f) => (
                       <li key={f} className="flex items-center gap-1.5 capitalize"><Check size={13} className="text-success" /> {f}</li>
                     ))}

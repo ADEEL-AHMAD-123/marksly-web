@@ -23,11 +23,17 @@ import {
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 
 const ALL_FEATURES = [
-  { key: 'whatsapp', label: 'WhatsApp notifications' },
-  { key: 'aiReports', label: 'AI progress reports' },
   { key: 'multibranch', label: 'Multi-branch management' },
 ];
 const featureLabel = (k: string) => ALL_FEATURES.find((f) => f.key === k)?.label ?? k;
+
+// storageGB can be a fraction (e.g. 0.1 = 100MB) — real usage here is just
+// institution logos + per-user profile photos, so tiers are genuinely
+// sub-1GB rather than rounded up to a dishonest "1 GB".
+function formatStorage(storageGB: number): string {
+  if (storageGB < 1) return `${Math.round(storageGB * 1024)} MB storage`;
+  return `${storageGB} GB storage`;
+}
 
 function PlanRequestsQueue() {
   const { data, isLoading } = useGetPlanRequestsQuery();
@@ -131,7 +137,7 @@ export function PlansView() {
               </p>
               <ul className="mt-4 flex-1 space-y-2 text-sm">
                 <li className="flex items-center gap-2 text-muted-foreground"><Check size={15} className="text-success" /> Up to {p.studentsLimit.toLocaleString('en-PK')} students</li>
-                <li className="flex items-center gap-2 text-muted-foreground"><Check size={15} className="text-success" /> {p.storageGB} GB storage</li>
+                <li className="flex items-center gap-2 text-muted-foreground"><Check size={15} className="text-success" /> {formatStorage(p.storageGB)}</li>
                 {p.features.map((f) => <li key={f} className="flex items-center gap-2 text-muted-foreground"><Check size={15} className="text-success" /> {featureLabel(f)}</li>)}
               </ul>
             </Card>
@@ -148,7 +154,9 @@ const schema = z.object({
   name: z.string().min(1, 'Required'),
   price: z.coerce.number().min(0),
   studentsLimit: z.coerce.number().int().min(1),
-  storageGB: z.coerce.number().int().min(1),
+  // Fractional GB allowed (e.g. 0.1 = 100MB) — matches the API's relaxed
+  // validator (superadmin.validator.ts) and Plan schema (min 0.1).
+  storageGB: z.coerce.number().min(0.1),
 });
 type PlanForm = z.infer<typeof schema>;
 
@@ -168,7 +176,7 @@ function PlanDrawer({ plan, open, onClose }: { plan: Plan | null; open: boolean;
 
   useEffect(() => {
     if (open) {
-      reset({ name: plan?.name ?? '', price: plan?.price ?? 0, studentsLimit: plan?.studentsLimit ?? 50, storageGB: plan?.storageGB ?? 1 });
+      reset({ name: plan?.name ?? '', price: plan?.price ?? 0, studentsLimit: plan?.studentsLimit ?? 50, storageGB: plan?.storageGB ?? 0.1 });
       setFeatures(plan?.features ?? []);
       setIsPublic(plan?.isPublic ?? true);
     }
@@ -213,7 +221,7 @@ function PlanDrawer({ plan, open, onClose }: { plan: Plan | null; open: boolean;
               </div>
               <div>
                 <Label htmlFor="storageGB">Storage (GB)</Label>
-                <Input id="storageGB" type="number" {...register('storageGB')} />
+                <Input id="storageGB" type="number" step="0.05" {...register('storageGB')} />
               </div>
             </div>
             <div>
