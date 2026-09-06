@@ -14,6 +14,8 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { StudentDashboardIdCardNudge } from '@/components/dashboards/StudentDashboardIdCardNudge';
 import { StudentDashboardToday } from '@/components/dashboards/StudentDashboardToday';
 import { StudentDashboardExamsNudge } from '@/components/dashboards/StudentDashboardExamsNudge';
+import { StudentDashboardFeesNudge } from '@/components/dashboards/StudentDashboardFeesNudge';
+import { StudentDashboardAcademicsSnapshot } from '@/components/dashboards/StudentDashboardAcademicsSnapshot';
 import { StudentDashboardEmptyState } from '@/components/dashboards/StudentDashboardEmptyState';
 
 // This page used to render entirely hardcoded, fabricated data (a fixed
@@ -85,7 +87,9 @@ export function StudentDashboardView() {
             />
           </div>
 
+          <StudentDashboardAcademicsSnapshot />
           <StudentDashboardToday />
+          <StudentDashboardFeesNudge />
           <StudentDashboardExamsNudge />
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
