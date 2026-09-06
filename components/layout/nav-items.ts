@@ -42,7 +42,10 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Exams', href: '/admin/exams', icon: FileText },
     { label: 'Question Bank', href: '/admin/question-bank', icon: HelpCircle },
     { label: 'Notices', href: '/admin/notices', icon: Bell },
-    { label: 'Messaging', href: '/admin/messaging', icon: MessageSquare },
+    // Messaging hidden from the sidebar for now (temporarily disabled
+    // feature, not removed) — the route/page/backend are untouched, so
+    // re-adding this one line brings it straight back.
+    // { label: 'Messaging', href: '/admin/messaging', icon: MessageSquare },
     { label: 'Reports', href: '/admin/reports', icon: BarChart2 },
     { label: 'Billing', href: '/admin/billing', icon: CreditCard },
     { label: 'Settings', href: '/admin/settings', icon: Settings },
@@ -79,7 +82,9 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Dashboard', href: '/accountant', icon: LayoutDashboard },
     { label: 'Fees & Payments', href: '/accountant/fees', icon: DollarSign },
     { label: 'Reports', href: '/accountant/reports', icon: BarChart2 },
-    { label: 'Messaging', href: '/accountant/messaging', icon: MessageSquare },
+    // Hidden for now, same as admin's — see the comment above in the
+    // admin section. Uncomment to re-enable.
+    // { label: 'Messaging', href: '/accountant/messaging', icon: MessageSquare },
     { label: 'Notices', href: '/accountant/notices', icon: Bell },
     { label: 'Settings', href: '/accountant/settings', icon: Settings },
   ],
