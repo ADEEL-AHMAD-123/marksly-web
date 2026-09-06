@@ -14,9 +14,11 @@ function formatPKR(amount: number): string {
  *  that's the mid-priced tier PricingPlans.tsx also highlights as "Most
  *  popular". Not renamed to avoid an unnecessary file-rename diff.
  *
- *  Only shows student/storage capacity here — the full real feature list
+ *  Only shows student capacity here — the full real feature list
  *  (attendance, exams, fees, ID cards, etc., identical across every paid
- *  plan) lives on /pricing itself; this teaser stays short on purpose. */
+ *  plan) lives on /pricing itself; this teaser stays short on purpose.
+ *  Storage is intentionally not shown — storageGB isn't actually metered
+ *  or enforced anywhere in the API today, so it's left off marketing copy. */
 export function GrowthPlanCard() {
   const { data, isLoading } = useGetPublicPlansQuery();
   const plans = data?.data ?? [];
@@ -28,7 +30,6 @@ export function GrowthPlanCard() {
 
   const bullets = [
     `Up to ${plan.studentsLimit.toLocaleString('en-PK')} students`,
-    `${plan.storageGB} GB storage`,
     'Attendance, exams, fees, ID cards & more',
   ];
 
