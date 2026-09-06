@@ -6,7 +6,7 @@ import { AlertTriangle, CheckCircle2, Clock, Loader2, ShieldAlert } from 'lucide
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
+import { cn, formatDateTime } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/get-error-message';
 import {
   useGetMyAttemptStateQuery,
@@ -351,7 +351,7 @@ export function ExamTakingView({ examId }: { examId: string }) {
     const notOpenYet = !!exam.windowStart && serverNow < new Date(exam.windowStart).getTime();
     const windowClosed = !!exam.windowEnd && serverNow > new Date(exam.windowEnd).getTime();
     const blockedReason = notOpenYet
-      ? `This exam opens ${new Date(exam.windowStart!).toLocaleString()}.`
+      ? `This exam opens ${formatDateTime(exam.windowStart!)}.`
       : windowClosed
         ? 'This exam window has closed.'
         : null;

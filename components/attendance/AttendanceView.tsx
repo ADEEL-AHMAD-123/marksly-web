@@ -386,10 +386,24 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
               <Badge variant="neutral">Leave {counts.leave}</Badge>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="secondary" size="sm" disabled={attendanceLocked} onClick={() => setAll('present')}>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={attendanceLocked}
+                title={attendanceLocked ? 'Attendance older than 24 hours can only be changed by an admin' : undefined}
+                onClick={() => setAll('present')}
+              >
                 <CheckCheck size={16} /> All present
               </Button>
-              <Button size="sm" loading={saving} disabled={attendanceLocked} onClick={save}>Save attendance</Button>
+              <Button
+                size="sm"
+                loading={saving}
+                disabled={attendanceLocked}
+                title={attendanceLocked ? 'Attendance older than 24 hours can only be changed by an admin' : undefined}
+                onClick={save}
+              >
+                Save attendance
+              </Button>
             </div>
           </Card>
 
@@ -418,7 +432,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                         onClick={() => setStatuses((prev) => ({ ...prev, [s.studentId]: st.key }))}
                         className={cn(
                           'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-                          attendanceLocked && 'cursor-not-allowed',
+                          attendanceLocked && 'pointer-events-none cursor-not-allowed',
                           active
                             ? st.active
                             : 'bg-muted text-muted-foreground hover:bg-secondary'
@@ -434,7 +448,14 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
           </Card>
 
           <div className="flex justify-end">
-            <Button loading={saving} disabled={attendanceLocked} onClick={save}>Save attendance</Button>
+            <Button
+              loading={saving}
+              disabled={attendanceLocked}
+              title={attendanceLocked ? 'Attendance older than 24 hours can only be changed by an admin' : undefined}
+              onClick={save}
+            >
+              Save attendance
+            </Button>
           </div>
         </>
       )}
