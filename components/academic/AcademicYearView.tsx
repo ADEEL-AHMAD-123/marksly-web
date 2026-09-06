@@ -368,6 +368,12 @@ function TermFormSheet({
       toast.error('Name is required');
       return;
     }
+    // Same rule the backend now enforces (see term.validator.ts) — checked
+    // here too so the user sees it instantly instead of after a round trip.
+    if (startDate && endDate && endDate < startDate) {
+      toast.error('End date cannot be before start date');
+      return;
+    }
     try {
       if (mode === 'create') {
         await createTerm({
