@@ -7,6 +7,14 @@ function formatPKR(amount: number): string {
   return `Rs ${amount.toLocaleString('en-PK', { maximumFractionDigits: 0 })}`;
 }
 
+// storageGB can be a fraction (e.g. 0.5 = 500MB) — real usage here is just
+// institution logos + per-user profile photos, so smaller tiers are
+// genuinely sub-1GB rather than rounded up to a dishonest "1 GB".
+function formatStorage(storageGB: number): string {
+  if (storageGB < 1) return `${Math.round(storageGB * 1024)} MB storage`;
+  return `${storageGB} GB storage`;
+}
+
 /** Homepage pricing-teaser card — same live plan data as /pricing, so this
  *  can't silently drift out of sync with what billing.service.ts charges.
  *  Despite the filename, this shows the 'standard' plan (named "Growth" as
@@ -14,11 +22,9 @@ function formatPKR(amount: number): string {
  *  that's the mid-priced tier PricingPlans.tsx also highlights as "Most
  *  popular". Not renamed to avoid an unnecessary file-rename diff.
  *
- *  Only shows student capacity here — the full real feature list
+ *  Only shows student/storage capacity here — the full real feature list
  *  (attendance, exams, fees, ID cards, etc., identical across every paid
- *  plan) lives on /pricing itself; this teaser stays short on purpose.
- *  Storage is intentionally not shown — storageGB isn't actually metered
- *  or enforced anywhere in the API today, so it's left off marketing copy. */
+ *  plan) lives on /pricing itself; this teaser stays short on purpose. */
 export function GrowthPlanCard() {
   const { data, isLoading } = useGetPublicPlansQuery();
   const plans = data?.data ?? [];
@@ -30,6 +36,7 @@ export function GrowthPlanCard() {
 
   const bullets = [
     `Up to ${plan.studentsLimit.toLocaleString('en-PK')} students`,
+    formatStorage(plan.storageGB),
     'Attendance, exams, fees, ID cards & more',
   ];
 

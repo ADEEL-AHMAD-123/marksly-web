@@ -6,14 +6,15 @@ import { buttonVariants } from '@/components/ui/button-variants';
 import { useGetPublicPlansQuery, type Plan } from '@/store/api/plansApi';
 
 // The real, shipped feature set every paid plan includes — shown once,
-// prominently, instead of as a per-tier checklist. None of the
-// plan.features flags ('whatsapp'/'aiReports'/'multibranch') are actually
-// gated by plan anywhere in the API today (requireFeature() is defined but
-// never applied to a route — see tenant.middleware.ts), so listing them as
-// a per-tier checkmark would be an inaccurate claim about what's locked
-// where. Tiers are honestly differentiated by capacity and support level
-// instead. This list doubles as on-page SEO content — real feature names a
-// prospective customer (or search engine) would actually search for.
+// prominently, instead of as a per-tier checklist. 'whatsapp'/'aiReports'
+// aren't listed per-tier: neither is actually gated by plan anywhere in the
+// API today (requireFeature() is defined but never applied to a route —
+// see tenant.middleware.ts; "AI reports" has no implementation at all), so
+// a per-tier checkmark for either would be an inaccurate claim about what's
+// locked where. Tiers are honestly differentiated by capacity, storage, and
+// support level instead. This list doubles as on-page SEO content — real
+// feature names a prospective customer (or search engine) would actually
+// search for.
 const CORE_FEATURES = [
   'Attendance tracking with automatic guardian notifications',
   'Manual & timed online exams, auto-graded with GPA / grading schemes',
@@ -28,6 +29,14 @@ const CORE_FEATURES = [
 
 function formatPKR(amount: number): string {
   return `Rs ${amount.toLocaleString('en-PK', { maximumFractionDigits: 0 })}`;
+}
+
+// storageGB can be a fraction (e.g. 0.5 = 500MB) — real usage here is just
+// institution logos + per-user profile photos, so smaller tiers are
+// genuinely sub-1GB rather than rounded up to a dishonest "1 GB".
+function formatStorage(storageGB: number): string {
+  if (storageGB < 1) return `${Math.round(storageGB * 1024)} MB storage`;
+  return `${storageGB} GB storage`;
 }
 
 function planTagline(plan: Plan): string {
@@ -71,10 +80,9 @@ export function PricingPlans() {
   return (
     <div>
       {/* The real feature list, front and center — every paid plan includes
-          all of this; what differs below is student capacity and support
-          level (storage isn't shown — storageGB isn't actually metered or
-          enforced anywhere in the API today). Also doubles as genuine,
-          keyword-rich on-page content rather than vague marketing copy. */}
+          all of this; what differs below is student capacity, storage, and
+          support level. Also doubles as genuine, keyword-rich on-page
+          content rather than vague marketing copy. */}
       <div className="mx-auto mb-8 max-w-3xl rounded-2xl border border-border bg-card/60 p-5 sm:mb-10 sm:p-7">
         <h3 className="text-center text-sm font-semibold sm:text-base">Every paid plan includes</h3>
         <ul className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2">
@@ -117,6 +125,10 @@ export function PricingPlans() {
                 </li>
                 <li className="flex items-start gap-2 text-[13px] sm:text-sm">
                   <Check aria-hidden size={15} className="mt-0.5 shrink-0 text-success" />
+                  <span>{formatStorage(plan.storageGB)}</span>
+                </li>
+                <li className="flex items-start gap-2 text-[13px] sm:text-sm">
+                  <Check aria-hidden size={15} className="mt-0.5 shrink-0 text-success" />
                   <span>All core features above</span>
                 </li>
               </ul>
@@ -152,7 +164,7 @@ export function PricingPlans() {
         <div>
           <h3 className="text-sm font-semibold sm:text-base">Need something bigger, or a multi-campus setup?</h3>
           <p className="mt-1 text-[13px] text-muted-foreground sm:text-sm">
-            Custom student limits and pricing for large or multi-branch institutions — talk to us and we&apos;ll work out a plan that fits.
+            Custom student limits, storage, and pricing for large or multi-branch institutions — talk to us and we&apos;ll work out a plan that fits.
           </p>
         </div>
         <Link
