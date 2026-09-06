@@ -15,14 +15,21 @@ export interface NavItem {
 export const NAV_ITEMS: Record<string, NavItem[]> = {
   admin: [
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    // People, grouped together — ID Cards moved out from between Students
+    // and Teachers (it's a students-only utility, but sitting mid-list made
+    // it read as its own category) to sit alongside the rest of this group.
     { label: 'Students', href: '/admin/students', icon: GraduationCap },
-    { label: 'ID Cards', href: '/admin/id-cards', icon: CreditCard },
     { label: 'Teachers', href: '/admin/teachers', icon: Users },
     { label: 'Staff', href: '/admin/staff', icon: Briefcase },
+    { label: 'ID Cards', href: '/admin/id-cards', icon: CreditCard },
+    // Academic structure — Academic Terms now comes first since it's the
+    // foundational setup step Classes/Subjects/Timetable are actually scoped
+    // to (you define a term before you can assign classes to it), not just
+    // another item in the group.
+    { label: 'Academic Terms', href: '/admin/academic-year', icon: CalendarRange },
     { label: 'Classes', href: '/admin/classes', icon: School },
     { label: 'Subjects', href: '/admin/subjects', icon: BookOpen },
     { label: 'Timetable', href: '/admin/timetable', icon: CalendarClock },
-    { label: 'Academic Terms', href: '/admin/academic-year', icon: CalendarRange },
     { label: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
     { label: 'Fees', href: '/admin/fees', icon: DollarSign },
     { label: 'Exams', href: '/admin/exams', icon: FileText },
