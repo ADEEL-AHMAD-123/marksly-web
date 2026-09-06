@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/get-error-message';
 import {
   useGetMyAttemptStateQuery,
   useStartAttemptMutation,
@@ -78,6 +79,14 @@ export function ExamTakingView({ examId }: { examId: string }) {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [completion, setCompletion] = useState<{ timedOut: boolean } | null>(null);
   const [integrityBanner, setIntegrityBanner] = useState<string | null>(null);
+  // startAttempt() previously had no .catch() at all here — a blocked start
+  // (window not open yet / already closed, an in-progress attempt from
+  // another tab, or max attempts already used) failed completely silently,
+  // leaving the student staring at a Start button that appeared to do
+  // nothing. Surfaced as an inline banner (this screen's own convention —
+  // see integrityBanner/save-status pills — rather than a toast library
+  // this file doesn't otherwise use).
+  const [startError, setStartError] = useState<string | null>(null);
 
   const saveTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const latestValues = useRef<Record<number, string | string[]>>({});
@@ -333,6 +342,20 @@ export function ExamTakingView({ examId }: { examId: string }) {
 
   // Not started yet.
   if (!attempt) {
+    // Approximated server time (same clock-skew correction the countdown
+    // uses) — lets the Start button be disabled with a clear, specific
+    // reason for the two cases that are knowable up front from the exam's
+    // own window, instead of only finding out after clicking Start and
+    // getting EXAM_NOT_OPEN/EXAM_WINDOW_CLOSED back from the server.
+    const serverNow = Date.now() + clockOffsetRef.current;
+    const notOpenYet = !!exam.windowStart && serverNow < new Date(exam.windowStart).getTime();
+    const windowClosed = !!exam.windowEnd && serverNow > new Date(exam.windowEnd).getTime();
+    const blockedReason = notOpenYet
+      ? `This exam opens ${new Date(exam.windowStart!).toLocaleString()}.`
+      : windowClosed
+        ? 'This exam window has closed.'
+        : null;
+
     return (
       <div className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-6 px-6 text-center">
         <h1 className="text-2xl font-semibold text-foreground">Ready to begin?</h1>
@@ -351,15 +374,33 @@ export function ExamTakingView({ examId }: { examId: string }) {
                 <span>This exam requires fullscreen mode — you&apos;ll be asked to enter it when you start.</span>
               </div>
             )}
+            {blockedReason && (
+              <div className="flex items-start gap-2 rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+                <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{blockedReason}</span>
+              </div>
+            )}
+            {startError && (
+              <div className="flex items-start gap-2 rounded-lg bg-danger/10 p-3 text-sm text-danger">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{startError}</span>
+              </div>
+            )}
           </CardContent>
         </Card>
         <Button
           size="lg"
           loading={isStarting}
+          disabled={!!blockedReason}
           onClick={async () => {
-            await startAttempt(examId).unwrap();
-            requestFullscreenIfNeeded();
-            refetch();
+            setStartError(null);
+            try {
+              await startAttempt(examId).unwrap();
+              requestFullscreenIfNeeded();
+              refetch();
+            } catch (e: any) {
+              setStartError(getErrorMessage(e, 'Could not start this exam. Please try again.'));
+            }
           }}
         >
           Start exam
