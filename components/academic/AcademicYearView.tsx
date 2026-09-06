@@ -247,9 +247,9 @@ function TermsTab() {
         </Card>
       ) : (
         <div className="space-y-6">
-          <TermGroup label="Active" terms={groups.active} onEdit={setEditTerm} emphasize />
-          <TermGroup label="Upcoming" terms={groups.upcoming} onEdit={setEditTerm} />
-          <TermGroup label="Closed" terms={groups.closed} onEdit={setEditTerm} />
+          <TermGroup label="Active" terms={groups.active} allTerms={terms} onEdit={setEditTerm} emphasize />
+          <TermGroup label="Upcoming" terms={groups.upcoming} allTerms={terms} onEdit={setEditTerm} />
+          <TermGroup label="Closed" terms={groups.closed} allTerms={terms} onEdit={setEditTerm} />
         </div>
       )}
 
@@ -264,7 +264,19 @@ function TermsTab() {
   );
 }
 
-function TermGroup({ label, terms, onEdit, emphasize }: { label: string; terms: Term[]; onEdit: (t: Term) => void; emphasize?: boolean }) {
+function TermGroup({
+  label, terms, allTerms, onEdit, emphasize,
+}: {
+  label: string;
+  terms: Term[];
+  // The full unfiltered term list (not just this status group) — needed to
+  // resolve a term's parentAcademicYearId into a displayable name, since
+  // the parent year could be sitting in a different status bucket (e.g. an
+  // upcoming semester grouped under an already-closed academic year).
+  allTerms: Term[];
+  onEdit: (t: Term) => void;
+  emphasize?: boolean;
+}) {
   if (terms.length === 0) return null;
   return (
     <div>
@@ -293,6 +305,11 @@ function TermGroup({ label, terms, onEdit, emphasize }: { label: string; terms: 
             <p className="mt-2.5 text-xs text-muted-foreground">
               {formatDate(t.startDate)} – {formatDate(t.endDate)}
             </p>
+            {t.parentAcademicYearId && (
+              <p className="mt-1 truncate text-xs text-muted-foreground">
+                Part of {allTerms.find((y) => y.id === t.parentAcademicYearId)?.name ?? 'an academic year'}
+              </p>
+            )}
           </Card>
         ))}
       </div>
@@ -330,11 +347,23 @@ function TermFormSheet({
   const [updateTerm, { isLoading: updating }] = useUpdateTermMutation();
   const isLoading = creating || updating;
 
+  // Same cache entry the term list screen already populated — this doesn't
+  // trigger a second network request, just reads the shared RTK Query cache.
+  const { data: termsData } = useGetTermsQuery();
+  const allTerms = termsData?.data ?? [];
+  // Only a term of type `academic_year` is a valid parent (see
+  // term.service.ts's assertValidParentAcademicYear()) — filtering the
+  // dropdown to just those means the user can never even select an invalid
+  // one, instead of picking something and finding out from an error after
+  // submitting. A term also can't be its own parent.
+  const eligibleParentYears = allTerms.filter((t) => t.type === 'academic_year' && t.id !== term?.id);
+
   const [name, setName] = useState('');
   const [type, setType] = useState<TermType>(defaultType);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState<TermStatus>('upcoming');
+  const [parentAcademicYearId, setParentAcademicYearId] = useState<string>('');
   const [typeLockedError, setTypeLockedError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -345,12 +374,14 @@ function TermFormSheet({
       setStartDate(toDateInputValue(term.startDate));
       setEndDate(toDateInputValue(term.endDate));
       setStatus(term.status);
+      setParentAcademicYearId(term.parentAcademicYearId ?? '');
     } else {
       setName('');
       setType(defaultType);
       setStartDate('');
       setEndDate('');
       setStatus('upcoming');
+      setParentAcademicYearId('');
     }
     setTypeLockedError(null);
     // `structure` (and therefore defaultType) is included so that if
@@ -382,6 +413,7 @@ function TermFormSheet({
           startDate: startDate || undefined,
           endDate: endDate || undefined,
           status,
+          parentAcademicYearId: parentAcademicYearId || undefined,
         }).unwrap();
         toast.success('Term created');
       } else if (term) {
@@ -390,6 +422,10 @@ function TermFormSheet({
           startDate: startDate || undefined,
           endDate: endDate || undefined,
           status,
+          // `null` (not omitted) so choosing "No parent" actually clears an
+          // existing link — omitting the key means "leave unchanged" (see
+          // UpdateTermBody's own comment).
+          parentAcademicYearId: parentAcademicYearId || null,
         };
         // Only send `type` if it actually changed — avoids tripping
         // TERM_LOCKED on saves that don't touch it at all.
@@ -445,6 +481,37 @@ function TermFormSheet({
                 </p>
               )}
             </div>
+            {/* Only meaningful for a term that ISN'T itself an academic
+                year — e.g. grouping Fall 2026 + Spring 2027 (both
+                `semester`) under a shared "AY 2026-27" for reporting
+                rollups. An academic_year term having its own parent year
+                is a confusing concept the backend allows but this UI
+                doesn't need to offer. */}
+            {type !== 'academic_year' && (
+              <div>
+                <Label htmlFor="term-parent-year">Part of academic year (optional)</Label>
+                {eligibleParentYears.length > 0 ? (
+                  <select
+                    id="term-parent-year"
+                    value={parentAcademicYearId}
+                    onChange={(e) => setParentAcademicYearId(e.target.value)}
+                    className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">No parent academic year</option>
+                    {eligibleParentYears.map((y) => (
+                      <option key={y.id} value={y.id}>{y.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    No academic-year terms exist yet to group this under — create one first if you want reports to roll this term up under a shared year.
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Groups this term under a full academic year for reporting — doesn't change dates, status, or promotion behavior.
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="term-start">Start date</Label>
