@@ -35,5 +35,9 @@ export function InviteStatusBadge({ emailVerified, emailDeliveryStatus, emailDel
     return <Badge variant="warning">Invited (delivered)</Badge>;
   }
 
+  if (emailDeliveryStatus === 'delayed') {
+    return <Badge variant="warning">Invited (delayed)</Badge>;
+  }
+
   return <Badge variant="warning">Invited</Badge>;
 }

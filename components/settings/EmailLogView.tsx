@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import {
-  Mail, Send, CheckCircle2, XCircle, AlertTriangle, RotateCw,
+  Mail, Send, CheckCircle2, XCircle, AlertTriangle, RotateCw, Clock,
   ChevronLeft, ChevronRight, Info, UserX, GraduationCap, Users, Briefcase,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -52,6 +52,10 @@ const STATUS_META: Record<EmailStatus, { variant: 'success' | 'warning' | 'dange
   delivered: { variant: 'success', label: 'Delivered', icon: CheckCircle2 },
   failed: { variant: 'danger', label: 'Failed', icon: XCircle },
   bounced: { variant: 'danger', label: 'Bounced', icon: AlertTriangle },
+  // Transient — a slow-to-arrive send, not a failure yet. A later webhook
+  // event upgrades this to Delivered or Bounced once Resend knows the
+  // actual outcome (see resend-webhook.service.ts).
+  delayed: { variant: 'warning', label: 'Delayed', icon: Clock },
 };
 
 const ROLE_LABEL: Record<string, string> = {
@@ -179,7 +183,7 @@ export function EmailLogView() {
       {/* Stat cards — Failed/bounced and No email on file are clickable
           shortcuts to the exact view an admin would want next, instead of
           being purely decorative numbers. */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <StatCard label="Total sent" value={stats?.total} icon={Mail} />
         <StatCard label="Delivered" value={stats?.delivered} icon={CheckCircle2} tone="success" />
         <StatCard
@@ -189,6 +193,11 @@ export function EmailLogView() {
           tone="danger"
           onClick={stats && stats.failed + stats.bounced > 0 ? jumpToProblems : undefined}
         />
+        {/* Transient, not a problem yet — Resend hasn't confirmed the
+            outcome. Shown so an admin doesn't mistake "still working on
+            it" for "already delivered", but deliberately not styled as
+            danger like the failed/bounced tile next to it. */}
+        <StatCard label="Delayed" value={stats?.delayed} icon={Clock} tone="warning" />
         <StatCard
           label="No email on file"
           value={stats?.missingEmail}
@@ -313,6 +322,7 @@ export function EmailLogView() {
               <SelectItem value="delivered">Delivered</SelectItem>
               <SelectItem value="failed">Failed</SelectItem>
               <SelectItem value="bounced">Bounced</SelectItem>
+              <SelectItem value="delayed">Delayed</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -457,11 +467,11 @@ export function EmailLogView() {
 
 function StatCard({
   label, value, icon: Icon, tone, onClick,
-}: { label: string; value?: number; icon: typeof Mail; tone?: 'success' | 'danger'; onClick?: () => void }) {
+}: { label: string; value?: number; icon: typeof Mail; tone?: 'success' | 'danger' | 'warning'; onClick?: () => void }) {
   const content = (
     <>
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        <Icon size={14} className={tone === 'success' ? 'text-success' : tone === 'danger' ? 'text-danger' : 'text-muted-foreground'} />
+        <Icon size={14} className={tone === 'success' ? 'text-success' : tone === 'danger' ? 'text-danger' : tone === 'warning' ? 'text-warning' : 'text-muted-foreground'} />
         {label}
       </div>
       <p className="mt-1.5 text-2xl font-bold text-foreground">{value ?? <Skeleton className="h-7 w-10" />}</p>

@@ -2,7 +2,7 @@ import { baseApi } from './baseApi';
 
 export type ManageableRole = 'teacher' | 'staff' | 'accountant';
 
-export type EmailDeliveryStatus = 'pending' | 'sent' | 'delivered' | 'bounced' | 'failed' | null;
+export type EmailDeliveryStatus = 'pending' | 'sent' | 'delivered' | 'bounced' | 'failed' | 'delayed' | null;
 
 export interface ManagedUser {
   id: string;

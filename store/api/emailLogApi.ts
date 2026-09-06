@@ -7,7 +7,7 @@ import { baseApi } from './baseApi';
 // other category (verification, password reset, billing, etc.) is excluded.
 export type EmailCategory = 'invite' | 'welcome_credentials';
 
-export type EmailStatus = 'sent' | 'failed' | 'delivered' | 'bounced';
+export type EmailStatus = 'sent' | 'failed' | 'delivered' | 'bounced' | 'delayed';
 
 export interface EmailLogEntry {
   id: string;
@@ -26,6 +26,7 @@ export interface EmailLogStats {
   delivered: number;
   failed: number;
   bounced: number;
+  delayed: number;
   byCategory: Partial<Record<EmailCategory, number>>;
   /** Accounts that never got an onboarding email at all because there was
    *  no email on file when they were added — see MissingEmailEntry below. */
