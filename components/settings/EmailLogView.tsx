@@ -3,10 +3,11 @@
 import { useRef, useState } from 'react';
 import {
   Mail, Send, CheckCircle2, XCircle, AlertTriangle, RotateCw, Clock,
-  ChevronLeft, ChevronRight, ChevronDown, UserX, GraduationCap, Users, Briefcase,
+  ChevronLeft, ChevronRight, UserX, GraduationCap, Users, Briefcase,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
+import { LoginInfoNote } from '@/components/ui/login-info-note';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -93,7 +94,6 @@ export function EmailLogView() {
   const [resendTarget, setResendTarget] = useState<EmailLogEntry | null>(null);
   const [domainWarning, setDomainWarning] = useState<string | null>(null);
   const [missingPage, setMissingPage] = useState(1);
-  const [howShown, setHowShown] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
 
   const category: EmailCategory | 'all' = view === 'missing' ? 'all' : view;
@@ -179,31 +179,16 @@ export function EmailLogView() {
       <PageHeader
         title="Login Emails"
         description="Whether the first login email you sent actually reached the person."
-        actions={
-          <button
-            type="button"
-            onClick={() => setHowShown((v) => !v)}
-            className="flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            How this works
-            <ChevronDown size={14} className={cn('transition-transform', howShown && 'rotate-180')} />
-          </button>
-        }
       />
 
-      {/* Collapsed by default — the explanation is valuable once, not on
-          every single visit, so it no longer permanently eats vertical
-          space above the content an admin actually came here to check. */}
-      {howShown && (
-        <Card className="p-4 text-sm text-muted-foreground">
-          <p>
-            <strong className="text-foreground">Why this page exists:</strong> when you add someone with an email on file, Marksly sends them their login details right away. If that email was mistyped, it can fail silently — you&apos;d have no way of knowing they never got it.
-          </p>
-          <p className="mt-1.5">
-            This only covers that one first email — not password resets or anything else, since those are requested by the person themselves.
-          </p>
-        </Card>
-      )}
+      {/* Same "How do they log in?" pattern used on the Students/Teachers/
+          Staff pages (components/ui/login-info-note.tsx) — one consistent,
+          collapsed-by-default reference for this instead of a bespoke
+          permanently-open explainer card. */}
+      <LoginInfoNote>
+        <p>When you add a student, parent, teacher, or staff member with an email on file, Marksly sends their login details right away — a temporary password for students/parents, an activation link for teachers/staff. This page shows whether that first email actually reached them.</p>
+        <p>It only covers that one first email — not password resets or anything else, since those are requested by the person themselves.</p>
+      </LoginInfoNote>
 
       {/* Needs-attention banner — the single, unmissable entry point for
           anything actually wrong. Nothing renders here at all when
@@ -249,8 +234,12 @@ export function EmailLogView() {
         )}
       </div>
 
-      {/* Tabs — the page's one and only navigation control. */}
-      <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
+      {/* Tabs — the page's one and only navigation control. Inactive tabs
+          get a real border + solid foreground text (not washed-out muted
+          text on muted background, which was hard to read at a glance),
+          and each count sits in its own small pill with real contrast
+          rather than semi-transparent text. */}
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         {VIEW_TABS.map((t) => {
           const count =
             t.value === 'missing'
@@ -258,19 +247,29 @@ export function EmailLogView() {
               : t.value !== 'all'
                 ? stats?.byCategory?.[t.value as EmailCategory]
                 : undefined;
+          const active = view === t.value;
           return (
             <button
               key={t.value}
               onClick={() => { setView(t.value); setPage(1); }}
               className={cn(
-                'shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors',
-                view === t.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:text-foreground'
+                'flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors',
+                active
+                  ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                  : 'border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted'
               )}
             >
               {t.label}
-              {!!count && <span className={cn('ml-1.5', view === t.value ? 'opacity-80' : 'opacity-60')}>{count}</span>}
+              {!!count && (
+                <span
+                  className={cn(
+                    'flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold leading-none',
+                    active ? 'bg-white/20 text-primary-foreground' : 'bg-muted text-foreground'
+                  )}
+                >
+                  {count}
+                </span>
+              )}
             </button>
           );
         })}
@@ -358,9 +357,20 @@ export function EmailLogView() {
                         const StatusIcon = meta.icon;
                         return (
                           <TableRow key={e.id}>
-                            <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(e.createdAt)}</TableCell>
+                            <TableCell className="whitespace-nowrap">{formatDateTime(e.createdAt)}</TableCell>
                             <TableCell>
-                              <p className="font-medium text-foreground" dir="ltr">{e.to}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="font-medium text-foreground" dir="ltr">{e.to}</p>
+                                {e.isResend && (
+                                  <Badge
+                                    variant="neutral"
+                                    className="shrink-0"
+                                    title="Sent from a Resend action, not the original signup — a second row for this person is expected."
+                                  >
+                                    Resent
+                                  </Badge>
+                                )}
+                              </div>
                               <p className="max-w-[280px] truncate text-xs text-muted-foreground">{e.subject}</p>
                             </TableCell>
                             <TableCell title={CATEGORY_MEANING[e.category]}>
@@ -396,7 +406,10 @@ export function EmailLogView() {
                     <Card key={e.id} className="p-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-foreground" dir="ltr">{e.to}</p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <p className="truncate font-medium text-foreground" dir="ltr">{e.to}</p>
+                            {e.isResend && <Badge variant="neutral" className="shrink-0">Resent</Badge>}
+                          </div>
                           <p className="truncate text-xs text-muted-foreground">{e.subject}</p>
                         </div>
                         <Badge variant={meta.variant} className="shrink-0">

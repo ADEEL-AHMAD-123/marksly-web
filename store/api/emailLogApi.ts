@@ -17,6 +17,11 @@ export interface EmailLogEntry {
   status: EmailStatus;
   error: string | null;
   relatedUserId: string | null;
+  /** True when this row is the result of clicking "Resend" (here or on the
+   *  Students/Teachers/Staff pages), not the original send at account
+   *  creation — so a second row for the same recipient reads as "the
+   *  resend attempt" instead of an unexplained duplicate. */
+  isResend: boolean;
   createdAt: string;
 }
 
