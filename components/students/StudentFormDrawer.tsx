@@ -368,6 +368,11 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               <Input id="email" type="email" dir="ltr" {...register('email')} />
               {errors.email && <p className="mt-1 text-xs text-danger">{errors.email.message}</p>}
             </div>
+            {!isEdit && (
+              <p className="-mt-2 text-xs text-muted-foreground">
+                The student will log in with this phone or email — double-check both are correct and actually reachable before saving.
+              </p>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -483,11 +488,11 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                   </div>
                   <p className="mt-1.5 text-xs text-muted-foreground">
                     If a parent with this phone already has an account here, this student is just added to it — one login, both kids show up in it.
-                    Otherwise a brand-new parent account is created and emailed its own login details separately from the student&apos;s.
+                    Otherwise a brand-new parent account is created and emailed its own login details — make sure this phone and email genuinely belong to the parent, since they&apos;ll use them to sign in.
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  A student login is created automatically with a temporary password (the student can reset it).
+                  A student login is created automatically with a temporary password, emailed to the student — they can log in with their phone, email, or the Student ID printed on their ID card, and will be asked to set their own password on first login.
                 </p>
               </>
             )}

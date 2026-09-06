@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import en from 'react-phone-number-input/locale/en.json';
 import { PageHeader } from '@/components/ui/page-header';
+import { LoginInfoNote } from '@/components/ui/login-info-note';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -96,6 +97,11 @@ export function TeachersView() {
           </>
         }
       />
+
+      <LoginInfoNote>
+        <p>Teachers log in at the same <strong>Log in</strong> page as everyone else, using the phone or email entered when they were added. They&apos;re emailed an activation link and choose their own password the first time — there&apos;s no temporary password to hand out.</p>
+        <p>Activation email never arrived? Use <strong>Resend invite</strong> on their row.</p>
+      </LoginInfoNote>
 
       <Card className="p-4">
         <SearchInput
@@ -399,6 +405,11 @@ function AddTeacherDrawer({ open, onClose, editing }: { open: boolean; onClose: 
               <Input id="email" type="email" dir="ltr" {...register('email')} />
               {errors.email && <p className="mt-1 text-xs text-danger">{errors.email.message}</p>}
             </div>
+            {!isEditing && (
+              <p className="-mt-2 text-xs text-muted-foreground">
+                This is how the teacher will log in — double-check the phone and email are correct and actually theirs before saving.
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">An activation link is emailed to the teacher — they choose their own password when they click it.</p>
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">

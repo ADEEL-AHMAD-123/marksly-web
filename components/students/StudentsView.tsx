@@ -28,6 +28,7 @@ import { getInitials, formatDate } from '@/lib/utils';
 import { StudentFormDrawer } from './StudentFormDrawer';
 import { StudentDetailDrawer } from './StudentDetailDrawer';
 import { useTerminology } from '@/lib/terminology';
+import { LoginInfoNote } from '@/components/ui/login-info-note';
 
 const statusBadge: Record<
   StudentListItem['status'],
@@ -98,6 +99,12 @@ export function StudentsView() {
           </>
         }
       />
+
+      <LoginInfoNote>
+        <p>Students log in at the same <strong>Log in</strong> page as everyone else, using the phone, email, or Student ID (printed on their ID card, e.g. MKS-XXXXXXXX) entered when they were added — plus a temporary password emailed to them, which they set their own password for on first login.</p>
+        <p>Guardians get a separate parent login — the phone/email entered as guardian for a student, also emailed its own temporary password. One guardian phone linked to more than one child means one shared login for all of them.</p>
+        <p>Missing or bounced email? Open the student, use <strong>Resend student login</strong> or <strong>Resend parent login</strong> to send a fresh password.</p>
+      </LoginInfoNote>
 
       {/* Filters */}
       <Card className="p-4">
