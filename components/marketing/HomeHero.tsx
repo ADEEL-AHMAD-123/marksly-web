@@ -22,7 +22,7 @@ export function HomeHero() {
             For schools & colleges in Pakistan
           </p>
           <h1 className="mt-4 text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl sm:leading-[1.05] md:text-6xl">
-            The operating system<br className="hidden sm:block" /> for your <span className="text-primary">institution</span>
+            The operating system<span className="sm:hidden"> </span><br className="hidden sm:block" /> for your <span className="text-primary">institution</span>
           </h1>
 
           {/* Mobile: one short, scannable line — the full descriptive sentence

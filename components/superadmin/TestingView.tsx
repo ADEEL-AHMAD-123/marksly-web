@@ -33,10 +33,18 @@ function AutoRenewalSweepTool() {
   const [runSweep, { isLoading }] = useRunAutoRenewSweepMutation();
   const [result, setResult] = useState<SweepResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Audit (P3): this fires the exact same real, merchant-initiated charges
+  // as the scheduled cron — previously one click with no "are you sure"
+  // step. The sweep itself is still safe to re-run (it skips anything not
+  // actually due), but a confirm step matches how other one-click,
+  // real-world-effect actions in this app are gated (see e.g. NoticesView's
+  // delete confirm), rather than leaving this the one exception.
+  const [confirming, setConfirming] = useState(false);
 
   const onRun = async () => {
     setError(null);
     setResult(null);
+    setConfirming(false);
     try {
       const res = await runSweep().unwrap();
       setResult(res.data);
@@ -56,9 +64,21 @@ function AutoRenewalSweepTool() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Button onClick={onRun} loading={isLoading}>
-          <Play size={15} /> Run sweep now
-        </Button>
+        {confirming ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              This will attempt real charges for every subscription due today. Continue?
+            </span>
+            <Button variant="secondary" size="sm" onClick={() => setConfirming(false)}>Cancel</Button>
+            <Button size="sm" onClick={onRun} loading={isLoading}>
+              <Play size={15} /> Yes, run it
+            </Button>
+          </div>
+        ) : (
+          <Button onClick={() => setConfirming(true)}>
+            <Play size={15} /> Run sweep now
+          </Button>
+        )}
 
         {error && (
           <div className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger-soft px-3 py-2.5 text-sm text-danger">
