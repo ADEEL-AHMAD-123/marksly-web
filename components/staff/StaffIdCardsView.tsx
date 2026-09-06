@@ -2,7 +2,7 @@
 
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff, Search, X, UserCircle, Phone, MapPin } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff, Search, X, UserCircle, Phone, MapPin, RotateCw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { QRCode } from '@/components/ui/qr-code';
 import { useGetStaffIdCardsQuery, type StaffCardRole, type StaffIdCard } from '@/store/api/usersApi';
 import { CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS, idCardNameSizeClass } from '@/components/shared/idCardPrint';
+import { IdCardBack, type IdCardBackRow } from '@/components/shared/IdCardBack';
 import { IdCardCredit } from '@/components/shared/IdCardCredit';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -106,19 +107,51 @@ export function StaffIdCardsView() {
       ) : !selected ? (
         <Card className="p-5 no-print"><Skeleton className="h-64 w-full" /></Card>
       ) : (
-        <>
-          <div className="no-print flex justify-end">
-            <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print this card</Button>
-          </div>
-          <div id="id-card-print" className="flex justify-center">
-            <div className="w-full max-w-sm">
-              <StaffIdCardItem member={selected} institution={sheet!.institution} />
-            </div>
-          </div>
-        </>
+        <StaffIdCardPreview member={selected} institution={sheet!.institution} />
       )}
     </div>
   );
+}
+
+function StaffIdCardPreview({
+  member, institution,
+}: {
+  member: StaffIdCard;
+  institution: { name: string; logoUrl: string | null };
+}) {
+  const [showBack, setShowBack] = useState(false);
+
+  return (
+    <>
+      <div className="no-print flex items-center justify-end gap-2">
+        <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
+          <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
+        </Button>
+        <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print card</Button>
+      </div>
+      <div id="id-card-print" className="flex justify-center">
+        <div className="w-full max-w-sm space-y-4">
+          <div className={cn(showBack ? 'hidden print:block' : 'block')}>
+            <StaffIdCardItem member={member} institution={institution} />
+          </div>
+          <div className={cn(showBack ? 'block' : 'hidden print:block')}>
+            <IdCardBack
+              institution={institution}
+              qrValue={member.qr}
+              rows={staffBackRows(member)}
+            />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function staffBackRows(member: StaffIdCard): IdCardBackRow[] {
+  const rows: IdCardBackRow[] = [];
+  if (member.phone) rows.push({ icon: Phone, label: 'Phone', value: member.phone });
+  if (member.address) rows.push({ icon: MapPin, label: 'Address', value: member.address });
+  return rows;
 }
 
 /**
@@ -260,17 +293,19 @@ export const StaffIdCardItem = memo(function StaffIdCardItem({
         </div>
       </div>
 
-      {/* Body */}
-      <div className="flex flex-1 gap-2.5 p-2.5">
-        <div className="flex flex-1 flex-col gap-1.5 overflow-hidden">
-          <div className="flex items-center gap-2">
+      {/* Body — identity essentials only; phone/address moved to the back
+          (see IdCardBack) so this face isn't cramming six blocks of tiny
+          text into a 54mm-tall card. */}
+      <div className="flex flex-1 gap-3 p-3">
+        <div className="flex flex-1 flex-col gap-2 overflow-hidden">
+          <div className="flex items-center gap-2.5">
             {member.profilePhoto ? (
-              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-border">
-                <Image src={member.profilePhoto} alt="" fill sizes="40px" className="object-cover" unoptimized />
+              <div className={cn('relative h-12 w-12 shrink-0 overflow-hidden rounded-full border-2', style.accent)}>
+                <Image src={member.profilePhoto} alt="" fill sizes="48px" className="object-cover" unoptimized />
               </div>
             ) : (
               <div className="relative shrink-0">
-                <Avatar initials={`${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()} size="md" />
+                <Avatar initials={`${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()} size="lg" />
                 <span
                   title="No photo on file"
                   className="no-print absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-card bg-warning text-warning-foreground"
@@ -280,42 +315,28 @@ export const StaffIdCardItem = memo(function StaffIdCardItem({
               </div>
             )}
             <div className="min-w-0">
-              <p className="truncate text-[13px] font-bold leading-tight text-foreground">{member.name}</p>
-              <span className={cn('mt-0.5 inline-flex w-fit items-center gap-1 rounded-full px-1.5 py-0.5 text-[7.5px] font-semibold uppercase tracking-wide', style.soft)}>
-                <RoleIcon size={8} /> {style.label}
+              <p className="truncate text-[14px] font-bold leading-tight text-foreground">{member.name}</p>
+              <span className={cn('mt-0.5 inline-flex w-fit items-center gap-1 rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide', style.soft)}>
+                <RoleIcon size={9} /> {style.label}
               </span>
             </div>
           </div>
 
-          <dl className="mt-0.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px] leading-tight">
+          <dl className="mt-auto grid grid-cols-2 gap-x-3 gap-y-1.5 text-[9.5px] leading-tight">
             <Field label="Staff ID" value={member.systemId} />
             {member.subjectCount != null && (
               <Field label="Subjects Taught" value={String(member.subjectCount)} />
             )}
           </dl>
 
-          {(member.phone || member.address) && (
-            <div className="mt-0.5 flex flex-col gap-0.5 border-t border-border pt-1 text-[8px] leading-tight text-foreground">
-              {member.phone && (
-                <p className="flex items-center gap-1"><Phone size={7.5} className="shrink-0 text-muted-foreground" /> {member.phone}</p>
-              )}
-              {member.address && (
-                <p className="flex items-center gap-1 truncate">
-                  <MapPin size={7.5} className="shrink-0 text-muted-foreground" />
-                  <span className="truncate">{member.address}</span>
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="mt-auto pt-0.5">
+          <div className="pt-1">
             <IdCardCredit />
           </div>
         </div>
 
         {/* QR side panel — same sizing/mechanics as student cards */}
-        <div className="flex shrink-0 flex-col items-center justify-center gap-1 border-l border-border pl-2.5">
-          <QRCode value={member.qr} size={76} />
+        <div className="flex shrink-0 flex-col items-center justify-center gap-1 border-l border-border pl-3">
+          <QRCode value={member.qr} size={80} />
           <p className="text-center text-[6.5px] leading-tight text-muted-foreground">Scan to verify</p>
         </div>
       </div>

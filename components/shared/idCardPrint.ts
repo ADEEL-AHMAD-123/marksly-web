@@ -24,8 +24,12 @@ export const ID_CARD_PRINT_CSS = `
     top: 0;
     width: 100%;
     padding: 0;
-    display: grid;
-    grid-template-columns: repeat(2, ${CARD_WIDTH_MM}mm);
+    /* One card (front, then back) at a time — this app only ever shows a
+       single person's card, never a bulk sheet — so faces stack vertically
+       rather than sitting in a multi-column grid meant for many cards. */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: 6mm;
   }
   .no-print { display: none !important; }
@@ -36,7 +40,7 @@ export const ID_CARD_PRINT_CSS = `
     box-shadow: none !important;
     border: 1px solid #999 !important;
   }
-  /* Keep the "Powered by Marksly" credit visible when printed — it's
+  /* Keep the "Powered by marksly.pk" credit visible when printed — it's
      genuinely part of the card design, not on-screen-only chrome, so it
      must not get caught by anything hiding non-#id-card-print content. */
   .id-card .id-card-credit {

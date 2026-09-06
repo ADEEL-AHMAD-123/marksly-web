@@ -7,7 +7,7 @@
 export function IdCardCredit() {
   return (
     <p className="id-card-credit pointer-events-none select-none text-center text-[5.5px] font-medium uppercase tracking-wide text-muted-foreground/70">
-      Powered by Marksly
+      Powered by marksly.pk
     </p>
   );
 }

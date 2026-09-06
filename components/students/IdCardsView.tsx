@@ -2,7 +2,7 @@
 
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff, Search, X, UserCircle, Phone, MapPin, Users } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff, Search, X, UserCircle, Phone, MapPin, Users, RotateCw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,7 @@ import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetIdCardsQuery, type IdCard } from '@/store/api/studentsApi';
 import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
 import { CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS, idCardNameSizeClass } from '@/components/shared/idCardPrint';
+import { IdCardBack, type IdCardBackRow } from '@/components/shared/IdCardBack';
 import { cn } from '@/lib/utils';
 import { IdCardCredit } from '@/components/shared/IdCardCredit';
 
@@ -97,25 +98,70 @@ export function IdCardsView() {
       ) : !selected ? (
         <Card className="p-5 no-print"><Skeleton className="h-64 w-full" /></Card>
       ) : (
-        <>
-          <div className="no-print flex justify-end">
-            <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print this card</Button>
-          </div>
-          <div id="id-card-print" className="flex justify-center">
-            <div className="w-full max-w-sm">
-              <IdCardItem
-                student={selected}
-                institution={sheet!.institution}
-                className={sheet!.className}
-                section={sheet!.section}
-                termName={sheet!.termName}
-              />
-            </div>
-          </div>
-        </>
+        <StudentIdCardPreview
+          student={selected}
+          institution={sheet!.institution}
+          className={sheet!.className}
+          section={sheet!.section}
+          termName={sheet!.termName}
+        />
       )}
     </div>
   );
+}
+
+function StudentIdCardPreview({
+  student, institution, className, section, termName,
+}: {
+  student: IdCard;
+  institution: { name: string; city: string | null; logoUrl: string | null };
+  className: string | null;
+  section: string | null;
+  termName: string | null;
+}) {
+  const [showBack, setShowBack] = useState(false);
+  const { term: termLabel } = useTerminology();
+
+  return (
+    <>
+      <div className="no-print flex items-center justify-end gap-2">
+        <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
+          <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
+        </Button>
+        <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print card</Button>
+      </div>
+      <div id="id-card-print" className="flex justify-center">
+        <div className="w-full max-w-sm space-y-4">
+          {/* On screen, only the flipped-to face shows; on print, both
+              always render regardless of which one was showing. */}
+          <div className={cn(showBack ? 'hidden print:block' : 'block')}>
+            <IdCardItem student={student} institution={institution} className={className} section={section} termName={termName} />
+          </div>
+          <div className={cn(showBack ? 'block' : 'hidden print:block')}>
+            <IdCardBack
+              institution={institution}
+              qrValue={student.qr}
+              validityLabel={termName ?? termLabel}
+              rows={studentBackRows(student)}
+            />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function studentBackRows(student: IdCard): IdCardBackRow[] {
+  const rows: IdCardBackRow[] = [];
+  if (student.bloodGroup) rows.push({ icon: Droplet, label: 'Blood Group', value: student.bloodGroup });
+  if (student.phone) rows.push({ icon: Phone, label: 'Phone', value: student.phone });
+  if (student.address || student.city) {
+    rows.push({ icon: MapPin, label: 'Address', value: [student.address, student.city].filter(Boolean).join(', ') });
+  }
+  if (student.parentName) {
+    rows.push({ icon: Users, label: 'Parent / Guardian', value: `${student.parentName}${student.parentPhone ? ` · ${student.parentPhone}` : ''}` });
+  }
+  return rows;
 }
 
 /**
@@ -250,17 +296,22 @@ export const IdCardItem = memo(function IdCardItem({
         </div>
       </div>
 
-      {/* Body */}
-      <div className="flex flex-1 gap-2.5 p-2.5">
-        <div className="flex flex-1 flex-col gap-1.5 overflow-hidden">
-          <div className="flex items-center gap-2">
+      {/* Body — deliberately just identity essentials: photo, name, class,
+          the three ID numbers, and a QR. Contact info, blood group, and
+          guardian details moved to the back (see IdCardBack below) so this
+          face has real breathing room instead of six stacked blocks of
+          6.5-8px text, which is what made the old single-sided card read
+          as cramped rather than like an actual ID card. */}
+      <div className="flex flex-1 gap-3 p-3">
+        <div className="flex flex-1 flex-col gap-2 overflow-hidden">
+          <div className="flex items-center gap-2.5">
             {student.profilePhoto ? (
-              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-border">
-                <Image src={student.profilePhoto} alt="" fill sizes="40px" className="object-cover" unoptimized />
+              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-primary/20">
+                <Image src={student.profilePhoto} alt="" fill sizes="48px" className="object-cover" unoptimized />
               </div>
             ) : (
               <div className="relative shrink-0">
-                <Avatar initials={`${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()} size="md" />
+                <Avatar initials={`${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()} size="lg" />
                 <span
                   title="No photo on file"
                   className="no-print absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-card bg-warning text-warning-foreground"
@@ -270,53 +321,30 @@ export const IdCardItem = memo(function IdCardItem({
               </div>
             )}
             <div className="min-w-0">
-              <p className="truncate text-[13px] font-bold leading-tight text-foreground">{student.name}</p>
+              <p className="truncate text-[14px] font-bold leading-tight text-foreground">{student.name}</p>
               <p className="truncate text-[10px] text-muted-foreground">{className ?? '—'}{section ? ` · ${section}` : ''}</p>
+              {student.bloodGroup && (
+                <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-danger-soft px-1.5 py-0.5 text-[8px] font-semibold text-danger">
+                  <Droplet size={8} /> {student.bloodGroup}
+                </span>
+              )}
             </div>
           </div>
 
-          <dl className="mt-0.5 grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px] leading-tight">
+          <dl className="mt-auto grid grid-cols-2 gap-x-3 gap-y-1.5 text-[9.5px] leading-tight">
             <Field label="Student ID" value={student.systemId} />
             <Field label={`Roll No. (${className ?? 'Class'})`} value={student.rollNumber} />
-            <Field label="Admission #" value={student.admissionNumber} />
-            {student.bloodGroup && (
-              <div className="flex flex-col gap-0.5">
-                <dt className="font-medium uppercase tracking-wide text-muted-foreground">Blood Group</dt>
-                <dd className="flex items-center gap-1 font-semibold text-foreground">
-                  <Droplet size={10} className="shrink-0 text-danger" /> {student.bloodGroup}
-                </dd>
-              </div>
-            )}
+            <Field label="Admission #" value={student.admissionNumber} className="col-span-2" />
           </dl>
 
-          {(student.phone || student.address || student.parentName) && (
-            <div className="mt-0.5 flex flex-col gap-0.5 border-t border-border pt-1 text-[8px] leading-tight text-foreground">
-              {student.phone && (
-                <p className="flex items-center gap-1"><Phone size={7.5} className="shrink-0 text-muted-foreground" /> {student.phone}</p>
-              )}
-              {student.address && (
-                <p className="flex items-center gap-1 truncate">
-                  <MapPin size={7.5} className="shrink-0 text-muted-foreground" />
-                  <span className="truncate">{[student.address, student.city].filter(Boolean).join(', ')}</span>
-                </p>
-              )}
-              {student.parentName && (
-                <p className="flex items-center gap-1 truncate">
-                  <Users size={7.5} className="shrink-0 text-muted-foreground" />
-                  <span className="truncate">{student.parentName}{student.parentPhone ? ` · ${student.parentPhone}` : ''}</span>
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="mt-auto pt-0.5">
+          <div className="pt-1">
             <IdCardCredit />
           </div>
         </div>
 
         {/* QR side panel — minimum ~2cm on-screen equivalent so it prints scannable at real card size */}
-        <div className="flex shrink-0 flex-col items-center justify-center gap-1 border-l border-border pl-2.5">
-          <QRCode value={student.qr} size={76} />
+        <div className="flex shrink-0 flex-col items-center justify-center gap-1 border-l border-border pl-3">
+          <QRCode value={student.qr} size={80} />
           <p className="text-center text-[6.5px] leading-tight text-muted-foreground">Scan to verify</p>
         </div>
       </div>
@@ -324,9 +352,9 @@ export const IdCardItem = memo(function IdCardItem({
   );
 });
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className={cn('flex flex-col gap-0.5', className)}>
       <dt className="font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
       <dd className="truncate font-semibold text-foreground">{value}</dd>
     </div>

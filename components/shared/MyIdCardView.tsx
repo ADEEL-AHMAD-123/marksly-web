@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Printer, CreditCard as IdCardIcon, Loader2, MapPin, Droplet, Camera, X } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, Loader2, MapPin, Droplet, Camera, X, RotateCw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -104,8 +104,11 @@ function MyPhotoUploader({ hasPhoto }: { hasPhoto: boolean }) {
   );
 }
 import { ID_CARD_PRINT_CSS } from '@/components/shared/idCardPrint';
-import { StaffIdCardItem } from '@/components/staff/StaffIdCardsView';
-import { IdCardItem } from '@/components/students/IdCardsView';
+import { IdCardBack } from '@/components/shared/IdCardBack';
+import { StaffIdCardItem, staffBackRows } from '@/components/staff/StaffIdCardsView';
+import { IdCardItem, studentBackRows } from '@/components/students/IdCardsView';
+import { cn } from '@/lib/utils';
+import { useTerminology } from '@/lib/terminology';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -137,6 +140,7 @@ function StaffMyIdCard() {
   const card = data?.data;
   const [updateContact, { isLoading: saving }] = useUpdateMyContactMutation();
   const [address, setAddress] = useState('');
+  const [showBack, setShowBack] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -181,12 +185,20 @@ function StaffMyIdCard() {
       ) : (
         <>
           <MyPhotoUploader hasPhoto={!card.photoMissing} />
-          <div className="no-print flex justify-end">
+          <div className="no-print flex items-center justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
+              <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
+            </Button>
             <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print my card</Button>
           </div>
           <div id="id-card-print" className="flex justify-center">
-            <div className="w-full max-w-sm">
-              <StaffIdCardItem member={card} institution={card.institution} />
+            <div className="w-full max-w-sm space-y-4">
+              <div className={cn(showBack ? 'hidden print:block' : 'block')}>
+                <StaffIdCardItem member={card} institution={card.institution} />
+              </div>
+              <div className={cn(showBack ? 'block' : 'hidden print:block')}>
+                <IdCardBack institution={card.institution} qrValue={card.qr} rows={staffBackRows(card)} />
+              </div>
             </div>
           </div>
         </>
@@ -201,6 +213,8 @@ function StudentMyIdCard() {
   const [updateContact, { isLoading: saving }] = useUpdateMyStudentContactMutation();
   const [address, setAddress] = useState('');
   const [bloodGroup, setBloodGroup] = useState('');
+  const [showBack, setShowBack] = useState(false);
+  const { term: termLabel } = useTerminology();
 
   return (
     <div className="space-y-6">
@@ -261,18 +275,31 @@ function StudentMyIdCard() {
       ) : (
         <>
           <MyPhotoUploader hasPhoto={!card.photoMissing} />
-          <div className="no-print flex justify-end">
+          <div className="no-print flex items-center justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
+              <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
+            </Button>
             <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print my card</Button>
           </div>
           <div id="id-card-print" className="flex justify-center">
-            <div className="w-full max-w-sm">
-              <IdCardItem
-                student={card}
-                institution={card.institution}
-                className={card.className}
-                section={card.section}
-                termName={card.termName}
-              />
+            <div className="w-full max-w-sm space-y-4">
+              <div className={cn(showBack ? 'hidden print:block' : 'block')}>
+                <IdCardItem
+                  student={card}
+                  institution={card.institution}
+                  className={card.className}
+                  section={card.section}
+                  termName={card.termName}
+                />
+              </div>
+              <div className={cn(showBack ? 'block' : 'hidden print:block')}>
+                <IdCardBack
+                  institution={card.institution}
+                  qrValue={card.qr}
+                  validityLabel={card.termName ?? termLabel}
+                  rows={studentBackRows(card)}
+                />
+              </div>
             </div>
           </div>
         </>
