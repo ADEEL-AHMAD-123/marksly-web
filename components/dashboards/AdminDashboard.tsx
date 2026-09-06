@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import {
   GraduationCap, TrendingUp, Plus, AlertTriangle,
-  School, DollarSign, Users, BookOpen, ImageUp, CalendarRange,
+  School, DollarSign, Users, BookOpen, ImageUp, CalendarRange, Building2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { useGetSubjectsQuery } from '@/store/api/subjectsApi';
 import { useGetMyInstitutionQuery } from '@/store/api/institutionApi';
 import { useGetActiveTermsQuery } from '@/store/api/termsApi';
 import { useTerminology } from '@/lib/terminology';
+import { looksAbbreviated } from '@/lib/institution-name';
 import { AdminDashboardStats } from '@/components/dashboards/AdminDashboardStats';
 import { OnboardingCard, type OnboardingStep } from '@/components/dashboards/AdminDashboardOnboarding';
 import { TodaysAttendanceCard } from '@/components/dashboards/AdminDashboardAttendance';
@@ -68,6 +69,14 @@ export function AdminDashboard() {
   const terminology = useTerminology();
   const { data: institutionRes, isLoading: institutionLoading } = useGetMyInstitutionQuery();
   const hasLogo = !!institutionRes?.data?.logoUrl;
+  // Nudges the admin to confirm/fix an institution name that looks like an
+  // abbreviation (e.g. "FG" instead of "Fazaia Degree College Risalpur") —
+  // this exact text prints on ID cards, fee receipts, invoices and
+  // timetables, so catching it here (rather than only in Settings) is the
+  // whole point of surfacing it on the checklist. Same soft-nudge heuristic
+  // as InstitutionProfileTab.tsx's abbreviation warning.
+  const institutionNameOk =
+    !looksAbbreviated(institutionRes?.data?.name) || !!institutionRes?.data?.nameConfirmed;
   // A class can't actually be created without an active term to attach it
   // to (class.service.ts's create() 400s with INVALID_TERM otherwise) — so
   // this has to come before the classes step in the checklist, not after
@@ -105,6 +114,13 @@ export function AdminDashboard() {
       icon: ImageUp,
       done: hasLogo,
       hint: 'Shows on ID cards, receipts and the sidebar — makes it look like your system, not a generic one.',
+    },
+    {
+      label: 'Confirm your institution name',
+      href: '/admin/settings?tab=institution',
+      icon: Building2,
+      done: institutionNameOk,
+      hint: 'This exact text prints on ID cards, fee receipts, invoices and timetables — make sure it\'s the full name, not a short form.',
     },
     {
       label: 'Set up your academic year',

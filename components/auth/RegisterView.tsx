@@ -179,7 +179,13 @@ export function RegisterView() {
                 className={fieldCls(!!errors.institutionName)}
               />
             </div>
-            {errors.institutionName && <p className="mt-1.5 text-xs text-danger">{errors.institutionName.message}</p>}
+            {errors.institutionName ? (
+              <p className="mt-1.5 text-xs text-danger">{errors.institutionName.message}</p>
+            ) : (
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Use the full name — it appears exactly as typed on ID cards, fee receipts, invoices and timetables.
+              </p>
+            )}
           </div>
 
           {/* Institution type */}

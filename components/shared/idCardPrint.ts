@@ -44,3 +44,20 @@ export const ID_CARD_PRINT_CSS = `
     opacity: 1 !important;
   }
 }`;
+
+/**
+ * Institution names vary wildly in length ("MIT" vs "Fazaia Degree College
+ * Risalpur"), but the header band they sit in is fixed-height (part of a
+ * fixed-aspect-ratio physical card). Rather than clipping a long name to a
+ * single truncated line, this scales the font down as the name gets longer
+ * and lets it wrap onto a second line (see the shared `line-clamp-2` usage
+ * in IdCardsView.tsx / StaffIdCardsView.tsx) — long names stay fully
+ * readable instead of ending in "...".
+ */
+export function idCardNameSizeClass(name: string): string {
+  const len = name.trim().length;
+  if (len <= 22) return 'text-[13px]';
+  if (len <= 34) return 'text-[11.5px]';
+  if (len <= 48) return 'text-[10px]';
+  return 'text-[9px]';
+}

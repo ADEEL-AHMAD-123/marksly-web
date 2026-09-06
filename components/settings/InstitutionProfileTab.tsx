@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Building2, ImageUp, Trash2, Upload, Lock, Info, CalendarDays, GraduationCap as GraduationCapIcon, Layers, Sparkles, Check } from 'lucide-react';
+import { Building2, ImageUp, Trash2, Upload, Lock, Info, CalendarDays, GraduationCap as GraduationCapIcon, Layers, Sparkles, Check, AlertTriangle, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ import {
   type UpdateInstitutionProfileBody,
 } from '@/store/api/institutionApi';
 import { useGetTermsQuery } from '@/store/api/termsApi';
+import { looksAbbreviated } from '@/lib/institution-name';
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 // HEIC/HEIF included for iPhone photos of a physical stamp/signboard —
@@ -52,9 +53,25 @@ export function InstitutionProfileTab() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inst = data?.data;
 
-  const { register, reset, handleSubmit, formState: { errors } } = useForm<ProfileForm>({
+  const { register, reset, handleSubmit, watch, formState: { errors } } = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
   });
+  const watchedName = watch('name');
+  const previewName = (watchedName ?? inst?.name ?? '').trim();
+  // Warn only while the typed name still looks abbreviated AND the admin
+  // hasn't already confirmed it (either persisted via nameConfirmed, or the
+  // name in the field still matches what was last saved — editing it further
+  // re-triggers the check, which is intentional).
+  const showAbbreviationWarning = looksAbbreviated(previewName) && !inst?.nameConfirmed;
+
+  const handleConfirmName = async () => {
+    try {
+      await updateProfile({ confirmName: true }).unwrap();
+      toast.success('Got it — name confirmed');
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Could not save confirmation'));
+    }
+  };
 
   useEffect(() => {
     if (inst) {
@@ -178,7 +195,50 @@ export function InstitutionProfileTab() {
             <div>
               <Label htmlFor="name">Institution name</Label>
               <Input id="name" {...register('name')} />
-              {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
+              {errors.name ? (
+                <p className="mt-1 text-xs text-danger">{errors.name.message}</p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Use the full, official name — this exact text prints on ID cards, fee receipts, invoices and timetables.
+                </p>
+              )}
+
+              {/* Live preview — how this name will actually look on a
+                  document header, so the admin sees the real effect of an
+                  abbreviated entry instead of just being told about it. */}
+              {previewName && (
+                <div className="mt-3 overflow-hidden rounded-lg border border-border">
+                  <div className="flex items-center gap-2 border-b bg-primary px-3 py-2 text-primary-foreground">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/10">
+                      <FileText size={13} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-bold leading-tight">{previewName}</p>
+                      <p className="text-[8.5px] font-medium uppercase leading-tight tracking-wide opacity-80">
+                        Fee Receipt · ID Card · Invoice Preview
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Soft, dismissible nudge — never blocks saving. Genuinely
+                  short real names (e.g. "MIT") exist, so this is a one-time
+                  confirmation, not a validation rule. */}
+              {showAbbreviationWarning && (
+                <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-warning/40 bg-warning-soft p-3">
+                  <AlertTriangle size={16} className="mt-0.5 shrink-0 text-warning" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-foreground">This looks like it might be a short form or abbreviation.</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      If this isn&apos;t the full institution name, documents like ID cards and fee receipts will show the short version too. If it&apos;s correct as-is, you can dismiss this.
+                    </p>
+                    <Button type="button" size="sm" variant="secondary" className="mt-2" onClick={handleConfirmName} loading={saving}>
+                      Yes, this is correct
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <Label htmlFor="address">Address</Label>

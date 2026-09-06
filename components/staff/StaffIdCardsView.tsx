@@ -14,7 +14,7 @@ import {
 import { Avatar } from '@/components/ui/avatar';
 import { QRCode } from '@/components/ui/qr-code';
 import { useGetStaffIdCardsQuery, type StaffCardRole, type StaffIdCard } from '@/store/api/usersApi';
-import { CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS } from '@/components/shared/idCardPrint';
+import { CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS, idCardNameSizeClass } from '@/components/shared/idCardPrint';
 import { IdCardCredit } from '@/components/shared/IdCardCredit';
 import { IdCardReadinessBanner } from '@/components/shared/IdCardReadinessBanner';
 import { cn } from '@/lib/utils';
@@ -127,19 +127,21 @@ const StaffIdCardItem = memo(function StaffIdCardItem({
     >
       {/* Header band — same institution-branding placement as student
           cards, just tinted with this role's accent instead of primary. */}
-      <div className={cn('flex items-center gap-2 px-3 py-1.5', style.band)}>
+      <div className={cn('flex items-start gap-2 px-3 py-1.5', style.band)}>
         {institution.logoUrl ? (
-          <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-md bg-white/10">
+          <div className="relative mt-0.5 h-7 w-7 shrink-0 overflow-hidden rounded-md bg-white/10">
             <Image src={institution.logoUrl} alt="" fill sizes="28px" className="object-contain" unoptimized />
           </div>
         ) : (
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/10">
+          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/10">
             <GraduationCap size={17} />
           </div>
         )}
         <div className="min-w-0">
-          <p className="truncate text-[13px] font-bold leading-tight">{institution.name}</p>
-          <p className="text-[8.5px] font-medium uppercase leading-tight tracking-wide opacity-80">
+          <p className={cn('line-clamp-2 break-words font-bold leading-[1.15]', idCardNameSizeClass(institution.name))}>
+            {institution.name}
+          </p>
+          <p className="mt-0.5 text-[8.5px] font-medium uppercase leading-tight tracking-wide opacity-80">
             Staff Identity Card
           </p>
         </div>

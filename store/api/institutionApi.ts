@@ -17,6 +17,11 @@ export interface InstitutionProfile {
   // default source of a new term's `type` when created without one
   // explicit (see backend term.service.ts's defaultTermTypeForInstitution()).
   academicStructure: 'yearly' | 'semester' | 'short_session' | 'custom';
+  // Has the admin explicitly confirmed the current `name` is correct? See
+  // lib/institution-name.ts's looksAbbreviated() — used to silence the
+  // soft "this looks abbreviated" nudge once dismissed. Not a validation
+  // gate, just tracks whether the one-time prompt has been satisfied.
+  nameConfirmed: boolean;
 }
 
 export interface UpdateInstitutionProfileBody {
@@ -27,6 +32,9 @@ export interface UpdateInstitutionProfileBody {
   contactEmail?: string;
   contactPhone?: string;
   academicStructure?: 'yearly' | 'semester' | 'short_session' | 'custom';
+  // One-shot: send `true` when the admin dismisses the abbreviation warning
+  // via "Yes, this is correct" without changing `name`.
+  confirmName?: true;
 }
 
 export const institutionApi = baseApi.injectEndpoints({

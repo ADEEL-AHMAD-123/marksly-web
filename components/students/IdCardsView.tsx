@@ -16,7 +16,8 @@ import { QRCode } from '@/components/ui/qr-code';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetIdCardsQuery, type IdCard } from '@/store/api/studentsApi';
 import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
-import { CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS } from '@/components/shared/idCardPrint';
+import { CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS, idCardNameSizeClass } from '@/components/shared/idCardPrint';
+import { cn } from '@/lib/utils';
 import { IdCardCredit } from '@/components/shared/IdCardCredit';
 import { IdCardReadinessBanner } from '@/components/shared/IdCardReadinessBanner';
 
@@ -121,19 +122,21 @@ const IdCardItem = memo(function IdCardItem({
       style={{ aspectRatio: `${CARD_WIDTH_MM} / ${CARD_HEIGHT_MM}`, maxWidth: 380 }}
     >
       {/* Header band — institution branding, not Marksly's */}
-      <div className="flex items-center gap-2 border-b-[3px] border-accent bg-primary px-3 py-1.5 text-primary-foreground">
+      <div className="flex items-start gap-2 border-b-[3px] border-accent bg-primary px-3 py-1.5 text-primary-foreground">
         {institution.logoUrl ? (
-          <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-md bg-white/10">
+          <div className="relative mt-0.5 h-7 w-7 shrink-0 overflow-hidden rounded-md bg-white/10">
             <Image src={institution.logoUrl} alt="" fill sizes="28px" className="object-contain" unoptimized />
           </div>
         ) : (
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/10">
+          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/10">
             <GraduationCap size={17} />
           </div>
         )}
         <div className="min-w-0">
-          <p className="truncate text-[13px] font-bold leading-tight">{institution.name}</p>
-          <p className="text-[8.5px] font-medium uppercase leading-tight tracking-wide opacity-80">
+          <p className={cn('line-clamp-2 break-words font-bold leading-[1.15]', idCardNameSizeClass(institution.name))}>
+            {institution.name}
+          </p>
+          <p className="mt-0.5 text-[8.5px] font-medium uppercase leading-tight tracking-wide opacity-80">
             Student Identity Card{termName ? ` · ${termName}` : ` · ${termLabel}`}
           </p>
         </div>
