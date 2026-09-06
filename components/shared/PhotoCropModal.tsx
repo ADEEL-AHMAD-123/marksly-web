@@ -42,6 +42,7 @@ export function PhotoCropModal({ open, file, onClose, onCropped }: Props) {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef<{ x: number; y: number; offsetX: number; offsetY: number } | null>(null);
+  const pinchStart = useRef<{ distance: number; zoom: number } | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
@@ -105,6 +106,42 @@ export function PhotoCropModal({ open, file, onClose, onCropped }: Props) {
     changeZoom(zoom - e.deltaY * 0.0015);
   };
 
+  // Two-finger pinch, alongside the mouse/single-touch drag handled by the
+  // pointer events above — Pointer Events only ever report ONE pointer at a
+  // time, so a second simultaneous touch needs the native Touch API instead.
+  const touchDistance = (touches: React.TouchList) => {
+    const [a, b] = [touches[0], touches[1]];
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  };
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      setDragging(false);
+      dragStart.current = null;
+      pinchStart.current = { distance: touchDistance(e.touches), zoom };
+    }
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchStart.current) {
+      e.preventDefault();
+      const scale = touchDistance(e.touches) / pinchStart.current.distance;
+      changeZoom(pinchStart.current.zoom * scale);
+    }
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length < 2) pinchStart.current = null;
+  };
+
+  const NUDGE = 12;
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!naturalSize) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); setOffset((p) => clampOffset(p.x - NUDGE, p.y, effectiveScale)); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); setOffset((p) => clampOffset(p.x + NUDGE, p.y, effectiveScale)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setOffset((p) => clampOffset(p.x, p.y - NUDGE, effectiveScale)); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); setOffset((p) => clampOffset(p.x, p.y + NUDGE, effectiveScale)); }
+    else if (e.key === '+' || e.key === '=') { e.preventDefault(); changeZoom(zoom + 0.1); }
+    else if (e.key === '-' || e.key === '_') { e.preventDefault(); changeZoom(zoom - 0.1); }
+  };
+
   const reset = () => {
     setZoom(1);
     setOffset({ x: 0, y: 0 });
@@ -158,12 +195,18 @@ export function PhotoCropModal({ open, file, onClose, onCropped }: Props) {
             <DialogPrimitive.Title className="text-base font-semibold">Adjust your photo</DialogPrimitive.Title>
           </div>
           <DialogPrimitive.Description className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-            Use a clear, front-facing photo with a plain background — like a passport photo. Drag to reposition and use the slider to zoom, so your face is centered and fills the frame.
+            Use a clear, front-facing photo with a plain background — like a passport photo. Drag (or pinch) to reposition and zoom so your face is centered and fills the frame. Double-click to reset.
           </DialogPrimitive.Description>
 
           <div
+            role="slider"
+            tabIndex={naturalSize ? 0 : -1}
+            aria-label="Photo position and zoom — drag, scroll, pinch, or use arrow keys and +/- to adjust"
+            aria-valuenow={Math.round(zoom * 100)}
+            aria-valuemin={MIN_ZOOM * 100}
+            aria-valuemax={MAX_ZOOM * 100}
             className={cn(
-              'relative mx-auto mt-4 touch-none select-none overflow-hidden rounded-full border-2 border-primary/30 bg-muted',
+              'relative mx-auto mt-4 touch-none select-none overflow-hidden rounded-full border-2 border-primary/30 bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               naturalSize && (dragging ? 'cursor-grabbing' : 'cursor-grab')
             )}
             style={{ width: VIEWPORT_SIZE, height: VIEWPORT_SIZE }}
@@ -172,6 +215,11 @@ export function PhotoCropModal({ open, file, onClose, onCropped }: Props) {
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
             onWheel={handleWheel}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onDoubleClick={reset}
+            onKeyDown={handleKeyDown}
           >
             {imageUrl && !loadError && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -202,6 +250,19 @@ export function PhotoCropModal({ open, file, onClose, onCropped }: Props) {
                 <p className="text-xs text-muted-foreground">Couldn&apos;t open this image — try a different file.</p>
               </div>
             )}
+            {/* Rule-of-thirds framing guide — camera-app convention for
+                lining up a face; only shown while actively repositioning so
+                it doesn't clutter the view the rest of the time. */}
+            {naturalSize && dragging && (
+              <div className="pointer-events-none absolute inset-0">
+                {[1, 2].map((i) => (
+                  <div key={`v${i}`} className="absolute top-0 h-full w-px bg-white/60" style={{ left: `${(i / 3) * 100}%` }} />
+                ))}
+                {[1, 2].map((i) => (
+                  <div key={`h${i}`} className="absolute left-0 w-full h-px bg-white/60" style={{ top: `${(i / 3) * 100}%` }} />
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="mt-4 flex items-center gap-3">
@@ -218,6 +279,7 @@ export function PhotoCropModal({ open, file, onClose, onCropped }: Props) {
               aria-label="Zoom"
             />
             <Plus size={14} className="shrink-0 text-muted-foreground" />
+            <span className="w-9 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">{Math.round(zoom * 100)}%</span>
             <button
               type="button"
               onClick={reset}
