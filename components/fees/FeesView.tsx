@@ -10,6 +10,7 @@ import { InvoicesTab } from './InvoicesTab';
 import { StructuresTab } from './StructuresTab';
 import { PayoutAccountTab } from './PayoutAccountTab';
 import { MyPayoutsTab } from './MyPayoutsTab';
+import { RefundsNeedingReviewTab } from './RefundsNeedingReviewTab';
 
 export function FeesView() {
   const { data: sumRes } = useGetFeesSummaryQuery();
@@ -54,7 +55,10 @@ export function FeesView() {
           <StructuresTab />
         </TabsContent>
         <TabsContent value="payouts">
-          <MyPayoutsTab />
+          <div className="space-y-4">
+            <RefundsNeedingReviewTab />
+            <MyPayoutsTab />
+          </div>
         </TabsContent>
         <TabsContent value="payout">
           <PayoutAccountTab />

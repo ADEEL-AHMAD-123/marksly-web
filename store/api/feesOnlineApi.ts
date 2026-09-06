@@ -53,6 +53,18 @@ export interface Payout {
   paymentCount: number;
 }
 
+export interface RefundNeedingReview {
+  id: string;
+  institutionId: string;
+  institutionName: string | null;
+  studentRollNumber: string | null;
+  invoiceId: string;
+  amount: number;
+  gateway: string;
+  reference: string;
+  refundedAt: string;
+}
+
 export interface GatewayStatus {
   safepay: boolean;
   jazzcash: boolean;
@@ -100,6 +112,20 @@ export const feesOnlineApi = baseApi.injectEndpoints({
     getMyOwed: builder.query<ApiObject<{ gross: number; paymentCount: number; oldestUnpaidAt: string | null; pendingClawback: number }>, void>({
       query: () => '/fees-online/my-owed',
       providesTags: [{ type: 'Fees', id: 'MY_OWED' }],
+    }),
+    // Refunded online payments whose invoice/fee ledger still needs an
+    // explicit reverse-or-keep decision — see markRefunded()'s own comment
+    // in fee-online.service.ts. This is a MANDATORY review queue, not an
+    // optional one: a refund never auto-reverses the invoice, so without
+    // this an institution could keep showing a refunded payment's invoice
+    // as fully paid indefinitely.
+    getMyRefundsNeedingReview: builder.query<ApiArray<RefundNeedingReview>, void>({
+      query: () => '/fees-online/my-refunds-needing-review',
+      providesTags: [{ type: 'Fees', id: 'REFUNDS_NEEDING_REVIEW' }],
+    }),
+    resolveRefundLedgerReview: builder.mutation<ApiObject<unknown>, { paymentId: string; action: 'reversed' | 'kept_as_paid'; note: string }>({
+      query: ({ paymentId, ...body }) => ({ url: `/fees-online/refunds-needing-review/${paymentId}/resolve`, method: 'POST', body }),
+      invalidatesTags: [{ type: 'Fees', id: 'REFUNDS_NEEDING_REVIEW' }, { type: 'Fees', id: 'INVOICES' }, { type: 'Fees', id: 'SUMMARY' }, 'Fees'],
     }),
 
     // Superadmin — payouts
@@ -163,6 +189,8 @@ export const {
   useSavePayoutAccountMutation,
   useGetMyPayoutsQuery,
   useGetMyOwedQuery,
+  useGetMyRefundsNeedingReviewQuery,
+  useResolveRefundLedgerReviewMutation,
   useGetInstitutionsOwedQuery,
   useVerifyInstitutionPayoutAccountMutation,
   useGeneratePayoutMutation,
