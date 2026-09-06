@@ -31,7 +31,7 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Messaging', href: '/admin/messaging', icon: MessageSquare },
     { label: 'Reports', href: '/admin/reports', icon: BarChart2 },
     { label: 'Billing', href: '/admin/billing', icon: CreditCard },
-    { label: 'Email Log', href: '/admin/email-log', icon: Mail },
+    { label: 'Login Emails', href: '/admin/email-log', icon: Mail },
     { label: 'Settings', href: '/admin/settings', icon: Settings },
   ],
   teacher: [

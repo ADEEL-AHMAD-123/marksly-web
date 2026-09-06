@@ -1,16 +1,11 @@
 import { baseApi } from './baseApi';
 
-// Mirrors backend modules/email-log/email-log.model.ts's EmailCategory
-// exactly — keep in sync.
-export type EmailCategory =
-  | 'verification'
-  | 'password_reset'
-  | 'email_change'
-  | 'invite'
-  | 'welcome_credentials'
-  | 'billing'
-  | 'contact_form'
-  | 'platform_alert';
+// This page only ever shows the two "first login email" categories — the
+// welcome/credentials email sent when an admin adds a student/parent, and
+// the invite link sent when an admin adds a teacher/staff/accountant. See
+// the backend's email-log.service.ts ONBOARDING_CATEGORIES for why every
+// other category (verification, password reset, billing, etc.) is excluded.
+export type EmailCategory = 'invite' | 'welcome_credentials';
 
 export type EmailStatus = 'sent' | 'failed' | 'delivered' | 'bounced';
 
@@ -32,6 +27,9 @@ export interface EmailLogStats {
   failed: number;
   bounced: number;
   byCategory: Partial<Record<EmailCategory, number>>;
+  /** Accounts that never got an onboarding email at all because there was
+   *  no email on file when they were added — see MissingEmailEntry below. */
+  missingEmail: number;
 }
 
 export interface ListEmailLogParams {
@@ -40,6 +38,14 @@ export interface ListEmailLogParams {
   category?: EmailCategory | 'all';
   status?: EmailStatus | 'all';
   search?: string;
+}
+
+export interface MissingEmailEntry {
+  userId: string;
+  name: string;
+  role: 'student' | 'parent' | 'teacher' | 'staff' | 'accountant';
+  phone: string | null;
+  studentNames?: string[];
 }
 
 interface ApiList<T> {
@@ -76,11 +82,31 @@ export const emailLogApi = baseApi.injectEndpoints({
       query: () => '/email-log/stats',
       providesTags: [{ type: 'EmailLog', id: 'STATS' }],
     }),
-    resendEmailLog: builder.mutation<ApiObject<{ resent: boolean; via: string; sentTo?: string }>, string>({
-      query: (id) => ({ url: `/email-log/${id}/resend`, method: 'POST' }),
-      invalidatesTags: [{ type: 'EmailLog', id: 'LIST' }, { type: 'EmailLog', id: 'STATS' }],
+    getEmailLogMissingEmail: builder.query<ApiObject<MissingEmailEntry[]>, void>({
+      query: () => '/email-log/missing-email',
+      providesTags: [{ type: 'EmailLog', id: 'MISSING' }],
+    }),
+    resendEmailLog: builder.mutation<
+      ApiObject<{ resent: boolean; via: string; sentTo?: string }>,
+      { id: string; email?: string; confirmUnverifiedEmail?: boolean }
+    >({
+      query: ({ id, email, confirmUnverifiedEmail }) => ({
+        url: `/email-log/${id}/resend`,
+        method: 'POST',
+        body: email ? { email, confirmUnverifiedEmail } : undefined,
+      }),
+      invalidatesTags: [
+        { type: 'EmailLog', id: 'LIST' },
+        { type: 'EmailLog', id: 'STATS' },
+        { type: 'EmailLog', id: 'MISSING' },
+      ],
     }),
   }),
 });
 
-export const { useGetEmailLogQuery, useGetEmailLogStatsQuery, useResendEmailLogMutation } = emailLogApi;
+export const {
+  useGetEmailLogQuery,
+  useGetEmailLogStatsQuery,
+  useGetEmailLogMissingEmailQuery,
+  useResendEmailLogMutation,
+} = emailLogApi;

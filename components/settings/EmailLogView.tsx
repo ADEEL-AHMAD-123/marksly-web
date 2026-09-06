@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import {
   Mail, Send, CheckCircle2, XCircle, AlertTriangle, RotateCw,
-  ChevronLeft, ChevronRight, Info,
+  ChevronLeft, ChevronRight, Info, UserX,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
@@ -21,52 +21,30 @@ import {
 import { SearchInput } from '@/components/ui/search-input';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDateTime } from '@/lib/utils';
-import { getErrorMessage } from '@/lib/get-error-message';
+import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
 import {
-  useGetEmailLogQuery, useGetEmailLogStatsQuery, useResendEmailLogMutation,
+  useGetEmailLogQuery, useGetEmailLogStatsQuery, useGetEmailLogMissingEmailQuery,
+  useResendEmailLogMutation,
   type EmailCategory, type EmailStatus, type EmailLogEntry,
 } from '@/store/api/emailLogApi';
+import { ResendEmailLogDialog } from './ResendEmailLogDialog';
 
 const PAGE_SIZE = 20;
 
-// Only categories that can ever carry an institutionId (see the backend
-// model's comment) — 'contact_form'/'platform_alert' never do, so they'd
-// never appear here anyway; omitted from the tabs so there's no dead filter
-// option sitting there.
 const CATEGORY_TABS: { value: EmailCategory | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'welcome_credentials', label: 'Welcome / credentials' },
-  { value: 'invite', label: 'Staff invites' },
-  { value: 'verification', label: 'Email verification' },
-  { value: 'password_reset', label: 'Password reset' },
-  { value: 'email_change', label: 'Email change' },
-  { value: 'billing', label: 'Billing' },
+  { value: 'welcome_credentials', label: 'Students & parents' },
+  { value: 'invite', label: 'Teachers & staff' },
 ];
 
 const CATEGORY_LABEL: Record<EmailCategory, string> = {
-  welcome_credentials: 'Welcome / credentials',
-  invite: 'Staff invite',
-  verification: 'Email verification',
-  password_reset: 'Password reset',
-  email_change: 'Email change',
-  billing: 'Billing',
-  contact_form: 'Contact form',
-  platform_alert: 'Platform alert',
+  welcome_credentials: 'Student / parent login',
+  invite: 'Teacher / staff invite',
 };
 
-// What each category actually IS, in plain language — this is the whole
-// point of the page per the admin's own request: not just a list of
-// subject lines, but "what is this, and why does it matter". Shown as the
-// description under each row's category badge.
 const CATEGORY_MEANING: Record<EmailCategory, string> = {
-  welcome_credentials: 'A temporary password for a new student, parent, or staff account created with an explicit password.',
-  invite: 'An activation link for a newly-added teacher/staff/accountant — they set their own password by clicking it.',
-  verification: 'Confirms a self-registered admin owns the email they signed up with.',
-  password_reset: 'A "Forgot password" link someone requested.',
-  email_change: 'Confirms a request to change the email address on an account.',
-  billing: 'A payment receipt or a renewal/payment-failure notice for this institution\'s subscription.',
-  contact_form: 'A marketing-site contact form submission.',
-  platform_alert: 'An internal alert to the Marksly platform team — not sent to anyone at this institution.',
+  welcome_credentials: 'A temporary password so this student or parent can log in — sent the moment you added them.',
+  invite: 'An activation link so this teacher/staff/accountant can set their own password — sent the moment you added them.',
 };
 
 const STATUS_META: Record<EmailStatus, { variant: 'success' | 'warning' | 'danger' | 'neutral'; label: string; icon: typeof Send }> = {
@@ -76,11 +54,13 @@ const STATUS_META: Record<EmailStatus, { variant: 'success' | 'warning' | 'dange
   bounced: { variant: 'danger', label: 'Bounced', icon: AlertTriangle },
 };
 
-// Categories resend.ts (the backend service) actually knows how to act on —
-// kept in sync manually rather than always showing the button and letting
-// the request 400; this way a category with no real resend path doesn't
-// even tempt the admin to click it.
-const RESENDABLE: Set<EmailCategory> = new Set(['invite', 'welcome_credentials', 'verification', 'password_reset']);
+const ROLE_LABEL: Record<string, string> = {
+  student: 'Student',
+  parent: 'Parent',
+  teacher: 'Teacher',
+  staff: 'Staff',
+  accountant: 'Accountant',
+};
 
 export function EmailLogView() {
   const [category, setCategory] = useState<EmailCategory | 'all'>('all');
@@ -88,10 +68,15 @@ export function EmailLogView() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 350);
-  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  const [resendTarget, setResendTarget] = useState<EmailLogEntry | null>(null);
+  const [domainWarning, setDomainWarning] = useState<string | null>(null);
 
   const { data: statsRes } = useGetEmailLogStatsQuery();
   const stats = statsRes?.data;
+
+  const { data: missingRes, isLoading: missingLoading } = useGetEmailLogMissingEmailQuery();
+  const missingEntries = missingRes?.data ?? [];
 
   const { data, isLoading, isFetching, isError, refetch } = useGetEmailLogQuery({
     page,
@@ -101,7 +86,7 @@ export function EmailLogView() {
     search: debouncedSearch || undefined,
   });
 
-  const [resendEmailLog] = useResendEmailLogMutation();
+  const [resendEmailLog, { isLoading: isResending }] = useResendEmailLogMutation();
 
   const entries = data?.data ?? [];
   const meta = data?.meta;
@@ -114,44 +99,91 @@ export function EmailLogView() {
     setPage(1);
   };
 
-  const onResend = async (entry: EmailLogEntry) => {
-    setResendingId(entry.id);
+  const openResend = (entry: EmailLogEntry) => {
+    setDomainWarning(null);
+    setResendTarget(entry);
+  };
+
+  const confirmResend = async (email: string, confirmUnverifiedEmail?: boolean) => {
+    if (!resendTarget) return;
     try {
-      const res = await resendEmailLog(entry.id).unwrap();
+      const res = await resendEmailLog({ id: resendTarget.id, email, confirmUnverifiedEmail }).unwrap();
       toast.success(res.data.sentTo ? `New email sent to ${res.data.sentTo}` : 'Email resent');
+      setResendTarget(null);
+      setDomainWarning(null);
     } catch (e: any) {
+      if (getErrorCode(e) === 'EMAIL_DOMAIN_UNVERIFIED') {
+        setDomainWarning(getErrorMessage(e, "This email domain doesn't look real."));
+        return;
+      }
       toast.error(getErrorMessage(e, 'Could not resend this email'));
-    } finally {
-      setResendingId(null);
     }
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Email Log"
-        description="Every email Marksly has sent for your institution, whether it actually went through, and why not when it didn't."
+        title="Login Emails"
+        description="Whether the first login email you sent a student, parent, teacher, or staff member actually reached them."
       />
 
       <Card className="flex items-start gap-2.5 p-4 text-sm">
         <Info size={16} className="mt-0.5 shrink-0 text-primary" />
         <div className="text-muted-foreground">
           <p>
-            <strong className="text-foreground">What this is:</strong> a record of every login-credential, invite, verification, password-reset, and billing email sent on behalf of your institution — not what&apos;s in each email, just whether it was accepted by the mail provider, and later, whether it was actually delivered or bounced.
+            <strong className="text-foreground">Why this page exists:</strong> when you add someone with an email on file, Marksly sends them their login details right away. If that email was mistyped, it can fail silently — you&apos;d have no way of knowing they never got it. This page shows every one of those first emails and whether it actually got through, plus anyone you added with no email at all.
           </p>
           <p className="mt-1.5">
-            <strong className="text-foreground">&quot;Sent&quot; vs &quot;Delivered&quot;:</strong> &quot;Sent&quot; only means our email provider accepted the request — it can still bounce or land in spam afterward with no error at send time. &quot;Delivered&quot;/&quot;Bounced&quot; are a more reliable, later signal once the provider actually knows what happened at the recipient&apos;s mailbox.
+            This only covers that one first email — not password resets or anything else, since those are requested by the person themselves.
           </p>
         </div>
       </Card>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Total" value={stats?.total} icon={Mail} />
+        <StatCard label="Total sent" value={stats?.total} icon={Mail} />
         <StatCard label="Delivered" value={stats?.delivered} icon={CheckCircle2} tone="success" />
-        <StatCard label="Failed" value={stats?.failed} icon={XCircle} tone="danger" />
-        <StatCard label="Bounced" value={stats?.bounced} icon={AlertTriangle} tone="danger" />
+        <StatCard label="Failed / bounced" value={stats ? stats.failed + stats.bounced : undefined} icon={XCircle} tone="danger" />
+        <StatCard label="No email on file" value={stats?.missingEmail} icon={UserX} tone="danger" />
       </div>
+
+      {/* Missing-email section — these accounts never even got an attempt,
+          so they can't show up in the log below at all. */}
+      {(missingLoading || missingEntries.length > 0) && (
+        <Card className="p-4">
+          <div className="flex items-center gap-2">
+            <UserX size={16} className="text-danger" />
+            <h3 className="font-semibold text-foreground">No email on file</h3>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            These people were added without an email address, so they were never sent login details at all. Add an email to their record, then use the resend option to get them logged in.
+          </p>
+          {missingLoading ? (
+            <div className="mt-3 space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <ul className="mt-3 divide-y divide-border">
+              {missingEntries.map((m) => (
+                <li key={m.userId} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
+                  <div>
+                    <span className="font-medium text-foreground">{m.name}</span>{' '}
+                    <span className="text-muted-foreground">
+                      — {ROLE_LABEL[m.role] ?? m.role}
+                      {m.role === 'parent' && m.studentNames && m.studentNames.length > 0
+                        ? ` of ${m.studentNames.join(', ')}`
+                        : ''}
+                    </span>
+                    {m.phone && <span className="ml-2 text-xs text-muted-foreground" dir="ltr">{m.phone}</span>}
+                  </div>
+                  <Badge variant="danger">No email</Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
 
       {/* Category tabs */}
       <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
@@ -212,11 +244,11 @@ export function EmailLogView() {
         <Card>
           <EmptyState
             icon={Mail}
-            title={debouncedSearch || category !== 'all' || status !== 'all' ? 'No emails match your filters' : 'No emails sent yet'}
+            title={debouncedSearch || category !== 'all' || status !== 'all' ? 'No emails match your filters' : 'No login emails sent yet'}
             description={
               debouncedSearch || category !== 'all' || status !== 'all'
                 ? 'Try adjusting your search or clearing the filters.'
-                : 'As soon as Marksly sends an email for your institution, it will show up here.'
+                : 'As soon as you add a student, parent, teacher, or staff member with an email, it will show up here.'
             }
             action={
               debouncedSearch || category !== 'all' || status !== 'all' ? (
@@ -264,19 +296,9 @@ export function EmailLogView() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {RESENDABLE.has(e.category) ? (
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              loading={resendingId === e.id}
-                              disabled={resendingId !== null}
-                              onClick={() => onResend(e)}
-                            >
-                              <RotateCw size={13} /> Resend
-                            </Button>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
+                          <Button variant="secondary" size="sm" onClick={() => openResend(e)}>
+                            <RotateCw size={13} /> Resend
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );
@@ -307,18 +329,9 @@ export function EmailLogView() {
                     <span>{formatDateTime(e.createdAt)}</span>
                   </div>
                   {e.error && <p className="mt-1.5 text-xs text-danger">{e.error}</p>}
-                  {RESENDABLE.has(e.category) && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="mt-3 w-full"
-                      loading={resendingId === e.id}
-                      disabled={resendingId !== null}
-                      onClick={() => onResend(e)}
-                    >
-                      <RotateCw size={13} /> Resend
-                    </Button>
-                  )}
+                  <Button variant="secondary" size="sm" className="mt-3 w-full" onClick={() => openResend(e)}>
+                    <RotateCw size={13} /> Resend
+                  </Button>
                 </Card>
               );
             })}
@@ -340,6 +353,15 @@ export function EmailLogView() {
           </div>
         </div>
       )}
+
+      <ResendEmailLogDialog
+        open={!!resendTarget}
+        onClose={() => { setResendTarget(null); setDomainWarning(null); }}
+        entry={resendTarget}
+        loading={isResending}
+        onConfirm={confirmResend}
+        domainWarning={domainWarning}
+      />
     </div>
   );
 }
