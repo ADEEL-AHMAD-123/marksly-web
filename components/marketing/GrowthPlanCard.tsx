@@ -12,11 +12,15 @@ function formatPKR(amount: number): string {
 }
 
 /** Homepage pricing-teaser card — same live plan data as /pricing, so this
- *  can't silently drift out of sync with what billing.service.ts charges. */
+ *  can't silently drift out of sync with what billing.service.ts charges.
+ *  Despite the filename, this shows the 'standard' plan (named "Growth" as
+ *  of the 2026 pricing revision — see plan.model.ts's DEFAULT_PLANS) since
+ *  that's the mid-priced tier PricingPlans.tsx also highlights as "Most
+ *  popular". Not renamed to avoid an unnecessary file-rename diff. */
 export function GrowthPlanCard() {
   const { data, isLoading } = useGetPublicPlansQuery();
   const plans = data?.data ?? [];
-  const plan = plans.find((p) => p.key === 'growth') ?? plans[1] ?? plans[0];
+  const plan = plans.find((p) => p.key === 'standard') ?? plans[1] ?? plans[0];
 
   if (isLoading || !plan) {
     return <div className="h-56 animate-pulse rounded-2xl border border-sidebar-border bg-sidebar-accent/40" />;

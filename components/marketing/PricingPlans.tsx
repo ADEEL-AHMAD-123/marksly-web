@@ -54,50 +54,76 @@ export function PricingPlans() {
     );
   }
 
-  // "Most popular" — the growth tier if the catalog has one, otherwise the
-  // second-cheapest plan (a reasonable default highlight for any catalog shape).
-  const highlightKey = plans.some((p) => p.key === 'growth') ? 'growth' : plans[1]?.key;
+  // "Most popular" — the 'standard' tier (2026 pricing: the mid-priced
+  // plan that adds SMS/WhatsApp messaging on top of the bare entry tier)
+  // if the catalog has one, otherwise the second-cheapest plan (a
+  // reasonable default highlight for any catalog shape).
+  const highlightKey = plans.some((p) => p.key === 'standard') ? 'standard' : plans[1]?.key;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4">
-      {plans.map((plan, i) => {
-        const highlight = plan.key === highlightKey;
-        const isFree = plan.price === 0;
-        return (
-          <div
-            key={plan.key}
-            className={`relative flex flex-col rounded-2xl border p-4 sm:p-6 ${
-              highlight ? 'border-accent bg-card shadow-xl ring-1 ring-accent/30' : 'border-border bg-card shadow-sm'
-            }`}
-          >
-            {highlight && (
-              <span className="absolute -top-2.5 left-4 rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-foreground shadow sm:-top-3 sm:left-6 sm:px-3 sm:py-1 sm:text-xs">
-                Most popular
-              </span>
-            )}
-            <div className="flex items-baseline justify-between gap-3 sm:block">
-              <h2 className="text-base font-semibold sm:text-lg">{plan.name}</h2>
-              <div className="text-xl font-bold text-primary sm:mt-2 sm:text-3xl">
-                {isFree ? 'Free' : formatPKR(plan.price)}
-              </div>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">{isFree ? 'No card required' : 'per month'}</p>
-            <ul className="mt-4 flex-1 space-y-2 sm:mt-5 sm:space-y-2.5">
-              {planFeatures(plan, i > 0 ? plans[i - 1].name : undefined).map((feat) => (
-                <li key={feat} className="flex items-start gap-2 text-[13px] sm:text-sm">
-                  <Check aria-hidden size={15} className="mt-0.5 shrink-0 text-success" /> <span>{feat}</span>
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/register"
-              className={`${buttonVariants({ variant: highlight ? 'primary' : 'secondary' })} mt-5 w-full sm:mt-6 ${highlight ? '!bg-accent !text-accent-foreground hover:!bg-accent/90' : ''}`}
+    <div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4">
+        {plans.map((plan, i) => {
+          const highlight = plan.key === highlightKey;
+          const isFree = plan.price === 0;
+          return (
+            <div
+              key={plan.key}
+              className={`relative flex flex-col rounded-2xl border p-4 sm:p-6 ${
+                highlight ? 'border-accent bg-card shadow-xl ring-1 ring-accent/30' : 'border-border bg-card shadow-sm'
+              }`}
             >
-              {isFree ? 'Start free' : 'Start free trial'} {highlight && <ArrowRight aria-hidden size={16} />}
-            </Link>
-          </div>
-        );
-      })}
+              {highlight && (
+                <span className="absolute -top-2.5 left-4 rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-foreground shadow sm:-top-3 sm:left-6 sm:px-3 sm:py-1 sm:text-xs">
+                  Most popular
+                </span>
+              )}
+              <div className="flex items-baseline justify-between gap-3 sm:block">
+                <h2 className="text-base font-semibold sm:text-lg">{plan.name}</h2>
+                <div className="text-xl font-bold text-primary sm:mt-2 sm:text-3xl">
+                  {isFree ? 'Free' : formatPKR(plan.price)}
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{isFree ? 'No card required' : 'per month'}</p>
+              <ul className="mt-4 flex-1 space-y-2 sm:mt-5 sm:space-y-2.5">
+                {planFeatures(plan, i > 0 ? plans[i - 1].name : undefined).map((feat) => (
+                  <li key={feat} className="flex items-start gap-2 text-[13px] sm:text-sm">
+                    <Check aria-hidden size={15} className="mt-0.5 shrink-0 text-success" /> <span>{feat}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/register"
+                className={`${buttonVariants({ variant: highlight ? 'primary' : 'secondary' })} mt-5 w-full sm:mt-6 ${highlight ? '!bg-accent !text-accent-foreground hover:!bg-accent/90' : ''}`}
+              >
+                {isFree ? 'Start free' : 'Start free trial'} {highlight && <ArrowRight aria-hidden size={16} />}
+              </Link>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Custom / Enterprise-scale plan — a distinct CTA rather than a 5th
+          priced card, since there's no fixed number to show: a multi-campus
+          network or an institution past the largest listed tier gets a
+          negotiated deal, not a self-service checkout. Logged-in admins can
+          also submit this same request from inside their own billing page
+          (see requestCustomPlanSchema / PlanRequest — resolved by a
+          superadmin from Superadmin -> Plan requests). */}
+      <div className="mt-4 flex flex-col items-center justify-between gap-4 rounded-2xl border border-dashed border-border bg-card/60 p-5 text-center sm:mt-6 sm:flex-row sm:p-6 sm:text-left">
+        <div>
+          <h3 className="text-sm font-semibold sm:text-base">Need something bigger, or a multi-campus setup?</h3>
+          <p className="mt-1 text-[13px] text-muted-foreground sm:text-sm">
+            Custom student limits, storage, and pricing for large or multi-branch institutions — talk to us and we&apos;ll work out a plan that fits.
+          </p>
+        </div>
+        <Link
+          href="/contact"
+          className={`${buttonVariants({ variant: 'secondary' })} w-full shrink-0 sm:w-auto`}
+        >
+          Contact us <ArrowRight aria-hidden size={16} />
+        </Link>
+      </div>
     </div>
   );
 }
