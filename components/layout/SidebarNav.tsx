@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, CreditCard } from 'lucide-react';
 import { useAppSelector } from '@/store/hooks';
 import { cn, getInitials } from '@/lib/utils';
 import { NAV_ITEMS } from './nav-items';
@@ -24,7 +24,16 @@ export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }:
   const { user } = useAppSelector((state) => state.auth);
 
   const role = user?.role || 'admin';
-  const items = NAV_ITEMS[role] || NAV_ITEMS.admin;
+  // Note this is keyed off the actual `role`, not which NAV_ITEMS array gets
+  // shown — a plain 'staff' account has no array of its own (see nav-items.ts)
+  // and falls back to NAV_ITEMS.admin, but they're still not an admin and
+  // should still get their own "My ID Card" self-service link. Every role
+  // except admin/superadmin/parent gets one (parents don't have a personal
+  // staff/student ID card of their own — see MyIdCardView.tsx).
+  const showMyIdCard = ['teacher', 'staff', 'accountant', 'student'].includes(role);
+  const items = showMyIdCard
+    ? [...(NAV_ITEMS[role] || NAV_ITEMS.admin), { label: 'My ID Card', href: '/my-id-card', icon: CreditCard }]
+    : NAV_ITEMS[role] || NAV_ITEMS.admin;
 
   // Super admins manage the whole platform, not one institution — they keep
   // the generic Marksly wordmark. Every other role is scoped to a single

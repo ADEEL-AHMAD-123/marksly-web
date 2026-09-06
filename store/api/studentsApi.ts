@@ -23,6 +23,9 @@ export interface StudentListItem {
   admissionDate: string | null;
   guardianName: string | null;
   guardianPhone: string | null;
+  address: string | null;
+  city: string | null;
+  bloodGroup: string | null;
 }
 
 export interface StudentStats {
@@ -45,6 +48,7 @@ export interface ListStudentsParams {
   status?: StudentListItem['status'];
   sortBy?: 'createdAt' | 'rollNumber' | 'admissionDate';
   sortOrder?: 'asc' | 'desc';
+  incomplete?: boolean;
 }
 
 interface ApiList<T> {
@@ -133,8 +137,29 @@ export interface IdCard {
   systemId: string;
   gender: 'male' | 'female' | 'other';
   bloodGroup: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  parentName: string | null;
+  parentPhone: string | null;
   profilePhoto: string | null;
   qr: string;
+}
+
+export interface MyStudentContactInfo {
+  studentId: string;
+  address: string | null;
+  city: string | null;
+  bloodGroup: string | null;
+  missing: string[];
+}
+
+export interface MyStudentCard extends IdCard {
+  institution: { name: string; city: string | null; logoUrl: string | null };
+  className: string | null;
+  section: string | null;
+  termName: string | null;
+  missing: string[];
 }
 
 export interface IdCardSheet {
@@ -256,6 +281,24 @@ export const studentsApi = baseApi.injectEndpoints({
       providesTags: [{ type: 'Students', id: 'LIST' }, 'Students'],
     }),
 
+    // Self-service — "My ID Card" page, for the student themself (or their
+    // parent — pass studentId when the account has more than one child).
+    getMyStudentContact: builder.query<ApiObject<MyStudentContactInfo>, { studentId?: string } | void>({
+      query: (params) => `/students/me/contact${params?.studentId ? `?studentId=${params.studentId}` : ''}`,
+      providesTags: ['MyStudentContact'],
+    }),
+    updateMyStudentContact: builder.mutation<
+      ApiObject<MyStudentContactInfo>,
+      { address?: string; city?: string; bloodGroup?: string; studentId?: string }
+    >({
+      query: (body) => ({ url: '/students/me/contact', method: 'PATCH', body }),
+      invalidatesTags: ['MyStudentContact'],
+    }),
+    getMyStudentCard: builder.query<ApiObject<MyStudentCard>, { studentId?: string } | void>({
+      query: (params) => `/students/me/card${params?.studentId ? `?studentId=${params.studentId}` : ''}`,
+      providesTags: ['MyStudentContact'],
+    }),
+
     // Matches backend gpa.service.ts's TermGpaResult/CumulativeGpaResult
     // shapes exactly (field-for-field) — do not rename.
     getStudentCgpa: builder.query<ApiObject<CumulativeGpaResult>, string>({
@@ -279,6 +322,9 @@ export const {
   useBulkImportStudentsMutation,
   useResendStudentCredentialsMutation,
   useGetIdCardsQuery,
+  useGetMyStudentContactQuery,
+  useUpdateMyStudentContactMutation,
+  useGetMyStudentCardQuery,
   useGetStudentCgpaQuery,
   useGetStudentTermGpaQuery,
 } = studentsApi;

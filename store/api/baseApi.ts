@@ -90,6 +90,8 @@ export const baseApi = createApi({
     'Questions',
     'EmailLog',
     'DashboardAlerts',
+    'MyContact',
+    'MyStudentContact',
   ],
   endpoints: () => ({}),
 });

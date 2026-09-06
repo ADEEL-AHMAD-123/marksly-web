@@ -220,7 +220,7 @@ function StaffNamePicker({
   );
 }
 
-const StaffIdCardItem = memo(function StaffIdCardItem({
+export const StaffIdCardItem = memo(function StaffIdCardItem({
   member, institution,
 }: {
   member: StaffIdCard;
@@ -293,6 +293,13 @@ const StaffIdCardItem = memo(function StaffIdCardItem({
               <Field label="Subjects Taught" value={String(member.subjectCount)} />
             )}
           </dl>
+
+          {(member.phone || member.address) && (
+            <dl className="mt-0.5 grid grid-cols-2 gap-x-2 gap-y-0.5 border-t border-border pt-1 text-[8px] leading-tight">
+              {member.phone && <Field label="Phone" value={member.phone} />}
+              {member.address && <Field label="Address" value={member.address} />}
+            </dl>
+          )}
 
           <div className="mt-auto pt-0.5">
             <IdCardCredit />

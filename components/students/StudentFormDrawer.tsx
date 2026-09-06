@@ -49,6 +49,12 @@ const schema = z.object({
   gender: z.enum(['male', 'female', 'other'], {
     errorMap: () => ({ message: 'Select gender' }),
   }),
+  // Not required to create a student — but shown on the ID card, so left
+  // fillable here (and via the student/parent's own "My ID Card" page) so
+  // an admin isn't the only one who can ever complete these.
+  address: z.string().optional(),
+  city: z.string().optional(),
+  bloodGroup: z.string().optional(),
   // Guardian phone is what the absentee-report WhatsApp links (see
   // AttendanceReportView.tsx) actually message — capturing it in E.164 up
   // front means those links work without any later phone-normalization
@@ -127,6 +133,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
       firstName: '', lastName: '', phone: '', email: '',
       rollNumber: '', admissionNumber: '', classId: '', sectionId: '', gender: 'male',
       parentPhone: '', parentName: '', parentEmail: '',
+      address: '', city: '', bloodGroup: '',
     },
   });
 
@@ -154,6 +161,9 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         classId: cls?.id ?? '',
         sectionId: sec?.id ?? '',
         gender: student.gender,
+        address: student.address ?? '',
+        city: student.city ?? '',
+        bloodGroup: student.bloodGroup ?? '',
       });
     } else {
       // Auto-select when there's only one option — mainly for teachers, who
@@ -166,6 +176,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         rollNumber: '', admissionNumber: '',
         classId: onlyClass?.id ?? '', sectionId: onlySection?.id ?? '', gender: 'male',
         parentPhone: '', parentName: '', parentEmail: '',
+        address: '', city: '', bloodGroup: '',
       });
     }
   }, [open, student, classes, reset]);
@@ -456,6 +467,38 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 )}
               />
               {errors.gender && <p className="mt-1 text-xs text-danger">{errors.gender.message}</p>}
+            </div>
+
+            {/* Not required, but shown on the printable ID card — see
+                IdCardsView.tsx. Left optional here so a student/parent can
+                also fill these in themselves via "My ID Card" instead of
+                this being the only way. */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="address">Address</Label>
+                <Input id="address" {...register('address')} placeholder="House #, street, area" />
+              </div>
+              <div>
+                <Label htmlFor="city">City</Label>
+                <Input id="city" {...register('city')} />
+              </div>
+              <div>
+                <Label>Blood Group</Label>
+                <Controller
+                  control={control}
+                  name="bloodGroup"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger><SelectValue placeholder="Select blood group" /></SelectTrigger>
+                      <SelectContent>
+                        {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((g) => (
+                          <SelectItem key={g} value={g}>{g}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
             </div>
 
             {!isEdit && (

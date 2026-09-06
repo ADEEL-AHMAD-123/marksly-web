@@ -27,7 +27,7 @@ import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { SearchInput } from '@/components/ui/search-input';
 import { useDebounce } from '@/hooks/useDebounce';
-import { getInitials } from '@/lib/utils';
+import { getInitials, cn } from '@/lib/utils';
 import { getErrorMessage, getErrorCode, getErrorDetails } from '@/lib/get-error-message';
 import {
   useGetUsersQuery,
@@ -60,6 +60,7 @@ const ROLE_TABS: { value: 'staff' | 'accountant'; label: string; icon: typeof Br
 export function StaffView() {
   const [role, setRole] = useState<'staff' | 'accountant'>('staff');
   const [query, setQuery] = useState('');
+  const [incompleteOnly, setIncompleteOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ManagedUser | null>(null);
@@ -72,6 +73,7 @@ export function StaffView() {
     search: debounced || undefined,
     page,
     limit: PAGE_SIZE,
+    incomplete: incompleteOnly || undefined,
   });
   const [updateUser] = useUpdateUserMutation();
   const [resendTarget, setResendTarget] = useState<{ id: string; name: string; email: string } | null>(null);
@@ -118,12 +120,26 @@ export function StaffView() {
         </TabsList>
       </Tabs>
 
-      <Card className="p-4">
+      <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
         <SearchInput
           value={query}
           onChange={(v) => { setQuery(v); setPage(1); }}
           placeholder="Search by name or phone…"
+          className="flex-1"
         />
+        <button
+          type="button"
+          onClick={() => { setIncompleteOnly((v) => !v); setPage(1); }}
+          className={cn(
+            'flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+            incompleteOnly
+              ? 'border-warning bg-warning-soft text-warning'
+              : 'border-border bg-card text-foreground hover:bg-muted'
+          )}
+          title="Show only staff missing an address"
+        >
+          Missing ID info
+        </button>
       </Card>
 
       {isError ? (
@@ -134,9 +150,9 @@ export function StaffView() {
         <Card>
           <EmptyState
             icon={role === 'accountant' ? Landmark : Briefcase}
-            title={debounced ? 'No matches' : `No ${role === 'accountant' ? 'accountants' : 'staff members'} yet`}
-            description={debounced ? 'Try a different search.' : `Add your first ${roleLabelLower} to get started.`}
-            action={!debounced ? <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus size={16} /> Add {roleLabelLower}</Button> : undefined}
+            title={debounced || incompleteOnly ? 'No matches' : `No ${role === 'accountant' ? 'accountants' : 'staff members'} yet`}
+            description={debounced || incompleteOnly ? 'Try a different search or filter.' : `Add your first ${roleLabelLower} to get started.`}
+            action={!debounced && !incompleteOnly ? <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus size={16} /> Add {roleLabelLower}</Button> : undefined}
           />
         </Card>
       ) : (
@@ -278,6 +294,7 @@ const schema = z.object({
   // Required — email is the only working self-service password-recovery
   // path (see auth.service.ts's forgotPassword()).
   email: z.string().email('Enter a valid email address'),
+  address: z.string().optional(),
 });
 type StaffForm = z.infer<typeof schema>;
 
@@ -293,7 +310,7 @@ function AddStaffDrawer({
   const [domainIssue, setDomainIssue] = useState<{ domain: string; email: string } | null>(null);
   const { register, control, handleSubmit, reset, getValues, formState: { errors } } = useForm<StaffForm>({
     resolver: zodResolver(schema),
-    defaultValues: { firstName: '', lastName: '', phone: '', email: '' },
+    defaultValues: { firstName: '', lastName: '', phone: '', email: '', address: '' },
   });
 
   // Re-seed the form every time the drawer opens — either with the row
@@ -306,8 +323,8 @@ function AddStaffDrawer({
     if (!open) return;
     reset(
       editing
-        ? { firstName: editing.firstName, lastName: editing.lastName, phone: editing.phone, email: editing.email ?? '' }
-        : { firstName: '', lastName: '', phone: '', email: '' }
+        ? { firstName: editing.firstName, lastName: editing.lastName, phone: editing.phone, email: editing.email ?? '', address: editing.address ?? '' }
+        : { firstName: '', lastName: '', phone: '', email: '', address: '' }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
@@ -387,6 +404,17 @@ function AddStaffDrawer({
                 {errors.lastName && <p className="mt-1 text-xs text-danger">{errors.lastName.message}</p>}
               </div>
             </div>
+
+            {isEditing && (
+              <div>
+                {/* Not required — but shown on the printable ID card (see
+                    StaffIdCardsView.tsx). Left optional so this person can
+                    also fill it in themselves via "My ID Card" instead of
+                    this being the only way. */}
+                <Label htmlFor="address">Address</Label>
+                <Input id="address" {...register('address')} placeholder="House #, street, area" />
+              </div>
+            )}
             <div>
               <Label htmlFor="phone">Phone</Label>
               <Controller

@@ -18,6 +18,7 @@ export interface ManagedUser {
   // own response. Kept optional/nullable here so callers that do have it
   // (or gain it later) can display it without a type change.
   profilePhoto?: string | null;
+  address?: string | null;
   // false means an activation-link invite is still pending (see the
   // invite-based creation flow in user.service.ts) — the account can't log
   // in yet at all, regardless of `isActive`.
@@ -53,8 +54,21 @@ export interface StaffIdCard {
   role: StaffCardRole;
   systemId: string;
   profilePhoto: string | null;
+  phone: string | null;
+  address: string | null;
   subjectCount: number | null;
   qr: string;
+}
+
+export interface MyContactInfo {
+  phone: string;
+  address: string | null;
+  missing: string[];
+}
+
+export interface MyStaffCard extends StaffIdCard {
+  institution: { name: string; logoUrl: string | null };
+  missing: string[];
 }
 
 export interface StaffIdCardSheet {
@@ -73,7 +87,7 @@ export const usersApi = baseApi.injectEndpoints({
     }),
     getUsers: builder.query<
       ApiArray<ManagedUser>,
-      { role?: ManageableRole; search?: string; page?: number; limit?: number } | void
+      { role?: ManageableRole; search?: string; page?: number; limit?: number; incomplete?: boolean } | void
     >({
       query: (params) => {
         const s = new URLSearchParams();
@@ -100,10 +114,25 @@ export const usersApi = baseApi.injectEndpoints({
     }),
     updateUser: builder.mutation<
       ApiObject<ManagedUser>,
-      { id: string; body: Partial<CreateUserBody> & { isActive?: boolean } }
+      { id: string; body: Partial<CreateUserBody> & { isActive?: boolean; address?: string } }
     >({
       query: ({ id, body }) => ({ url: `/users/${id}`, method: 'PATCH', body }),
       invalidatesTags: [{ type: 'Users', id: 'LIST' }],
+    }),
+    // Self-service — "My ID Card" page. Scoped to the caller's own account
+    // via the JWT, not an :id param — any logged-in staff-type user can use
+    // these on themself, unlike updateUser above (admin-only, any user).
+    getMyContact: builder.query<ApiObject<MyContactInfo>, void>({
+      query: () => '/users/me/contact',
+      providesTags: ['MyContact'],
+    }),
+    updateMyContact: builder.mutation<ApiObject<MyContactInfo>, { phone?: string; address?: string }>({
+      query: (body) => ({ url: '/users/me/contact', method: 'PATCH', body }),
+      invalidatesTags: ['MyContact'],
+    }),
+    getMyCard: builder.query<ApiObject<MyStaffCard>, void>({
+      query: () => '/users/me/card',
+      providesTags: ['MyContact'],
     }),
     deleteUser: builder.mutation<ApiObject<{ id: string }>, string>({
       query: (id) => ({ url: `/users/${id}`, method: 'DELETE' }),
@@ -157,4 +186,7 @@ export const {
   useUploadUserPhotoMutation,
   useRemoveUserPhotoMutation,
   useGetStaffIdCardsQuery,
+  useGetMyContactQuery,
+  useUpdateMyContactMutation,
+  useGetMyCardQuery,
 } = usersApi;

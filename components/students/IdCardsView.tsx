@@ -212,7 +212,7 @@ function StudentNamePicker({
   );
 }
 
-const IdCardItem = memo(function IdCardItem({
+export const IdCardItem = memo(function IdCardItem({
   student, institution, className, section, termName,
 }: {
   student: IdCard;
@@ -288,6 +288,15 @@ const IdCardItem = memo(function IdCardItem({
               </div>
             )}
           </dl>
+
+          {(student.phone || student.address || student.parentName) && (
+            <dl className="mt-0.5 grid grid-cols-2 gap-x-2 gap-y-0.5 border-t border-border pt-1 text-[8px] leading-tight">
+              {student.phone && <Field label="Phone" value={student.phone} />}
+              {student.address && <Field label="Address" value={[student.address, student.city].filter(Boolean).join(', ')} />}
+              {student.parentName && <Field label="Parent" value={student.parentName} />}
+              {student.parentPhone && <Field label="Parent Phone" value={student.parentPhone} />}
+            </dl>
+          )}
 
           <div className="mt-auto pt-0.5">
             <IdCardCredit />

@@ -24,7 +24,7 @@ import {
   type StudentListItem,
 } from '@/store/api/studentsApi';
 import { ImportCsvDrawer } from '@/components/ui/import-csv-drawer';
-import { getInitials, formatDate } from '@/lib/utils';
+import { getInitials, formatDate, cn } from '@/lib/utils';
 import { StudentFormDrawer } from './StudentFormDrawer';
 import { StudentDetailDrawer } from './StudentDetailDrawer';
 import { useTerminology } from '@/lib/terminology';
@@ -50,6 +50,7 @@ export function StudentsView() {
     typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('q') ?? ''
   );
   const [status, setStatus] = useState<string>('all');
+  const [incompleteOnly, setIncompleteOnly] = useState(false);
   const [page, setPage] = useState(1);
   const debouncedQuery = useDebounce(query, 350);
 
@@ -68,6 +69,7 @@ export function StudentsView() {
     limit: PAGE_SIZE,
     search: debouncedQuery || undefined,
     status: status === 'all' ? undefined : (status as StudentListItem['status']),
+    incomplete: incompleteOnly || undefined,
   });
 
   const students = data?.data ?? [];
@@ -78,6 +80,7 @@ export function StudentsView() {
   const resetFilters = () => {
     setQuery('');
     setStatus('all');
+    setIncompleteOnly(false);
     setPage(1);
   };
 
@@ -127,6 +130,19 @@ export function StudentsView() {
               <SelectItem value="transferred">Transferred</SelectItem>
             </SelectContent>
           </Select>
+          <button
+            type="button"
+            onClick={() => { setIncompleteOnly((v) => !v); setPage(1); }}
+            className={cn(
+              'flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+              incompleteOnly
+                ? 'border-warning bg-warning-soft text-warning'
+                : 'border-border bg-card text-foreground hover:bg-muted'
+            )}
+            title="Show only students missing address or blood group"
+          >
+            Missing ID info
+          </button>
         </div>
       </Card>
 
@@ -146,14 +162,14 @@ export function StudentsView() {
         <Card>
           <EmptyState
             icon={Filter}
-            title={debouncedQuery || status !== 'all' ? 'No students match your filters' : 'No students yet'}
+            title={debouncedQuery || status !== 'all' || incompleteOnly ? 'No students match your filters' : 'No students yet'}
             description={
-              debouncedQuery || status !== 'all'
+              debouncedQuery || status !== 'all' || incompleteOnly
                 ? 'Try adjusting your search or clearing the filters.'
                 : 'Add your first student to get started.'
             }
             action={
-              debouncedQuery || status !== 'all' ? (
+              debouncedQuery || status !== 'all' || incompleteOnly ? (
                 <Button variant="secondary" size="sm" onClick={resetFilters}>Clear filters</Button>
               ) : (
                 <Button variant="primary" size="sm" onClick={openAdd}><Plus size={16} /> Add Student</Button>
