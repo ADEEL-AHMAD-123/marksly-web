@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck, Wallet, Megaphone, UserCircle, Award, Sparkles, Inbox as InboxIcon, AlertTriangle, CreditCard, School, ClipboardList, MailWarning } from 'lucide-react';
 import {
@@ -12,6 +12,7 @@ import {
   useGetInboxQuery, useGetInboxUnreadCountQuery, useMarkInboxReadMutation, useMarkAllInboxReadMutation,
   type InboxItem, type InboxItemType,
 } from '@/store/api/inboxApi';
+import { playNotificationSound } from '@/lib/notification-sound';
 
 const TYPE_ICON: Record<InboxItemType, typeof Bell> = {
   fee_paid: Wallet,
@@ -25,6 +26,7 @@ const TYPE_ICON: Record<InboxItemType, typeof Bell> = {
   fee_online_refund_needs_review: CreditCard,
   attendance_alert: ClipboardList,
   contact_failed: MailWarning,
+  system_alert: AlertTriangle,
 };
 
 const TYPE_TONE: Record<InboxItemType, string> = {
@@ -39,6 +41,7 @@ const TYPE_TONE: Record<InboxItemType, string> = {
   fee_online_refund_needs_review: 'bg-danger-soft text-danger',
   attendance_alert: 'bg-warning-soft text-warning',
   contact_failed: 'bg-danger-soft text-danger',
+  system_alert: 'bg-danger-soft text-danger',
 };
 
 /** The bell's dropdown — a real, working notification center (see
@@ -53,6 +56,20 @@ export function NotificationBell() {
 
   const { data: countRes } = useGetInboxUnreadCountQuery(undefined, { pollingInterval: 30_000 });
   const unread = countRes?.data.count ?? 0;
+
+  // Chime whenever unread count goes UP between polls — covers every kind
+  // of notification (payments, notices, system alerts like failed emails,
+  // etc.), not just one type. `prevUnread` starts as `null` so the very
+  // first load (which could already have a large backlog) never triggers a
+  // sound — only a genuine increase after we've already seen a value does.
+  const prevUnreadRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (countRes === undefined) return;
+    if (prevUnreadRef.current !== null && unread > prevUnreadRef.current) {
+      playNotificationSound();
+    }
+    prevUnreadRef.current = unread;
+  }, [unread, countRes]);
 
   const { data: listRes, isLoading } = useGetInboxQuery({ limit: 15 }, { skip: !open });
   const items = listRes?.data ?? [];

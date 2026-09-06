@@ -21,6 +21,7 @@ import { useTerminology } from '@/lib/terminology';
 import { looksAbbreviated } from '@/lib/institution-name';
 import { AdminDashboardStats } from '@/components/dashboards/AdminDashboardStats';
 import { OnboardingCard, type OnboardingStep } from '@/components/dashboards/AdminDashboardOnboarding';
+import { DashboardAlertBanner } from '@/components/dashboards/DashboardAlertBanner';
 import { TodaysAttendanceCard } from '@/components/dashboards/AdminDashboardAttendance';
 import { FeeCollectionCard, QuickActionsCard } from '@/components/dashboards/AdminDashboardActions';
 
@@ -183,6 +184,8 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      <DashboardAlertBanner />
+
       {overLimit && (
         <div className="flex items-start gap-2.5 rounded-xl border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-warning">
           <AlertTriangle size={17} className="mt-0.5 shrink-0" />
