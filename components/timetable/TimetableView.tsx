@@ -167,6 +167,12 @@ function AddPeriodDrawer({ open, onClose, classId, sectionId, initialDay }: { op
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Same rule the backend enforces (see timetable.service.ts) — checked
+    // here too so the user sees it instantly instead of after a round trip.
+    if (endTime <= startTime) {
+      toast.error('End time must be after start time');
+      return;
+    }
     try {
       await createEntry({
         classId, sectionId, dayOfWeek: Number(dayOfWeek), startTime, endTime,
