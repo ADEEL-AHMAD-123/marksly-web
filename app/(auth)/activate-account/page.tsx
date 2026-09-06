@@ -10,6 +10,7 @@ import { ArrowLeft, AlertCircle, CheckCircle2, MailQuestion } from 'lucide-react
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { cn } from '@/lib/utils';
 import { useAcceptInviteMutation, useResendInviteSelfMutation } from '@/store/api/authApi';
 import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
@@ -183,33 +184,25 @@ function ActivateAccountForm() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <div>
           <Label htmlFor="password">Password</Label>
-          <input
+          <PasswordInput
             id="password"
             {...register('password')}
-            type="password"
             autoComplete="new-password"
             autoFocus
             aria-invalid={!!errors.password}
-            className={cn(
-              'h-11 w-full rounded-lg border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              errors.password ? 'border-danger' : 'border-input'
-            )}
+            className={cn('h-11', errors.password ? 'border-danger' : 'border-input')}
           />
           {errors.password && <p className="mt-1.5 text-xs text-danger">{errors.password.message}</p>}
         </div>
 
         <div>
           <Label htmlFor="confirmPassword">Confirm password</Label>
-          <input
+          <PasswordInput
             id="confirmPassword"
             {...register('confirmPassword')}
-            type="password"
             autoComplete="new-password"
             aria-invalid={!!errors.confirmPassword}
-            className={cn(
-              'h-11 w-full rounded-lg border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              errors.confirmPassword ? 'border-danger' : 'border-input'
-            )}
+            className={cn('h-11', errors.confirmPassword ? 'border-danger' : 'border-input')}
           />
           {errors.confirmPassword && <p className="mt-1.5 text-xs text-danger">{errors.confirmPassword.message}</p>}
         </div>

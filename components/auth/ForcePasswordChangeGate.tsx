@@ -11,6 +11,7 @@ import { ShieldCheck, KeyRound } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -186,9 +187,8 @@ function SetPasswordStep() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <Label htmlFor="currentPassword">Temporary password</Label>
-            <Input
+            <PasswordInput
               id="currentPassword"
-              type="password"
               autoComplete="current-password"
               {...register('currentPassword')}
             />
@@ -198,12 +198,12 @@ function SetPasswordStep() {
           </div>
           <div>
             <Label htmlFor="newPassword">New password</Label>
-            <Input id="newPassword" type="password" autoComplete="new-password" {...register('newPassword')} />
+            <PasswordInput id="newPassword" autoComplete="new-password" {...register('newPassword')} />
             {errors.newPassword && <p className="mt-1 text-xs text-danger">{errors.newPassword.message}</p>}
           </div>
           <div>
             <Label htmlFor="confirm">Confirm new password</Label>
-            <Input id="confirm" type="password" autoComplete="new-password" {...register('confirm')} />
+            <PasswordInput id="confirm" autoComplete="new-password" {...register('confirm')} />
             {errors.confirm && <p className="mt-1 text-xs text-danger">{errors.confirm.message}</p>}
           </div>
           <Button type="submit" className="w-full" loading={isLoading}>

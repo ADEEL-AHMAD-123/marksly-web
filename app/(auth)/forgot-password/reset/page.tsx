@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { ArrowLeft, AlertCircle, CheckCircle2, Building2, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { cn } from '@/lib/utils';
 import { useResetPasswordMutation } from '@/store/api/authApi';
 import { getErrorMessage, getErrorCode, getErrorDetails } from '@/lib/get-error-message';
@@ -201,17 +202,13 @@ function ResetPasswordForm() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <div>
           <Label htmlFor="newPassword">New password</Label>
-          <input
+          <PasswordInput
             id="newPassword"
             {...register('newPassword')}
-            type="password"
             autoComplete="new-password"
             autoFocus
             aria-invalid={!!errors.newPassword}
-            className={cn(
-              'h-11 w-full rounded-lg border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              errors.newPassword ? 'border-danger' : 'border-input'
-            )}
+            className={cn('h-11', errors.newPassword ? 'border-danger' : 'border-input')}
           />
           {errors.newPassword && (
             <p className="mt-1.5 text-xs text-danger">{errors.newPassword.message}</p>
@@ -220,16 +217,12 @@ function ResetPasswordForm() {
 
         <div>
           <Label htmlFor="confirmPassword">Confirm password</Label>
-          <input
+          <PasswordInput
             id="confirmPassword"
             {...register('confirmPassword')}
-            type="password"
             autoComplete="new-password"
             aria-invalid={!!errors.confirmPassword}
-            className={cn(
-              'h-11 w-full rounded-lg border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              errors.confirmPassword ? 'border-danger' : 'border-input'
-            )}
+            className={cn('h-11', errors.confirmPassword ? 'border-danger' : 'border-input')}
           />
           {errors.confirmPassword && (
             <p className="mt-1.5 text-xs text-danger">{errors.confirmPassword.message}</p>
