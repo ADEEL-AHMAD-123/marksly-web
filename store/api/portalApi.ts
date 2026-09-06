@@ -1,5 +1,6 @@
 import { baseApi } from './baseApi';
 import type { CumulativeGpaResult, TermGpaResult } from './studentsApi';
+import type { TimetableEntry } from './timetableApi';
 
 export type { CumulativeGpaResult, TermGpaResult };
 
@@ -84,6 +85,7 @@ export interface StudentSubjects {
 }
 
 interface ApiObject<T> { success: boolean; data: T; message: string }
+interface ApiArray<T> { success: boolean; data: T[]; message: string }
 
 function qs(params: Record<string, string | undefined>): string {
   const parts = Object.entries(params).filter(([, v]) => !!v) as [string, string][];
@@ -158,6 +160,10 @@ export const portalApi = baseApi.injectEndpoints({
       query: (id) => `/me/children/${id}/fees`,
       providesTags: ['Fees'],
     }),
+    childTimetable: builder.query<ApiArray<TimetableEntry>, string>({
+      query: (id) => `/me/children/${id}/timetable`,
+      providesTags: [{ type: 'Classes', id: 'TIMETABLE' }],
+    }),
     // Teacher
     myClasses: builder.query<ApiObject<TeacherClass[]>, void>({
       query: () => '/me/teacher/classes',
@@ -181,5 +187,6 @@ export const {
   useChildCgpaQuery,
   useChildTermGpaQuery,
   useChildFeesQuery,
+  useChildTimetableQuery,
   useMyClassesQuery,
 } = portalApi;

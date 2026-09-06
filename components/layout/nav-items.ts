@@ -63,6 +63,7 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
   parent: [
     { label: 'Dashboard', href: '/parent', icon: LayoutDashboard },
     { label: 'My Children', href: '/parent/children', icon: GraduationCap },
+    { label: 'Timetable', href: '/parent/timetable', icon: CalendarClock },
     { label: 'Attendance', href: '/parent/attendance', icon: CalendarCheck },
     { label: 'Fees', href: '/parent/fees', icon: DollarSign },
     { label: 'Results', href: '/parent/results', icon: FileText },

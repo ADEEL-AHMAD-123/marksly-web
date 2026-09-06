@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarClock, Plus, Trash2, X, Clock, MapPin } from 'lucide-react';
+import { CalendarClock, Plus, Trash2, X, Clock, MapPin, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
@@ -122,10 +122,20 @@ export function TimetableView() {
                       <li key={e.id} className="flex items-center gap-3 rounded-lg border border-border p-2.5">
                         <span className="flex items-center gap-1 text-xs font-medium text-foreground"><Clock size={12} /> {e.startTime}–{e.endTime}</span>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-foreground">{e.subject ?? 'Subject'}</p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {e.teacher ?? 'Unassigned'}{e.room ? <> · <MapPin size={10} className="inline" /> {e.room}</> : null}
-                          </p>
+                          <p className="truncate text-sm font-medium text-foreground">{e.subject ?? 'No subject'}</p>
+                          {e.teacher ? (
+                            <p className="truncate text-xs text-muted-foreground">
+                              {e.teacher}{e.room ? <> · <MapPin size={10} className="inline" /> {e.room}</> : null}
+                            </p>
+                          ) : (
+                            // Flagged in warning color (not muted like everything
+                            // else here) — this is the one state an admin should
+                            // actually notice and act on, not skim past.
+                            <p className="flex items-center gap-1 truncate text-xs text-warning">
+                              <AlertTriangle size={11} className="shrink-0" /> No teacher assigned
+                              {e.room ? <> · <MapPin size={10} className="inline" /> {e.room}</> : null}
+                            </p>
+                          )}
                         </div>
                         <button onClick={() => remove(e.id)} aria-label="Remove period" className="rounded-lg p-1.5 text-muted-foreground hover:bg-danger-soft hover:text-danger"><Trash2 size={15} /></button>
                       </li>
@@ -213,16 +223,27 @@ function AddPeriodDrawer({ open, onClose, classId, sectionId, initialDay }: { op
             <div>
               <Label>Subject</Label>
               <select className={selectCls} value={subjectId} onChange={(e) => setSubjectId(e.target.value)}>
-                <option value="">Select subject</option>
+                <option value="">No subject (free period / break)</option>
                 {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
             <div>
               <Label>Teacher</Label>
               <select className={selectCls} value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
-                <option value="">Unassigned</option>
+                <option value="">No teacher assigned</option>
                 {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
+              {/* A period with no teacher never shows up on ANYONE's
+                  "teaching now"/timetable view — it's filtered strictly by
+                  teacherId, not just displayed as blank — so leaving this
+                  unassigned is easy to do by accident (it's the default
+                  state) and easy to miss, since nothing else flags it. */}
+              {!teacherId && (
+                <p className="mt-1.5 flex items-start gap-1.5 text-xs text-warning">
+                  <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                  No teacher will see this period on their own schedule until one is assigned here.
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="room">Room (optional)</Label>

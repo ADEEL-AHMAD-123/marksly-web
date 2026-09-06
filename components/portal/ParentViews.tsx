@@ -14,12 +14,14 @@ import { AttendanceHistory } from './AttendanceHistory';
 import { ResultsList } from './ResultsList';
 import { GpaSummary } from './GpaSummary';
 import { FeesList } from './FeesList';
+import { TimetableWeekGrid } from '@/components/timetable/TimetableWeekGrid';
 import {
   useMyChildrenQuery,
   useChildAttendanceQuery,
   useChildResultsQuery,
   useChildCgpaQuery,
   useChildFeesQuery,
+  useChildTimetableQuery,
 } from '@/store/api/portalApi';
 import { useGetTermsQuery } from '@/store/api/termsApi';
 import { formatCurrency, getInitials, cn } from '@/lib/utils';
@@ -66,11 +68,12 @@ export function ChildrenView() {
   );
 }
 
-type Kind = 'attendance' | 'results' | 'fees';
+type Kind = 'attendance' | 'results' | 'fees' | 'timetable';
 const TITLES: Record<Kind, { title: string; desc: string }> = {
   attendance: { title: "Child's Attendance", desc: 'Attendance record per child.' },
   results: { title: "Child's Results", desc: 'Published exam results per child.' },
   fees: { title: "Child's Fees", desc: 'Fee invoices and dues per child.' },
+  timetable: { title: "Child's Timetable", desc: 'Weekly class schedule per child.' },
 };
 
 export function ParentScopedView({ kind }: { kind: Kind }) {
@@ -96,6 +99,7 @@ export function ParentScopedView({ kind }: { kind: Kind }) {
   const res = useChildResultsQuery(sel, { skip: kind !== 'results' || !sel });
   const cgpa = useChildCgpaQuery(sel, { skip: kind !== 'results' || !sel });
   const fee = useChildFeesQuery(sel, { skip: kind !== 'fees' || !sel });
+  const tt = useChildTimetableQuery(sel, { skip: kind !== 'timetable' || !sel });
 
   const meta = TITLES[kind];
 
@@ -156,6 +160,14 @@ export function ParentScopedView({ kind }: { kind: Kind }) {
             </>
           )}
           {kind === 'fees' && <FeesList data={fee.data?.data} isLoading={fee.isLoading || !sel} />}
+          {kind === 'timetable' && (
+            <TimetableWeekGrid
+              entries={tt.data?.data ?? []}
+              isLoading={tt.isLoading || !sel}
+              variant="viewer"
+              emptyDescription="Your child's timetable will appear here once the school has set it up."
+            />
+          )}
         </>
       )}
     </div>
