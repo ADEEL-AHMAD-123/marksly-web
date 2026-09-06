@@ -1,15 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { GraduationCap, CalendarCheck, Wallet, ChevronRight } from 'lucide-react';
+import { GraduationCap, CalendarCheck, Wallet, ChevronRight, Bell } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useMyChildrenQuery } from '@/store/api/portalApi';
-import { formatCurrency, getInitials } from '@/lib/utils';
+import { useGetNoticesQuery } from '@/store/api/noticesApi';
+import { formatCurrency, formatDate, getInitials } from '@/lib/utils';
 
 // Previously this page showed two entirely invented children ("Ali Khan",
 // "Sara Khan") with hardcoded attendance/fee numbers and a "View details"
@@ -22,6 +23,13 @@ export function ParentDashboardView() {
   const { data, isLoading } = useMyChildrenQuery();
   const children = data?.data ?? [];
   const totalFeesDue = children.reduce((sum, c) => sum + c.feesDue, 0);
+
+  // Notices — every other role's dashboard (teacher, student, accountant)
+  // already surfaces these; the parent portal previously had no notices
+  // section at all despite getNotices already being audience-scoped
+  // server-side to include the 'parent' role.
+  const { data: noticesRes, isLoading: noticesLoading } = useGetNoticesQuery({ limit: 5 });
+  const notices = noticesRes?.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -89,6 +97,35 @@ export function ParentDashboardView() {
             </Card>
           ))}
         </div>
+      )}
+
+      {!isLoading && children.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Bell size={18} /> Notices</CardTitle>
+            <CardDescription>From your institution</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {noticesLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : notices.length === 0 ? (
+              <EmptyState icon={Bell} title="No notices" description="You're all caught up." />
+            ) : (
+              <ul className="space-y-3">
+                {notices.map((n) => (
+                  <li key={n.id} className="flex items-start gap-3 rounded-lg border border-border p-3">
+                    <Bell size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground">{n.title}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(n.publishedAt)}</p>
+                    </div>
+                    {(n.priority === 'high' || n.priority === 'urgent') && <Badge variant="danger">Important</Badge>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );
