@@ -160,6 +160,7 @@ export interface MyStudentCard extends IdCard {
   section: string | null;
   termName: string | null;
   missing: string[];
+  photoMissing: boolean;
 }
 
 export interface IdCardSheet {

@@ -69,6 +69,7 @@ export interface MyContactInfo {
 export interface MyStaffCard extends StaffIdCard {
   institution: { name: string; logoUrl: string | null };
   missing: string[];
+  photoMissing: boolean;
 }
 
 export interface StaffIdCardSheet {
@@ -134,6 +135,21 @@ export const usersApi = baseApi.injectEndpoints({
       query: () => '/users/me/card',
       providesTags: ['MyContact'],
     }),
+    // Self-service — uploading/removing one's OWN profile photo, used by
+    // the "My ID Card" page for every role, not just admin acting on
+    // someone else's behalf (that's uploadUserPhoto/removeUserPhoto above).
+    uploadMyPhoto: builder.mutation<ApiObject<{ profilePhoto: string }>, { file: File }>({
+      query: ({ file }) => {
+        const formData = new FormData();
+        formData.append('photo', file);
+        return { url: '/users/me/photo', method: 'POST', body: formData };
+      },
+      invalidatesTags: ['MyContact'],
+    }),
+    removeMyPhoto: builder.mutation<ApiObject<{ profilePhoto: null }>, void>({
+      query: () => ({ url: '/users/me/photo', method: 'DELETE' }),
+      invalidatesTags: ['MyContact'],
+    }),
     deleteUser: builder.mutation<ApiObject<{ id: string }>, string>({
       query: (id) => ({ url: `/users/${id}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Users', id: 'LIST' }],
@@ -189,4 +205,6 @@ export const {
   useGetMyContactQuery,
   useUpdateMyContactMutation,
   useGetMyCardQuery,
+  useUploadMyPhotoMutation,
+  useRemoveMyPhotoMutation,
 } = usersApi;

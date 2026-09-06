@@ -338,6 +338,7 @@ function missingIdInfo(s: StudentListItem): string[] {
   if (!s.address) missing.push('Address');
   if (!s.bloodGroup) missing.push('Blood group');
   if (!s.guardianName) missing.push('Guardian');
+  if (!s.profilePhoto) missing.push('Photo');
   return missing;
 }
 

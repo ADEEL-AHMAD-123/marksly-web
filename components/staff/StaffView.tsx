@@ -57,6 +57,16 @@ const ROLE_TABS: { value: 'staff' | 'accountant'; label: string; icon: typeof Br
   { value: 'accountant', label: 'Accountant', icon: Landmark },
 ];
 
+/** Mirrors StudentsView.tsx's missingIdInfo() — fields the ID card feature
+ *  needs, surfaced inline per row instead of only via the "Missing ID info"
+ *  filter. */
+function missingStaffInfo(m: ManagedUser): string[] {
+  const missing: string[] = [];
+  if (!m.address) missing.push('address');
+  if (!m.profilePhoto) missing.push('photo');
+  return missing;
+}
+
 export function StaffView() {
   const [role, setRole] = useState<'staff' | 'accountant'>('staff');
   const [query, setQuery] = useState('');
@@ -226,9 +236,9 @@ export function StaffView() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-foreground">{m.name}</p>
                     <p className="text-xs text-muted-foreground">{m.phone}{m.email ? ` · ${m.email}` : ''}</p>
-                    {!m.address && (
+                    {missingStaffInfo(m).length > 0 && (
                       <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning">
-                        <AlertCircle size={11} className="shrink-0" /> Missing address
+                        <AlertCircle size={11} className="shrink-0" /> Missing {missingStaffInfo(m).join(', ')}
                       </p>
                     )}
                   </div>
