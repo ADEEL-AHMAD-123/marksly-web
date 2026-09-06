@@ -61,7 +61,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     description: post.description,
     datePublished: post.date,
     dateModified: post.modifiedDate ?? post.date,
-    author: { '@type': 'Organization', name: post.author ?? 'Marksly', url: SITE_URL },
+    author: post.author
+      ? { '@type': 'Person', name: post.author }
+      : { '@type': 'Organization', name: 'Marksly', url: SITE_URL },
     publisher: {
       '@type': 'Organization',
       name: 'Marksly',
@@ -113,6 +115,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           {' · '}{post.readingTime}
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">{post.title}</h1>
+        <p className="mt-3 text-sm text-muted-foreground">By {post.author ?? 'Marksly'}</p>
         <div className="mt-4">
           <PreferredSourceButton />
         </div>

@@ -26,6 +26,42 @@ const BREADCRUMB_JSON_LD = {
   ],
 };
 
+const CONTACT_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'ContactPage',
+  '@id': 'https://marksly.pk/contact#contact-page',
+  url: 'https://marksly.pk/contact',
+  name: TITLE,
+  description: DESCRIPTION,
+  isPartOf: { '@id': 'https://marksly.pk/#website' },
+  about: {
+    '@type': 'Organization',
+    name: 'Marksly',
+    url: 'https://marksly.pk',
+    email: 'support@marksly.pk',
+    contactPoint: [
+      {
+        '@type': 'ContactPoint',
+        contactType: 'sales',
+        email: 'support@marksly.pk',
+        telephone: '+923175496466',
+        url: 'https://wa.me/923175496466',
+        areaServed: 'PK',
+        availableLanguage: ['en', 'ur'],
+      },
+      {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        email: 'support@marksly.pk',
+        telephone: '+923175496466',
+        url: 'https://wa.me/923175496466',
+        areaServed: 'PK',
+        availableLanguage: ['en', 'ur'],
+      },
+    ],
+  },
+};
+
 const CHANNELS = [
   {
     icon: Mail,
@@ -48,6 +84,8 @@ export default function ContactPage() {
     <div className="min-h-screen bg-background text-foreground">
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_JSON_LD) }} />
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(CONTACT_JSON_LD) }} />
 
       <MarketingHeader active="/contact" />
 

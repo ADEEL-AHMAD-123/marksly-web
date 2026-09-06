@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, X, Bell, Trash2, MessageCircle } from 'lucide-react';
+import { Plus, X, Bell, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
@@ -78,9 +78,6 @@ export function NoticesView({ manage = false }: { manage?: boolean }) {
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold text-foreground">{n.title}</h3>
                     <Badge variant={priorityBadge[n.priority].variant}>{priorityBadge[n.priority].label}</Badge>
-                    {n.whatsappSent && (
-                      <span className="inline-flex items-center gap-1 text-xs text-success"><MessageCircle size={12} /> Sent</span>
-                    )}
                   </div>
                   <p className="mt-1.5 whitespace-pre-line text-sm text-muted-foreground">{n.body}</p>
                   <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">

@@ -28,6 +28,7 @@ const JSON_LD = {
     },
     {
       '@type': 'SoftwareApplication',
+      '@id': 'https://marksly.pk/#software',
       name: 'Marksly',
       alternateName: 'Marksly Pakistan',
       applicationCategory: 'BusinessApplication',
@@ -46,6 +47,17 @@ const JSON_LD = {
       url: 'https://marksly.pk',
       name: 'Marksly',
       publisher: { '@id': 'https://marksly.pk/#organization' },
+    },
+    {
+      '@type': 'WebPage',
+      '@id': 'https://marksly.pk/#webpage',
+      url: 'https://marksly.pk/',
+      name: 'Marksly Pakistan — School & Campus Management Software',
+      description:
+        'Marksly is a Pakistan-based school management platform for academies, schools, colleges and universities.',
+      isPartOf: { '@id': 'https://marksly.pk/#website' },
+      about: { '@id': 'https://marksly.pk/#organization' },
+      mainEntity: { '@id': 'https://marksly.pk/#software' },
     },
   ],
 };

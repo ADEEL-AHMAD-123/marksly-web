@@ -11,7 +11,6 @@ export interface Notice {
   targetRoles: NoticeRole[];
   publishedAt: string;
   expiresAt: string | null;
-  whatsappSent: boolean;
   author: string | null;
 }
 
