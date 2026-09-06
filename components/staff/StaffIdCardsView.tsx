@@ -2,7 +2,7 @@
 
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff, Search, X, UserCircle } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff, Search, X, UserCircle, Phone, MapPin } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -295,10 +295,17 @@ export const StaffIdCardItem = memo(function StaffIdCardItem({
           </dl>
 
           {(member.phone || member.address) && (
-            <dl className="mt-0.5 grid grid-cols-2 gap-x-2 gap-y-0.5 border-t border-border pt-1 text-[8px] leading-tight">
-              {member.phone && <Field label="Phone" value={member.phone} />}
-              {member.address && <Field label="Address" value={member.address} />}
-            </dl>
+            <div className="mt-0.5 flex flex-col gap-0.5 border-t border-border pt-1 text-[8px] leading-tight text-foreground">
+              {member.phone && (
+                <p className="flex items-center gap-1"><Phone size={7.5} className="shrink-0 text-muted-foreground" /> {member.phone}</p>
+              )}
+              {member.address && (
+                <p className="flex items-center gap-1 truncate">
+                  <MapPin size={7.5} className="shrink-0 text-muted-foreground" />
+                  <span className="truncate">{member.address}</span>
+                </p>
+              )}
+            </div>
           )}
 
           <div className="mt-auto pt-0.5">

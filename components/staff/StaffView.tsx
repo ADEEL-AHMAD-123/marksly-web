@@ -178,7 +178,14 @@ export function StaffView() {
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary-soft-foreground">
                             {getInitials(m.firstName, m.lastName)}
                           </span>
-                          <span className="font-medium text-foreground">{m.name}</span>
+                          <div>
+                            <span className="font-medium text-foreground">{m.name}</span>
+                            {!m.address && (
+                              <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning">
+                                <AlertCircle size={11} className="shrink-0" /> Missing address
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{m.phone}</TableCell>
@@ -219,6 +226,11 @@ export function StaffView() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-foreground">{m.name}</p>
                     <p className="text-xs text-muted-foreground">{m.phone}{m.email ? ` · ${m.email}` : ''}</p>
+                    {!m.address && (
+                      <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning">
+                        <AlertCircle size={11} className="shrink-0" /> Missing address
+                      </p>
+                    )}
                   </div>
                   <Badge variant={m.isActive ? 'success' : 'neutral'}>{m.isActive ? 'Active' : 'Inactive'}</Badge>
                 </div>

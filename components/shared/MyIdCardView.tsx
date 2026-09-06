@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Printer, CreditCard as IdCardIcon, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Printer, CreditCard as IdCardIcon, Loader2, MapPin, Droplet } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -10,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useAppSelector } from '@/store/hooks';
+import { getErrorMessage } from '@/lib/get-error-message';
 import { useGetMyCardQuery, useUpdateMyContactMutation } from '@/store/api/usersApi';
 import { useGetMyStudentCardQuery, useUpdateMyStudentContactMutation } from '@/store/api/studentsApi';
 import { ID_CARD_PRINT_CSS } from '@/components/shared/idCardPrint';
@@ -57,20 +59,33 @@ function StaffMyIdCard() {
       ) : isError || !card ? (
         <Card className="no-print"><EmptyState icon={IdCardIcon} title="Couldn't load your card" description="Try refreshing the page." /></Card>
       ) : card.missing.length > 0 ? (
-        <Card className="max-w-sm space-y-3 p-4 no-print">
-          <p className="text-sm text-muted-foreground">
-            Add your address to generate your ID card.
-          </p>
+        <Card className="max-w-sm space-y-4 p-5 no-print">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning-soft text-warning">
+              <MapPin size={16} />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">One more thing before your card is ready</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">Your address is missing — add it below and your card appears immediately.</p>
+            </div>
+          </div>
           <div>
-            <Label>Address</Label>
-            <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House #, street, area" />
+            <Label htmlFor="my-address">Address</Label>
+            <Input id="my-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House #, street, area" />
           </div>
           <Button
             size="sm"
             disabled={!address.trim() || saving}
-            onClick={() => updateContact({ address: address.trim() })}
+            onClick={async () => {
+              try {
+                await updateContact({ address: address.trim() }).unwrap();
+                toast.success('Address saved — your card is ready');
+              } catch (e) {
+                toast.error(getErrorMessage(e, 'Could not save your address'));
+              }
+            }}
           >
-            {saving ? 'Saving…' : 'Save & continue'}
+            {saving ? 'Saving…' : 'Save & show my card'}
           </Button>
         </Card>
       ) : (
@@ -106,14 +121,22 @@ function StudentMyIdCard() {
       ) : isError || !card ? (
         <Card className="no-print"><EmptyState icon={IdCardIcon} title="Couldn't load your card" description="Try refreshing the page." /></Card>
       ) : card.missing.length > 0 ? (
-        <Card className="max-w-sm space-y-3 p-4 no-print">
-          <p className="text-sm text-muted-foreground">
-            A few more details are needed before your ID card is ready.
-          </p>
+        <Card className="max-w-sm space-y-4 p-5 no-print">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning-soft text-warning">
+              <Droplet size={16} />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">One more thing before your card is ready</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {card.missing.length === 1 ? 'One field is' : 'A couple of fields are'} missing — add {card.missing.length === 1 ? 'it' : 'them'} below and your card appears immediately.
+              </p>
+            </div>
+          </div>
           {card.missing.includes('address') && (
             <div>
-              <Label>Address</Label>
-              <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House #, street, area" />
+              <Label htmlFor="my-address">Address</Label>
+              <Input id="my-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House #, street, area" />
             </div>
           )}
           {card.missing.includes('bloodGroup') && (
@@ -128,12 +151,19 @@ function StudentMyIdCard() {
           <Button
             size="sm"
             disabled={saving || (card.missing.includes('address') && !address.trim()) || (card.missing.includes('bloodGroup') && !bloodGroup)}
-            onClick={() => updateContact({
-              ...(card.missing.includes('address') ? { address: address.trim() } : {}),
-              ...(card.missing.includes('bloodGroup') ? { bloodGroup } : {}),
-            })}
+            onClick={async () => {
+              try {
+                await updateContact({
+                  ...(card.missing.includes('address') ? { address: address.trim() } : {}),
+                  ...(card.missing.includes('bloodGroup') ? { bloodGroup } : {}),
+                }).unwrap();
+                toast.success('Saved — your card is ready');
+              } catch (e) {
+                toast.error(getErrorMessage(e, 'Could not save your details'));
+              }
+            }}
           >
-            {saving ? 'Saving…' : 'Save & continue'}
+            {saving ? 'Saving…' : 'Save & show my card'}
           </Button>
         </Card>
       ) : (

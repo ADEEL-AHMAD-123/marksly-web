@@ -202,6 +202,7 @@ export function StudentsView() {
                           <div>
                             <p className="font-medium text-foreground">{s.name}</p>
                             <p className="text-xs text-muted-foreground">{s.rollNumber}</p>
+                            <MissingInfoChip missing={missingIdInfo(s)} />
                           </div>
                         </div>
                       </TableCell>
@@ -250,6 +251,7 @@ export function StudentsView() {
                       {s.rollNumber}
                       {s.className ? ` · ${s.className}${s.section ? ` — ${s.section}` : ''}` : ''}
                     </p>
+                    <MissingInfoChip missing={missingIdInfo(s)} />
                   </div>
                   <Badge variant={statusBadge[s.status].variant}>
                     {statusBadge[s.status].label}
@@ -324,6 +326,31 @@ export function StudentsView() {
         helpText={'Running more than one active term at once (e.g. overlapping semesters)? Add an optional "term" column with the exact term name if any class name exists in more than one active term — otherwise it can be left out.'}
       />
     </div>
+  );
+}
+
+/** Fields the ID card contact-info feature needs, per student — surfaced
+ *  right in the row so an admin browsing the list already sees who needs
+ *  attention, instead of only finding out via the "Missing ID info" filter
+ *  or by opening each record one at a time. */
+function missingIdInfo(s: StudentListItem): string[] {
+  const missing: string[] = [];
+  if (!s.address) missing.push('Address');
+  if (!s.bloodGroup) missing.push('Blood group');
+  if (!s.guardianName) missing.push('Guardian');
+  return missing;
+}
+
+function MissingInfoChip({ missing }: { missing: string[] }) {
+  if (missing.length === 0) return null;
+  return (
+    <p
+      className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning"
+      title={`Missing: ${missing.join(', ')}`}
+    >
+      <AlertCircle size={11} className="shrink-0" />
+      <span className="truncate">Missing {missing.join(', ')}</span>
+    </p>
   );
 }
 

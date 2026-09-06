@@ -228,7 +228,10 @@ export const studentsApi = baseApi.injectEndpoints({
     }),
 
     updateStudent: builder.mutation<
-      ApiObject<StudentListItem>,
+      // guardianTempPassword is only present when this edit just linked a
+      // BRAND-NEW parent account (no guardian existed before) — same shape
+      // as createStudent's response, see student.service.ts's update().
+      ApiObject<StudentListItem & { guardianTempPassword?: string }>,
       { id: string; body: Partial<CreateStudentBody> & { status?: StudentListItem['status'] } }
     >({
       query: ({ id, body }) => ({ url: `/students/${id}`, method: 'PATCH', body }),

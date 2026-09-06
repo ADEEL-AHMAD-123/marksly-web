@@ -2,7 +2,7 @@
 
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff, Search, X, UserCircle } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff, Search, X, UserCircle, Phone, MapPin, Users } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -290,12 +290,23 @@ export const IdCardItem = memo(function IdCardItem({
           </dl>
 
           {(student.phone || student.address || student.parentName) && (
-            <dl className="mt-0.5 grid grid-cols-2 gap-x-2 gap-y-0.5 border-t border-border pt-1 text-[8px] leading-tight">
-              {student.phone && <Field label="Phone" value={student.phone} />}
-              {student.address && <Field label="Address" value={[student.address, student.city].filter(Boolean).join(', ')} />}
-              {student.parentName && <Field label="Parent" value={student.parentName} />}
-              {student.parentPhone && <Field label="Parent Phone" value={student.parentPhone} />}
-            </dl>
+            <div className="mt-0.5 flex flex-col gap-0.5 border-t border-border pt-1 text-[8px] leading-tight text-foreground">
+              {student.phone && (
+                <p className="flex items-center gap-1"><Phone size={7.5} className="shrink-0 text-muted-foreground" /> {student.phone}</p>
+              )}
+              {student.address && (
+                <p className="flex items-center gap-1 truncate">
+                  <MapPin size={7.5} className="shrink-0 text-muted-foreground" />
+                  <span className="truncate">{[student.address, student.city].filter(Boolean).join(', ')}</span>
+                </p>
+              )}
+              {student.parentName && (
+                <p className="flex items-center gap-1 truncate">
+                  <Users size={7.5} className="shrink-0 text-muted-foreground" />
+                  <span className="truncate">{student.parentName}{student.parentPhone ? ` · ${student.parentPhone}` : ''}</span>
+                </p>
+              )}
+            </div>
           )}
 
           <div className="mt-auto pt-0.5">

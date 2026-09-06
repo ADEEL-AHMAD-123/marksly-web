@@ -195,9 +195,26 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
     const { parentPhone, parentName, parentEmail, ...core } = values;
     try {
       if (isEdit && student) {
-        await updateStudent({ id: student.id, body: core }).unwrap();
+        const res = await updateStudent({
+          id: student.id,
+          body: {
+            ...core,
+            // Only actually sent when this student has no guardian yet (the
+            // form hides these fields entirely once one exists) — see the
+            // guardianSectionVisible check below.
+            ...(!student.guardianName && parentPhone ? { parentPhone, parentName: parentName || undefined, parentEmail: parentEmail || undefined } : {}),
+          },
+        }).unwrap();
         toast.success('Student updated');
         onClose();
+        if (res.data.guardianTempPassword) {
+          setTempPasswordQueue([{
+            name: parentName || 'Parent',
+            phone: parentPhone || '',
+            tempPassword: res.data.guardianTempPassword,
+            emailed: true,
+          }]);
+        }
       } else {
         const res = await createStudent({
           ...core,
@@ -501,10 +518,17 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               </div>
             </div>
 
-            {!isEdit && (
+            {(!isEdit || !student?.guardianName) && (
               <>
                 <div className="border-t border-border pt-4">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent / Guardian (optional)</p>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {isEdit ? 'Add a parent / guardian' : 'Parent / Guardian (optional)'}
+                  </p>
+                  {isEdit && (
+                    <p className="-mt-1 mb-2 text-xs text-muted-foreground">
+                      This student has no guardian on file yet — add one below, or leave blank for now.
+                    </p>
+                  )}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor="parentPhone">Parent phone</Label>
@@ -542,9 +566,11 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                     Otherwise a brand-new parent account is created and emailed its own login details — make sure this phone and email genuinely belong to the parent, since they&apos;ll use them to sign in.
                   </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  A student login is created automatically with a temporary password, emailed to the student — they can log in with their phone, email, or the Student ID printed on their ID card, and will be asked to set their own password on first login.
-                </p>
+                {!isEdit && (
+                  <p className="text-xs text-muted-foreground">
+                    A student login is created automatically with a temporary password, emailed to the student — they can log in with their phone, email, or the Student ID printed on their ID card, and will be asked to set their own password on first login.
+                  </p>
+                )}
               </>
             )}
           </div>
