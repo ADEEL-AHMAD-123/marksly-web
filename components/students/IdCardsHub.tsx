@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { GraduationCap, Users } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { LoginInfoNote } from '@/components/ui/login-info-note';
 import { IdCardsView } from './IdCardsView';
 import { StaffIdCardsView } from '@/components/staff/StaffIdCardsView';
 
@@ -30,6 +31,22 @@ export function IdCardsHub() {
         title="ID Cards"
         description="Generate and print verifiable, QR-scannable ID cards for students and staff."
       />
+
+      <LoginInfoNote title="Why can't I get a card yet?">
+        <p>
+          A card only appears once every required detail is on file — address and phone for staff, and address,
+          blood group and phone for students. If something&apos;s missing, it just means nobody&apos;s filled it in yet.
+        </p>
+        <p>
+          Anyone can fill in their own details from their <strong>My ID Card</strong> page (visible to every role
+          except admin) — or you can fill it in for them here: select their name, then use{' '}
+          <strong>Edit</strong> on their record to add what&apos;s missing.
+        </p>
+        <p>
+          Use the <strong>Missing ID info</strong> filter on the Students or Staff page to find everyone who still
+          needs something, without opening each record one at a time.
+        </p>
+      </LoginInfoNote>
 
       <Tabs key={initialTab} defaultValue={initialTab}>
         <TabsList>
