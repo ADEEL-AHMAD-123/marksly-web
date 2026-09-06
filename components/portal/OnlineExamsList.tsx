@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { FileText, Clock, ShieldAlert } from 'lucide-react';
+import { FileText, Clock, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { getErrorMessage } from '@/lib/get-error-message';
 import type { MyOnlineExamItem } from '@/store/api/examAttemptApi';
 
 function formatWindow(start: string | null, end: string | null): string | null {
@@ -17,7 +18,42 @@ function formatWindow(start: string | null, end: string | null): string | null {
   return `Closes ${fmt(end!)}`;
 }
 
-export function OnlineExamsList({ data, isLoading }: { data?: MyOnlineExamItem[]; isLoading: boolean }) {
+export function OnlineExamsList({
+  data,
+  isLoading,
+  isError,
+  error,
+  onRetry,
+}: {
+  data?: MyOnlineExamItem[];
+  isLoading: boolean;
+  isError?: boolean;
+  error?: unknown;
+  onRetry?: () => void;
+}) {
+  // Previously an API failure (expired session, denied access, server
+  // outage) fell into the exact same "loading" branch as a genuinely
+  // in-flight request, since both cases share `!data` — the student was
+  // left on an indefinite skeleton with no explanation and no way to
+  // recover short of a full page reload. isError must be checked BEFORE
+  // the loading/null fallback, not after.
+  if (isError) {
+    return (
+      <Card className="p-6">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <AlertTriangle className="h-8 w-8 text-danger" />
+          <p className="text-sm font-medium text-foreground">Couldn&apos;t load your online exams</p>
+          <p className="text-sm text-muted-foreground">{getErrorMessage(error, 'Something went wrong. Please try again.')}</p>
+          {onRetry && (
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              Retry
+            </Button>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
   if (isLoading || !data) return <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>;
 
   if (data.length === 0) {

@@ -55,11 +55,11 @@ export function StudentAttendanceView() {
 }
 
 export function StudentExamsView() {
-  const { data, isLoading } = useMyOnlineExamsQuery();
+  const { data, isLoading, isError, error, refetch } = useMyOnlineExamsQuery();
   return (
     <div className="space-y-6">
       <PageHeader title="Online Exams" description="Exams scheduled for your class that you can take in the app." />
-      <OnlineExamsList data={data?.data} isLoading={isLoading} />
+      <OnlineExamsList data={data?.data} isLoading={isLoading} isError={isError} error={error} onRetry={refetch} />
     </div>
   );
 }

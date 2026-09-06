@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { AlertTriangle, CheckCircle2, Clock, Loader2, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -61,7 +62,7 @@ function normalizeResponse(type: AttemptQuestion['type'], response: string | str
 
 export function ExamTakingView({ examId }: { examId: string }) {
   const router = useRouter();
-  const { data, isLoading, isFetching, refetch } = useGetMyAttemptStateQuery(examId);
+  const { data, isLoading, isFetching, isError, error, refetch } = useGetMyAttemptStateQuery(examId);
   const [startAttempt, { isLoading: isStarting }] = useStartAttemptMutation();
   const [saveAnswer] = useSaveAnswerMutation();
   const [logIntegrityFlag] = useLogIntegrityFlagMutation();
@@ -311,6 +312,28 @@ export function ExamTakingView({ examId }: { examId: string }) {
   // Render states
   // ───────────────────────────────────────────────────────────────────
 
+  // isError must be checked BEFORE the loading/null fallback below —
+  // otherwise an expired session, a denied exam (wrong class/section — see
+  // NOT_YOUR_EXAM), an API outage, or a malformed exam id all fall into the
+  // exact same `!state` condition as a genuinely in-flight request, leaving
+  // the student on an infinite spinner with no explanation and no way to
+  // recover except reloading the page and hoping.
+  if (isError) {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-4 px-6 text-center">
+        <AlertTriangle className="h-10 w-10 text-danger" />
+        <h1 className="text-xl font-semibold text-foreground">Couldn&apos;t load this exam</h1>
+        <p className="text-sm text-muted-foreground">{getErrorMessage(error, 'Something went wrong. Please try again.')}</p>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => refetch()}>
+            Retry
+          </Button>
+          <Button onClick={() => router.push('/student/exams')}>Back to Online Exams</Button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading || !state || !exam) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -555,39 +578,48 @@ export function ExamTakingView({ examId }: { examId: string }) {
         </div>
       </main>
 
-      {showSubmitConfirm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-sm">
-            <CardContent className="space-y-4 p-6">
-              <h2 className="text-lg font-semibold text-foreground">Submit exam?</h2>
-              <p className="text-sm text-muted-foreground">
-                You&apos;ve answered {answeredCount} of {questions.length} questions.
-                {unansweredCount > 0 && (
-                  <span className="mt-1 block font-medium text-warning">
-                    You have {unansweredCount} unanswered question{unansweredCount === 1 ? '' : 's'}.
-                  </span>
-                )}{' '}
-                Submit anyway?
-              </p>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowSubmitConfirm(false)}>
-                  Keep working
-                </Button>
-                <Button
-                  variant="danger"
-                  loading={isSubmitting}
-                  onClick={async () => {
-                    setShowSubmitConfirm(false);
-                    await doSubmit(false);
-                  }}
-                >
-                  Submit
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* Uses the shared Radix dialog primitive (see
+          components/ui/temp-password-dialog.tsx for the same pattern)
+          instead of a hand-built div overlay — this gives proper
+          role="dialog"/aria-modal semantics, Escape-to-close, a focus trap
+          while open, and focus restoration to the triggering element on
+          close, none of which the previous plain overlay had. */}
+      <DialogPrimitive.Root open={showSubmitConfirm} onOpenChange={setShowSubmitConfirm}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-black/50 data-[state=open]:animate-fade-in" />
+          <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-[70] w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 focus:outline-none">
+            <Card>
+              <CardContent className="space-y-4 p-6">
+                <DialogPrimitive.Title className="text-lg font-semibold text-foreground">Submit exam?</DialogPrimitive.Title>
+                <DialogPrimitive.Description className="text-sm text-muted-foreground">
+                  You&apos;ve answered {answeredCount} of {questions.length} questions.
+                  {unansweredCount > 0 && (
+                    <span className="mt-1 block font-medium text-warning">
+                      You have {unansweredCount} unanswered question{unansweredCount === 1 ? '' : 's'}.
+                    </span>
+                  )}{' '}
+                  Submit anyway?
+                </DialogPrimitive.Description>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowSubmitConfirm(false)}>
+                    Keep working
+                  </Button>
+                  <Button
+                    variant="danger"
+                    loading={isSubmitting}
+                    onClick={async () => {
+                      setShowSubmitConfirm(false);
+                      await doSubmit(false);
+                    }}
+                  >
+                    Submit
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
     </div>
   );
 }
