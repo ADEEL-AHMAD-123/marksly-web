@@ -187,7 +187,7 @@ export const studentsApi = baseApi.injectEndpoints({
     // tempPassword is only ever present in THIS response, and only when the
     // account was auto-generated one (no `password` sent in the request) —
     // never returned from getStudent/list, never persisted anywhere else.
-    createStudent: builder.mutation<ApiObject<StudentListItem & { tempPassword?: string }>, CreateStudentBody>({
+    createStudent: builder.mutation<ApiObject<StudentListItem & { tempPassword?: string; guardianTempPassword?: string }>, CreateStudentBody>({
       query: (body) => ({ url: '/students', method: 'POST', body }),
       // Creating a student also bumps Section.currentCount on the Class doc
       // (see adjustSectionCount in student.service.ts) — invalidate 'Classes'
@@ -243,6 +243,14 @@ export const studentsApi = baseApi.injectEndpoints({
       ],
     }),
 
+    // Admin recovery path for a student/parent who never got (or lost)
+    // their welcome-credentials email — mints a brand-new temp password and
+    // resends it, no invalidation needed since it doesn't change anything
+    // shown in the students list/table itself.
+    resendStudentCredentials: builder.mutation<ApiObject<{ sentTo: string; tempPassword: string }>, { id: string; target: 'student' | 'parent' }>({
+      query: ({ id, target }) => ({ url: `/students/${id}/resend-credentials`, method: 'POST', body: { target } }),
+    }),
+
     getIdCards: builder.query<ApiObject<IdCardSheet>, { classId: string; sectionId: string }>({
       query: ({ classId, sectionId }) => `/students/cards?classId=${classId}&sectionId=${sectionId}`,
       providesTags: [{ type: 'Students', id: 'LIST' }, 'Students'],
@@ -269,6 +277,7 @@ export const {
   useUpdateStudentMutation,
   useDeleteStudentMutation,
   useBulkImportStudentsMutation,
+  useResendStudentCredentialsMutation,
   useGetIdCardsQuery,
   useGetStudentCgpaQuery,
   useGetStudentTermGpaQuery,

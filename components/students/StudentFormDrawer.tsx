@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X, AlertCircle } from 'lucide-react';
+import { X, AlertCircle, KeyRound } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import en from 'react-phone-number-input/locale/en.json';
@@ -24,6 +24,7 @@ import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
 import {
   useCreateStudentMutation,
   useUpdateStudentMutation,
+  useResendStudentCredentialsMutation,
   type StudentListItem,
 } from '@/store/api/studentsApi';
 
@@ -100,6 +101,8 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   const noActiveTerms = (activeTermsRes?.data?.length ?? 0) === 0;
   const [createStudent, { isLoading: creating }] = useCreateStudentMutation();
   const [updateStudent, { isLoading: updating }] = useUpdateStudentMutation();
+  const [resendCredentials, { isLoading: resending }] = useResendStudentCredentialsMutation();
+  const [resendingTarget, setResendingTarget] = useState<'student' | 'parent' | null>(null);
 
   const {
     register,
@@ -160,7 +163,14 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   }, [open, student, classes, reset]);
 
   const noClasses = classes.length === 0;
-  const [tempPasswordInfo, setTempPasswordInfo] = useState<{ name: string; phone: string; tempPassword: string; emailed: boolean } | null>(null);
+  type TempPasswordInfo = { name: string; phone: string; tempPassword: string; emailed: boolean };
+  // A queue, not a single value — creating a student can mint up to TWO new
+  // logins at once (the student's own + a brand-new guardian's), each with
+  // its own one-time-only password. Shown one at a time so neither gets
+  // silently skipped.
+  const [tempPasswordQueue, setTempPasswordQueue] = useState<TempPasswordInfo[]>([]);
+  const tempPasswordInfo = tempPasswordQueue[0] ?? null;
+  const dismissTempPasswordInfo = () => setTempPasswordQueue((q) => q.slice(1));
 
   const onSubmit = async (values: Form) => {
     const { parentPhone, parentName, parentEmail, ...core } = values;
@@ -180,15 +190,28 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         onClose();
         // Only present when the account got an auto-generated password
         // (i.e. no `password` was set in the form) — see createStudent's
-        // type comment in studentsApi.ts.
+        // type comment in studentsApi.ts. guardianTempPassword is separate:
+        // present only when a BRAND-NEW parent account was just created
+        // alongside this student (an existing parent just gets linked, no
+        // new password involved).
+        const queue: TempPasswordInfo[] = [];
         if (res.data.tempPassword) {
-          setTempPasswordInfo({
+          queue.push({
             name: `${core.firstName} ${core.lastName}`,
             phone: core.phone,
             tempPassword: res.data.tempPassword,
             emailed: true,
           });
         }
+        if (res.data.guardianTempPassword) {
+          queue.push({
+            name: parentName || 'Parent',
+            phone: parentPhone || '',
+            tempPassword: res.data.guardianTempPassword,
+            emailed: true,
+          });
+        }
+        if (queue.length) setTempPasswordQueue(queue);
       }
     } catch (e: any) {
       const message = getErrorMessage(e, 'Could not save student');
@@ -210,6 +233,25 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
       } else if (code === 'DUPLICATE_EMAIL') {
         setError(/guardian/i.test(message) ? 'parentEmail' : 'email', { type: 'server', message });
       }
+    }
+  };
+
+  const onResendCredentials = async (target: 'student' | 'parent') => {
+    if (!student) return;
+    setResendingTarget(target);
+    try {
+      const res = await resendCredentials({ id: student.id, target }).unwrap();
+      setTempPasswordQueue((q) => [...q, {
+        name: target === 'student' ? `${student.firstName} ${student.lastName}` : (student.guardianName || 'Parent'),
+        phone: target === 'student' ? student.phone ?? '' : student.guardianPhone ?? '',
+        tempPassword: res.data.tempPassword,
+        emailed: true,
+      }]);
+      toast.success(`New login details sent to ${res.data.sentTo}`);
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Could not resend credentials'));
+    } finally {
+      setResendingTarget(null);
     }
   };
 
@@ -235,6 +277,37 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                     photoUrl={student.profilePhoto}
                     initials={`${student.firstName[0] ?? ''}${student.lastName[0] ?? ''}`.toUpperCase()}
                   />
+                </div>
+              </div>
+            )}
+            {isEdit && student && (
+              <div className="border-b border-border pb-4">
+                <Label>Login credentials</Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Resend a fresh temporary password if the student or parent never got (or lost) their original welcome email. This immediately replaces their current password.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    loading={resending && resendingTarget === 'student'}
+                    disabled={resending}
+                    onClick={() => onResendCredentials('student')}
+                  >
+                    <KeyRound size={14} /> Resend student login
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    loading={resending && resendingTarget === 'parent'}
+                    disabled={resending || !student.guardianPhone}
+                    onClick={() => onResendCredentials('parent')}
+                    title={!student.guardianPhone ? 'No parent/guardian account on file' : undefined}
+                  >
+                    <KeyRound size={14} /> Resend parent login
+                  </Button>
                 </div>
               </div>
             )}
@@ -409,8 +482,8 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                     </div>
                   </div>
                   <p className="mt-1.5 text-xs text-muted-foreground">
-                    If a parent with this phone exists they&apos;ll be linked (email not needed); otherwise a new parent
-                    account is created and needs an email to reset their own password later.
+                    If a parent with this phone already has an account here, this student is just added to it — one login, both kids show up in it.
+                    Otherwise a brand-new parent account is created and emailed its own login details separately from the student&apos;s.
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -435,7 +508,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
     {tempPasswordInfo && (
       <TempPasswordDialog
         open={!!tempPasswordInfo}
-        onClose={() => setTempPasswordInfo(null)}
+        onClose={dismissTempPasswordInfo}
         {...tempPasswordInfo}
       />
     )}

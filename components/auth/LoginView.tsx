@@ -8,7 +8,7 @@ import { z } from 'zod';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import en from 'react-phone-number-input/locale/en.json';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Lock, AlertCircle, MailWarning, MailQuestion, Building2, ChevronRight, Phone as PhoneIcon, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Lock, AlertCircle, MailWarning, MailQuestion, Building2, ChevronRight, Phone as PhoneIcon, Mail, ArrowRight, ShieldCheck, CreditCard } from 'lucide-react';
 import { useLoginMutation, useResendVerificationMutation, useResendInviteSelfMutation } from '@/store/api/authApi';
 import { useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/slices/authSlice';
@@ -46,6 +46,24 @@ interface AmbiguousAccountOption {
 // offered as an explicit toggle (not an auto-detecting single field) so
 // the input control itself (PhoneInput vs. a plain email field) always
 // matches what the user is trying to type, per the user's own preference.
+// Student ID login — mainly for younger students who don't reliably know
+// their own phone number/email but do have their printed/QR ID card (see
+// auth.service.ts's login(), which detects this by the "MKS-"/"MKF-"/"MK-"
+// prefix and resolves it to the linked account without needing an
+// institutionId, since systemId is globally unique unlike phone/email).
+// Loose format check here — the backend is the real validator, this just
+// catches an empty/obviously-wrong value before a round trip.
+const studentIdSchema = z
+  .object({
+    mode: z.literal('studentId'),
+    studentId: z
+      .string()
+      .trim()
+      .min(1, 'Enter the Student ID from your ID card')
+      .regex(/^(MKS|MKF|MK)-/i, 'Should look like MKS-XXXXXXXX — check your ID card'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+  });
+
 const loginSchema = z.discriminatedUnion('mode', [
   z.object({
     mode: z.literal('phone'),
@@ -60,6 +78,7 @@ const loginSchema = z.discriminatedUnion('mode', [
     email: z.string().min(1, 'Enter your email address').email('Enter a valid email address'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
   }),
+  studentIdSchema,
 ]);
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -81,7 +100,7 @@ export function LoginView() {
   // Email is the default — it's the mandatory, always-present identifier
   // for every account, whereas phone formatting/country varies more and is
   // the secondary option here.
-  const [loginMode, setLoginMode] = useState<'phone' | 'email'>('email');
+  const [loginMode, setLoginMode] = useState<'phone' | 'email' | 'studentId'>('email');
 
   const {
     register,
@@ -96,7 +115,7 @@ export function LoginView() {
     defaultValues: { mode: 'email', email: '', password: '' } as LoginForm,
   });
 
-  const onToggleMode = (next: 'phone' | 'email') => {
+  const onToggleMode = (next: 'phone' | 'email' | 'studentId') => {
     if (next === loginMode) return;
     setFormError(null);
     setNeedsVerification(false);
@@ -106,15 +125,18 @@ export function LoginView() {
     // leaving a stale `phone` value sitting around under an `email` mode
     // (or vice versa) — the resolver would otherwise validate a field
     // that's no longer even rendered.
+    const password = getValues('password') ?? '';
     reset(
       next === 'phone'
-        ? ({ mode: 'phone', phone: '', password: getValues('password') ?? '' } as LoginForm)
-        : ({ mode: 'email', email: '', password: getValues('password') ?? '' } as LoginForm)
+        ? ({ mode: 'phone', phone: '', password } as LoginForm)
+        : next === 'email'
+          ? ({ mode: 'email', email: '', password } as LoginForm)
+          : ({ mode: 'studentId', studentId: '', password } as LoginForm)
     );
   };
 
   const completeLogin = async (data: LoginForm & { institutionId?: string }) => {
-    const identifier = data.mode === 'phone' ? data.phone : data.email;
+    const identifier = data.mode === 'phone' ? data.phone : data.mode === 'email' ? data.email : data.studentId;
     const result = await login({ identifier, password: data.password, institutionId: data.institutionId }).unwrap();
     dispatch(setCredentials({ user: result.data.user, accessToken: result.data.accessToken }));
     toast.success(`Welcome back, ${result.data.user.firstName}!`);
@@ -315,7 +337,7 @@ export function LoginView() {
             auto-detecting field, so the input control shown (PhoneInput's
             country picker vs. a plain email field) always matches what the
             person is about to type. */}
-        <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+        <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
           <button
             type="button"
             onClick={() => onToggleMode('phone')}
@@ -336,9 +358,45 @@ export function LoginView() {
           >
             <Mail size={14} /> Email
           </button>
+          <button
+            type="button"
+            onClick={() => onToggleMode('studentId')}
+            className={cn(
+              'flex items-center justify-center gap-1.5 rounded-md py-1.5 text-sm font-medium transition-colors',
+              loginMode === 'studentId' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <CreditCard size={14} /> Student ID
+          </button>
         </div>
 
-        {loginMode === 'phone' ? (
+        {loginMode === 'studentId' ? (
+          <div>
+            <Label htmlFor="studentId">Student ID</Label>
+            <div className="relative">
+              <CreditCard size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                id="studentId"
+                {...register('studentId' as any)}
+                type="text"
+                dir="ltr"
+                autoComplete="off"
+                autoFocus
+                placeholder="MKS-XXXXXXXX"
+                aria-invalid={!!(errors as any).studentId}
+                className={cn(
+                  'h-11 w-full rounded-lg border bg-card pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  (errors as any).studentId ? 'border-danger' : 'border-input'
+                )}
+              />
+            </div>
+            {(errors as any).studentId ? (
+              <p className="mt-1.5 text-xs text-danger">{(errors as any).studentId.message}</p>
+            ) : (
+              <p className="mt-1.5 text-xs text-muted-foreground">Found on the printed/QR ID card — useful if you don&apos;t remember your phone or email.</p>
+            )}
+          </div>
+        ) : loginMode === 'phone' ? (
           // Same country-aware PhoneInput used at registration, so what's
           // typed here normalizes to E.164 the same way the stored number
           // does (see comment on loginSchema above).
