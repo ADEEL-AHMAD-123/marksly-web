@@ -41,8 +41,14 @@ export function ResendEmailLogDialog({ open, onClose, entry, loading, onConfirm,
   const changed = trimmed.toLowerCase() !== entry.to.toLowerCase();
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
 
+  const canSubmit = isValid && !loading;
+  const submit = () => {
+    if (!canSubmit) return;
+    onConfirm(trimmed, !!domainWarning);
+  };
+
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={(o) => !o && onClose()}>
+    <DialogPrimitive.Root open={open} onOpenChange={(o) => !o && !loading && onClose()}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm data-[state=open]:animate-fade-in" />
         <DialogPrimitive.Content
@@ -60,47 +66,50 @@ export function ResendEmailLogDialog({ open, onClose, entry, loading, onConfirm,
               ? `This didn't reach ${entry.to} — check the address is correct before sending again.`
               : `Sending this again to the address below.`}
           </DialogPrimitive.Description>
+          <p className="mt-1 truncate text-xs text-muted-foreground" title={entry.subject}>{entry.subject}</p>
 
-          <div className="mt-4 space-y-1.5">
-            <Label htmlFor="resend-email">Recipient email</Label>
-            <Input
-              id="resend-email"
-              dir="ltr"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
-              placeholder="name@example.com"
-            />
-            {!isValid && trimmed.length > 0 && (
-              <p className="text-xs text-danger">Enter a valid email address.</p>
-            )}
-            {changed && isValid && (
-              <p className="text-xs text-muted-foreground">
-                This will update the account&apos;s email on file to this address before resending.
-              </p>
-            )}
-          </div>
-
-          {domainWarning && (
-            <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-warning-foreground">
-              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              <span>{domainWarning} Send anyway if you&apos;re sure this address is correct.</span>
+          <form
+            className="contents"
+            onSubmit={(e) => { e.preventDefault(); submit(); }}
+          >
+            <div className="mt-4 space-y-1.5">
+              <Label htmlFor="resend-email">Recipient email</Label>
+              <Input
+                id="resend-email"
+                dir="ltr"
+                autoFocus
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onFocus={(e) => e.target.select()}
+                disabled={loading}
+                placeholder="name@example.com"
+              />
+              {!isValid && trimmed.length > 0 && (
+                <p className="text-xs text-danger">Enter a valid email address.</p>
+              )}
+              {changed && isValid && (
+                <p className="text-xs text-muted-foreground">
+                  This will update the account&apos;s email on file to this address before resending.
+                </p>
+              )}
             </div>
-          )}
 
-          <div className="mt-5 flex items-center justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              disabled={!isValid || loading}
-              loading={loading}
-              onClick={() => onConfirm(trimmed, !!domainWarning)}
-            >
-              <Send size={13} /> {domainWarning ? 'Send anyway' : 'Resend'}
-            </Button>
-          </div>
+            {domainWarning && (
+              <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-warning-foreground">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span>{domainWarning} Send anyway if you&apos;re sure this address is correct.</span>
+              </div>
+            )}
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <Button type="button" variant="secondary" size="sm" onClick={onClose} disabled={loading}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={!canSubmit} loading={loading}>
+                <Send size={13} /> {domainWarning ? 'Send anyway' : 'Resend'}
+              </Button>
+            </div>
+          </form>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

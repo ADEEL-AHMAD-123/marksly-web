@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Mail, Send, CheckCircle2, XCircle, AlertTriangle, RotateCw,
-  ChevronLeft, ChevronRight, Info, UserX,
+  ChevronLeft, ChevronRight, Info, UserX, GraduationCap, Users, Briefcase,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
@@ -62,6 +62,16 @@ const ROLE_LABEL: Record<string, string> = {
   accountant: 'Accountant',
 };
 
+const ROLE_ICON: Record<string, typeof GraduationCap> = {
+  student: GraduationCap,
+  parent: Users,
+  teacher: Briefcase,
+  staff: Briefcase,
+  accountant: Briefcase,
+};
+
+const MISSING_PAGE_SIZE = 5;
+
 export function EmailLogView() {
   const [category, setCategory] = useState<EmailCategory | 'all'>('all');
   const [status, setStatus] = useState<EmailStatus | 'all'>('all');
@@ -71,12 +81,39 @@ export function EmailLogView() {
 
   const [resendTarget, setResendTarget] = useState<EmailLogEntry | null>(null);
   const [domainWarning, setDomainWarning] = useState<string | null>(null);
+  const [missingPage, setMissingPage] = useState(1);
+  const missingSectionRef = useRef<HTMLDivElement>(null);
+  const tableSectionRef = useRef<HTMLDivElement>(null);
 
   const { data: statsRes } = useGetEmailLogStatsQuery();
   const stats = statsRes?.data;
 
   const { data: missingRes, isLoading: missingLoading } = useGetEmailLogMissingEmailQuery();
   const missingEntries = missingRes?.data ?? [];
+  const missingTotalPages = Math.max(1, Math.ceil(missingEntries.length / MISSING_PAGE_SIZE));
+  // Clamp rather than read missingPage directly — once an admin fixes an
+  // account's email, this list shrinks on refetch and a page number that
+  // was valid a moment ago can now be past the end.
+  const currentMissingPage = Math.min(missingPage, missingTotalPages);
+  const missingPageEntries = missingEntries.slice(
+    (currentMissingPage - 1) * MISSING_PAGE_SIZE,
+    currentMissingPage * MISSING_PAGE_SIZE
+  );
+
+  const jumpToMissingEmail = () => {
+    missingSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // "Failed / bounced" spans two distinct statuses, so rather than picking
+  // one to filter by (and silently hiding the other), this just clears any
+  // existing filter and scrolls straight to the list — every failed/bounced
+  // row is visually flagged there already via its red status badge.
+  const jumpToProblems = () => {
+    setCategory('all');
+    setStatus('all');
+    setPage(1);
+    requestAnimationFrame(() => tableSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
 
   const { data, isLoading, isFetching, isError, refetch } = useGetEmailLogQuery({
     page,
@@ -139,54 +176,106 @@ export function EmailLogView() {
         </div>
       </Card>
 
-      {/* Stat cards */}
+      {/* Stat cards — Failed/bounced and No email on file are clickable
+          shortcuts to the exact view an admin would want next, instead of
+          being purely decorative numbers. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Total sent" value={stats?.total} icon={Mail} />
         <StatCard label="Delivered" value={stats?.delivered} icon={CheckCircle2} tone="success" />
-        <StatCard label="Failed / bounced" value={stats ? stats.failed + stats.bounced : undefined} icon={XCircle} tone="danger" />
-        <StatCard label="No email on file" value={stats?.missingEmail} icon={UserX} tone="danger" />
+        <StatCard
+          label="Failed / bounced"
+          value={stats ? stats.failed + stats.bounced : undefined}
+          icon={XCircle}
+          tone="danger"
+          onClick={stats && stats.failed + stats.bounced > 0 ? jumpToProblems : undefined}
+        />
+        <StatCard
+          label="No email on file"
+          value={stats?.missingEmail}
+          icon={UserX}
+          tone="danger"
+          onClick={stats && stats.missingEmail > 0 ? jumpToMissingEmail : undefined}
+        />
       </div>
 
       {/* Missing-email section — these accounts never even got an attempt,
           so they can't show up in the log below at all. */}
       {(missingLoading || missingEntries.length > 0) && (
-        <Card className="p-4">
+        <Card ref={missingSectionRef} className="scroll-mt-4 p-4">
           <div className="flex items-center gap-2">
             <UserX size={16} className="text-danger" />
             <h3 className="font-semibold text-foreground">No email on file</h3>
+            {missingEntries.length > 0 && <Badge variant="danger">{missingEntries.length}</Badge>}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            These people were added without an email address, so they were never sent login details at all. Add an email to their record, then use the resend option to get them logged in.
+            These people were added without an email address, so they were never sent login details at all. Add an email to their record on the Students, Teachers, or Staff page — a &quot;resend login&quot; option will appear there once you do.
           </p>
           {missingLoading ? (
             <div className="mt-3 space-y-2">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
             </div>
           ) : (
-            <ul className="mt-3 divide-y divide-border">
-              {missingEntries.map((m) => (
-                <li key={m.userId} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
-                  <div>
-                    <span className="font-medium text-foreground">{m.name}</span>{' '}
-                    <span className="text-muted-foreground">
-                      — {ROLE_LABEL[m.role] ?? m.role}
-                      {m.role === 'parent' && m.studentNames && m.studentNames.length > 0
-                        ? ` of ${m.studentNames.join(', ')}`
-                        : ''}
-                    </span>
-                    {m.phone && <span className="ml-2 text-xs text-muted-foreground" dir="ltr">{m.phone}</span>}
+            <>
+              <ul className="mt-3 divide-y divide-border">
+                {missingPageEntries.map((m) => {
+                  const RoleIcon = ROLE_ICON[m.role] ?? Users;
+                  return (
+                    <li key={m.userId} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
+                      <div className="flex items-start gap-2.5">
+                        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-danger-soft text-danger">
+                          <RoleIcon size={13} />
+                        </span>
+                        <div>
+                          <p className="font-medium text-foreground">{m.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {ROLE_LABEL[m.role] ?? m.role}
+                            {m.role === 'parent' && m.studentNames && m.studentNames.length > 0
+                              ? ` of ${m.studentNames.join(', ')}`
+                              : ''}
+                            {m.phone && <span dir="ltr"> · {m.phone}</span>}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="danger">No email</Badge>
+                    </li>
+                  );
+                })}
+              </ul>
+              {missingTotalPages > 1 && (
+                <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+                  <p className="text-xs text-muted-foreground">
+                    Page <span className="font-medium text-foreground">{currentMissingPage}</span> of {missingTotalPages}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      disabled={currentMissingPage <= 1}
+                      onClick={() => setMissingPage((p) => Math.max(1, p - 1))}
+                      aria-label="Previous page"
+                    >
+                      <ChevronLeft size={16} />
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      disabled={currentMissingPage >= missingTotalPages}
+                      onClick={() => setMissingPage((p) => Math.min(missingTotalPages, p + 1))}
+                      aria-label="Next page"
+                    >
+                      <ChevronRight size={16} />
+                    </Button>
                   </div>
-                  <Badge variant="danger">No email</Badge>
-                </li>
-              ))}
-            </ul>
+                </div>
+              )}
+            </>
           )}
         </Card>
       )}
 
       {/* Category tabs */}
-      <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
+      <div ref={tableSectionRef} className="-mx-1 flex scroll-mt-4 gap-1 overflow-x-auto px-1 pb-1">
         {CATEGORY_TABS.map((t) => (
           <button
             key={t.value}
@@ -366,16 +455,32 @@ export function EmailLogView() {
   );
 }
 
-function StatCard({ label, value, icon: Icon, tone }: { label: string; value?: number; icon: typeof Mail; tone?: 'success' | 'danger' }) {
-  return (
-    <Card className="p-4">
+function StatCard({
+  label, value, icon: Icon, tone, onClick,
+}: { label: string; value?: number; icon: typeof Mail; tone?: 'success' | 'danger'; onClick?: () => void }) {
+  const content = (
+    <>
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <Icon size={14} className={tone === 'success' ? 'text-success' : tone === 'danger' ? 'text-danger' : 'text-muted-foreground'} />
         {label}
       </div>
       <p className="mt-1.5 text-2xl font-bold text-foreground">{value ?? <Skeleton className="h-7 w-10" />}</p>
-    </Card>
+    </>
   );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <Card className="p-4">{content}</Card>;
 }
 
 function LoadingState() {
