@@ -3,10 +3,6 @@
 import { Check } from 'lucide-react';
 import { useGetPublicPlansQuery } from '@/store/api/plansApi';
 
-const FEATURE_LABELS: Record<string, string> = {
-  whatsapp: 'SMS & WhatsApp messaging',
-};
-
 function formatPKR(amount: number): string {
   return `Rs ${amount.toLocaleString('en-PK', { maximumFractionDigits: 0 })}`;
 }
@@ -16,7 +12,11 @@ function formatPKR(amount: number): string {
  *  Despite the filename, this shows the 'standard' plan (named "Growth" as
  *  of the 2026 pricing revision — see plan.model.ts's DEFAULT_PLANS) since
  *  that's the mid-priced tier PricingPlans.tsx also highlights as "Most
- *  popular". Not renamed to avoid an unnecessary file-rename diff. */
+ *  popular". Not renamed to avoid an unnecessary file-rename diff.
+ *
+ *  Only shows student/storage capacity here — the full real feature list
+ *  (attendance, exams, fees, ID cards, etc., identical across every paid
+ *  plan) lives on /pricing itself; this teaser stays short on purpose. */
 export function GrowthPlanCard() {
   const { data, isLoading } = useGetPublicPlansQuery();
   const plans = data?.data ?? [];
@@ -29,7 +29,7 @@ export function GrowthPlanCard() {
   const bullets = [
     `Up to ${plan.studentsLimit.toLocaleString('en-PK')} students`,
     `${plan.storageGB} GB storage`,
-    ...plan.features.map((f) => FEATURE_LABELS[f]).filter((label): label is string => Boolean(label)),
+    'Attendance, exams, fees, ID cards & more',
   ];
 
   return (

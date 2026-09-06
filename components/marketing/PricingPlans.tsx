@@ -1,31 +1,40 @@
 'use client';
 
 import Link from 'next/link';
-import { Check, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Check, ArrowRight, AlertTriangle, MessageCircle } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { useGetPublicPlansQuery, type Plan } from '@/store/api/plansApi';
 
-// Maps the internal plan feature-flag keys (plan.model.ts) to a real,
-// honest label. Deliberately doesn't include every flag defined in the
-// backend's DEFAULT_PLANS ('aiReports', 'multibranch') — those aren't
-// wired to any actual functionality anywhere in marksly-api yet, so
-// advertising them here would be a claim the product can't back up.
-const FEATURE_LABELS: Record<string, string> = {
-  whatsapp: 'SMS & WhatsApp messaging',
-};
+// The real, shipped feature set every paid plan includes — shown once,
+// prominently, instead of as a per-tier checklist. None of the
+// plan.features flags ('whatsapp'/'aiReports'/'multibranch') are actually
+// gated by plan anywhere in the API today (requireFeature() is defined but
+// never applied to a route — see tenant.middleware.ts), so listing them as
+// a per-tier checkmark would be an inaccurate claim about what's locked
+// where. Tiers are honestly differentiated by capacity and support level
+// instead. This list doubles as on-page SEO content — real feature names a
+// prospective customer (or search engine) would actually search for.
+const CORE_FEATURES = [
+  'Attendance tracking with automatic guardian notifications',
+  'Manual & timed online exams, auto-graded with GPA / grading schemes',
+  'Fee management — invoices, online card/JazzCash/Easypaisa payments, printable slips',
+  'Digital ID cards with QR-code verification',
+  'Timetable builder',
+  'Notices & announcements by role',
+  'Dedicated portals for parents, students, teachers & accountants',
+  'In-app notifications & message inbox',
+  'Admin dashboard with attendance, fee & grade reports',
+];
 
 function formatPKR(amount: number): string {
   return `Rs ${amount.toLocaleString('en-PK', { maximumFractionDigits: 0 })}`;
 }
 
-function planFeatures(plan: Plan, previousName?: string): string[] {
-  const base = [
-    `Up to ${plan.studentsLimit.toLocaleString('en-PK')} students`,
-    `${plan.storageGB} GB storage`,
-  ];
-  if (previousName) base.push(`Everything in ${previousName}`);
-  const flagLabels = plan.features.map((f) => FEATURE_LABELS[f]).filter((label): label is string => Boolean(label));
-  return [...base, ...flagLabels];
+function planTagline(plan: Plan): string {
+  if (plan.price === 0) return 'Try Marksly with no card and no time limit.';
+  if (plan.studentsLimit <= 300) return 'Everything you need to run your institution digitally.';
+  if (plan.studentsLimit <= 1000) return 'Built for a growing institution, with priority support.';
+  return 'Full scale, with a dedicated contact for onboarding and support.';
 }
 
 export function PricingPlans() {
@@ -54,16 +63,30 @@ export function PricingPlans() {
     );
   }
 
-  // "Most popular" — the 'standard' tier (2026 pricing: the mid-priced
-  // plan that adds SMS/WhatsApp messaging on top of the bare entry tier)
-  // if the catalog has one, otherwise the second-cheapest plan (a
-  // reasonable default highlight for any catalog shape).
+  // "Most popular" — the 'standard' tier (the mid-priced plan built for a
+  // growing institution) if the catalog has one, otherwise the
+  // second-cheapest plan (a reasonable default highlight for any catalog shape).
   const highlightKey = plans.some((p) => p.key === 'standard') ? 'standard' : plans[1]?.key;
 
   return (
     <div>
+      {/* The real feature list, front and center — every paid plan includes
+          all of this; what differs below is student capacity, storage,
+          and support level. Also doubles as genuine, keyword-rich on-page
+          content rather than vague marketing copy. */}
+      <div className="mx-auto mb-8 max-w-3xl rounded-2xl border border-border bg-card/60 p-5 sm:mb-10 sm:p-7">
+        <h3 className="text-center text-sm font-semibold sm:text-base">Every paid plan includes</h3>
+        <ul className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2">
+          {CORE_FEATURES.map((feat) => (
+            <li key={feat} className="flex items-start gap-2 text-[13px] sm:text-sm">
+              <Check aria-hidden size={15} className="mt-0.5 shrink-0 text-success" /> <span>{feat}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4">
-        {plans.map((plan, i) => {
+        {plans.map((plan) => {
           const highlight = plan.key === highlightKey;
           const isFree = plan.price === 0;
           return (
@@ -85,12 +108,20 @@ export function PricingPlans() {
                 </div>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">{isFree ? 'No card required' : 'per month'}</p>
+              <p className="mt-3 text-[13px] text-muted-foreground sm:text-sm">{planTagline(plan)}</p>
               <ul className="mt-4 flex-1 space-y-2 sm:mt-5 sm:space-y-2.5">
-                {planFeatures(plan, i > 0 ? plans[i - 1].name : undefined).map((feat) => (
-                  <li key={feat} className="flex items-start gap-2 text-[13px] sm:text-sm">
-                    <Check aria-hidden size={15} className="mt-0.5 shrink-0 text-success" /> <span>{feat}</span>
-                  </li>
-                ))}
+                <li className="flex items-start gap-2 text-[13px] sm:text-sm">
+                  <Check aria-hidden size={15} className="mt-0.5 shrink-0 text-success" />
+                  <span>Up to {plan.studentsLimit.toLocaleString('en-PK')} students</span>
+                </li>
+                <li className="flex items-start gap-2 text-[13px] sm:text-sm">
+                  <Check aria-hidden size={15} className="mt-0.5 shrink-0 text-success" />
+                  <span>{plan.storageGB} GB file storage</span>
+                </li>
+                <li className="flex items-start gap-2 text-[13px] sm:text-sm">
+                  <Check aria-hidden size={15} className="mt-0.5 shrink-0 text-success" />
+                  <span>All core features above</span>
+                </li>
               </ul>
               <Link
                 href="/register"
@@ -101,6 +132,16 @@ export function PricingPlans() {
             </div>
           );
         })}
+      </div>
+
+      {/* WhatsApp/SMS — mentioned once, honestly, as a pay-as-you-go add-on
+          available on every paid plan (not a per-tier checkmark, since it
+          isn't actually locked to any specific tier in the product). */}
+      <div className="mt-4 flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/40 p-4 text-center sm:mt-6 sm:flex-row sm:justify-center sm:gap-3 sm:p-5">
+        <MessageCircle aria-hidden size={18} className="shrink-0 text-accent" />
+        <p className="text-[13px] text-muted-foreground sm:text-sm">
+          <span className="font-medium text-foreground">SMS & WhatsApp messaging</span> is available as a pay-as-you-go add-on on any paid plan — buy credits only if and when you need them.
+        </p>
       </div>
 
       {/* Custom / Enterprise-scale plan — a distinct CTA rather than a 5th
