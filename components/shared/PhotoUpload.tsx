@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useUploadUserPhotoMutation, useRemoveUserPhotoMutation } from '@/store/api/usersApi';
+import { PhotoCropModal } from '@/components/shared/PhotoCropModal';
 
 // Same limits/allow-list as InstitutionProfileTab.tsx's logo upload — the
 // backend applies its own (larger, server-side) limits too, this is just
@@ -34,6 +35,7 @@ export function PhotoUpload({ userId, photoUrl, initials, size = 'lg', className
   const [removePhoto, { isLoading: removing }] = useRemoveUserPhotoMutation();
   const [localPhoto, setLocalPhoto] = useState<string | null | undefined>(undefined);
   const [dragOver, setDragOver] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // localPhoto (set right after a successful upload/remove) takes priority
@@ -45,7 +47,7 @@ export function PhotoUpload({ userId, photoUrl, initials, size = 'lg', className
   const busy = uploading || removing;
   const dims = size === 'lg' ? 'h-24 w-24' : 'h-16 w-16';
 
-  const handleFile = async (file: File | undefined) => {
+  const handleFile = (file: File | undefined) => {
     if (!file) return;
     if (!isAllowedImageFile(file)) {
       toast.error('Photo must be a PNG, JPEG, WebP or HEIC image');
@@ -55,6 +57,18 @@ export function PhotoUpload({ userId, photoUrl, initials, size = 'lg', className
       toast.error('Photo must be under 2MB');
       return;
     }
+    // HEIC/HEIF can't be drawn onto a <canvas> in most browsers — skip
+    // straight to upload for those (the backend already normalizes the
+    // format) and only offer the crop editor for formats the crop canvas
+    // can actually render.
+    if (file.type === 'image/heic' || file.type === 'image/heif' || HEIC_EXTENSION_RE.test(file.name)) {
+      void doUpload(file);
+      return;
+    }
+    setPendingFile(file);
+  };
+
+  const doUpload = async (file: File) => {
     try {
       const res = await uploadPhoto({ userId, file }).unwrap();
       setLocalPhoto(res.data.profilePhoto);
@@ -76,6 +90,12 @@ export function PhotoUpload({ userId, photoUrl, initials, size = 'lg', className
 
   return (
     <div className={cn('flex items-center gap-4', className)}>
+      <PhotoCropModal
+        open={!!pendingFile}
+        file={pendingFile}
+        onClose={() => setPendingFile(null)}
+        onCropped={(cropped) => { setPendingFile(null); void doUpload(cropped); }}
+      />
       <div
         className={cn(
           'relative shrink-0 overflow-hidden rounded-full border border-border bg-muted transition-colors',
@@ -147,6 +167,9 @@ export function PhotoUpload({ userId, photoUrl, initials, size = 'lg', className
             <Trash2 size={14} /> Remove
           </Button>
         )}
+        <p className="max-w-[220px] text-[11px] leading-snug text-muted-foreground">
+          A clear, front-facing photo with a plain background works best — like a passport photo.
+        </p>
       </div>
     </div>
   );

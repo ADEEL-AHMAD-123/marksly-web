@@ -35,9 +35,10 @@ function MyPhotoUploader({ hasPhoto }: { hasPhoto: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [upload, { isLoading: uploading }] = useUploadMyPhotoMutation();
   const [remove, { isLoading: removing }] = useRemoveMyPhotoMutation();
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const busy = uploading || removing;
 
-  const handleFile = async (file: File | undefined) => {
+  const handleFile = (file: File | undefined) => {
     if (!file) return;
     if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
       toast.error('Please choose a JPG, PNG, or WEBP image');
@@ -47,8 +48,17 @@ function MyPhotoUploader({ hasPhoto }: { hasPhoto: boolean }) {
       toast.error('Photo must be under 2MB');
       return;
     }
+    // Opens the crop/zoom editor instead of uploading straight away — the
+    // ID card shows this photo cropped to a circle, so letting the person
+    // frame their own face first (rather than hoping the original photo
+    // happens to crop well) is the whole point of this modal.
+    setPendingFile(file);
+  };
+
+  const handleCropped = async (cropped: File) => {
+    setPendingFile(null);
     try {
-      await upload({ file }).unwrap();
+      await upload({ file: cropped }).unwrap();
       toast.success(hasPhoto ? 'Photo updated' : 'Photo added — your card now shows it');
     } catch (e) {
       toast.error(getErrorMessage(e, 'Could not upload photo'));
@@ -58,53 +68,59 @@ function MyPhotoUploader({ hasPhoto }: { hasPhoto: boolean }) {
   };
 
   return (
-    <Card className="no-print flex max-w-sm items-center justify-between gap-3 p-4">
-      <div className="flex items-center gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
-          <Camera size={16} />
-        </span>
-        <div>
-          <p className="text-sm font-semibold text-foreground">{hasPhoto ? 'Profile photo' : 'No photo on file yet'}</p>
-          <p className="text-xs text-muted-foreground">
-            {hasPhoto ? 'Used on your ID card.' : 'Your card still works with your initials — add a photo any time.'}
-          </p>
+    <>
+      <PhotoCropModal open={!!pendingFile} file={pendingFile} onClose={() => setPendingFile(null)} onCropped={handleCropped} />
+      <Card className="no-print flex max-w-sm items-center justify-between gap-3 p-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+            <Camera size={16} />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-foreground">{hasPhoto ? 'Profile photo' : 'No photo on file yet'}</p>
+            <p className="text-xs text-muted-foreground">
+              {hasPhoto
+                ? 'Used on your ID card.'
+                : 'Your card still works with your initials — add a photo any time. A clear, front-facing shot works best.'}
+            </p>
+          </div>
         </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={(e) => handleFile(e.target.files?.[0])}
-        />
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => inputRef.current?.click()}>
-          {uploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
-          {hasPhoto ? 'Change' : 'Add photo'}
-        </Button>
-        {hasPhoto && (
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={busy}
-            onClick={async () => {
-              try {
-                await remove().unwrap();
-                toast.success('Photo removed');
-              } catch (e) {
-                toast.error(getErrorMessage(e, 'Could not remove photo'));
-              }
-            }}
-          >
-            {removing ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
+        <div className="flex shrink-0 items-center gap-2">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0])}
+          />
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => inputRef.current?.click()}>
+            {uploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+            {hasPhoto ? 'Change' : 'Add photo'}
           </Button>
-        )}
-      </div>
-    </Card>
+          {hasPhoto && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={async () => {
+                try {
+                  await remove().unwrap();
+                  toast.success('Photo removed');
+                } catch (e) {
+                  toast.error(getErrorMessage(e, 'Could not remove photo'));
+                }
+              }}
+            >
+              {removing ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
+            </Button>
+          )}
+        </div>
+      </Card>
+    </>
   );
 }
 import { ID_CARD_PRINT_CSS } from '@/components/shared/idCardPrint';
 import { IdCardBack } from '@/components/shared/IdCardBack';
+import { PhotoCropModal } from '@/components/shared/PhotoCropModal';
 import { StaffIdCardItem, staffBackRows } from '@/components/staff/StaffIdCardsView';
 import { IdCardItem, studentBackRows } from '@/components/students/IdCardsView';
 import { cn } from '@/lib/utils';
