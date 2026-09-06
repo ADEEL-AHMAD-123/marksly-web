@@ -1,8 +1,8 @@
 'use client';
 
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff, Search, X, UserCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -19,7 +19,6 @@ import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
 import { CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS, idCardNameSizeClass } from '@/components/shared/idCardPrint';
 import { cn } from '@/lib/utils';
 import { IdCardCredit } from '@/components/shared/IdCardCredit';
-import { IdCardReadinessBanner } from '@/components/shared/IdCardReadinessBanner';
 
 export function IdCardsView() {
   const terminology = useTerminology();
@@ -27,6 +26,7 @@ export function IdCardsView() {
   const classes = classesRes?.data ?? [];
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const selectedClass = useMemo(() => classes.find((c) => c.id === classId), [classes, classId]);
   const sections = selectedClass?.sections ?? [];
@@ -34,71 +34,179 @@ export function IdCardsView() {
   // short-session course) once one is actually picked.
   const sectionLabel = getTerminologyForTermType(selectedClass?.termType)?.section ?? 'Section';
   const ready = !!classId && !!sectionId;
+  // We still fetch the whole section's roster, but only to power the name
+  // selector below — nothing renders as a card until one specific student is
+  // picked. Fetching names for a dropdown is cheap even for a large section;
+  // it's rendering a QR card per student that got unmanageable, so that part
+  // stays gated behind an explicit selection.
   const { data, isFetching } = useGetIdCardsQuery({ classId, sectionId }, { skip: !ready });
   const sheet = data?.data;
-  const students = sheet?.students ?? [];
+  const roster = sheet?.students ?? [];
+  const selected = useMemo(() => roster.find((s) => s.id === selectedId) ?? null, [roster, selectedId]);
 
   return (
     <div className="space-y-6">
       <style dangerouslySetInnerHTML={{ __html: ID_CARD_PRINT_CSS }} />
 
-      {students.length > 0 && (
-        <div className="no-print flex justify-end">
-          <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print {students.length} cards</Button>
-        </div>
-      )}
-
-      <Card className="p-4 no-print">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <Card className="space-y-3 p-4 no-print">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <Label>{terminology.classUnit}</Label>
-            <Select value={classId} onValueChange={(v) => { setClassId(v); setSectionId(''); }}>
+            <Select
+              value={classId}
+              onValueChange={(v) => { setClassId(v); setSectionId(''); setSelectedId(null); }}
+            >
               <SelectTrigger><SelectValue placeholder={`Select ${terminology.classUnit.toLowerCase()}`} /></SelectTrigger>
               <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
             <Label>{sectionLabel}</Label>
-            <Select value={sectionId} onValueChange={setSectionId} disabled={!classId}>
+            <Select
+              value={sectionId}
+              onValueChange={(v) => { setSectionId(v); setSelectedId(null); }}
+              disabled={!classId}
+            >
               <SelectTrigger><SelectValue placeholder={sectionLabel} /></SelectTrigger>
               <SelectContent>{sections.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label>Student name</Label>
+            <StudentNamePicker
+              options={roster}
+              loading={ready && isFetching}
+              disabled={!ready}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+            />
           </div>
         </div>
       </Card>
 
       {!ready ? (
-        <Card className="no-print"><EmptyState icon={IdCardIcon} title="Select a class and section" description="Choose a class and section to generate printable ID cards." /></Card>
-      ) : isFetching && students.length === 0 ? (
+        <Card className="no-print"><EmptyState icon={IdCardIcon} title={`Select a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()}`} description="Then search for a specific student to view their ID card." /></Card>
+      ) : !selectedId ? (
+        <Card className="no-print">
+          <EmptyState
+            icon={IdCardIcon}
+            title="Search for a student"
+            description="Type a name in the box above and pick the student whose card you want to view and print."
+          />
+        </Card>
+      ) : !selected ? (
         <Card className="p-5 no-print"><Skeleton className="h-64 w-full" /></Card>
-      ) : students.length === 0 ? (
-        <Card className="no-print"><EmptyState icon={IdCardIcon} title="No students" description="This section has no active students." /></Card>
       ) : (
         <>
-          <IdCardReadinessBanner
-            people={students.map((s) => ({
-              id: s.id,
-              userId: s.userId,
-              name: s.name,
-              profilePhoto: s.profilePhoto,
-              context: [sheet!.className, sheet!.section].filter(Boolean).join(' · ') || undefined,
-            }))}
-            personLabel="student"
-            institutionLogoUrl={sheet!.institution.logoUrl}
-          />
-        <div id="id-card-print" className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-          {students.map((s) => (
-            <IdCardItem
-              key={s.id}
-              student={s}
-              institution={sheet!.institution}
-              className={sheet!.className}
-              section={sheet!.section}
-              termName={sheet!.termName}
-            />
-          ))}
-        </div>
+          <div className="no-print flex justify-end">
+            <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print this card</Button>
+          </div>
+          <div id="id-card-print" className="flex justify-center">
+            <div className="w-full max-w-sm">
+              <IdCardItem
+                student={selected}
+                institution={sheet!.institution}
+                className={sheet!.className}
+                section={sheet!.section}
+                termName={sheet!.termName}
+              />
+            </div>
+          </div>
         </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A name-first selector: type to search the section's roster, pick one
+ * result. Deliberately not a filter-a-grid search box — selecting a result
+ * closes the list and is the only way a card ever renders, mirroring the
+ * same pattern used for staff ID cards.
+ */
+function StudentNamePicker({
+  options, loading, disabled, selectedId, onSelect,
+}: {
+  options: IdCard[];
+  loading: boolean;
+  disabled: boolean;
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selected = options.find((s) => s.id === selectedId) ?? null;
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return options.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 20);
+  }, [options, query]);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  if (selected) {
+    return (
+      <div className="flex h-10 items-center justify-between gap-2 rounded-lg border border-input bg-card pl-3 pr-2 text-sm">
+        <span className="flex items-center gap-2 truncate">
+          <UserCircle size={16} className="shrink-0 text-primary" />
+          <span className="truncate font-medium text-foreground">{selected.name}</span>
+        </span>
+        <button
+          type="button"
+          onClick={() => { onSelect(null); setQuery(''); }}
+          aria-label="Clear selected student"
+          className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <X size={15} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="relative">
+        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder={disabled ? 'Select class & section first' : loading ? 'Loading roster…' : 'Type a name…'}
+          disabled={disabled || loading}
+          className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+        />
+      </div>
+      {open && !disabled && query.trim() && (
+        <div className="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-card shadow-md">
+          {results.length === 0 ? (
+            <p className="px-3 py-2.5 text-sm text-muted-foreground">No matching names.</p>
+          ) : (
+            results.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => { onSelect(s.id); setQuery(''); setOpen(false); }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
+              >
+                <Avatar initials={s.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()} size="sm" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-foreground">{s.name}</span>
+                  <span className="block truncate text-xs text-muted-foreground">Roll #{s.rollNumber}</span>
+                </span>
+              </button>
+            ))
+          )}
+        </div>
       )}
     </div>
   );
