@@ -39,6 +39,19 @@ const STATUSES: { key: AttendanceStatus; label: string; active: string }[] = [
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const dayOfWeekOf = (date: string) => new Date(`${date}T12:00:00.000Z`).getUTCDay();
 
+// Mirrors attendance-marking.service.ts's own 24h teacher lockout exactly
+// (down to the same Karachi-offset math), so a teacher sees the roster
+// disabled with a clear reason instead of filling it out and hitting
+// ATTENDANCE_LOCKED only after clicking Save. Admins are never subject to
+// this lock (checked separately by the caller via `isTeacher`).
+const KARACHI_OFFSET_MS = 5 * 60 * 60 * 1000;
+function isAttendanceLockedForTeacher(date: string): boolean {
+  const utcMidnightMs = new Date(`${date}T00:00:00.000Z`).getTime();
+  const karachiMidnightMs = utcMidnightMs - KARACHI_OFFSET_MS;
+  const lockoutDeadlineMs = karachiMidnightMs + 24 * 60 * 60 * 1000;
+  return Date.now() > lockoutDeadlineMs;
+}
+
 interface PeriodOption {
   periodId: string;
   classId: string | null;
@@ -181,8 +194,10 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
     setStatuses(next);
   };
 
+  const attendanceLocked = isTeacher && isAttendanceLockedForTeacher(date);
+
   const save = async () => {
-    if (!roster) return;
+    if (!roster || attendanceLocked) return;
     const records = roster.students.map((s) => ({
       studentId: s.studentId,
       status: statuses[s.studentId] ?? 'present',
@@ -347,6 +362,13 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
         </Card>
       ) : (
         <>
+          {attendanceLocked && (
+            <div className="flex items-start gap-2.5 rounded-lg border border-warning/40 bg-warning/10 px-3.5 py-3 text-sm text-warning-foreground">
+              <Clock size={17} className="mt-0.5 shrink-0" />
+              <span>Attendance older than 24 hours can only be changed by an admin — this roster is read-only for you now.</span>
+            </div>
+          )}
+
           {/* Summary + quick actions */}
           <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-2">
@@ -364,15 +386,15 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
               <Badge variant="neutral">Leave {counts.leave}</Badge>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={() => setAll('present')}>
+              <Button variant="secondary" size="sm" disabled={attendanceLocked} onClick={() => setAll('present')}>
                 <CheckCheck size={16} /> All present
               </Button>
-              <Button size="sm" loading={saving} onClick={save}>Save attendance</Button>
+              <Button size="sm" loading={saving} disabled={attendanceLocked} onClick={save}>Save attendance</Button>
             </div>
           </Card>
 
           {/* Roster */}
-          <Card className="divide-y divide-border">
+          <Card className={cn('divide-y divide-border', attendanceLocked && 'opacity-60')}>
             {roster.students.map((s) => (
               <div key={s.studentId} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
@@ -392,9 +414,11 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                       <button
                         key={st.key}
                         type="button"
+                        disabled={attendanceLocked}
                         onClick={() => setStatuses((prev) => ({ ...prev, [s.studentId]: st.key }))}
                         className={cn(
                           'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                          attendanceLocked && 'cursor-not-allowed',
                           active
                             ? st.active
                             : 'bg-muted text-muted-foreground hover:bg-secondary'
@@ -410,7 +434,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
           </Card>
 
           <div className="flex justify-end">
-            <Button loading={saving} onClick={save}>Save attendance</Button>
+            <Button loading={saving} disabled={attendanceLocked} onClick={save}>Save attendance</Button>
           </div>
         </>
       )}
