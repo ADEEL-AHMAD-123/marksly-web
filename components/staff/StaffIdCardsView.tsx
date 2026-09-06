@@ -1,8 +1,8 @@
 'use client';
 
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff, Search, X, UserCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -16,7 +16,6 @@ import { QRCode } from '@/components/ui/qr-code';
 import { useGetStaffIdCardsQuery, type StaffCardRole, type StaffIdCard } from '@/store/api/usersApi';
 import { CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS, idCardNameSizeClass } from '@/components/shared/idCardPrint';
 import { IdCardCredit } from '@/components/shared/IdCardCredit';
-import { IdCardReadinessBanner } from '@/components/shared/IdCardReadinessBanner';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
@@ -45,9 +44,17 @@ export function StaffIdCardsView() {
   const pathname = usePathname();
   const roleParam = (searchParams.get('role') as StaffCardRole | null) ?? 'all';
 
+  // We still fetch the role-scoped roster, but only to power the name
+  // selector below — nothing renders as a card until one specific person is
+  // picked. Fetching names/IDs for a dropdown is cheap even for a large
+  // institution; it's rendering a QR card per person that got unmanageable,
+  // so that's the part gated behind an explicit selection now.
   const { data, isFetching } = useGetStaffIdCardsQuery(roleParam === 'all' ? undefined : { role: roleParam });
   const sheet = data?.data;
-  const staff = useMemo(() => sheet?.staff ?? [], [sheet]);
+  const roster = useMemo(() => sheet?.staff ?? [], [sheet]);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = useMemo(() => roster.find((s) => s.id === selectedId) ?? null, [roster, selectedId]);
 
   const setRole = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -55,53 +62,159 @@ export function StaffIdCardsView() {
     else params.set('role', value);
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
+    // Changing the role narrows the name list — whatever was selected under
+    // the old role may not even be in the new one, so clear it rather than
+    // silently keep showing a card that no longer matches the chosen filter.
+    setSelectedId(null);
   };
 
   return (
     <div className="space-y-6">
       <style dangerouslySetInnerHTML={{ __html: ID_CARD_PRINT_CSS }} />
 
-      {staff.length > 0 && (
-        <div className="no-print flex justify-end">
-          <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print {staff.length} cards</Button>
-        </div>
-      )}
-
-      <Card className="p-4 no-print">
-        <div className="max-w-xs">
-          <Label>Role</Label>
-          <Select value={roleParam} onValueChange={setRole}>
-            <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
-            <SelectContent>
-              {ROLE_FILTERS.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+      <Card className="space-y-3 p-4 no-print">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <Label>Role (optional filter)</Label>
+            <Select value={roleParam} onValueChange={setRole}>
+              <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+              <SelectContent>
+                {ROLE_FILTERS.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Name</Label>
+            <StaffNamePicker
+              options={roster}
+              loading={isFetching}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+            />
+          </div>
         </div>
       </Card>
 
-      {isFetching && staff.length === 0 ? (
+      {!selectedId ? (
+        <Card className="no-print">
+          <EmptyState
+            icon={IdCardIcon}
+            title="Search for a staff member"
+            description="Narrow by role if you like, then pick a specific name to view and print their ID card."
+          />
+        </Card>
+      ) : !selected ? (
         <Card className="p-5 no-print"><Skeleton className="h-64 w-full" /></Card>
-      ) : staff.length === 0 ? (
-        <Card className="no-print"><EmptyState icon={IdCardIcon} title="No staff found" description="No active members match this role yet." /></Card>
       ) : (
         <>
-          <IdCardReadinessBanner
-            people={staff.map((s) => ({
-              id: s.id,
-              userId: s.id,
-              name: s.name,
-              profilePhoto: s.profilePhoto,
-              context: ROLE_STYLE[s.role]?.label ?? s.role,
-            }))}
-            personLabel="staff member"
-            institutionLogoUrl={sheet!.institution.logoUrl}
-          />
-          <div id="id-card-print" className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {staff.map((s) => (
-              <StaffIdCardItem key={s.id} member={s} institution={sheet!.institution} />
-            ))}
+          <div className="no-print flex justify-end">
+            <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print this card</Button>
+          </div>
+          <div id="id-card-print" className="flex justify-center">
+            <div className="w-full max-w-sm">
+              <StaffIdCardItem member={selected} institution={sheet!.institution} />
+            </div>
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A name-first selector: type to search the (role-scoped) roster, pick one
+ * result. Deliberately not a filter-a-grid search box — selecting a result
+ * closes the list and is the only way a card ever renders, matching the
+ * "select a specific name from options" requirement rather than showing
+ * everyone that matches as you type.
+ */
+function StaffNamePicker({
+  options, loading, selectedId, onSelect,
+}: {
+  options: StaffIdCard[];
+  loading: boolean;
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selected = options.find((s) => s.id === selectedId) ?? null;
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return options.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 20);
+  }, [options, query]);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  if (selected) {
+    return (
+      <div className="flex h-10 items-center justify-between gap-2 rounded-lg border border-input bg-card pl-3 pr-2 text-sm">
+        <span className="flex items-center gap-2 truncate">
+          <UserCircle size={16} className="shrink-0 text-primary" />
+          <span className="truncate font-medium text-foreground">{selected.name}</span>
+        </span>
+        <button
+          type="button"
+          onClick={() => { onSelect(null); setQuery(''); }}
+          aria-label="Clear selected person"
+          className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <X size={15} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="relative">
+        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder={loading ? 'Loading roster…' : 'Type a name…'}
+          disabled={loading}
+          className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+        />
+      </div>
+      {open && query.trim() && (
+        <div className="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-card shadow-md">
+          {results.length === 0 ? (
+            <p className="px-3 py-2.5 text-sm text-muted-foreground">No matching names.</p>
+          ) : (
+            results.map((s) => {
+              const style = ROLE_STYLE[s.role] ?? ROLE_STYLE.staff;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => { onSelect(s.id); setQuery(''); setOpen(false); }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
+                >
+                  <Avatar initials={s.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()} size="sm" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium text-foreground">{s.name}</span>
+                    <span className={cn('mt-0.5 inline-flex w-fit items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide', style.soft)}>
+                      {style.label}
+                    </span>
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
       )}
     </div>
   );
