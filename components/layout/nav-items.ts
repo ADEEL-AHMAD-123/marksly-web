@@ -21,6 +21,13 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Students', href: '/admin/students', icon: GraduationCap },
     { label: 'Teachers', href: '/admin/teachers', icon: Users },
     { label: 'Staff', href: '/admin/staff', icon: Briefcase },
+    // Sits right after the people-management group, not buried near
+    // Billing/Settings at the bottom — this is where an admin needs it: it
+    // flags wrong/missing emails entered while adding students, teachers,
+    // parents or staff, so it belongs next to where that data gets entered.
+    // See SidebarNav.tsx for the red issue-count badge that also makes this
+    // noticeable regardless of position.
+    { label: 'Login Emails', href: '/admin/email-log', icon: Mail },
     { label: 'ID Cards', href: '/admin/id-cards', icon: CreditCard },
     // Academic structure — Academic Terms now comes first since it's the
     // foundational setup step Classes/Subjects/Timetable are actually scoped
@@ -38,7 +45,6 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Messaging', href: '/admin/messaging', icon: MessageSquare },
     { label: 'Reports', href: '/admin/reports', icon: BarChart2 },
     { label: 'Billing', href: '/admin/billing', icon: CreditCard },
-    { label: 'Login Emails', href: '/admin/email-log', icon: Mail },
     { label: 'Settings', href: '/admin/settings', icon: Settings },
   ],
   teacher: [

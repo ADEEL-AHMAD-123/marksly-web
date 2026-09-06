@@ -8,6 +8,7 @@ import { cn, getInitials } from '@/lib/utils';
 import { NAV_ITEMS } from './nav-items';
 import { LogoMark } from '@/components/brand/Logo';
 import { useGetMyInstitutionQuery } from '@/store/api/institutionApi';
+import { useGetEmailLogStatsQuery } from '@/store/api/emailLogApi';
 
 interface SidebarNavProps {
   collapsed?: boolean;
@@ -35,6 +36,15 @@ export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }:
   const isSuperadmin = role === 'superadmin';
   const { data: institutionRes } = useGetMyInstitutionQuery(undefined, { skip: isSuperadmin });
   const institution = institutionRes?.data;
+
+  // Badge for the "Login Emails" nav item — a count buried in a long sidebar
+  // is easy to miss entirely, so surface unresolved issues (sends that
+  // actually failed, plus accounts that never got an email because none was
+  // on file) as a red number right on the nav item itself, regardless of
+  // where it sits in the list. Only fetched for admins, since only admin's
+  // nav includes this item.
+  const { data: emailStatsRes } = useGetEmailLogStatsQuery(undefined, { skip: role !== 'admin' });
+  const emailIssueCount = (emailStatsRes?.data?.failed ?? 0) + (emailStatsRes?.data?.missingEmail ?? 0);
 
   return (
     <div className="flex h-full flex-col">
@@ -75,12 +85,13 @@ export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }:
           const active = isIndex
             ? pathname === href
             : pathname === href || pathname.startsWith(href + '/');
+          const badgeCount = href === '/admin/email-log' ? emailIssueCount : 0;
           return (
             <Link
               key={href}
               href={href}
               onClick={onNavigate}
-              title={collapsed ? label : undefined}
+              title={collapsed ? (badgeCount > 0 ? `${label} (${badgeCount} need attention)` : label) : undefined}
               className={cn(
                 'relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors lg:gap-3.5 lg:rounded-xl lg:px-3.5 lg:py-3',
                 collapsed && 'justify-center px-0 lg:px-0',
@@ -92,8 +103,18 @@ export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }:
               {active && (
                 <span className="absolute left-0 top-1/2 hidden h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary lg:block" />
               )}
-              <Icon size={18} className="shrink-0 lg:h-5 lg:w-5" />
+              <span className="relative shrink-0">
+                <Icon size={18} className="lg:h-5 lg:w-5" />
+                {collapsed && badgeCount > 0 && (
+                  <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-danger" />
+                )}
+              </span>
               {!collapsed && <span className="truncate lg:text-[15px]">{label}</span>}
+              {!collapsed && badgeCount > 0 && (
+                <span className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-semibold leading-none text-danger-foreground">
+                  {badgeCount > 99 ? '99+' : badgeCount}
+                </span>
+              )}
             </Link>
           );
         })}
