@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { Check, Minus, Plus, RotateCcw, ImagePlus } from 'lucide-react';
+import { Check, Minus, Plus, RotateCcw, ImagePlus, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 // The visible crop viewport, in CSS px — square, since every ID card photo
 // slot in this app (front-of-card avatar, admin table thumbnails) is round/
@@ -36,6 +37,7 @@ interface Props {
 export function PhotoCropModal({ open, file, onClose, onCropped }: Props) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
@@ -49,6 +51,8 @@ export function PhotoCropModal({ open, file, onClose, onCropped }: Props) {
     }
     const url = URL.createObjectURL(file);
     setImageUrl(url);
+    setNaturalSize(null);
+    setLoadError(false);
     setZoom(1);
     setOffset({ x: 0, y: 0 });
     return () => URL.revokeObjectURL(url);
@@ -93,6 +97,12 @@ export function PhotoCropModal({ open, file, onClose, onCropped }: Props) {
     const z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
     setZoom(z);
     setOffset((prev) => clampOffset(prev.x, prev.y, baseScale * z));
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (!naturalSize) return;
+    e.preventDefault();
+    changeZoom(zoom - e.deltaY * 0.0015);
   };
 
   const reset = () => {
@@ -152,29 +162,45 @@ export function PhotoCropModal({ open, file, onClose, onCropped }: Props) {
           </DialogPrimitive.Description>
 
           <div
-            className="relative mx-auto mt-4 touch-none select-none overflow-hidden rounded-full border-2 border-primary/30 bg-muted"
+            className={cn(
+              'relative mx-auto mt-4 touch-none select-none overflow-hidden rounded-full border-2 border-primary/30 bg-muted',
+              naturalSize && (dragging ? 'cursor-grabbing' : 'cursor-grab')
+            )}
             style={{ width: VIEWPORT_SIZE, height: VIEWPORT_SIZE }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
+            onWheel={handleWheel}
           >
-            {imageUrl && (
+            {imageUrl && !loadError && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 ref={imgRef}
                 src={imageUrl}
                 alt=""
-                crossOrigin="anonymous"
                 draggable={false}
                 onLoad={(e) => setNaturalSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
-                className="pointer-events-none absolute left-1/2 top-1/2 max-w-none cursor-move"
+                onError={() => setLoadError(true)}
+                className="pointer-events-none absolute left-1/2 top-1/2 max-w-none"
                 style={{
                   width: naturalSize ? naturalSize.w * effectiveScale : undefined,
                   height: naturalSize ? naturalSize.h * effectiveScale : undefined,
                   transform: `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px)`,
+                  visibility: naturalSize ? 'visible' : 'hidden',
                 }}
               />
+            )}
+            {imageUrl && !naturalSize && !loadError && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Loader2 size={22} className="animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {loadError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-4 text-center">
+                <AlertCircle size={20} className="text-danger" />
+                <p className="text-xs text-muted-foreground">Couldn&apos;t open this image — try a different file.</p>
+              </div>
             )}
           </div>
 
@@ -187,15 +213,17 @@ export function PhotoCropModal({ open, file, onClose, onCropped }: Props) {
               step={0.05}
               value={zoom}
               onChange={(e) => changeZoom(Number(e.target.value))}
-              className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
+              disabled={!naturalSize}
+              className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Zoom"
             />
             <Plus size={14} className="shrink-0 text-muted-foreground" />
             <button
               type="button"
               onClick={reset}
+              disabled={!naturalSize}
               title="Reset"
-              className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             >
               <RotateCcw size={14} />
             </button>

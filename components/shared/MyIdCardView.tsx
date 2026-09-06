@@ -62,8 +62,6 @@ function MyPhotoUploader({ hasPhoto }: { hasPhoto: boolean }) {
       toast.success(hasPhoto ? 'Photo updated' : 'Photo added — your card now shows it');
     } catch (e) {
       toast.error(getErrorMessage(e, 'Could not upload photo'));
-    } finally {
-      if (inputRef.current) inputRef.current.value = '';
     }
   };
 
@@ -90,7 +88,17 @@ function MyPhotoUploader({ hasPhoto }: { hasPhoto: boolean }) {
             type="file"
             accept="image/jpeg,image/png,image/webp"
             className="hidden"
-            onChange={(e) => handleFile(e.target.files?.[0])}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              // Reset immediately, not after the crop/upload resolves — a
+              // browser <input type="file"> never fires onChange again for
+              // the SAME file path unless its value is cleared first, so
+              // without this, picking a photo, cancelling the crop editor,
+              // then picking that exact same file again would silently do
+              // nothing.
+              e.target.value = '';
+              handleFile(file);
+            }}
           />
           <Button size="sm" variant="outline" disabled={busy} onClick={() => inputRef.current?.click()}>
             {uploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
