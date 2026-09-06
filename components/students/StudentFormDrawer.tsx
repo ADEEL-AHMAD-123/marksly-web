@@ -65,6 +65,14 @@ const schema = z.object({
 }).refine((d) => !d.parentPhone || !!d.parentEmail, {
   message: 'Guardian email is required when adding a guardian',
   path: ['parentEmail'],
+}).refine((d) => !d.parentPhone || d.parentPhone !== d.phone, {
+  // Mirrors createStudentSchema's same-value refine on the backend — catches
+  // this instantly instead of round-tripping to the server first.
+  message: 'The student and guardian phone numbers are the same — each person needs their own phone number',
+  path: ['parentPhone'],
+}).refine((d) => !d.parentEmail || d.parentEmail.toLowerCase() !== d.email.toLowerCase(), {
+  message: 'The student and guardian email addresses are the same — each person needs their own email address',
+  path: ['parentEmail'],
 });
 
 type Form = z.infer<typeof schema>;
