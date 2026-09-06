@@ -17,7 +17,7 @@ import {
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { PhotoUpload } from '@/components/shared/PhotoUpload';
-import { getErrorMessage } from '@/lib/get-error-message';
+import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetActiveTermsQuery } from '@/store/api/termsApi';
 import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
@@ -108,6 +108,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
     reset,
     watch,
     setValue,
+    setError,
     formState: { errors },
   } = useForm<Form>({
     resolver: zodResolver(schema),
@@ -190,7 +191,25 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         }
       }
     } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Could not save student'));
+      const message = getErrorMessage(e, 'Could not save student');
+      toast.error(message);
+      // Also highlight the specific field the backend flagged, so the user
+      // doesn't have to re-read the whole form to find what to fix — the
+      // toast alone already says e.g. "Roll number 12 is already used in
+      // this class/section", but pointing at the actual input is faster.
+      // DUPLICATE_PHONE/DUPLICATE_EMAIL fire for either the STUDENT's own
+      // phone/email or the GUARDIAN's, from different backend call sites
+      // that share the same code — the message text (which always says
+      // "guardian" for the guardian case) is what disambiguates which
+      // field to mark, since the code alone doesn't.
+      const code = getErrorCode(e);
+      if (code === 'DUPLICATE_ROLL') {
+        setError('rollNumber', { type: 'server', message });
+      } else if (code === 'DUPLICATE_PHONE') {
+        setError(/guardian/i.test(message) ? 'parentPhone' : 'phone', { type: 'server', message });
+      } else if (code === 'DUPLICATE_EMAIL') {
+        setError(/guardian/i.test(message) ? 'parentEmail' : 'email', { type: 'server', message });
+      }
     }
   };
 
