@@ -11,6 +11,21 @@ import { BLOG_POSTS, getPostBySlug } from '../posts';
 
 const SITE_URL = 'https://marksly.pk';
 
+const RELATED_LINKS: Record<string, { href: string; label: string; description: string }[]> = {
+  'moving-from-registers-to-digital-attendance': [
+    { href: '/school-management-system-pakistan', label: 'School management system in Pakistan', description: 'See attendance, absentee alerts, fees and exams in one platform.' },
+    { href: '/features#attendance', label: 'Marksly attendance features', description: 'Explore live attendance rates, reports and parent alerts.' },
+  ],
+  'how-to-choose-school-management-software': [
+    { href: '/school-management-system-pakistan', label: 'School management system in Pakistan', description: 'Compare the checklist with Marksly’s local features and pricing.' },
+    { href: '/pricing', label: 'Marksly pricing', description: 'Start with the free plan for up to 50 students.' },
+  ],
+  'exam-results-management-software-guide': [
+    { href: '/features#exams', label: 'Exam and result features', description: 'See marks entry, grading and result publishing in Marksly.' },
+    { href: '/college-management-system-pakistan', label: 'College management system in Pakistan', description: 'Explore exams, sections and reporting for colleges.' },
+  ],
+};
+
 export function generateStaticParams() {
   return BLOG_POSTS.map((p) => ({ slug: p.slug }));
 }
@@ -134,6 +149,20 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             )
           )}
         </div>
+
+        {RELATED_LINKS[post.slug] && (
+          <section className="mt-12 border-t border-border pt-8" aria-labelledby="related-resources-heading">
+            <h2 id="related-resources-heading" className="text-lg font-bold tracking-tight">Continue with Marksly</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {RELATED_LINKS[post.slug].map((link) => (
+                <Link key={link.href} href={link.href} className="rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary">
+                  <span className="font-semibold text-primary">{link.label}</span>
+                  <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{link.description}</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </article>
 
       <section className="relative overflow-hidden bg-sidebar py-16 text-sidebar-foreground">

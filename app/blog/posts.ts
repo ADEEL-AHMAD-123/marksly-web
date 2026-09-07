@@ -12,10 +12,11 @@ export interface BlogPost {
 export const BLOG_POSTS: BlogPost[] = [
   {
     slug: 'moving-from-registers-to-digital-attendance',
-    title: 'Moving From Paper Registers to Digital Attendance: A Practical Guide',
+    title: 'Digital Attendance System for Schools in Pakistan: A Practical Guide',
     description:
-      'A step-by-step plan for schools and academies in Pakistan switching from paper attendance registers to a digital system, without disrupting the school day.',
+      'How schools and academies in Pakistan can replace paper registers with a digital attendance system without disrupting the school day.',
     date: '2026-08-15',
+    modifiedDate: '2026-09-07',
     readingTime: '5 min read',
     body: [
       'Most schools and academies in Pakistan still take attendance the same way they did decades ago: a paper register, a pen, and a teacher counting heads at the start of class. It works, but it comes with real costs — registers get lost or damaged, attendance percentages have to be calculated by hand at the end of term, and parents only find out their child was absent if someone happens to call them.',
@@ -52,10 +53,11 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: 'how-to-choose-school-management-software',
-    title: 'How to Choose School Management Software: A Checklist for Academies, Schools and Colleges',
+    title: 'How to Choose School Management Software in Pakistan: 2026 Checklist',
     description:
-      'What to actually check before picking a school management system — beyond the feature list, the questions that determine whether it fits how your institution really runs.',
+      'A practical 2026 checklist for comparing school management software in Pakistan, including pricing, payments, parent messaging, data and support.',
     date: '2026-08-23',
+    modifiedDate: '2026-09-07',
     readingTime: '6 min read',
     body: [
       'Search "school management software" and you\'ll find dozens of products with nearly identical feature lists — attendance, fees, exams, a parent app. The feature list rarely tells you what you actually need to know, which is whether the system fits how your specific institution runs day to day. Here\'s what\'s worth actually checking before you commit.',
@@ -75,10 +77,11 @@ export const BLOG_POSTS: BlogPost[] = [
   },
   {
     slug: 'exam-results-management-software-guide',
-    title: 'Exam and Results Management: Moving From Spreadsheets to a Grading System',
+    title: 'Exam and Result Management Software for Schools: A Practical Guide',
     description:
-      'Why re-typing marks from paper into Excel is where most exam-season errors come from, and what a structured exam and results system actually changes.',
+      'How school exam and result management software reduces spreadsheet errors, automates grading and publishes results faster.',
     date: '2026-08-20',
+    modifiedDate: '2026-09-07',
     readingTime: '5 min read',
     body: [
       'Exam season in most schools follows a familiar, error-prone pattern: teachers mark papers and record scores on paper or in a personal spreadsheet, someone then re-types those numbers into a master sheet, grades get calculated with a formula that\'s easy to get subtly wrong, and results get compiled by hand into report cards. Every one of those hand-offs is a place a mark can get transposed, a formula can reference the wrong column, or a student can be missed entirely.',

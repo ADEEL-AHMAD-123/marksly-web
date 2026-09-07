@@ -12,7 +12,7 @@ import { RelatedSolutions } from '@/components/marketing/RelatedSolutions';
 
 const TITLE = 'School Management System in Pakistan — Marksly';
 const DESCRIPTION =
-  'Marksly is a school management system built for Pakistan — attendance, fees, exams, timetable, ID cards, and WhatsApp/SMS parent messaging, with JazzCash & EasyPaisa support.';
+  'School management software for Pakistan: Marksly handles attendance, fees, exams, timetable, ID cards and WhatsApp/SMS parent messaging, with JazzCash and EasyPaisa support.';
 
 export const metadata: Metadata = {
   title: TITLE,
