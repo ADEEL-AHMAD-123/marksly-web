@@ -25,6 +25,23 @@ const JSON_LD = {
       areaServed: { '@type': 'Country', name: 'Pakistan' },
       address: { '@type': 'PostalAddress', addressCountry: 'PK' },
       sameAs: ['https://wa.me/923175496466'],
+      // Matches the hours actually set on the Google Business Profile —
+      // keep these two in sync if the hours ever change, otherwise search
+      // results and the knowledge panel will disagree with each other.
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        telephone: '+92-317-5496466',
+        email: 'support@marksly.pk',
+        areaServed: 'PK',
+        availableLanguage: ['English', 'Urdu'],
+        hoursAvailable: {
+          '@type': 'OpeningHoursSpecification',
+          dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+          opens: '08:00',
+          closes: '23:00',
+        },
+      },
     },
     {
       '@type': 'SoftwareApplication',
