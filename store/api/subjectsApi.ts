@@ -1,13 +1,39 @@
 import { baseApi } from './baseApi';
 
+export interface SubjectSectionTeacher {
+  sectionId: string;
+  sectionName: string | null;
+  teacherId: string;
+  teacherName: string | null;
+}
+
+export interface SubjectSectionCoverage {
+  sectionId: string;
+  sectionName: string | null;
+  // null when NEITHER a section override NOR the fallback teacherId covers
+  // this section — a genuine "nobody teaches this" gap.
+  teacherId: string | null;
+  teacherName: string | null;
+  isOverride: boolean;
+}
+
 export interface Subject {
   id: string;
   name: string;
   code: string | null;
   className: string | null;
   classId: string | null;
+  // Fallback teacher — used for sections with no entry in sectionTeachers,
+  // and for subjects with no classId (available to all classes).
   teacherName: string | null;
   teacherId: string | null;
+  // Raw per-section overrides only — used to prefill the edit form (which
+  // section explicitly deviates from the fallback teacher).
+  sectionTeachers: SubjectSectionTeacher[];
+  // Every section in the class resolved to its effective teacher (override
+  // or fallback) — use this for display/coverage checks. Empty when the
+  // class has 0 or 1 sections (nothing to disambiguate).
+  sectionCoverage: SubjectSectionCoverage[];
   isElective: boolean;
   isActive: boolean;
   enrolledCount: number;
@@ -16,12 +42,22 @@ export interface Subject {
 interface ApiArray<T> { success: boolean; data: T[]; message: string }
 interface ApiObject<T> { success: boolean; data: T; message: string }
 
+export interface SectionTeacherInput {
+  sectionId: string;
+  teacherId: string;
+}
+
 export interface CreateSubjectBody {
   name: string;
   code?: string;
   classId?: string;
   teacherId?: string;
+  sectionTeachers?: SectionTeacherInput[];
   isElective?: boolean;
+}
+
+export interface UpdateSubjectBody extends Partial<CreateSubjectBody> {
+  isActive?: boolean;
 }
 
 export interface EnrollmentRequest {
@@ -44,6 +80,10 @@ export const subjectsApi = baseApi.injectEndpoints({
     // (portalApi's mySubjects), not just the admin's subject list.
     createSubject: builder.mutation<ApiObject<{ id: string }>, CreateSubjectBody>({
       query: (body) => ({ url: '/subjects', method: 'POST', body }),
+      invalidatesTags: [{ type: 'Subjects', id: 'LIST' }, { type: 'Subjects', id: 'MINE' }],
+    }),
+    updateSubject: builder.mutation<ApiObject<{ id: string }>, { id: string; body: UpdateSubjectBody }>({
+      query: ({ id, body }) => ({ url: `/subjects/${id}`, method: 'PATCH', body }),
       invalidatesTags: [{ type: 'Subjects', id: 'LIST' }, { type: 'Subjects', id: 'MINE' }],
     }),
     deleteSubject: builder.mutation<ApiObject<{ id: string }>, string>({
@@ -72,6 +112,7 @@ export const subjectsApi = baseApi.injectEndpoints({
 export const {
   useGetSubjectsQuery,
   useCreateSubjectMutation,
+  useUpdateSubjectMutation,
   useDeleteSubjectMutation,
   useGetEnrollmentRequestsQuery,
   useApproveEnrollmentMutation,
