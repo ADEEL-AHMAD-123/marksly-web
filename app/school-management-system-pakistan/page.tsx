@@ -31,6 +31,19 @@ const BREADCRUMB_JSON_LD = {
   ],
 };
 
+const SERVICE_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  '@id': 'https://marksly.pk/school-management-system-pakistan#service',
+  name: 'School management system in Pakistan',
+  description: DESCRIPTION,
+  serviceType: 'School management software',
+  provider: { '@id': 'https://marksly.pk/#organization' },
+  areaServed: { '@type': 'Country', name: 'Pakistan' },
+  url: 'https://marksly.pk/school-management-system-pakistan',
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://marksly.pk/school-management-system-pakistan' },
+};
+
 const MODULES = [
   { icon: CalendarCheck, title: 'Attendance', desc: 'Teachers mark attendance from any device — admins see it live, parents get absentee alerts automatically.' },
   { icon: FileText, title: 'Exams & results', desc: 'Marks entry on a fast grid, grades calculated automatically, results published straight to parents.' },
@@ -71,6 +84,8 @@ export default function SchoolManagementSystemPakistanPage() {
     <div className="min-h-screen bg-background text-foreground">
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_JSON_LD) }} />
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(SERVICE_JSON_LD) }} />
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSON_LD) }} />
 

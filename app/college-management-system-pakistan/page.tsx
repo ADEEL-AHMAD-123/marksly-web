@@ -31,6 +31,19 @@ const BREADCRUMB_JSON_LD = {
   ],
 };
 
+const SERVICE_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  '@id': 'https://marksly.pk/college-management-system-pakistan#service',
+  name: 'College management system in Pakistan',
+  description: DESCRIPTION,
+  serviceType: 'College management software',
+  provider: { '@id': 'https://marksly.pk/#organization' },
+  areaServed: { '@type': 'Country', name: 'Pakistan' },
+  url: 'https://marksly.pk/college-management-system-pakistan',
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://marksly.pk/college-management-system-pakistan' },
+};
+
 const MODULES = [
   { icon: CalendarClock, title: 'Timetable & sections', desc: 'Build weekly schedules per class and section — every teacher sees exactly what they teach, with no clashing periods.' },
   { icon: FileText, title: 'Exams & results', desc: 'Marks entry on a fast grid, grades calculated automatically, results published straight to students.' },
@@ -71,6 +84,8 @@ export default function CollegeManagementSystemPakistanPage() {
     <div className="min-h-screen bg-background text-foreground">
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_JSON_LD) }} />
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(SERVICE_JSON_LD) }} />
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSON_LD) }} />
 

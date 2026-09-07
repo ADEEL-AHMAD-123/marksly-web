@@ -31,6 +31,19 @@ const BREADCRUMB_JSON_LD = {
   ],
 };
 
+const SERVICE_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  '@id': 'https://marksly.pk/education-management-system-pakistan#service',
+  name: 'Education management system in Pakistan',
+  description: DESCRIPTION,
+  serviceType: 'Education management software',
+  provider: { '@id': 'https://marksly.pk/#organization' },
+  areaServed: { '@type': 'Country', name: 'Pakistan' },
+  url: 'https://marksly.pk/education-management-system-pakistan',
+  mainEntityOfPage: { '@type': 'WebPage', '@id': 'https://marksly.pk/education-management-system-pakistan' },
+};
+
 const MODULES = [
   { icon: Layers, title: 'One system, every level', desc: 'The same platform runs academies, schools, colleges and universities — configured around your own classes, sections and departments.' },
   { icon: FileText, title: 'Admissions to results', desc: 'Student records, exams and results tracked end to end, with a full history kept per student.' },
@@ -71,6 +84,8 @@ export default function EducationManagementSystemPakistanPage() {
     <div className="min-h-screen bg-background text-foreground">
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_JSON_LD) }} />
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(SERVICE_JSON_LD) }} />
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSON_LD) }} />
 
