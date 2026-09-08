@@ -1,11 +1,13 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import {
   Mail, Send, CheckCircle2, XCircle, AlertTriangle, RotateCw, Clock,
-  ChevronLeft, ChevronRight, UserX, GraduationCap, Users, Briefcase,
+  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, UserX, GraduationCap,
+  Users, Briefcase, Copy, Check,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { PageHeader } from '@/components/ui/page-header';
 import { LoginInfoNote } from '@/components/ui/login-info-note';
 import { Card } from '@/components/ui/card';
@@ -26,7 +28,7 @@ import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
 import {
   useGetEmailLogQuery, useGetEmailLogStatsQuery, useGetEmailLogMissingEmailQuery,
   useResendEmailLogMutation,
-  type EmailCategory, type EmailStatus, type EmailLogEntry,
+  type EmailCategory, type EmailStatus, type EmailLogEntry, type EmailLogThread,
 } from '@/store/api/emailLogApi';
 import { ResendEmailLogDialog } from './ResendEmailLogDialog';
 
@@ -91,10 +93,26 @@ export function EmailLogView() {
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 350);
 
-  const [resendTarget, setResendTarget] = useState<EmailLogEntry | null>(null);
+  const [resendTarget, setResendTarget] = useState<EmailLogThread | null>(null);
   const [domainWarning, setDomainWarning] = useState<string | null>(null);
   const [missingPage, setMissingPage] = useState(1);
   const topRef = useRef<HTMLDivElement>(null);
+
+  // Which thread rows currently have their attempt history expanded —
+  // keyed by thread id (the headline's id), shared between the desktop
+  // table and mobile card layouts so behavior stays identical in both.
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) => {
+    setExpandedThreads((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // Full error text viewer — a single shared dialog instance rather than
+  // one per row, since only one can be open at a time.
+  const [errorDialog, setErrorDialog] = useState<string | null>(null);
 
   const category: EmailCategory | 'all' = view === 'missing' ? 'all' : view;
 
@@ -153,7 +171,7 @@ export function EmailLogView() {
     setPage(1);
   };
 
-  const openResend = (entry: EmailLogEntry) => {
+  const openResend = (entry: EmailLogThread) => {
     setDomainWarning(null);
     setResendTarget(entry);
   };
@@ -355,41 +373,70 @@ export function EmailLogView() {
                       {entries.map((e) => {
                         const meta = STATUS_META[e.status];
                         const StatusIcon = meta.icon;
+                        const isOpen = expandedThreads.has(e.id);
+                        const hasHistory = e.attemptCount > 1;
                         return (
-                          <TableRow key={e.id}>
-                            <TableCell className="whitespace-nowrap">{formatDateTime(e.createdAt)}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1.5">
-                                <p className="font-medium text-foreground" dir="ltr">{e.to}</p>
-                                {e.isResend && (
-                                  <Badge
-                                    variant="neutral"
-                                    className="shrink-0"
-                                    title="Sent from a Resend action, not the original signup — a second row for this person is expected."
-                                  >
-                                    Resent
+                          <Fragment key={e.id}>
+                            <TableRow>
+                              <TableCell className="whitespace-nowrap">{formatDateTime(e.createdAt)}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1.5">
+                                  <p className="font-medium text-foreground" dir="ltr">{e.to}</p>
+                                  {e.isResend && (
+                                    <Badge
+                                      variant="neutral"
+                                      className="shrink-0"
+                                      title="Sent from a Resend action, not the original signup — a second row for this person is expected."
+                                    >
+                                      Resent
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="max-w-[280px] truncate text-xs text-muted-foreground">{e.subject}</p>
+                              </TableCell>
+                              <TableCell title={CATEGORY_MEANING[e.category]}>
+                                <p className="text-foreground">{CATEGORY_LABEL[e.category]}</p>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <Badge variant={meta.variant}>
+                                    <StatusIcon size={11} /> {meta.label}
                                   </Badge>
+                                  {hasHistory && (
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleExpanded(e.id)}
+                                      className="inline-flex items-center gap-0.5 rounded-full border border-border bg-card px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+                                    >
+                                      {isOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                                      {e.attemptCount} attempts
+                                    </button>
+                                  )}
+                                </div>
+                                {e.error && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setErrorDialog(e.error)}
+                                    className="mt-1 block max-w-[220px] truncate text-left text-xs text-danger underline decoration-dotted underline-offset-2 hover:text-danger/80"
+                                  >
+                                    {e.error}
+                                  </button>
                                 )}
-                              </div>
-                              <p className="max-w-[280px] truncate text-xs text-muted-foreground">{e.subject}</p>
-                            </TableCell>
-                            <TableCell title={CATEGORY_MEANING[e.category]}>
-                              <p className="text-foreground">{CATEGORY_LABEL[e.category]}</p>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={meta.variant} title={e.error ?? undefined}>
-                                <StatusIcon size={11} /> {meta.label}
-                              </Badge>
-                              {e.error && (
-                                <p className="mt-1 max-w-[220px] truncate text-xs text-danger" title={e.error}>{e.error}</p>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button variant="secondary" size="sm" onClick={() => openResend(e)}>
-                                <RotateCw size={13} /> Resend
-                              </Button>
-                            </TableCell>
-                          </TableRow>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button variant="secondary" size="sm" onClick={() => openResend(e)}>
+                                  <RotateCw size={13} /> Resend
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                            {isOpen && (
+                              <TableRow className="hover:bg-transparent">
+                                <TableCell colSpan={5} className="bg-muted/30 py-2">
+                                  <AttemptHistoryList history={e.history} onShowError={setErrorDialog} />
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </Fragment>
                         );
                       })}
                     </TableBody>
@@ -402,6 +449,8 @@ export function EmailLogView() {
                 {entries.map((e) => {
                   const meta = STATUS_META[e.status];
                   const StatusIcon = meta.icon;
+                  const isOpen = expandedThreads.has(e.id);
+                  const hasHistory = e.attemptCount > 1;
                   return (
                     <Card key={e.id} className="p-4">
                       <div className="flex items-start justify-between gap-2">
@@ -416,11 +465,34 @@ export function EmailLogView() {
                           <StatusIcon size={11} /> {meta.label}
                         </Badge>
                       </div>
-                      <div className="mt-2.5 flex items-center justify-between border-t border-border pt-2.5 text-xs text-muted-foreground">
+                      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-1.5 border-t border-border pt-2.5 text-xs text-muted-foreground">
                         <span>{CATEGORY_LABEL[e.category]}</span>
                         <span>{formatDateTime(e.createdAt)}</span>
                       </div>
-                      {e.error && <p className="mt-1.5 truncate text-xs text-danger" title={e.error}>{e.error}</p>}
+                      {hasHistory && (
+                        <button
+                          type="button"
+                          onClick={() => toggleExpanded(e.id)}
+                          className="mt-1.5 inline-flex items-center gap-0.5 rounded-full border border-border bg-card px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+                        >
+                          {isOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                          {e.attemptCount} attempts
+                        </button>
+                      )}
+                      {e.error && (
+                        <button
+                          type="button"
+                          onClick={() => setErrorDialog(e.error)}
+                          className="mt-1.5 block w-full truncate text-left text-xs text-danger underline decoration-dotted underline-offset-2"
+                        >
+                          {e.error}
+                        </button>
+                      )}
+                      {isOpen && (
+                        <div className="mt-2.5 border-t border-border pt-2.5">
+                          <AttemptHistoryList history={e.history} onShowError={setErrorDialog} />
+                        </div>
+                      )}
                       <Button variant="secondary" size="sm" className="mt-3 w-full" onClick={() => openResend(e)}>
                         <RotateCw size={13} /> Resend
                       </Button>
@@ -456,7 +528,92 @@ export function EmailLogView() {
         onConfirm={confirmResend}
         domainWarning={domainWarning}
       />
+
+      <ErrorMessageDialog error={errorDialog} onClose={() => setErrorDialog(null)} />
     </div>
+  );
+}
+
+/** Older attempts for a thread, shown newest-first underneath the headline
+ *  row once expanded — same info (timestamp / status / error) as the
+ *  headline itself, just for past sends the admin doesn't need by default. */
+function AttemptHistoryList({
+  history, onShowError,
+}: {
+  history: EmailLogEntry[];
+  onShowError: (error: string) => void;
+}) {
+  if (history.length === 0) return null;
+  return (
+    <ul className="space-y-1.5">
+      {history.map((h) => {
+        const meta = STATUS_META[h.status];
+        const StatusIcon = meta.icon;
+        return (
+          <li key={h.id} className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="whitespace-nowrap text-muted-foreground">{formatDateTime(h.createdAt)}</span>
+            <Badge variant={meta.variant}>
+              <StatusIcon size={10} /> {meta.label}
+            </Badge>
+            {h.error && (
+              <button
+                type="button"
+                onClick={() => onShowError(h.error!)}
+                className="truncate text-danger underline decoration-dotted underline-offset-2 hover:text-danger/80"
+              >
+                {h.error}
+              </button>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Full-text viewer for a truncated error message — replaces the old
+ *  single-line `truncate` + hover-`title` pattern (useless on touch
+ *  devices) with a real dialog, same @radix-ui/react-dialog primitive
+ *  already used by ResendEmailLogDialog on this page, plus a copy button
+ *  since admins often need to paste this into a support request. */
+function ErrorMessageDialog({ error, onClose }: { error: string | null; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    if (!error) return;
+    try {
+      await navigator.clipboard.writeText(error);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error('Could not copy — select the text manually.');
+    }
+  };
+
+  return (
+    <DialogPrimitive.Root open={!!error} onOpenChange={(o) => !o && onClose()}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm data-[state=open]:animate-fade-in" />
+        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-danger-soft text-danger">
+              <AlertTriangle size={16} />
+            </span>
+            <DialogPrimitive.Title className="text-base font-semibold">Delivery error</DialogPrimitive.Title>
+          </div>
+          <DialogPrimitive.Description className="sr-only">The full error message returned for this email attempt.</DialogPrimitive.Description>
+          <p className="mt-4 max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-muted/50 p-3 text-sm text-foreground" dir="ltr">
+            {error}
+          </p>
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={copy}>
+              {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied' : 'Copy'}
+            </Button>
+            <Button size="sm" onClick={onClose}>Close</Button>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 

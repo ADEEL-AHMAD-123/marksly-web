@@ -25,6 +25,22 @@ export interface EmailLogEntry {
   createdAt: string;
 }
 
+/**
+ * One logical "email to this person for this purpose" thread. The list
+ * endpoint groups raw sends by recipient+purpose and returns a single item
+ * per thread — the headline fields (id/category/to/.../createdAt) describe
+ * the LATEST attempt, so a thread that failed twice then succeeded reads as
+ * "Sent" (the true current state), not as a stale failed row. `history`
+ * holds the older attempts (newest-first, excluding the headline) for an
+ * admin who wants to see what happened before.
+ */
+export interface EmailLogThread extends EmailLogEntry {
+  /** Total number of send attempts in this thread (headline + history). */
+  attemptCount: number;
+  /** Older attempts in this thread, excluding the headline, newest-first. */
+  history: EmailLogEntry[];
+}
+
 export interface EmailLogStats {
   total: number;
   sent: number;
@@ -69,7 +85,7 @@ interface ApiObject<T> {
 
 export const emailLogApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getEmailLog: builder.query<ApiList<EmailLogEntry>, ListEmailLogParams | void>({
+    getEmailLog: builder.query<ApiList<EmailLogThread>, ListEmailLogParams | void>({
       query: (params) => {
         const search = new URLSearchParams();
         const p = params || {};
