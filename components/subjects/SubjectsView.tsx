@@ -543,15 +543,22 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
               </div>
             )}
 
-            <label className="flex items-center gap-2 text-sm text-foreground">
-              <input
-                type="checkbox"
-                checked={!!isElective}
-                onChange={(e) => setValue('isElective', e.target.checked)}
-                className="h-4 w-4 rounded border-input accent-[hsl(var(--primary))]"
-              />
-              Elective subject
-            </label>
+            <div>
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={!!isElective}
+                  onChange={(e) => setValue('isElective', e.target.checked)}
+                  className="h-4 w-4 rounded border-input accent-[hsl(var(--primary))]"
+                />
+                Elective subject
+              </label>
+              <p className="mt-1 pl-6 text-xs text-muted-foreground">
+                {isElective
+                  ? 'Students request to join from their own portal, and the assigned teacher or an admin approves or rejects each request before they\'re enrolled.'
+                  : 'Leave unchecked for a core subject — every student in this class is automatically included, with no request or approval needed.'}
+              </p>
+            </div>
           </div>
           <div className="flex items-center justify-between gap-2 border-t border-border px-5 py-4">
             <p className="text-xs text-danger">
