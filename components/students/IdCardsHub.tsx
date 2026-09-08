@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { GraduationCap, Users } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, GraduationCap, Users } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { LoginInfoNote } from '@/components/ui/login-info-note';
@@ -46,6 +47,14 @@ export function IdCardsHub() {
           Use the <strong>Missing ID info</strong> filter on the Students or Staff page to find everyone who still
           needs something, without opening each record one at a time.
         </p>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
+          <Link href="/admin/students" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+            Go to Students <ArrowRight size={12} />
+          </Link>
+          <Link href="/admin/staff" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+            Go to Staff <ArrowRight size={12} />
+          </Link>
+        </div>
       </LoginInfoNote>
 
       <Tabs key={initialTab} defaultValue={initialTab}>

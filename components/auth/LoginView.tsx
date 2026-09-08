@@ -59,9 +59,13 @@ const studentIdSchema = z
     studentId: z
       .string()
       .trim()
-      .min(1, 'Enter the Student ID from your ID card')
+      .min(1, 'Enter the Login ID from your ID card')
       .regex(/^(MKS|MKF|MK)-/i, 'Should look like MKS-XXXXXXXX — check your ID card'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    // As short as 5 digits — students with no email/phone of their own log
+    // in with a school-set numeric PIN here instead of a full password (see
+    // student.service.ts's resetPin()/create()), so this can't require the
+    // usual 6-character minimum.
+    password: z.string().min(4, 'Enter your password or PIN'),
   });
 
 const loginSchema = z.discriminatedUnion('mode', [
@@ -366,13 +370,13 @@ export function LoginView() {
               loginMode === 'studentId' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <CreditCard size={14} /> Student ID
+            <CreditCard size={14} /> Login ID
           </button>
         </div>
 
         {loginMode === 'studentId' ? (
           <div>
-            <Label htmlFor="studentId">Student ID</Label>
+            <Label htmlFor="studentId">Login ID</Label>
             <div className="relative">
               <CreditCard size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -393,7 +397,7 @@ export function LoginView() {
             {(errors as any).studentId ? (
               <p className="mt-1.5 text-xs text-danger">{(errors as any).studentId.message}</p>
             ) : (
-              <p className="mt-1.5 text-xs text-muted-foreground">Found on the printed/QR ID card — useful if you don&apos;t remember your phone or email.</p>
+              <p className="mt-1.5 text-xs text-muted-foreground">Found on the printed/QR ID card — with your password, or the PIN your school set for you if you don&apos;t have your own email/phone on file.</p>
             )}
           </div>
         ) : loginMode === 'phone' ? (
@@ -449,7 +453,7 @@ export function LoginView() {
         {/* Password */}
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <Label htmlFor="password" className="mb-0">Password</Label>
+            <Label htmlFor="password" className="mb-0">{loginMode === 'studentId' ? 'Password or PIN' : 'Password'}</Label>
             <Link
               href="/forgot-password"
               className="text-xs font-medium text-primary hover:underline"
@@ -467,7 +471,7 @@ export function LoginView() {
               {...register('password')}
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
-              placeholder="Enter your password"
+              placeholder={loginMode === 'studentId' ? 'Enter your password or PIN' : 'Enter your password'}
               aria-invalid={!!errors.password}
               onKeyUp={(e) => setCapsLockOn(e.getModifierState?.('CapsLock') ?? false)}
               onKeyDown={(e) => setCapsLockOn(e.getModifierState?.('CapsLock') ?? false)}

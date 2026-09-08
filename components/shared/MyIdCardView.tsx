@@ -18,7 +18,8 @@ import {
   useUploadMyPhotoMutation,
   useRemoveMyPhotoMutation,
 } from '@/store/api/usersApi';
-import { useGetMyStudentCardQuery, useUpdateMyStudentContactMutation } from '@/store/api/studentsApi';
+import { useGetMyStudentCardQuery, useUpdateMyStudentContactMutation, useChangeMyPinMutation } from '@/store/api/studentsApi';
+import { KeyRound } from 'lucide-react';
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -231,6 +232,105 @@ function StaffMyIdCard() {
   );
 }
 
+/**
+ * Low-key "Change my PIN" card — the one thing a student CAN do for
+ * themself with no email/phone on file. Kept as an optional, collapsible
+ * card (not a forced modal) right next to the photo uploader, same
+ * self-service spirit. Requires the current PIN, same as any password
+ * change flow — see student.service.ts's changeMyPin().
+ */
+function ChangeMyPinCard() {
+  const [open, setOpen] = useState(false);
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [changePin, { isLoading: saving }] = useChangeMyPinMutation();
+
+  const digitsOnly = (v: string) => v.replace(/\D/g, '').slice(0, 6);
+  const validLength = (v: string) => v.length >= 4 && v.length <= 6;
+  const canSubmit = validLength(currentPin) && validLength(newPin) && newPin === confirmPin && !saving;
+
+  const reset = () => { setCurrentPin(''); setNewPin(''); setConfirmPin(''); };
+
+  const onSubmit = async () => {
+    if (!validLength(newPin)) { toast.error('New PIN must be 4-6 digits'); return; }
+    if (newPin !== confirmPin) { toast.error("New PIN and confirmation don't match"); return; }
+    try {
+      await changePin({ currentPin, newPin }).unwrap();
+      toast.success('PIN changed');
+      reset();
+      setOpen(false);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not change PIN'));
+    }
+  };
+
+  if (!open) {
+    return (
+      <Card className="no-print flex max-w-sm items-center justify-between gap-3 p-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+            <KeyRound size={16} />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Login PIN</p>
+            <p className="text-xs text-muted-foreground">Change the PIN you use to log in.</p>
+          </div>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => setOpen(true)}>Change my PIN</Button>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="no-print max-w-sm space-y-3 p-4">
+      <p className="text-sm font-semibold text-foreground">Change my PIN</p>
+      <div>
+        <Label htmlFor="current-pin">Current PIN</Label>
+        <Input
+          id="current-pin"
+          type="password"
+          inputMode="numeric"
+          dir="ltr"
+          value={currentPin}
+          onChange={(e) => setCurrentPin(digitsOnly(e.target.value))}
+          placeholder="4-6 digits"
+        />
+      </div>
+      <div>
+        <Label htmlFor="new-pin">New PIN</Label>
+        <Input
+          id="new-pin"
+          type="password"
+          inputMode="numeric"
+          dir="ltr"
+          value={newPin}
+          onChange={(e) => setNewPin(digitsOnly(e.target.value))}
+          placeholder="4-6 digits"
+        />
+      </div>
+      <div>
+        <Label htmlFor="confirm-pin">Confirm new PIN</Label>
+        <Input
+          id="confirm-pin"
+          type="password"
+          inputMode="numeric"
+          dir="ltr"
+          value={confirmPin}
+          onChange={(e) => setConfirmPin(digitsOnly(e.target.value))}
+          placeholder="4-6 digits"
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <Button size="sm" disabled={!canSubmit} onClick={onSubmit}>
+          {saving ? 'Saving…' : 'Save new PIN'}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => { reset(); setOpen(false); }}>Cancel</Button>
+      </div>
+    </Card>
+  );
+}
+
 function StudentMyIdCard() {
   const { data, isFetching, isError } = useGetMyStudentCardQuery();
   const card = data?.data;
@@ -295,10 +395,12 @@ function StudentMyIdCard() {
             {saving ? 'Saving…' : 'Save & show my card'}
           </Button>
           <MyPhotoUploader hasPhoto={!card.photoMissing} />
+          <ChangeMyPinCard />
         </Card>
       ) : (
         <>
           <MyPhotoUploader hasPhoto={!card.photoMissing} />
+          <ChangeMyPinCard />
           <div className="no-print flex items-center justify-end gap-2">
             <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
               <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}

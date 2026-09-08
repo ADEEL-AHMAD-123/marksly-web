@@ -161,8 +161,11 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                 <div className="mt-5 divide-y divide-border rounded-xl border border-border px-4">
                   <Row label="Class" value={s.className ? `${s.className}${s.section ? ` — ${s.section}` : ''}` : null} />
                   <Row label="Admission no." value={s.admissionNumber} />
-                  <Row label="Phone" value={s.phone} />
-                  <Row label="Email" value={s.email} />
+                  {/* Students never have their own email/phone — only a
+                      guardian's contact info exists (shown in the Guardians
+                      section below). Showing "Phone"/"Email" rows here would
+                      always be blank and could be misread as the student's
+                      own contact info if ever populated by mistake. */}
                   <Row label="Gender" value={s.gender} />
                   <Row label="Blood group" value={s.bloodGroup} />
                   <Row label="City" value={s.city} />

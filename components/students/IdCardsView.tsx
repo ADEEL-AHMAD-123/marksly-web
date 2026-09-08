@@ -2,7 +2,7 @@
 
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff, Search, X, UserCircle, Phone, MapPin, Users, RotateCw } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff, Search, X, UserCircle, MapPin, Users, RotateCw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -154,7 +154,8 @@ function StudentIdCardPreview({
 export function studentBackRows(student: IdCard): IdCardBackRow[] {
   const rows: IdCardBackRow[] = [];
   if (student.bloodGroup) rows.push({ icon: Droplet, label: 'Blood Group', value: student.bloodGroup });
-  if (student.phone) rows.push({ icon: Phone, label: 'Phone', value: student.phone });
+  // Students never have their own phone — `student.phone` is always null now
+  // (see IdCard type). Parent/guardian contact is shown separately below.
   if (student.address || student.city) {
     rows.push({ icon: MapPin, label: 'Address', value: [student.address, student.city].filter(Boolean).join(', ') });
   }
@@ -332,7 +333,7 @@ export const IdCardItem = memo(function IdCardItem({
           </div>
 
           <dl className="mt-auto grid grid-cols-2 gap-x-3 gap-y-1.5 text-[9.5px] leading-tight">
-            <Field label="Student ID" value={student.systemId} />
+            <Field label="Login ID" value={student.systemId} />
             <Field label={`Roll No. (${className ?? 'Class'})`} value={student.rollNumber} />
             <Field label="Admission #" value={student.admissionNumber} className="col-span-2" />
           </dl>

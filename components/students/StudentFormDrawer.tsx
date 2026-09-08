@@ -25,23 +25,17 @@ import {
   useCreateStudentMutation,
   useUpdateStudentMutation,
   useResendStudentCredentialsMutation,
+  useResetStudentPinMutation,
   type StudentListItem,
 } from '@/store/api/studentsApi';
 
+// Students never have their own email/phone, in any flow — the only contact
+// channel that will ever exist for a student is their guardian, collected
+// below via parentEmail/parentPhone, which is now unconditionally required
+// (mirrors the backend's createStudentSchema exactly — see student.validator.ts).
 const schema = z.object({
   firstName: z.string().min(1, 'Required'),
   lastName: z.string().min(1, 'Required'),
-  // Editing an existing student whose phone predates this country-aware
-  // input may still hold a legacy local-format value — only enforce strict
-  // E.164 validation once it looks like it went through the new field
-  // (starts with "+"), same relaxation as the profile settings form.
-  phone: z
-    .string()
-    .min(1, 'Enter a valid phone number')
-    .refine((v) => !v.startsWith('+') || isValidPhoneNumber(v), 'Enter a valid phone number'),
-  // Required — email is the only working self-service password-recovery
-  // path (see auth.service.ts's forgotPassword()).
-  email: z.string().email('Enter a valid email address'),
   rollNumber: z.string().min(1, 'Required'),
   admissionNumber: z.string().min(1, 'Required'),
   classId: z.string().min(1, 'Select a class'),
@@ -64,22 +58,28 @@ const schema = z.object({
     .optional()
     .refine((v) => !v || isValidPhoneNumber(v), 'Enter a valid phone number'),
   parentName: z.string().optional(),
-  // Only actually required when a NEW guardian is being created (i.e.
-  // parentPhone is set) — matches createStudentSchema's refine() on the
-  // backend. Linking to an existing guardian doesn't need this at all.
   parentEmail: z.string().email('Enter a valid email address').optional().or(z.literal('')),
 }).refine((d) => !d.parentPhone || !!d.parentEmail, {
   message: 'Guardian email is required when adding a guardian',
   path: ['parentEmail'],
-}).refine((d) => !d.parentPhone || d.parentPhone !== d.phone, {
-  // Mirrors createStudentSchema's same-value refine on the backend — catches
-  // this instantly instead of round-tripping to the server first.
-  message: 'The student and guardian phone numbers are the same — each person needs their own phone number',
-  path: ['parentPhone'],
-}).refine((d) => !d.parentEmail || d.parentEmail.toLowerCase() !== d.email.toLowerCase(), {
-  message: 'The student and guardian email addresses are the same — each person needs their own email address',
-  path: ['parentEmail'],
 });
+
+/**
+ * Cross-field "someone needs to be reachable" rule, mirroring the backend's
+ * createStudentSchema: a guardian contact is unconditionally required, either
+ * a brand-new one (parentEmail/parentPhone) or an already-linked one (only
+ * possible when editing). Kept as a factory since "already has a guardian"
+ * depends on the `student` prop, not just the form's own fields.
+ */
+function makeSchema(hasExistingGuardian: boolean) {
+  return schema.refine(
+    (d) => !!d.parentPhone || !!d.parentEmail || hasExistingGuardian,
+    {
+      message: "Add a parent/guardian's contact info so someone can be reached — students don't have their own login contact info.",
+      path: ['parentEmail'],
+    }
+  );
+}
 
 type Form = z.infer<typeof schema>;
 
@@ -116,7 +116,11 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   const [createStudent, { isLoading: creating }] = useCreateStudentMutation();
   const [updateStudent, { isLoading: updating }] = useUpdateStudentMutation();
   const [resendCredentials, { isLoading: resending }] = useResendStudentCredentialsMutation();
+  const [resetPin, { isLoading: resettingPin }] = useResetStudentPinMutation();
   const [resendingTarget, setResendingTarget] = useState<'student' | 'parent' | null>(null);
+  // An existing guardian already satisfies "someone can be reached" even if
+  // this edit leaves the guardian fields blank — see makeSchema.
+  const activeSchema = useMemo(() => makeSchema(!!student?.guardianName), [student?.guardianName]);
 
   const {
     register,
@@ -128,9 +132,9 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
     setError,
     formState: { errors },
   } = useForm<Form>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(activeSchema),
     defaultValues: {
-      firstName: '', lastName: '', phone: '', email: '',
+      firstName: '', lastName: '',
       rollNumber: '', admissionNumber: '', classId: '', sectionId: '', gender: 'male',
       parentPhone: '', parentName: '', parentEmail: '',
       address: '', city: '', bloodGroup: '',
@@ -154,8 +158,6 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
       reset({
         firstName: student.firstName,
         lastName: student.lastName,
-        phone: student.phone ?? '',
-        email: student.email ?? '',
         rollNumber: student.rollNumber,
         admissionNumber: student.admissionNumber,
         classId: cls?.id ?? '',
@@ -172,7 +174,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
       const onlyClass = classes.length === 1 ? classes[0] : undefined;
       const onlySection = onlyClass?.sections.length === 1 ? onlyClass.sections[0] : undefined;
       reset({
-        firstName: '', lastName: '', phone: '', email: '',
+        firstName: '', lastName: '',
         rollNumber: '', admissionNumber: '',
         classId: onlyClass?.id ?? '', sectionId: onlySection?.id ?? '', gender: 'male',
         parentPhone: '', parentName: '', parentEmail: '',
@@ -182,10 +184,16 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   }, [open, student, classes, reset]);
 
   const noClasses = classes.length === 0;
-  type TempPasswordInfo = { name: string; phone: string; tempPassword: string; emailed: boolean };
+  // Every student always gets a systemId (Login ID) + an auto-generated PIN
+  // now — no more "if no email/phone" branching. Kept as its own kind (not
+  // just reusing TempPasswordDialog's plain password shape) since it needs
+  // to show the systemId alongside the PIN.
+  type TempPasswordInfo =
+    | { kind: 'password'; name: string; phone: string; tempPassword: string; emailed: boolean }
+    | { kind: 'pin'; name: string; systemId: string; pin: string };
   // A queue, not a single value — creating a student can mint up to TWO new
   // logins at once (the student's own + a brand-new guardian's), each with
-  // its own one-time-only password. Shown one at a time so neither gets
+  // its own one-time-only credential. Shown one at a time so neither gets
   // silently skipped.
   const [tempPasswordQueue, setTempPasswordQueue] = useState<TempPasswordInfo[]>([]);
   const tempPasswordInfo = tempPasswordQueue[0] ?? null;
@@ -209,6 +217,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         onClose();
         if (res.data.guardianTempPassword) {
           setTempPasswordQueue([{
+            kind: 'password',
             name: parentName || 'Parent',
             phone: parentPhone || '',
             tempPassword: res.data.guardianTempPassword,
@@ -224,23 +233,23 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         }).unwrap();
         toast.success('Student added');
         onClose();
-        // Only present when the account got an auto-generated password
-        // (i.e. no `password` was set in the form) — see createStudent's
-        // type comment in studentsApi.ts. guardianTempPassword is separate:
-        // present only when a BRAND-NEW parent account was just created
-        // alongside this student (an existing parent just gets linked, no
-        // new password involved).
+        // `pin` is now ALWAYS present on creation (paired with systemId as
+        // the Login ID) — no more tempPassword/pin branching, since students
+        // never have their own email/phone to send a temp password to.
+        // guardianTempPassword is separate: present only when a BRAND-NEW
+        // parent account was just created alongside this student.
         const queue: TempPasswordInfo[] = [];
-        if (res.data.tempPassword) {
+        if (res.data.pin) {
           queue.push({
+            kind: 'pin',
             name: `${core.firstName} ${core.lastName}`,
-            phone: core.phone,
-            tempPassword: res.data.tempPassword,
-            emailed: true,
+            systemId: res.data.systemId || '',
+            pin: res.data.pin,
           });
         }
         if (res.data.guardianTempPassword) {
           queue.push({
+            kind: 'password',
             name: parentName || 'Parent',
             phone: parentPhone || '',
             tempPassword: res.data.guardianTempPassword,
@@ -253,21 +262,14 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
       const message = getErrorMessage(e, 'Could not save student');
       toast.error(message);
       // Also highlight the specific field the backend flagged, so the user
-      // doesn't have to re-read the whole form to find what to fix — the
-      // toast alone already says e.g. "Roll number 12 is already used in
-      // this class/section", but pointing at the actual input is faster.
-      // DUPLICATE_PHONE/DUPLICATE_EMAIL fire for either the STUDENT's own
-      // phone/email or the GUARDIAN's, from different backend call sites
-      // that share the same code — the message text (which always says
-      // "guardian" for the guardian case) is what disambiguates which
-      // field to mark, since the code alone doesn't.
+      // doesn't have to re-read the whole form to find what to fix.
       const code = getErrorCode(e);
       if (code === 'DUPLICATE_ROLL') {
         setError('rollNumber', { type: 'server', message });
       } else if (code === 'DUPLICATE_PHONE') {
-        setError(/guardian/i.test(message) ? 'parentPhone' : 'phone', { type: 'server', message });
+        setError('parentPhone', { type: 'server', message });
       } else if (code === 'DUPLICATE_EMAIL') {
-        setError(/guardian/i.test(message) ? 'parentEmail' : 'email', { type: 'server', message });
+        setError('parentEmail', { type: 'server', message });
       }
     }
   };
@@ -278,6 +280,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
     try {
       const res = await resendCredentials({ id: student.id, target }).unwrap();
       setTempPasswordQueue((q) => [...q, {
+        kind: 'password',
         name: target === 'student' ? `${student.firstName} ${student.lastName}` : (student.guardianName || 'Parent'),
         phone: target === 'student' ? student.phone ?? '' : student.guardianPhone ?? '',
         tempPassword: res.data.tempPassword,
@@ -288,6 +291,22 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
       toast.error(getErrorMessage(e, 'Could not resend credentials'));
     } finally {
       setResendingTarget(null);
+    }
+  };
+
+  const onResetPin = async () => {
+    if (!student) return;
+    try {
+      const res = await resetPin({ id: student.id }).unwrap();
+      setTempPasswordQueue((q) => [...q, {
+        kind: 'pin',
+        name: `${student.firstName} ${student.lastName}`,
+        systemId: student.systemId || '',
+        pin: res.data.pin,
+      }]);
+      toast.success('PIN reset');
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Could not reset PIN'));
     }
   };
 
@@ -320,18 +339,18 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               <div className="border-b border-border pb-4">
                 <Label>Login credentials</Label>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Resend a fresh temporary password if the student or parent never got (or lost) their original welcome email. This immediately replaces their current password.
+                  This student logs in with their ID card&apos;s Login ID and a PIN. Resetting immediately replaces their current PIN.
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Button
                     type="button"
                     variant="secondary"
                     size="sm"
-                    loading={resending && resendingTarget === 'student'}
-                    disabled={resending}
-                    onClick={() => onResendCredentials('student')}
+                    loading={resettingPin}
+                    disabled={resettingPin}
+                    onClick={onResetPin}
                   >
-                    <KeyRound size={14} /> Resend student login
+                    <KeyRound size={14} /> Reset PIN
                   </Button>
                   <Button
                     type="button"
@@ -376,39 +395,6 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 {errors.lastName && <p className="mt-1 text-xs text-danger">{errors.lastName.message}</p>}
               </div>
             </div>
-
-            <div>
-              <Label htmlFor="phone">Phone</Label>
-              <Controller
-                control={control}
-                name="phone"
-                render={({ field }) => (
-                  <PhoneInput
-                    id="phone"
-                    international
-                    labels={en}
-                    defaultCountry="PK"
-                    countryCallingCodeEditable={false}
-                    value={field.value}
-                    onChange={(v) => field.onChange(v ?? '')}
-                    placeholder="300 1234567"
-                    className={errors.phone ? 'PhoneInput-danger' : undefined}
-                  />
-                )}
-              />
-              {errors.phone && <p className="mt-1 text-xs text-danger">{errors.phone.message}</p>}
-            </div>
-
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" dir="ltr" {...register('email')} />
-              {errors.email && <p className="mt-1 text-xs text-danger">{errors.email.message}</p>}
-            </div>
-            {!isEdit && (
-              <p className="-mt-2 text-xs text-muted-foreground">
-                The student will log in with this phone or email — double-check both are correct and actually reachable before saving.
-              </p>
-            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -522,11 +508,11 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               <>
                 <div className="border-t border-border pt-4">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {isEdit ? 'Add a parent / guardian' : 'Parent / Guardian (optional)'}
+                    Parent / Guardian
                   </p>
                   {isEdit && (
                     <p className="-mt-1 mb-2 text-xs text-muted-foreground">
-                      This student has no guardian on file yet — add one below, or leave blank for now.
+                      This student has no guardian on file yet — add one below.
                     </p>
                   )}
                   <div className="grid grid-cols-2 gap-3">
@@ -568,7 +554,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 </div>
                 {!isEdit && (
                   <p className="text-xs text-muted-foreground">
-                    A student login is created automatically with a temporary password, emailed to the student — they can log in with their phone, email, or the Student ID printed on their ID card, and will be asked to set their own password on first login.
+                    A student login is created automatically — a Login ID (printed on their ID card) paired with a school-set PIN, shown once right after saving. The student can change their own PIN later from their account.
                   </p>
                 )}
               </>

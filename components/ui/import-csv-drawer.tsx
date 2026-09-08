@@ -41,6 +41,10 @@ interface Props {
    *  hardcoded (students, the other user of this drawer, have no invite
    *  step at all). Omit for no help text. */
   helpText?: string;
+  /** Shown at the top of the results screen after a successful import —
+   *  e.g. students have no per-row credential display here (no email/phone
+   *  to show), so this points the admin at the Class Roster page instead. */
+  resultNote?: React.ReactNode;
 }
 
 /** Small per-row indicator for a created account's invite email — same
@@ -76,7 +80,7 @@ function InviteResultBadge({ status, error }: { status?: EmailDeliveryStatus; er
   );
 }
 
-export function ImportCsvDrawer({ open, onClose, title, columns, sample, filename, onImport, helpText }: Props) {
+export function ImportCsvDrawer({ open, onClose, title, columns, sample, filename, onImport, helpText, resultNote }: Props) {
   const [csv, setCsv] = useState('');
   const [fileName, setFileName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -176,6 +180,11 @@ export function ImportCsvDrawer({ open, onClose, title, columns, sample, filenam
 
             {result && (
               <div className="space-y-4">
+                {resultNote && (
+                  <div className="rounded-lg border border-primary/30 bg-primary-soft/40 px-3.5 py-2.5 text-xs text-foreground">
+                    {resultNote}
+                  </div>
+                )}
                 <div className={cn('grid gap-2', hasInviteData ? 'grid-cols-3' : 'grid-cols-2')}>
                   <div className="rounded-xl border border-border bg-muted/40 p-3 text-center">
                     <p className="text-xl font-semibold text-foreground">{result.created}</p>

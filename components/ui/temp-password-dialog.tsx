@@ -9,10 +9,16 @@ interface Props {
   open: boolean;
   onClose: () => void;
   name: string;
-  phone: string;
-  tempPassword: string;
+  /** Either the plain temp-password flow (phone + tempPassword) or the
+   *  PIN-login flow (systemId + pin) for students with no email/phone of
+   *  their own — mutually exclusive, pass one pair or the other. */
+  phone?: string;
+  tempPassword?: string;
+  systemId?: string;
+  pin?: string;
   /** True when we already emailed these credentials to the person (so the
-   *  copy says "also emailed" instead of implying it's the only record). */
+   *  copy says "also emailed" instead of implying it's the only record).
+   *  Never true for the PIN flow — there's no email/phone to send it to. */
   emailed?: boolean;
 }
 
@@ -24,13 +30,23 @@ interface Props {
  * dismissed without copying it down, the only other way to see it is the
  * welcome email (when the account has an email on file) or a manual
  * password reset.
+ *
+ * Also reused for the PIN-login flow (students with no email/phone) — pass
+ * `systemId`/`pin` instead of `phone`/`tempPassword`. Same one-time-reveal
+ * guarantee: the PIN is never shown again after this dialog closes, only a
+ * fresh "Reset PIN" mints a new one.
  */
-export function TempPasswordDialog({ open, onClose, name, phone, tempPassword, emailed }: Props) {
+export function TempPasswordDialog({ open, onClose, name, phone, tempPassword, systemId, pin, emailed }: Props) {
   const [copied, setCopied] = useState(false);
+  const isPin = pin !== undefined;
+  const idLabel = isPin ? 'Login ID' : 'Phone';
+  const idValue = isPin ? systemId : phone;
+  const secretLabel = isPin ? 'PIN' : 'Password';
+  const secretValue = isPin ? pin! : tempPassword!;
 
   const copyAll = async () => {
     try {
-      await navigator.clipboard.writeText(`Phone: ${phone}\nPassword: ${tempPassword}`);
+      await navigator.clipboard.writeText(`${idLabel}: ${idValue}\n${secretLabel}: ${secretValue}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -52,21 +68,25 @@ export function TempPasswordDialog({ open, onClose, name, phone, tempPassword, e
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-soft text-primary-soft-foreground">
               <KeyRound size={16} />
             </span>
-            <DialogPrimitive.Title className="text-base font-semibold">{name}&apos;s login was created</DialogPrimitive.Title>
+            <DialogPrimitive.Title className="text-base font-semibold">
+              {isPin ? `${name}'s login PIN` : `${name}'s login was created`}
+            </DialogPrimitive.Title>
           </div>
           <DialogPrimitive.Description className="mt-2 text-sm text-muted-foreground">
-            Save this password now — it{"'"}s only shown once and can&apos;t be retrieved later.
-            {emailed ? ' It was also emailed to them.' : ' They’ll be asked to set their own on first login.'}
+            {isPin
+              ? `Write this down now — it won't be shown again. Use it with the Login ID below to sign in.`
+              : <>Save this password now — it{"'"}s only shown once and can&apos;t be retrieved later.
+                  {emailed ? ' It was also emailed to them.' : ' They’ll be asked to set their own on first login.'}</>}
           </DialogPrimitive.Description>
 
           <div className="mt-4 space-y-2 rounded-xl border border-border bg-muted/50 p-3.5">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Phone</span>
-              <span dir="ltr" className="font-medium">{phone}</span>
+              <span className="text-muted-foreground">{idLabel}</span>
+              <span dir="ltr" className="font-medium">{idValue}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Password</span>
-              <span dir="ltr" className="font-mono font-semibold tracking-wide">{tempPassword}</span>
+              <span className="text-muted-foreground">{secretLabel}</span>
+              <span dir="ltr" className="font-mono font-semibold tracking-wide">{secretValue}</span>
             </div>
           </div>
 

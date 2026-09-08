@@ -8,6 +8,10 @@ export interface StudentListItem {
   userId?: string | null;
   rollNumber: string;
   admissionNumber: string;
+  // Login ID for students with no email/phone on file (format MKS-XXXXXXXX)
+  // — same value printed on the ID card. Null until the card is generated
+  // (backend lazy-generates it on first ID card print), same as IdCard's.
+  systemId: string | null;
   name: string;
   firstName: string;
   lastName: string;
@@ -67,9 +71,11 @@ interface ApiObject<T> {
 export interface CreateStudentBody {
   firstName: string;
   lastName: string;
-  phone: string;
-  email: string;
-  password?: string;
+  // Students never have their own email/phone in any flow — the backend
+  // requires at least one of parentEmail/parentPhone/guardianIds instead,
+  // and always auto-generates a PIN (returned once as `pin` on
+  // createStudent's response) paired with the student's systemId as their
+  // login identifier.
   rollNumber: string;
   admissionNumber: string;
   classId: string;
@@ -210,10 +216,13 @@ export const studentsApi = baseApi.injectEndpoints({
     // created here with a linked guardian phone) or the admin reports page
     // would never refresh. See the same fix applied to attendanceApi,
     // feesApi and examsApi.
-    // tempPassword is only ever present in THIS response, and only when the
-    // account was auto-generated one (no `password` sent in the request) —
-    // never returned from getStudent/list, never persisted anywhere else.
-    createStudent: builder.mutation<ApiObject<StudentListItem & { tempPassword?: string; guardianTempPassword?: string }>, CreateStudentBody>({
+    // tempPassword/pin are only ever present in THIS response, and only when
+    // the account was auto-generated one (no `password` sent in the
+    // request) — never returned from getStudent/list, never persisted
+    // anywhere else. `pin` (not tempPassword) is set instead when the
+    // student has no email/phone of their own — see student.service.ts's
+    // create(), paired with `systemId` as the login identifier.
+    createStudent: builder.mutation<ApiObject<StudentListItem & { tempPassword?: string; guardianTempPassword?: string; pin?: string }>, CreateStudentBody>({
       query: (body) => ({ url: '/students', method: 'POST', body }),
       // Creating a student also bumps Section.currentCount on the Class doc
       // (see adjustSectionCount in student.service.ts) — invalidate 'Classes'
@@ -280,6 +289,61 @@ export const studentsApi = baseApi.injectEndpoints({
       query: ({ id, target }) => ({ url: `/students/${id}/resend-credentials`, method: 'POST', body: { target } }),
     }),
 
+    // Admin or teacher (own sections only, enforced server-side) — mints a
+    // brand-new PIN (random, or a custom one if `pin` is passed) and marks
+    // pinState back to 'school_issued'. No list/detail invalidation needed,
+    // the PIN itself isn't shown anywhere persisted — but roster queries
+    // (pinState) should refresh.
+    resetStudentPin: builder.mutation<ApiObject<{ pin: string }>, { id: string; pin?: string }>({
+      query: ({ id, pin }) => ({ url: `/students/${id}/reset-pin`, method: 'POST', body: pin ? { pin } : {} }),
+      invalidatesTags: (_r, _e, { id }) => [{ type: 'Students', id: `ROSTER-${id}` }, 'StudentRoster'],
+    }),
+
+    // Student self-service — changes their own PIN, proving knowledge of the
+    // current one. On success pinState flips to 'student_set' server-side.
+    changeMyPin: builder.mutation<ApiObject<{ success: boolean }>, { currentPin: string; newPin: string }>({
+      query: (body) => ({ url: '/students/me/change-pin', method: 'POST', body }),
+    }),
+
+    // Admin-only — decrypted PIN lookup, only non-null while pinState is
+    // 'school_issued'. Explicit query (not auto-fetched) so the UI can
+    // require a deliberate "Reveal" click rather than always showing PINs.
+    getStudentPin: builder.query<ApiObject<{ pin: string | null; state: 'school_issued' | 'student_set' | null }>, string>({
+      query: (id) => `/students/${id}/pin`,
+    }),
+
+    // Admin (any section) or teacher (their own assigned sections only,
+    // enforced server-side — a 403 surfaces for a stale/foreign link).
+    // `pin` is only present in each row for admin callers.
+    getSectionRoster: builder.query<
+      ApiObject<{
+        className: string | null;
+        section: string | null;
+        students: {
+          id: string;
+          name: string;
+          rollNumber: string;
+          systemId: string | null;
+          pinState: 'school_issued' | 'student_set';
+          pin?: string | null;
+        }[];
+      }>,
+      { classId: string; sectionId: string }
+    >({
+      query: ({ classId, sectionId }) => `/students/roster/${classId}/${sectionId}`,
+      providesTags: ['StudentRoster'],
+    }),
+
+    // Admin-only CSV download — returns the raw Blob so the caller can
+    // trigger a file save, same download-trigger pattern as the bulk-import
+    // template's client-generated Blob in import-csv-drawer.tsx.
+    exportSectionRoster: builder.query<Blob, { classId: string; sectionId: string }>({
+      query: ({ classId, sectionId }) => ({
+        url: `/students/roster/${classId}/${sectionId}/export`,
+        responseHandler: (response) => response.blob(),
+      }),
+    }),
+
     getIdCards: builder.query<ApiObject<IdCardSheet>, { classId: string; sectionId: string }>({
       query: ({ classId, sectionId }) => `/students/cards?classId=${classId}&sectionId=${sectionId}`,
       providesTags: [{ type: 'Students', id: 'LIST' }, 'Students'],
@@ -325,6 +389,12 @@ export const {
   useDeleteStudentMutation,
   useBulkImportStudentsMutation,
   useResendStudentCredentialsMutation,
+  useResetStudentPinMutation,
+  useChangeMyPinMutation,
+  useGetStudentPinQuery,
+  useLazyGetStudentPinQuery,
+  useGetSectionRosterQuery,
+  useLazyExportSectionRosterQuery,
   useGetIdCardsQuery,
   useGetMyStudentContactQuery,
   useUpdateMyStudentContactMutation,

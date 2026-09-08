@@ -92,6 +92,7 @@ export const baseApi = createApi({
     'DashboardAlerts',
     'MyContact',
     'MyStudentContact',
+    'StudentRoster',
   ],
   endpoints: () => ({}),
 });

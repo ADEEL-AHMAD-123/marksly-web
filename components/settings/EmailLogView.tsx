@@ -554,7 +554,7 @@ function MissingEmailPanel({
   return (
     <Card className="p-4">
       <p className="text-sm text-muted-foreground">
-        These people were added without an email address, so they were never sent login details at all. Add an email to their record on the Students, Teachers, or Staff page — a &quot;resend login&quot; option will appear there once you do.
+        These people were added without an email address, so they were never sent login details at all. Students never have their own email — for a student&apos;s family, add an email to the parent/guardian on the Students page; for a teacher, staff member, or accountant, add one to their own record. A &quot;resend login&quot; option will appear there once you do.
       </p>
       <ul className="mt-3 divide-y divide-border">
         {entries.map((m) => {

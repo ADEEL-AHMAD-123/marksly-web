@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Plus, Download, Filter, ChevronLeft, ChevronRight, AlertCircle,
 } from 'lucide-react';
@@ -103,10 +104,11 @@ export function StudentsView() {
         }
       />
 
-      <LoginInfoNote>
-        <p>Students log in at the same <strong>Log in</strong> page as everyone else, using the phone, email, or Student ID (printed on their ID card, e.g. MKS-XXXXXXXX) entered when they were added — plus a temporary password emailed to them, which they set their own password for on first login.</p>
-        <p>Guardians get a separate parent login — the phone/email entered as guardian for a student, also emailed its own temporary password. One guardian phone linked to more than one child means one shared login for all of them.</p>
-        <p>Missing or bounced email? Open the student, use <strong>Resend student login</strong> or <strong>Resend parent login</strong> to send a fresh password.</p>
+      <LoginInfoNote link={{ href: '/admin/students/roster', label: 'Go to Class Roster' }}>
+        <p>Students log in with their Login ID (printed on their ID card, e.g. MKS-XXXXXXXX) plus a PIN set by the school — shown once when the student is added, or any time via <strong>Reset PIN</strong> on the student. Students can change their own PIN later from their account.</p>
+        <p>Guardians get a separate parent login — the phone/email entered as guardian for a student, emailed its own temporary password. One guardian phone linked to more than one child means one shared login for all of them.</p>
+        <p>Need to look up or reset a student&apos;s Login ID and PIN by class/section in bulk? Use the Class Roster page.</p>
+        <p>Missing or bounced guardian email? Open the student, use <strong>Resend parent login</strong> to send a fresh password.</p>
       </LoginInfoNote>
 
       {/* Filters */}
@@ -319,11 +321,17 @@ export function StudentsView() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         title="Import Students"
-        columns={['firstName', 'lastName', 'phone', 'email', 'rollNumber', 'admissionNumber', 'class', 'section', 'gender', 'guardianPhone', 'guardianName', 'guardianEmail']}
-        sample={['Ali', 'Khan', '03001234567', 'ali@example.com', 'STD-2001', 'ADM-2001', 'Grade 5', 'A', 'male', '03009998888', 'Imran Khan', 'imran@example.com']}
+        columns={['firstName', 'lastName', 'rollNumber', 'admissionNumber', 'class', 'section', 'gender', 'guardianPhone', 'guardianName', 'guardianEmail']}
+        sample={['Ali', 'Khan', 'STD-2001', 'ADM-2001', 'Grade 5', 'A', 'male', '03009998888', 'Imran Khan', 'imran@example.com']}
         filename="students-template.csv"
         onImport={async (csv) => (await bulkImport({ csv }).unwrap()).data}
-        helpText={'Running more than one active term at once (e.g. overlapping semesters)? Add an optional "term" column with the exact term name if any class name exists in more than one active term — otherwise it can be left out.'}
+        helpText={'Students never have their own email/phone — only guardian contact (guardianPhone + guardianEmail) is collected, and is required for every row. Running more than one active term at once (e.g. overlapping semesters)? Add an optional "term" column with the exact term name if any class name exists in more than one active term — otherwise it can be left out.'}
+        resultNote={
+          <>
+            Logins aren&apos;t emailed or shown per row here — each student got a Login ID and PIN automatically. Find them on the{' '}
+            <Link href="/admin/students/roster" className="font-medium text-primary hover:underline">Class Roster</Link> page.
+          </>
+        }
       />
     </div>
   );
