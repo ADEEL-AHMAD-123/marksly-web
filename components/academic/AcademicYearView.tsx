@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { InfoNote } from '@/components/ui/info-note';
 import { cn } from '@/lib/utils';
 import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
 import { useTerminology } from '@/lib/terminology';
@@ -191,6 +192,23 @@ function TermsTab() {
           </span>
         </div>
       )}
+
+      <InfoNote
+        title="Before you promote students, check the target class has subjects"
+        link={{ href: '/admin/subjects', label: 'Go to Subjects' }}
+      >
+        <p>
+          When you promote students, we automatically move their subjects along too — <strong>if the class they&apos;re
+          moving to has no subjects of its own yet, we copy over the ones from their old class</strong> so nothing
+          is missing.
+        </p>
+        <p>
+          But if <strong>neither the old nor the new class has any subjects set up</strong>, there&apos;s nothing to
+          copy — students land in the new class with no subjects at all, which means you won&apos;t be able to mark
+          their attendance or record exam results there until you add subjects yourself. The promotion screen
+          warns you about this before you confirm, so check that warning carefully.
+        </p>
+      </InfoNote>
 
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button variant="secondary" size="sm" onClick={() => setPromoteOpen(true)}>

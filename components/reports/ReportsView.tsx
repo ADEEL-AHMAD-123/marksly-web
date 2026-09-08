@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { AreaTrendChart, BarsChart, DonutChart } from '@/components/charts/charts';
+import { InfoNote } from '@/components/ui/info-note';
 import { useGetReportsQuery } from '@/store/api/reportsApi';
 import { useGetTermsQuery } from '@/store/api/termsApi';
 import { formatCurrency } from '@/lib/utils';
@@ -80,6 +81,15 @@ export function ReportsView({ title = 'Reports' }: { title?: string }) {
   return (
     <div className="space-y-6">
       <PageHeader title={title} description="Insights across your institution." actions={termFilter} />
+
+      <InfoNote title="Why don't these numbers match what students see?">
+        <p>
+          <strong>Pass Rate</strong> and <strong>Grade Distribution</strong> here include every result that's been
+          entered — including drafts and results a teacher is still withholding or hasn't published yet. Students
+          and parents only ever see <strong>published</strong> results, so it's normal for this page to reflect a
+          few more results than what shows up on their end, especially right after grading a fresh batch of exams.
+        </p>
+      </InfoNote>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard label="Active Students" value={overview.activeStudents.toLocaleString('en-PK')} icon={GraduationCap} tone="primary" />

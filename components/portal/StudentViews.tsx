@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { InfoNote } from '@/components/ui/info-note';
 import { AttendanceHistory } from './AttendanceHistory';
 import { ResultsList } from './ResultsList';
 import { GpaSummary } from './GpaSummary';
@@ -29,6 +30,14 @@ export function StudentAttendanceView() {
   return (
     <div className="space-y-6">
       <PageHeader title="My Attendance" description="Your attendance record." />
+      <InfoNote title="Why does 'Late' lower my percentage?">
+        <p>
+          Your attendance rate only counts periods marked <strong>Present</strong>. Being marked{' '}
+          <strong>Late</strong> or on <strong>Leave</strong> is recorded separately from an absence, but neither
+          one counts toward your percentage the way Present does — so a term with a lot of late marks can still
+          show a lower rate than you'd expect.
+        </p>
+      </InfoNote>
       <Card className="p-4">
         <div className="max-w-xs">
           <Select value={termId} onValueChange={setTermId}>
@@ -70,6 +79,14 @@ export function StudentResultsView() {
   return (
     <div className="space-y-6">
       <PageHeader title="My Results" description="Your published exam results." />
+      <InfoNote title="Why can't I see a result yet?">
+        <p>
+          A result only appears here once the exam is <strong>published</strong> — and even then, your school can
+          individually hold back a single result (for example, while waiting on an external grade), so it can stay
+          hidden a little longer than the rest of your exam. If you expected a result and don't see it, ask your
+          teacher or school office rather than assuming something went wrong.
+        </p>
+      </InfoNote>
       <GpaSummary data={cgpaData?.data} isLoading={cgpaLoading} />
       <ResultsList data={data?.data} isLoading={isLoading} />
     </div>
@@ -81,6 +98,13 @@ export function StudentFeesView() {
   return (
     <div className="space-y-6">
       <PageHeader title="My Fees" description="Your fee invoices and dues." />
+      <InfoNote title="Paid online but it still shows as due?">
+        <p>
+          After you pay online, this page confirms the result the moment you're brought back to it. If the payment
+          gateway is slow to respond, the invoice may briefly still show as <strong>Pending</strong> — it updates on
+          its own within a few minutes once the payment is confirmed, no need to pay again.
+        </p>
+      </InfoNote>
       <FeesList data={data?.data} isLoading={isLoading} />
     </div>
   );

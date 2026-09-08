@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { InfoNote } from '@/components/ui/info-note';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -84,6 +85,19 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
         description={isLoading ? 'Loading…' : `${exams.length} exams`}
         actions={<Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Create exam</Button>}
       />
+
+      <InfoNote title="Students can't see marks until you publish">
+        <p>
+          Entering and saving marks never shows anything to students or parents — they only see results once you
+          click <strong>Publish</strong> on that exam. Until then the exam sits as &quot;Pending&quot; or
+          &quot;Graded&quot;, visible only to staff.
+        </p>
+        <p>
+          <strong>Publishing can&apos;t be undone</strong> from this screen, so double-check marks first. If one
+          student&apos;s result isn&apos;t ready yet, use <strong>Withhold</strong> on that student before publishing
+          — everyone else&apos;s result goes out, and theirs stays back until you release it.
+        </p>
+      </InfoNote>
 
       <Card className="p-4">
         <div className="max-w-xs">

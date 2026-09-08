@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
+import { InfoNote } from '@/components/ui/info-note';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -65,6 +66,22 @@ export function TimetableView() {
         description={`Build the weekly schedule per ${sectionLabel.toLowerCase()}.`}
         actions={ready ? <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Add period</Button> : undefined}
       />
+
+      <InfoNote
+        title="Set these up first, or the timetable will have gaps"
+        link={{ href: '/admin/subjects', label: 'Go to Subjects' }}
+      >
+        <p>
+          A timetable is built per class and section, so both need to exist before you can add a single period —
+          and each period needs a subject to pick from, so <strong>add your subjects first</strong> or the subject
+          dropdown here will be empty.
+        </p>
+        <p>
+          If a class or section has <strong>no period scheduled for today</strong>, teachers won&apos;t see anything
+          to mark attendance for on that day — attendance is always taken against a specific period, not just a
+          date. Add the missing period here to fix it.
+        </p>
+      </InfoNote>
 
       <Card className="p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

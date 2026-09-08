@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { InfoNote } from '@/components/ui/info-note';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -216,6 +217,20 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
   return (
     <div className="space-y-6">
       <PageHeader title={title} description={tab === 'mark' ? 'Mark attendance for a specific period.' : 'Absent, late and leave students, with guardian contact details.'} />
+
+      {isTeacher && (
+        <InfoNote title="Why can't I edit attendance from a few days ago?">
+          <p>
+            Once you mark a day&apos;s attendance, you have until <strong>24 hours after that day&apos;s midnight
+            (Pakistan time)</strong> to go back and fix any mistakes yourself.
+          </p>
+          <p>
+            After that window closes, the roster locks and only an admin can make changes — this keeps attendance
+            records reliable once they&apos;ve been used for reports, so nobody can quietly change an old record
+            weeks later.
+          </p>
+        </InfoNote>
+      )}
 
       <div className="flex gap-2">
         <button

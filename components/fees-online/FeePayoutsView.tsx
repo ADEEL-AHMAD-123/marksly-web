@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
+import { InfoNote } from '@/components/ui/info-note';
 import {
   Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
@@ -118,6 +119,23 @@ export function FeePayoutsView() {
           </Button>
         }
       />
+
+      <InfoNote title="Why doesn't a parent's online payment show as received right away?">
+        <p>
+          When a parent pays online, the money goes to the gateway (JazzCash/EasyPaisa/Safepay) first, not directly
+          to the institution. It shows up here under <strong>Institutions owed</strong> once we&apos;ve confirmed it
+          settled — this is a separate step from the parent&apos;s payment succeeding.
+        </p>
+        <p>
+          <strong>Run reconciliation now</strong> actively checks any payments we&apos;re unsure about with the
+          gateway, in case a confirmation was missed or delayed — it doesn&apos;t create payouts by itself.
+        </p>
+        <p>
+          Once a payment is confirmed and settled, it sits in <strong>Institutions owed</strong> until you click
+          <strong> Generate payout</strong> to batch it up, and then <strong>Mark as paid</strong> once you&apos;ve
+          actually sent the institution their money.
+        </p>
+      </InfoNote>
 
       {needsRefund.length > 0 && (
         <Card className="border-danger/40 p-5">

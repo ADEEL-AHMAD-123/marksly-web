@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { InfoNote } from '@/components/ui/info-note';
 import { AttendanceHistory } from './AttendanceHistory';
 import { ResultsList } from './ResultsList';
 import { GpaSummary } from './GpaSummary';
@@ -106,6 +107,35 @@ export function ParentScopedView({ kind }: { kind: Kind }) {
   return (
     <div className="space-y-6">
       <PageHeader title={meta.title} description={meta.desc} />
+
+      {kind === 'attendance' && (
+        <InfoNote title="Why does 'Late' lower the percentage?">
+          <p>
+            The attendance rate only counts periods marked <strong>Present</strong>. A <strong>Late</strong> or{' '}
+            <strong>Leave</strong> mark is recorded separately from an absence, but neither counts toward the
+            percentage the way Present does — so a term with several late marks can show a lower rate than expected.
+          </p>
+        </InfoNote>
+      )}
+      {kind === 'results' && (
+        <InfoNote title="Why can't I see a result yet?">
+          <p>
+            A result only appears here once the exam is <strong>published</strong> — and your school can also hold
+            back a single student's result individually (for example, while waiting on an external grade), so it
+            can stay hidden a little longer than the rest of the class. If you expected a result and don't see it,
+            check with the school rather than assuming something's wrong.
+          </p>
+        </InfoNote>
+      )}
+      {kind === 'fees' && (
+        <InfoNote title="Paid online but it still shows as due?">
+          <p>
+            After paying online, this page confirms the payment the moment you're brought back to it. If the
+            payment gateway is slow to respond, the invoice may briefly still show as <strong>Pending</strong> — it
+            updates on its own within a few minutes, no need to pay again.
+          </p>
+        </InfoNote>
+      )}
 
       {childrenLoading ? (
         <Card className="p-5"><Skeleton className="h-10 w-64" /></Card>

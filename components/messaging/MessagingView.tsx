@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { InfoNote } from '@/components/ui/info-note';
 import {
   Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
@@ -160,6 +161,14 @@ export function MessagingView() {
   return (
     <div className="space-y-6">
       <PageHeader title="Messaging" description="Send SMS and WhatsApp messages to parents and staff." />
+
+      <InfoNote title="Who actually gets this?">
+        <p>
+          This doesn't pull from your student or staff lists — whoever's phone number you type into{' '}
+          <strong>Recipients</strong> gets the message, and nobody else. There's no class or role picker here, so
+          double-check the numbers before sending, especially for anything urgent.
+        </p>
+      </InfoNote>
 
       {reconcilingCredits && (
         <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary-soft/40 px-4 py-3 text-sm text-primary">

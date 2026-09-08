@@ -122,7 +122,20 @@ export function ClassRosterView({ mode }: Props) {
           </div>
           {isAdmin && (
             <div className="flex items-end">
-              <Button variant="secondary" size="sm" disabled={!ready || !roster || exporting} loading={exporting} onClick={onExport}>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!ready || !roster || roster.students.length === 0 || exporting}
+                loading={exporting}
+                onClick={onExport}
+                title={
+                  !ready
+                    ? `Select a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()} first`
+                    : roster && roster.students.length === 0
+                    ? 'No students in this section to export'
+                    : undefined
+                }
+              >
                 <Download size={15} /> Export CSV
               </Button>
             </div>

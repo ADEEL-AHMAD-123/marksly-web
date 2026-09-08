@@ -86,14 +86,25 @@ export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }:
       </div>
 
       {/* Nav */}
+      {/* Active-item resolution: some nav hrefs are prefixes of *other* nav
+          items' hrefs (e.g. Students = /admin/students, Class Roster =
+          /admin/students/roster) — a plain per-item prefix match would light
+          up both for /admin/students/roster. Instead, find the single
+          longest href that matches the current pathname across the whole
+          list and only that one is "active", so nested-but-distinct pages
+          never double-highlight their parent section. */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-2.5 py-4 lg:px-3 lg:py-5">
-        {items.map(({ label, href, icon: Icon }, index) => {
-          // The first item is the role's index/dashboard route, which is a
-          // prefix of every other route — so it should match exactly only.
-          const isIndex = index === 0;
-          const active = isIndex
-            ? pathname === href
-            : pathname === href || pathname.startsWith(href + '/');
+        {(() => {
+          const bestMatchHref = items.reduce<string | null>((best, item, idx) => {
+            const isIndex = idx === 0;
+            const isMatch = isIndex ? pathname === item.href : pathname === item.href || pathname.startsWith(item.href + '/');
+            if (!isMatch) return best;
+            if (!best || item.href.length > best.length) return item.href;
+            return best;
+          }, null);
+
+          return items.map(({ label, href, icon: Icon }) => {
+          const active = href === bestMatchHref;
           const badgeCount = href === '/admin/email-log' ? emailIssueCount : 0;
           return (
             <Link
@@ -126,7 +137,8 @@ export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }:
               )}
             </Link>
           );
-        })}
+          });
+        })()}
       </nav>
 
       {/* Subtle "Powered by" line — only shown once the institution's own

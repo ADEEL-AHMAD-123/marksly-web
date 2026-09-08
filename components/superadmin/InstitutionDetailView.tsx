@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatCard } from '@/components/ui/stat-card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { InfoNote } from '@/components/ui/info-note';
 import {
   useGetInstitutionQuery, useUpdateInstitutionMutation, useGetPlanHistoryQuery,
   type InstitutionDetail,
@@ -95,6 +96,19 @@ export function InstitutionDetailView({ id }: { id: string }) {
           </div>
         }
       />
+
+      <InfoNote title="What actually happens when you suspend an institution?">
+        <p>
+          Suspending puts the whole school into <strong>read-only mode immediately</strong> — every user there
+          (admins, teachers, students, parents) can still log in and view their data, but any save, add, or change
+          is blocked until you activate them again.
+        </p>
+        <p>
+          This is meant as a deliberate hold — for example, over a billing dispute — that needs your decision to
+          lift. Unlike an account that&apos;s simply overdue on payment, a suspended account stays locked even if
+          someone there tries to pay; only clicking <strong>Activate</strong> here restores normal access.
+        </p>
+      </InfoNote>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Students" value={d.counts.students} icon={GraduationCap} tone="primary" />

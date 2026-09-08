@@ -29,7 +29,7 @@ import { getInitials, formatDate, cn } from '@/lib/utils';
 import { StudentFormDrawer } from './StudentFormDrawer';
 import { StudentDetailDrawer } from './StudentDetailDrawer';
 import { useTerminology } from '@/lib/terminology';
-import { LoginInfoNote } from '@/components/ui/login-info-note';
+import { InfoNote } from '@/components/ui/info-note';
 
 const statusBadge: Record<
   StudentListItem['status'],
@@ -104,12 +104,12 @@ export function StudentsView() {
         }
       />
 
-      <LoginInfoNote link={{ href: '/admin/students/roster', label: 'Go to Class Roster' }}>
+      <InfoNote title="How do they log in?" link={{ href: '/admin/students/roster', label: 'Go to Class Roster' }}>
         <p>Students log in with their Login ID (printed on their ID card, e.g. MKS-XXXXXXXX) plus a PIN set by the school — shown once when the student is added, or any time via <strong>Reset PIN</strong> on the student. Students can change their own PIN later from their account.</p>
         <p>Guardians get a separate parent login — the phone/email entered as guardian for a student, emailed its own temporary password. One guardian phone linked to more than one child means one shared login for all of them.</p>
         <p>Need to look up or reset a student&apos;s Login ID and PIN by class/section in bulk? Use the Class Roster page.</p>
         <p>Missing or bounced guardian email? Open the student, use <strong>Resend parent login</strong> to send a fresh password.</p>
-      </LoginInfoNote>
+      </InfoNote>
 
       {/* Filters */}
       <Card className="p-4">

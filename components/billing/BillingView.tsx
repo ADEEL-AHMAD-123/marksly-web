@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { InfoNote } from '@/components/ui/info-note';
 import {
   useGetMyBillingQuery, useGetBillingPlansQuery, useSelectPlanMutation,
   useBillingCheckoutMutation, useVerifyPaymentMutation, useSubmitBankTransferMutation,
@@ -318,6 +319,25 @@ export function BillingView() {
   return (
     <div className="space-y-6">
       <PageHeader title="Billing & Subscription" description="Your Marksly plan and payments." />
+
+      <InfoNote title="What's the difference between saving a card and turning on auto-renewal?">
+        <p>
+          Paying online once just settles that one invoice — nothing is saved. <strong>Turning on
+          auto-renewal</strong> saves your card securely with our payment provider (Safepay) so future renewals are
+          charged automatically, with no action needed from you each time.
+        </p>
+        <p>
+          Right after a successful one-off payment, we&apos;ll offer to save your card for you automatically — you
+          can always say no and do it later, or turn it off anytime from this page. Turning auto-renewal off removes
+          the saved card and switches you back to paying manually.
+        </p>
+        <p>
+          Changing plans doesn&apos;t always take effect immediately: if you still owe a payment, the new plan
+          activates as soon as you pay. Otherwise, it&apos;s scheduled to take effect at your <strong>next
+          renewal</strong> — you keep your current plan until then, no charge happens now.
+        </p>
+      </InfoNote>
+
       <Stepper step={step} />
 
       {step === 'summary' && (

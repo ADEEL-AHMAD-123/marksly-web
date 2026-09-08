@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, GraduationCap, Users } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LoginInfoNote } from '@/components/ui/login-info-note';
+import { InfoNote } from '@/components/ui/info-note';
 import { IdCardsView } from './IdCardsView';
 import { StaffIdCardsView } from '@/components/staff/StaffIdCardsView';
 
@@ -33,7 +33,7 @@ export function IdCardsHub() {
         description="Generate and print verifiable, QR-scannable ID cards for students and staff."
       />
 
-      <LoginInfoNote title="Why can't I get a card yet?">
+      <InfoNote title="Why can't I get a card yet?">
         <p>
           A card only appears once every required detail is on file — address and phone for staff, and address,
           blood group and phone for students. If something&apos;s missing, it just means nobody&apos;s filled it in yet.
@@ -55,7 +55,7 @@ export function IdCardsHub() {
             Go to Staff <ArrowRight size={12} />
           </Link>
         </div>
-      </LoginInfoNote>
+      </InfoNote>
 
       <Tabs key={initialTab} defaultValue={initialTab}>
         <TabsList>

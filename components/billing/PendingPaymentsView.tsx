@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { InfoNote } from '@/components/ui/info-note';
 import {
   Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
@@ -89,6 +90,23 @@ export function PendingPaymentsView() {
         title="Payments Needing Action"
         description="Bank transfers awaiting confirmation, disputed charges, and duplicate-charge reviews. Successful and online payments appear in Revenue and each institution's own page."
       />
+
+      <InfoNote title="Why do only some payments show up here?">
+        <p>
+          Online payments (card, JazzCash, EasyPaisa, Safepay) and auto-renewal charges confirm themselves
+          automatically — the gateway&apos;s webhook or our nightly renewal job settles them without anyone needing
+          to click anything. They never land on this page; they go straight to Revenue.
+        </p>
+        <p>
+          Only <strong>bank transfers</strong> need a manual look here, since there&apos;s no automatic way for us to
+          know the money actually arrived — you&apos;re confirming that you personally checked the bank statement.
+        </p>
+        <p>
+          Suspending an institution from here (or from their profile page) puts their whole account into
+          <strong> read-only mode immediately</strong> — every user there can still view things, but can&apos;t save,
+          add, or change anything, until you reactivate them.
+        </p>
+      </InfoNote>
 
       {disputed.length > 0 && (
         <Card className="border-danger/30">

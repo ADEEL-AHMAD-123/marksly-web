@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { SearchInput } from '@/components/ui/search-input';
+import { InfoNote } from '@/components/ui/info-note';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetUsersQuery } from '@/store/api/usersApi';
 import {
@@ -93,6 +94,23 @@ export function SubjectsView() {
         description={isLoading ? 'Loading…' : `${filtered.length} of ${subjects.length} subjects`}
         actions={<Button size="sm" onClick={() => setOpen(true)}><Plus size={16} /> Add subject</Button>}
       />
+
+      <InfoNote
+        title="What happens if you delete a subject that's already in use?"
+        link={{ href: '/admin/timetable', label: 'Go to Timetable' }}
+      >
+        <p>
+          Deleting a subject just <strong>hides it from your active list</strong> — it doesn&apos;t erase anything.
+          Past exams, results, attendance and timetable entries that reference it stay exactly as they are, so
+          historical records and report cards are never affected.
+        </p>
+        <p>
+          Any students with a pending or approved elective request for that subject are automatically dropped. If
+          the subject was still sitting on a timetable, remove or replace that period there too — the deleted
+          subject won&apos;t show up in new selections, but an old period pointing at it can look stuck until you
+          update it.
+        </p>
+      </InfoNote>
 
       <EnrollmentRequests />
 

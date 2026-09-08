@@ -17,6 +17,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { SearchInput } from '@/components/ui/search-input';
+import { InfoNote } from '@/components/ui/info-note';
 import {
   useGetClassesQuery,
   useCreateClassMutation,
@@ -188,6 +189,14 @@ export function ClassesView() {
         description={isLoading ? 'Loading…' : `${filtered.length} of ${classes.length} ${terminology.classUnitPlural.toLowerCase()}`}
         actions={<Button size="sm" onClick={openAdd}><Plus size={16} /> Add {terminology.classUnit}</Button>}
       />
+
+      <InfoNote title="What order should I set things up in?">
+        <p>
+          Sections are created together with the {terminology.classUnit.toLowerCase()} itself, right here. Once
+          that&apos;s done, the natural next steps are: add <strong>Subjects</strong> for it, then build its{' '}
+          <strong>Timetable</strong> — each one depends on the last existing first.
+        </p>
+      </InfoNote>
 
       {!isLoading && !isError && classes.length > 0 && (
         <Card className="p-4">

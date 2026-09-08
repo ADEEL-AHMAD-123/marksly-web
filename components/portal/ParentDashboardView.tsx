@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
-import { LoginInfoNote } from '@/components/ui/login-info-note';
+import { InfoNote } from '@/components/ui/info-note';
 import { useMyChildrenQuery } from '@/store/api/portalApi';
 import { useGetNoticesQuery } from '@/store/api/noticesApi';
 import { formatDate } from '@/lib/utils';
@@ -48,7 +48,7 @@ export function ParentDashboardView() {
       />
 
       {!isLoading && children.length > 0 && (
-        <LoginInfoNote title="What can I do here?">
+        <InfoNote title="What can I do here?">
           <p>
             This page is a quick summary — for the full picture on any one child, use{' '}
             <strong>My Children</strong> below or the links here.
@@ -71,7 +71,7 @@ export function ParentDashboardView() {
               Fees <ArrowRight size={12} />
             </Link>
           </div>
-        </LoginInfoNote>
+        </InfoNote>
       )}
 
       {isLoading ? (

@@ -9,7 +9,7 @@ import {
 import toast from 'react-hot-toast';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { PageHeader } from '@/components/ui/page-header';
-import { LoginInfoNote } from '@/components/ui/login-info-note';
+import { InfoNote } from '@/components/ui/info-note';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -199,14 +199,17 @@ export function EmailLogView() {
         description="Whether the first login email you sent actually reached the person."
       />
 
-      {/* Same "How do they log in?" pattern used on the Students/Teachers/
-          Staff pages (components/ui/login-info-note.tsx) — one consistent,
-          collapsed-by-default reference for this instead of a bespoke
-          permanently-open explainer card. */}
-      <LoginInfoNote>
+      {/* Same collapsed-by-default explainer pattern used on the
+          Students/Teachers/Staff pages (components/ui/info-note.tsx) —
+          one consistent reference instead of a bespoke permanently-open
+          explainer card. This page is about delivery status of the FIRST
+          login email, not about how to log in — hence a page-specific
+          title rather than the (removed) generic "How do they log in?"
+          default that used to show here by mistake. */}
+      <InfoNote title="What is this page for?">
         <p>When you add a student, parent, teacher, or staff member with an email on file, Marksly sends their login details right away — a temporary password for students/parents, an activation link for teachers/staff. This page shows whether that first email actually reached them.</p>
         <p>It only covers that one first email — not password resets or anything else, since those are requested by the person themselves.</p>
-      </LoginInfoNote>
+      </InfoNote>
 
       {/* Needs-attention banner — the single, unmissable entry point for
           anything actually wrong. Nothing renders here at all when

@@ -4,6 +4,7 @@ import { Wallet, Clock, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { InfoNote } from '@/components/ui/info-note';
 import { useGetFeesSummaryQuery } from '@/store/api/feesApi';
 import { formatCurrency } from '@/lib/utils';
 import { InvoicesTab } from './InvoicesTab';
@@ -19,6 +20,20 @@ export function FeesView() {
   return (
     <div className="space-y-6">
       <PageHeader title="Fees" description="Collect fees, manage structures and track dues." />
+
+      <InfoNote title="Where does online fee money actually go?">
+        <p>
+          Card, JazzCash and EasyPaisa payments made by parents and students don't land in your bank account
+          instantly — they collect here first, then get paid out to the bank account you set under{' '}
+          <strong>Payout Account</strong>. A new or changed payout account has to be verified before the next
+          payout goes out, so update it a few days before you're expecting a payout, not the day of.
+        </p>
+        <p>
+          <strong>Online Payouts</strong> shows what's been paid out so far and any refunds that need your review —
+          it's separate from <strong>Invoices</strong>, which is where you record fees collected manually (cash,
+          bank transfer, etc.).
+        </p>
+      </InfoNote>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard

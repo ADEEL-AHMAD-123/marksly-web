@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
+import { InfoNote } from '@/components/ui/info-note';
 import { useAppSelector } from '@/store/hooks';
 import { getErrorMessage } from '@/lib/get-error-message';
 import {
@@ -344,6 +345,14 @@ function StudentMyIdCard() {
     <div className="space-y-6">
       <style dangerouslySetInnerHTML={{ __html: ID_CARD_PRINT_CSS }} />
       <PageHeader title="My ID Card" description="Your printable student identity card." />
+
+      <InfoNote title="Where's my PIN?">
+        <p>
+          Your card only shows your <strong>Login ID</strong> — your PIN is never printed anywhere, including here,
+          for security. If you don't know your current PIN (for example, you were only ever told your Login ID),
+          ask your school to look it up or reset it for you; changing it yourself below needs the current one.
+        </p>
+      </InfoNote>
 
       {isFetching ? (
         <Card className="p-5 no-print"><Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /></Card>
