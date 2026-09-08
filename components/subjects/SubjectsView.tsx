@@ -405,7 +405,13 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
 
     const body = {
       name: values.name,
-      code: values.code || undefined,
+      // Deliberately NOT coerced to undefined when empty: on create, an
+      // empty string still tells the backend "no code provided, generate
+      // one" (same outcome as omitting it). On edit, sending '' explicitly
+      // is how clearing the field triggers a fresh regenerated code —
+      // coercing to undefined here would make the backend see the field as
+      // untouched and silently keep the old code instead.
+      code: values.code,
       classId: values.classId,
       teacherId: values.teacherId || undefined,
       sectionTeachers,
@@ -442,8 +448,13 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
                 {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
               </div>
               <div className="col-span-2">
-                <Label htmlFor="code">Code (optional)</Label>
-                <Input id="code" placeholder="e.g. MATH-101" {...register('code')} />
+                <Label htmlFor="code">Code</Label>
+                <Input id="code" placeholder="Auto-generated from name + class" {...register('code')} />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {isEdit
+                    ? 'Leave blank to auto-generate a fresh code. Used to tell apart subjects with the same name across different classes.'
+                    : 'Leave blank and one will be generated for you (e.g. "MATH-8") — must be unique per institution either way.'}
+                </p>
               </div>
             </div>
             <div>

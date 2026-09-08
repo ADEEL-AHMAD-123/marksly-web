@@ -156,7 +156,15 @@ export function TimetableView() {
 function AddPeriodDrawer({ open, onClose, classId, sectionId, initialDay }: { open: boolean; onClose: () => void; classId: string; sectionId: string; initialDay: string }) {
   const { data: subjectsRes } = useGetSubjectsQuery();
   const { data: teachersRes } = useGetUsersQuery({ role: 'teacher', limit: 100 });
-  const subjects = subjectsRes?.data ?? [];
+  const allSubjects = subjectsRes?.data ?? [];
+  // Subjects are class-scoped (the same subject NAME can exist as separate
+  // records for different classes — "Mathematics" for Grade 8 and
+  // "Mathematics" for Grade 9 are different Subject documents). Without
+  // this filter, every subject in the institution showed up here regardless
+  // of which class's timetable was being edited, so an admin could
+  // accidentally attach a completely unrelated class's subject to this
+  // slot — both looked identical as plain "Mathematics" in the dropdown.
+  const subjects = useMemo(() => allSubjects.filter((s) => s.classId === classId), [allSubjects, classId]);
   const teachers = teachersRes?.data ?? [];
   const [createEntry, { isLoading }] = useCreateEntryMutation();
 
@@ -222,10 +230,32 @@ function AddPeriodDrawer({ open, onClose, classId, sectionId, initialDay }: { op
             </div>
             <div>
               <Label>Subject</Label>
-              <select className={selectCls} value={subjectId} onChange={(e) => setSubjectId(e.target.value)}>
+              <select
+                className={selectCls}
+                value={subjectId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setSubjectId(id);
+                  // Pick up whichever teacher is actually assigned to teach
+                  // THIS subject to THIS section (per-section override if
+                  // one exists, else the subject's fallback teacher) —
+                  // otherwise it's easy to leave a period with a different
+                  // teacher than the one Subjects says teaches it, and
+                  // nothing else in the app would catch that mismatch.
+                  const subj = subjects.find((s) => s.id === id);
+                  const covered = subj?.sectionCoverage.find((r) => r.sectionId === sectionId);
+                  const resolved = covered?.teacherId ?? subj?.teacherId;
+                  if (resolved) setTeacherId(resolved);
+                }}
+              >
                 <option value="">No subject (free period / break)</option>
-                {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                {subjects.map((s) => <option key={s.id} value={s.id}>{s.code ? `${s.code} — ${s.name}` : s.name}</option>)}
               </select>
+              {subjects.length === 0 && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  No subjects are set up for this class yet — add some from the Subjects page first.
+                </p>
+              )}
             </div>
             <div>
               <Label>Teacher</Label>
