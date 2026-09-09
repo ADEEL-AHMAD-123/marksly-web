@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { InfoNote } from '@/components/ui/info-note';
+import { Avatar } from '@/components/ui/avatar';
 import { AttendanceHistory } from './AttendanceHistory';
 import { ResultsList } from './ResultsList';
 import { GpaSummary } from './GpaSummary';
@@ -43,9 +44,12 @@ export function ChildrenView() {
           {children.map((c) => (
             <Card key={c.id} className="p-5">
               <div className="flex items-center gap-3">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-base font-semibold text-primary-soft-foreground">
-                  {getInitials(c.name.split(' ')[0] || '', c.name.split(' ')[1] || '')}
-                </span>
+                <Avatar
+                  photoUrl={c.profilePhoto}
+                  alt={c.name}
+                  initials={getInitials(c.name.split(' ')[0] || '', c.name.split(' ')[1] || '')}
+                  size="lg"
+                />
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-foreground">{c.name}</p>
                   <p className="text-sm text-muted-foreground">{c.rollNumber}{c.className ? ` · ${c.className}` : ''}</p>

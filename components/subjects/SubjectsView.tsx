@@ -438,8 +438,25 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
 
     try {
       if (isEdit && subject) {
-        await updateSubject({ id: subject.id, body }).unwrap();
-        toast.success('Subject updated');
+        const res = await updateSubject({ id: subject.id, body }).unwrap();
+        const { updatedTimetableEntries, affectedSections } = res.data;
+        if (updatedTimetableEntries > 0) {
+          if (affectedSections.length > 1) {
+            const breakdown = affectedSections
+              .map((s) => `${s.sectionName} (${s.count})`)
+              .join(', ');
+            toast.success(
+              `Subject updated — ${updatedTimetableEntries} timetable periods updated to the new teacher: ${breakdown}`
+            );
+          } else {
+            const sec = affectedSections[0];
+            toast.success(
+              `Subject updated — ${sec.count} timetable period${sec.count === 1 ? '' : 's'} for ${sec.sectionName} now show${sec.count === 1 ? 's' : ''} the new teacher`
+            );
+          }
+        } else {
+          toast.success('Subject updated');
+        }
       } else {
         await createSubject(body).unwrap();
         toast.success('Subject added');
@@ -533,6 +550,9 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Give a different section its own teacher for this subject — e.g. Section A and Section B can have different Math teachers. Every section must end up with a teacher, either here or via the default above.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Each row only changes who teaches this subject for that one section — other sections aren&apos;t affected. If the section already has timetable periods for this subject, they&apos;ll be updated to the new teacher too.
                 </p>
                 <div className="space-y-2 pt-1">
                   {selectedClass.sections.map((sec) => {

@@ -25,6 +25,7 @@ import {
   type StudentListItem,
 } from '@/store/api/studentsApi';
 import { ImportCsvDrawer } from '@/components/ui/import-csv-drawer';
+import { Avatar } from '@/components/ui/avatar';
 import { getInitials, formatDate, cn } from '@/lib/utils';
 import { StudentFormDrawer } from './StudentFormDrawer';
 import { StudentDetailDrawer } from './StudentDetailDrawer';
@@ -198,9 +199,12 @@ export function StudentsView() {
                     <TableRow key={s.id} className="cursor-pointer" onClick={() => setDetailId(s.id)}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary-soft-foreground">
-                            {getInitials(s.firstName, s.lastName)}
-                          </span>
+                          <Avatar
+                            size="sm"
+                            photoUrl={s.profilePhoto}
+                            alt={s.name}
+                            initials={getInitials(s.firstName, s.lastName)}
+                          />
                           <div>
                             <p className="font-medium text-foreground">{s.name}</p>
                             <p className="text-xs text-muted-foreground">{s.rollNumber}</p>
@@ -244,9 +248,12 @@ export function StudentsView() {
             {students.map((s) => (
               <Card key={s.id} className="cursor-pointer p-4" onClick={() => setDetailId(s.id)}>
                 <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary-soft-foreground">
-                    {getInitials(s.firstName, s.lastName)}
-                  </span>
+                  <Avatar
+                    size="md"
+                    photoUrl={s.profilePhoto}
+                    alt={s.name}
+                    initials={getInitials(s.firstName, s.lastName)}
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-foreground">{s.name}</p>
                     <p className="text-xs text-muted-foreground">

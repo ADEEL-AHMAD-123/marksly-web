@@ -57,6 +57,7 @@ export interface ChildSummary {
   name: string;
   rollNumber: string;
   className: string | null;
+  profilePhoto?: string | null;
   attendanceRate: number;
   feesDue: number;
 }

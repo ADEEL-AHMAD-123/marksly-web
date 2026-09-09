@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Avatar } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { InfoNote } from '@/components/ui/info-note';
 import {
@@ -427,9 +428,12 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
             {roster.students.map((s) => (
               <div key={s.studentId} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary-soft-foreground">
-                    {getInitials(s.name.split(' ')[0] || '', s.name.split(' ')[1] || '')}
-                  </span>
+                  <Avatar
+                    photoUrl={s.profilePhoto}
+                    alt={s.name}
+                    initials={getInitials(s.name.split(' ')[0] || '', s.name.split(' ')[1] || '')}
+                    size="sm"
+                  />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-foreground">{s.name}</p>
                     <p className="text-xs text-muted-foreground">{s.rollNumber}</p>

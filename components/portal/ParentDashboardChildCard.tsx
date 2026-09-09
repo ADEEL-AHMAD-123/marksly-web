@@ -5,6 +5,7 @@ import { CalendarCheck, Wallet, ChevronRight, AlertTriangle, FileText } from 'lu
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Avatar } from '@/components/ui/avatar';
 import { useChildFeesQuery, useChildResultsQuery, type ChildSummary } from '@/store/api/portalApi';
 import { formatCurrency, formatDate, getInitials } from '@/lib/utils';
 
@@ -36,9 +37,12 @@ export function ParentDashboardChildCard({ child }: { child: ChildSummary }) {
     <Card>
       <CardContent className="p-5">
         <div className="flex items-center gap-3">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-soft text-base font-semibold text-primary-soft-foreground">
-            {getInitials(child.name.split(' ')[0] || '', child.name.split(' ').slice(1).join(' ') || '')}
-          </span>
+          <Avatar
+            photoUrl={child.profilePhoto}
+            alt={child.name}
+            initials={getInitials(child.name.split(' ')[0] || '', child.name.split(' ').slice(1).join(' ') || '')}
+            size="lg"
+          />
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold text-foreground">{child.name}</p>
             <p className="text-sm text-muted-foreground">{child.rollNumber}{child.className ? ` · ${child.className}` : ''}</p>

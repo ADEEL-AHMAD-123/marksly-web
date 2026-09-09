@@ -20,6 +20,7 @@ import { useGetFeeCardQuery } from '@/store/api/feesApi';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useTerminology } from '@/lib/terminology';
 import { getInitials, formatCurrency, formatDate } from '@/lib/utils';
+import { Avatar } from '@/components/ui/avatar';
 import { openAuthedPdf } from '@/lib/downloadFile';
 import { getErrorMessage } from '@/lib/get-error-message';
 import type { RootState } from '@/store';
@@ -143,9 +144,13 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
             ) : (
               <>
                 <div className="flex items-center gap-3">
-                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-base font-semibold text-primary-soft-foreground">
-                    {getInitials(s.firstName, s.lastName)}
-                  </span>
+                  <Avatar
+                    size="lg"
+                    className="h-14 w-14 text-base"
+                    photoUrl={s.profilePhoto}
+                    alt={s.name}
+                    initials={getInitials(s.firstName, s.lastName)}
+                  />
                   <div className="min-w-0">
                     <p className="truncate text-lg font-semibold text-foreground">{s.name}</p>
                     <p className="text-sm text-muted-foreground">{s.rollNumber}</p>

@@ -27,6 +27,7 @@ import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { SearchInput } from '@/components/ui/search-input';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getInitials } from '@/lib/utils';
+import { Avatar } from '@/components/ui/avatar';
 import { getErrorMessage, getErrorCode, getErrorDetails } from '@/lib/get-error-message';
 import {
   useGetUsersQuery,
@@ -46,7 +47,9 @@ import { PhotoUpload } from '@/components/shared/PhotoUpload';
 const PAGE_SIZE = 20;
 
 export function TeachersView() {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() =>
+    typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('q') ?? ''
+  );
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ManagedUser | null>(null);
@@ -137,9 +140,12 @@ export function TeachersView() {
                     <TableRow key={t.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary-soft-foreground">
-                            {getInitials(t.firstName, t.lastName)}
-                          </span>
+                          <Avatar
+                            size="sm"
+                            photoUrl={t.profilePhoto}
+                            alt={t.name}
+                            initials={getInitials(t.firstName, t.lastName)}
+                          />
                           <span className="font-medium text-foreground">{t.name}</span>
                         </div>
                       </TableCell>
@@ -186,9 +192,12 @@ export function TeachersView() {
             {teachers.map((t) => (
               <Card key={t.id} className="p-4">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary-soft-foreground">
-                    {getInitials(t.firstName, t.lastName)}
-                  </span>
+                  <Avatar
+                    size="md"
+                    photoUrl={t.profilePhoto}
+                    alt={t.name}
+                    initials={getInitials(t.firstName, t.lastName)}
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-foreground">{t.name}</p>
                     <p className="text-xs text-muted-foreground">{t.phone}{t.email ? ` · ${t.email}` : ''}</p>

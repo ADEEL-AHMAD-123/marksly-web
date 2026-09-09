@@ -29,7 +29,8 @@ import {
 } from '@/store/api/studentsApi';
 import { getErrorMessage } from '@/lib/get-error-message';
 import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
+import { Avatar } from '@/components/ui/avatar';
 
 interface ClassOption {
   id: string;
@@ -195,7 +196,7 @@ export function ClassRosterView({ mode }: Props) {
 function RosterRow({
   student, isAdmin, onResetPin,
 }: {
-  student: { id: string; name: string; rollNumber: string; systemId: string | null; pinState: 'school_issued' | 'student_set'; pin?: string | null };
+  student: { id: string; name: string; rollNumber: string; profilePhoto?: string | null; systemId: string | null; pinState: 'school_issued' | 'student_set'; pin?: string | null };
   isAdmin: boolean;
   onResetPin: () => void;
 }) {
@@ -224,8 +225,18 @@ function RosterRow({
   return (
     <TableRow>
       <TableCell>
-        <p className="font-medium text-foreground">{student.name}</p>
-        <p className="text-xs text-muted-foreground">{student.rollNumber}</p>
+        <div className="flex items-center gap-3">
+          <Avatar
+            photoUrl={student.profilePhoto}
+            alt={student.name}
+            initials={getInitials(student.name.split(' ')[0] || '', student.name.split(' ')[1] || '')}
+            size="sm"
+          />
+          <div className="min-w-0">
+            <p className="font-medium text-foreground">{student.name}</p>
+            <p className="text-xs text-muted-foreground">{student.rollNumber}</p>
+          </div>
+        </div>
       </TableCell>
       <TableCell dir="ltr" className="font-mono text-sm">{student.systemId ?? '—'}</TableCell>
       <TableCell>

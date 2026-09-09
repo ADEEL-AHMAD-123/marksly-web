@@ -26,6 +26,8 @@ import { IdCardCredit } from '@/components/shared/IdCardCredit';
 import { EditCardDetailsDialog } from '@/components/students/EditCardDetailsDialog';
 import { ReissueCardsConfirmDialog } from '@/components/students/ReissueCardsConfirmDialog';
 import { getErrorMessage } from '@/lib/get-error-message';
+import { IdCardMissingFieldsBanner, type IdCardMissingFieldItem } from '@/components/shared/IdCardMissingFieldsBanner';
+import { idCardFieldLabel } from '@/lib/id-card-missing';
 
 export function IdCardsView() {
   const terminology = useTerminology();
@@ -164,6 +166,23 @@ function StudentIdCardPreview({
   const nationalIdLabel = nationalIdLabelForInstitutionType(institution.type);
   const settings = institution.settings?.idCard;
 
+  // What's missing FOR WHAT'S CURRENTLY CONFIGURED TO SHOW on this card —
+  // photo is deliberately excluded here since the card face already shows
+  // its own small warning badge for that (see IdCardItem below).
+  const missingItems: IdCardMissingFieldItem[] = [];
+  if ((settings?.showBloodGroup ?? true) && !student.bloodGroup) {
+    missingItems.push({ key: 'bloodGroup', label: idCardFieldLabel('bloodGroup'), action: { type: 'profile', href: `/admin/students?q=${encodeURIComponent(student.systemId)}` } });
+  }
+  if (!student.address && !student.city) {
+    missingItems.push({ key: 'address', label: idCardFieldLabel('address'), action: { type: 'profile', href: `/admin/students?q=${encodeURIComponent(student.systemId)}` } });
+  }
+  if (!student.parentName) {
+    missingItems.push({ key: 'parentInfo', label: idCardFieldLabel('parentInfo'), action: { type: 'profile', href: `/admin/students?q=${encodeURIComponent(student.systemId)}` } });
+  }
+  if ((settings?.showNationalId ?? true) && !student.nationalIdNumber) {
+    missingItems.push({ key: 'nationalId', label: idCardFieldLabel('nationalId', nationalIdLabel), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
+  }
+
   return (
     <>
       <div className="no-print flex items-center justify-end gap-2">
@@ -175,6 +194,7 @@ function StudentIdCardPreview({
         </Button>
         <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print card</Button>
       </div>
+      <IdCardMissingFieldsBanner items={missingItems} />
       <div id="id-card-print" className="flex justify-center">
         <div className="w-full max-w-sm space-y-4">
           {/* On screen, only the flipped-to face shows; on print, both
@@ -306,7 +326,12 @@ function StudentNamePicker({
                 onClick={() => { onSelect(s.id); setQuery(''); setOpen(false); }}
                 className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
               >
-                <Avatar initials={s.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()} size="sm" />
+                <Avatar
+                  photoUrl={s.profilePhoto}
+                  alt={s.name}
+                  initials={s.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}
+                  size="sm"
+                />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium text-foreground">{s.name}</span>
                   <span className="block truncate text-xs text-muted-foreground">Roll #{s.rollNumber}</span>

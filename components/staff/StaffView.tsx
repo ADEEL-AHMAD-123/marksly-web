@@ -28,6 +28,7 @@ import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { SearchInput } from '@/components/ui/search-input';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getInitials, cn } from '@/lib/utils';
+import { Avatar } from '@/components/ui/avatar';
 import { getErrorMessage, getErrorCode, getErrorDetails } from '@/lib/get-error-message';
 import {
   useGetUsersQuery,
@@ -68,8 +69,14 @@ function missingStaffInfo(m: ManagedUser): string[] {
 }
 
 export function StaffView() {
-  const [role, setRole] = useState<'staff' | 'accountant'>('staff');
-  const [query, setQuery] = useState('');
+  const [role, setRole] = useState<'staff' | 'accountant'>(() =>
+    typeof window === 'undefined'
+      ? 'staff'
+      : (new URLSearchParams(window.location.search).get('role') as 'staff' | 'accountant' | null) ?? 'staff'
+  );
+  const [query, setQuery] = useState(() =>
+    typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('q') ?? ''
+  );
   const [incompleteOnly, setIncompleteOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
@@ -185,9 +192,12 @@ export function StaffView() {
                     <TableRow key={m.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary-soft-foreground">
-                            {getInitials(m.firstName, m.lastName)}
-                          </span>
+                          <Avatar
+                            size="sm"
+                            photoUrl={m.profilePhoto}
+                            alt={m.name}
+                            initials={getInitials(m.firstName, m.lastName)}
+                          />
                           <div>
                             <span className="font-medium text-foreground">{m.name}</span>
                             {!m.address && (
@@ -230,9 +240,12 @@ export function StaffView() {
             {members.map((m) => (
               <Card key={m.id} className="p-4">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary-soft-foreground">
-                    {getInitials(m.firstName, m.lastName)}
-                  </span>
+                  <Avatar
+                    size="md"
+                    photoUrl={m.profilePhoto}
+                    alt={m.name}
+                    initials={getInitials(m.firstName, m.lastName)}
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-foreground">{m.name}</p>
                     <p className="text-xs text-muted-foreground">{m.phone}{m.email ? ` · ${m.email}` : ''}</p>

@@ -82,9 +82,31 @@ export const subjectsApi = baseApi.injectEndpoints({
       query: (body) => ({ url: '/subjects', method: 'POST', body }),
       invalidatesTags: [{ type: 'Subjects', id: 'LIST' }, { type: 'Subjects', id: 'MINE' }],
     }),
-    updateSubject: builder.mutation<ApiObject<{ id: string }>, { id: string; body: UpdateSubjectBody }>({
+    updateSubject: builder.mutation<
+      ApiObject<{
+        id: string;
+        updatedTimetableEntries: number;
+        affectedSections: { sectionId: string; sectionName: string; count: number }[];
+      }>,
+      { id: string; body: UpdateSubjectBody }
+    >({
       query: ({ id, body }) => ({ url: `/subjects/${id}`, method: 'PATCH', body }),
-      invalidatesTags: [{ type: 'Subjects', id: 'LIST' }, { type: 'Subjects', id: 'MINE' }],
+      // A subject update can change who teaches a section, which the backend
+      // then bulk-resyncs onto existing TimetableEntry docs (see
+      // subject.service.ts). Without invalidating the timetable tag too, a
+      // teacher who already has their dashboard/timetable open wouldn't see
+      // the corrected schedule until some unrelated navigation refetched it.
+      invalidatesTags: [
+        { type: 'Subjects', id: 'LIST' },
+        { type: 'Subjects', id: 'MINE' },
+        { type: 'Classes', id: 'TIMETABLE' },
+        // portalApi.ts's myClasses (teacher "My Classes") provides a bare
+        // 'Classes' tag (no id) — RTK Query treats that as a distinct cache
+        // entry from {Classes, id:'TIMETABLE'}, so both must be listed or a
+        // teacher's already-open "My Classes" view won't refresh live when
+        // their subject/section assignment changes.
+        'Classes',
+      ],
     }),
     deleteSubject: builder.mutation<ApiObject<{ id: string }>, string>({
       query: (id) => ({ url: `/subjects/${id}`, method: 'DELETE' }),

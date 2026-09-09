@@ -25,6 +25,8 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { EditCardDetailsDialog } from '@/components/students/EditCardDetailsDialog';
 import { ReissueCardsConfirmDialog } from '@/components/students/ReissueCardsConfirmDialog';
 import { getErrorMessage } from '@/lib/get-error-message';
+import { IdCardMissingFieldsBanner, type IdCardMissingFieldItem } from '@/components/shared/IdCardMissingFieldsBanner';
+import { idCardFieldLabel } from '@/lib/id-card-missing';
 
 const ROLE_FILTERS: { value: StaffCardRole | 'all'; label: string }[] = [
   { value: 'all', label: 'All roles' },
@@ -191,6 +193,28 @@ function StaffIdCardPreview({
   const [showBack, setShowBack] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const nationalIdLabel = 'CNIC';
+  const settings = institution.settings?.idCard;
+
+  // What's missing FOR WHAT'S CURRENTLY CONFIGURED TO SHOW — photo excluded
+  // since the card face already has its own warning badge for that.
+  // Edit-form location depends on role: teachers have their own page, staff/
+  // accountant share one, and admin accounts have no dedicated edit UI here.
+  const profileHref = member.role === 'teacher'
+    ? `/admin/teachers?q=${encodeURIComponent(member.systemId)}`
+    : member.role === 'staff' || member.role === 'accountant'
+      ? `/admin/staff?role=${member.role}&q=${encodeURIComponent(member.systemId)}`
+      : null;
+  const missingItems: IdCardMissingFieldItem[] = [];
+  if (!member.address) {
+    missingItems.push({
+      key: 'address',
+      label: idCardFieldLabel('address'),
+      action: profileHref ? { type: 'profile', href: profileHref } : { type: 'none' },
+    });
+  }
+  if ((settings?.showNationalId ?? true) && !member.nationalIdNumber) {
+    missingItems.push({ key: 'nationalId', label: idCardFieldLabel('nationalId', nationalIdLabel), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
+  }
 
   return (
     <>
@@ -203,6 +227,7 @@ function StaffIdCardPreview({
         </Button>
         <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print card</Button>
       </div>
+      <IdCardMissingFieldsBanner items={missingItems} />
       <div id="id-card-print" className="flex justify-center">
         <div className="w-full max-w-sm space-y-4">
           <div className={cn(showBack ? 'hidden print:block' : 'block')}>
@@ -326,7 +351,12 @@ function StaffNamePicker({
                   onClick={() => { onSelect(s.id); setQuery(''); setOpen(false); }}
                   className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
                 >
-                  <Avatar initials={s.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()} size="sm" />
+                  <Avatar
+                    photoUrl={s.profilePhoto}
+                    alt={s.name}
+                    initials={s.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}
+                    size="sm"
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-foreground">{s.name}</span>
                     <span className={cn('mt-0.5 inline-flex w-fit items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide', style.soft)}>

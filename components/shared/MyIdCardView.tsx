@@ -20,7 +20,8 @@ import {
   useRemoveMyPhotoMutation,
 } from '@/store/api/usersApi';
 import { useGetMyStudentCardQuery, useUpdateMyStudentContactMutation, useChangeMyPinMutation } from '@/store/api/studentsApi';
-import { KeyRound } from 'lucide-react';
+import { KeyRound, Info } from 'lucide-react';
+import { idCardFieldLabel, SELF_FIXABLE_MISSING_KEYS } from '@/lib/id-card-missing';
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -139,6 +140,27 @@ import { useTerminology } from '@/lib/terminology';
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 /**
+ * Informational (non-blocking) line for any `card.missing` key we don't have
+ * a self-service fix-it input for — i.e. anything other than 'address'/
+ * 'bloodGroup'. The backend's getMyCard endpoints today only ever push
+ * those two keys (see student.service.ts/user.service.ts), so in practice
+ * this rarely renders, but it exists so a future/admin-only key never
+ * silently disappears with no explanation.
+ */
+function AdminOnlyMissingNote({ keys }: { keys: string[] }) {
+  if (keys.length === 0) return null;
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+      <Info size={14} className="mt-0.5 shrink-0" />
+      <p>
+        Ask your school&apos;s office to add your {keys.map((k) => idCardFieldLabel(k)).join(', ')} —
+        this isn&apos;t something you can update yourself.
+      </p>
+    </div>
+  );
+}
+
+/**
  * Self-service "My ID Card" page — for every role except admin/superadmin/
  * parent (see SidebarNav.tsx for the nav-link gating). Shows nothing until
  * the account's own required fields are filled in (same "no card before
@@ -168,6 +190,15 @@ function StaffMyIdCard() {
   const [address, setAddress] = useState('');
   const [showBack, setShowBack] = useState(false);
 
+  const missing = card?.missing ?? [];
+  const fixableMissing = missing.filter((k) => SELF_FIXABLE_MISSING_KEYS.has(k));
+  const adminOnlyMissing = missing.filter((k) => !SELF_FIXABLE_MISSING_KEYS.has(k));
+  // Only block the card when there's something the person themselves can
+  // still fix — admin-only fields (if the backend ever sends any) shouldn't
+  // permanently hide someone's card, so those just get an informational
+  // note alongside the normal card below.
+  const blocked = fixableMissing.length > 0;
+
   return (
     <div className="space-y-6">
       <style dangerouslySetInnerHTML={{ __html: ID_CARD_PRINT_CSS }} />
@@ -177,7 +208,7 @@ function StaffMyIdCard() {
         <Card className="p-5 no-print"><Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /></Card>
       ) : isError || !card ? (
         <Card className="no-print"><EmptyState icon={IdCardIcon} title="Couldn't load your card" description="Try refreshing the page." /></Card>
-      ) : card.missing.length > 0 ? (
+      ) : blocked ? (
         <Card className="max-w-sm space-y-4 p-5 no-print">
           <div className="flex items-start gap-3">
             <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning-soft text-warning">
@@ -207,9 +238,11 @@ function StaffMyIdCard() {
             {saving ? 'Saving…' : 'Save & show my card'}
           </Button>
           <MyPhotoUploader hasPhoto={!card.photoMissing} />
+          <AdminOnlyMissingNote keys={adminOnlyMissing} />
         </Card>
       ) : (
         <>
+          <AdminOnlyMissingNote keys={adminOnlyMissing} />
           <MyPhotoUploader hasPhoto={!card.photoMissing} />
           <div className="no-print flex items-center justify-end gap-2">
             <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
@@ -341,6 +374,14 @@ function StudentMyIdCard() {
   const [showBack, setShowBack] = useState(false);
   const { term: termLabel } = useTerminology();
 
+  const missing = card?.missing ?? [];
+  const fixableMissing = missing.filter((k) => SELF_FIXABLE_MISSING_KEYS.has(k));
+  const adminOnlyMissing = missing.filter((k) => !SELF_FIXABLE_MISSING_KEYS.has(k));
+  // Only block on fields the student can actually fix here — an admin-only
+  // key (if the backend ever sends one) shouldn't permanently hide the
+  // card, so it just gets an informational note next to the normal card.
+  const blocked = fixableMissing.length > 0;
+
   return (
     <div className="space-y-6">
       <style dangerouslySetInnerHTML={{ __html: ID_CARD_PRINT_CSS }} />
@@ -358,7 +399,7 @@ function StudentMyIdCard() {
         <Card className="p-5 no-print"><Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /></Card>
       ) : isError || !card ? (
         <Card className="no-print"><EmptyState icon={IdCardIcon} title="Couldn't load your card" description="Try refreshing the page." /></Card>
-      ) : card.missing.length > 0 ? (
+      ) : blocked ? (
         <Card className="max-w-sm space-y-4 p-5 no-print">
           <div className="flex items-start gap-3">
             <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning-soft text-warning">
@@ -367,17 +408,17 @@ function StudentMyIdCard() {
             <div>
               <p className="text-sm font-semibold text-foreground">One more thing before your card is ready</p>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                {card.missing.length === 1 ? 'One field is' : 'A couple of fields are'} missing — add {card.missing.length === 1 ? 'it' : 'them'} below and your card appears immediately.
+                {fixableMissing.length === 1 ? 'One field is' : 'A couple of fields are'} missing — add {fixableMissing.length === 1 ? 'it' : 'them'} below and your card appears immediately.
               </p>
             </div>
           </div>
-          {card.missing.includes('address') && (
+          {fixableMissing.includes('address') && (
             <div>
               <Label htmlFor="my-address">Address</Label>
               <Input id="my-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House #, street, area" />
             </div>
           )}
-          {card.missing.includes('bloodGroup') && (
+          {fixableMissing.includes('bloodGroup') && (
             <div>
               <Label>Blood Group</Label>
               <Select value={bloodGroup} onValueChange={setBloodGroup}>
@@ -388,12 +429,12 @@ function StudentMyIdCard() {
           )}
           <Button
             size="sm"
-            disabled={saving || (card.missing.includes('address') && !address.trim()) || (card.missing.includes('bloodGroup') && !bloodGroup)}
+            disabled={saving || (fixableMissing.includes('address') && !address.trim()) || (fixableMissing.includes('bloodGroup') && !bloodGroup)}
             onClick={async () => {
               try {
                 await updateContact({
-                  ...(card.missing.includes('address') ? { address: address.trim() } : {}),
-                  ...(card.missing.includes('bloodGroup') ? { bloodGroup } : {}),
+                  ...(fixableMissing.includes('address') ? { address: address.trim() } : {}),
+                  ...(fixableMissing.includes('bloodGroup') ? { bloodGroup } : {}),
                 }).unwrap();
                 toast.success('Saved — your card is ready');
               } catch (e) {
@@ -404,10 +445,12 @@ function StudentMyIdCard() {
             {saving ? 'Saving…' : 'Save & show my card'}
           </Button>
           <MyPhotoUploader hasPhoto={!card.photoMissing} />
+          <AdminOnlyMissingNote keys={adminOnlyMissing} />
           <ChangeMyPinCard />
         </Card>
       ) : (
         <>
+          <AdminOnlyMissingNote keys={adminOnlyMissing} />
           <MyPhotoUploader hasPhoto={!card.photoMissing} />
           <ChangeMyPinCard />
           <div className="no-print flex items-center justify-end gap-2">

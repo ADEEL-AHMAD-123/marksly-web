@@ -6,6 +6,7 @@ export interface RosterStudent {
   studentId: string;
   name: string;
   rollNumber: string;
+  profilePhoto?: string | null;
   status: AttendanceStatus;
   note: string;
 }

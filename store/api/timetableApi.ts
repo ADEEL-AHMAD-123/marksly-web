@@ -50,6 +50,13 @@ export const timetableApi = baseApi.injectEndpoints({
       query: (body) => ({ url: '/timetable', method: 'POST', body }),
       invalidatesTags: [{ type: 'Classes', id: 'TIMETABLE' }],
     }),
+    updateEntry: builder.mutation<ApiObject<TimetableEntry>, { id: string; body: CreateEntryBody }>({
+      // teacherId is intentionally never sent — the backend ignores/strips
+      // it and always re-resolves the teacher server-side from the
+      // subject's section assignment (see timetable.validator.ts).
+      query: ({ id, body }) => ({ url: `/timetable/${id}`, method: 'PUT', body }),
+      invalidatesTags: [{ type: 'Classes', id: 'TIMETABLE' }],
+    }),
     deleteEntry: builder.mutation<ApiObject<{ id: string }>, string>({
       query: (id) => ({ url: `/timetable/${id}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Classes', id: 'TIMETABLE' }],
@@ -78,6 +85,7 @@ export const timetableApi = baseApi.injectEndpoints({
 export const {
   useGetTimetableQuery,
   useCreateEntryMutation,
+  useUpdateEntryMutation,
   useDeleteEntryMutation,
   useMyTeacherTimetableQuery,
   useTeachNowQuery,

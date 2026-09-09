@@ -43,19 +43,21 @@ export function IdCardsHub() {
       />
       <IdCardSettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      <InfoNote title="Why can't I get a card yet?">
+      <InfoNote title="How this page works">
         <p>
           A card only appears once every required detail is on file — address and phone for staff, and address,
-          blood group and phone for students. If something&apos;s missing, it just means nobody&apos;s filled it in yet.
+          blood group and phone for students. If someone&apos;s missing from a list here, it just means nobody&apos;s
+          filled in their details yet. Use the <strong>Missing ID info</strong> filter on the Students or Staff page
+          to find everyone who still needs something, without opening each record one at a time.
         </p>
         <p>
-          Anyone can fill in their own details from their <strong>My ID Card</strong> page (visible to every role
-          except admin) — or you can fill it in for them here: select their name, then use{' '}
-          <strong>Edit</strong> on their record to add what&apos;s missing.
+          Use <strong>Card settings</strong> above to choose what shows on every card (Form B/CNIC, blood group,
+          institute name) and how long a card stays valid before it needs reissuing.
         </p>
         <p>
-          Use the <strong>Missing ID info</strong> filter on the Students or Staff page to find everyone who still
-          needs something, without opening each record one at a time.
+          Need to fix one person&apos;s card — their Form B/CNIC number, blood group, or issue/expiry dates? Select
+          them below and use <strong>Edit card details</strong>. To renew a whole class, section, or staff role at
+          once, use <strong>Re-issue cards</strong> instead of editing one by one.
         </p>
         <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
           <Link href="/admin/students" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">

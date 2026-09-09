@@ -366,6 +366,7 @@ export const studentsApi = baseApi.injectEndpoints({
           id: string;
           name: string;
           rollNumber: string;
+          profilePhoto?: string | null;
           systemId: string | null;
           pinState: 'school_issued' | 'student_set';
           pin?: string | null;
