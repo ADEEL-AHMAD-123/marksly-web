@@ -65,18 +65,26 @@ export function IdCardBack({
 
           <div className="mt-auto flex flex-col gap-1 border-t border-border pt-1">
             <p className="text-[6.5px] leading-tight text-muted-foreground">
-              If found, please return to {institution.name}{institution.city ? `, ${institution.city}` : ''}.
+              If this card is found, please return it to the school office{institution.city ? ` (${institution.name}, ${institution.city})` : ` (${institution.name})`}.
             </p>
             <div className="flex items-end justify-between gap-2">
               <div className="h-4 flex-1 border-b border-dashed border-border" />
               <p className="shrink-0 text-[6px] text-muted-foreground">Authorized signature</p>
             </div>
+            {validityLabel && (
+              <p className="text-[6.5px] font-medium text-muted-foreground">Valid until: {validityLabel}</p>
+            )}
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-center justify-center gap-1 border-l border-border pl-2.5">
+        <div className="flex shrink-0 flex-col items-center gap-1 border-l border-border pl-2.5">
           <QRCode value={qrValue} size={56} />
           <p className="text-center text-[6px] leading-tight text-muted-foreground">Scan to verify</p>
+          {/* Generic per product-owner correction — not "Principal's stamp",
+              since not every institution type has a principal. */}
+          <div className="mt-auto flex h-9 w-full items-center justify-center rounded border border-dashed border-border">
+            <p className="text-center text-[5.5px] leading-tight text-muted-foreground">School stamp</p>
+          </div>
         </div>
       </div>
 

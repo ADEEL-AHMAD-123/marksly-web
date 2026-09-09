@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, GraduationCap, Users } from 'lucide-react';
+import { ArrowRight, GraduationCap, Users, Settings2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { InfoNote } from '@/components/ui/info-note';
 import { IdCardsView } from './IdCardsView';
 import { StaffIdCardsView } from '@/components/staff/StaffIdCardsView';
+import { IdCardSettingsDrawer } from './IdCardSettingsDrawer';
 
 // Students and staff ID cards used to be two entirely separate sidebar
 // items ("ID Cards" and "Staff ID Cards"), placed apart from each other with
@@ -26,12 +28,20 @@ export function IdCardsHub() {
     if (tab === 'staff') setInitialTab('staff');
   }, []);
 
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="ID Cards"
         description="Generate and print verifiable, QR-scannable ID cards for students and staff."
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => setSettingsOpen(true)}>
+            <Settings2 size={15} /> Card settings
+          </Button>
+        }
       />
+      <IdCardSettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <InfoNote title="Why can't I get a card yet?">
         <p>

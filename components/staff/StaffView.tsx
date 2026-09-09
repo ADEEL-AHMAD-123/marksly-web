@@ -317,6 +317,13 @@ const schema = z.object({
   // path (see auth.service.ts's forgotPassword()).
   email: z.string().email('Enter a valid email address'),
   address: z.string().optional(),
+  // Staff are always adults regardless of institution type, so this is
+  // always labeled "CNIC" (never "Form B") — same format as the student
+  // field, matching the backend's NATIONAL_ID_REGEX exactly.
+  nationalIdNumber: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^\d{5}-\d{7}-\d$/.test(v), 'Enter a valid CNIC in the format 42101-1234567-1'),
 });
 type StaffForm = z.infer<typeof schema>;
 
@@ -332,7 +339,7 @@ function AddStaffDrawer({
   const [domainIssue, setDomainIssue] = useState<{ domain: string; email: string } | null>(null);
   const { register, control, handleSubmit, reset, getValues, formState: { errors } } = useForm<StaffForm>({
     resolver: zodResolver(schema),
-    defaultValues: { firstName: '', lastName: '', phone: '', email: '', address: '' },
+    defaultValues: { firstName: '', lastName: '', phone: '', email: '', address: '', nationalIdNumber: '' },
   });
 
   // Re-seed the form every time the drawer opens — either with the row
@@ -345,8 +352,15 @@ function AddStaffDrawer({
     if (!open) return;
     reset(
       editing
-        ? { firstName: editing.firstName, lastName: editing.lastName, phone: editing.phone, email: editing.email ?? '', address: editing.address ?? '' }
-        : { firstName: '', lastName: '', phone: '', email: '', address: '' }
+        ? {
+            firstName: editing.firstName,
+            lastName: editing.lastName,
+            phone: editing.phone,
+            email: editing.email ?? '',
+            address: editing.address ?? '',
+            nationalIdNumber: editing.nationalIdNumber ?? '',
+          }
+        : { firstName: '', lastName: '', phone: '', email: '', address: '', nationalIdNumber: '' }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
@@ -428,13 +442,27 @@ function AddStaffDrawer({
             </div>
 
             {isEditing && (
-              <div>
+              <div className="grid grid-cols-2 gap-3">
                 {/* Not required — but shown on the printable ID card (see
                     StaffIdCardsView.tsx). Left optional so this person can
                     also fill it in themselves via "My ID Card" instead of
                     this being the only way. */}
-                <Label htmlFor="address">Address</Label>
-                <Input id="address" {...register('address')} placeholder="House #, street, area" />
+                <div>
+                  <Label htmlFor="address">Address</Label>
+                  <Input id="address" {...register('address')} placeholder="House #, street, area" />
+                </div>
+                <div>
+                  <Label htmlFor="nationalIdNumber">CNIC Number</Label>
+                  <Input
+                    id="nationalIdNumber"
+                    dir="ltr"
+                    placeholder="42101-1234567-1"
+                    {...register('nationalIdNumber')}
+                  />
+                  {errors.nationalIdNumber && (
+                    <p className="mt-1 text-xs text-danger">{errors.nationalIdNumber.message}</p>
+                  )}
+                </div>
               </div>
             )}
             <div>

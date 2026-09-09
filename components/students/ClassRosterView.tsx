@@ -100,7 +100,7 @@ export function ClassRosterView({ mode }: Props) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Class Roster"
+        title="Student Logins"
         description="Look up or reset a student's Login ID and PIN by class and section."
       />
 
@@ -146,9 +146,9 @@ export function ClassRosterView({ mode }: Props) {
       {!ready ? (
         <Card><EmptyState icon={Users2} title={`Select a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()}`} description="Then view every student's Login ID and PIN status." /></Card>
       ) : forbidden ? (
-        <Card><EmptyState icon={Users2} title="Not your section" description="You can only view a roster for a section you're the assigned teacher of." /></Card>
+        <Card><EmptyState icon={Users2} title="Not your section" description="You can only view student logins for a section you're the assigned teacher of." /></Card>
       ) : isError ? (
-        <Card><EmptyState icon={Users2} title="Couldn't load roster" description="There was a problem reaching the server." action={<Button variant="secondary" size="sm" onClick={() => refetch()}>Retry</Button>} /></Card>
+        <Card><EmptyState icon={Users2} title="Couldn't load student logins" description="There was a problem reaching the server." action={<Button variant="secondary" size="sm" onClick={() => refetch()}>Retry</Button>} /></Card>
       ) : isFetching || !roster ? (
         <Card className="space-y-2 p-4">
           {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}

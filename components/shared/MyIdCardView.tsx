@@ -432,7 +432,7 @@ function StudentMyIdCard() {
                   institution={card.institution}
                   qrValue={card.qr}
                   validityLabel={card.termName ?? termLabel}
-                  rows={studentBackRows(card)}
+                  rows={studentBackRows(card, card.institution.settings?.idCard?.showBloodGroup ?? true)}
                 />
               </div>
             </div>

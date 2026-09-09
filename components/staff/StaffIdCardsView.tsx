@@ -2,7 +2,8 @@
 
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff, Search, X, UserCircle, Phone, MapPin, RotateCw } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff, Search, X, UserCircle, Phone, MapPin, RotateCw, Pencil, RefreshCw } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -13,12 +14,17 @@ import {
 } from '@/components/ui/select';
 import { Avatar } from '@/components/ui/avatar';
 import { QRCode } from '@/components/ui/qr-code';
-import { useGetStaffIdCardsQuery, type StaffCardRole, type StaffIdCard } from '@/store/api/usersApi';
-import { CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS, idCardNameSizeClass } from '@/components/shared/idCardPrint';
+import { useGetStaffIdCardsQuery, useReissueStaffCardsMutation, type StaffCardRole, type StaffIdCard, type StaffIdCardInstitution } from '@/store/api/usersApi';
+import {
+  CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS, idCardNameSizeClass, formatCardDate, ID_CARD_ROLE_COLORS,
+} from '@/components/shared/idCardPrint';
 import { IdCardBack, type IdCardBackRow } from '@/components/shared/IdCardBack';
 import { IdCardCredit } from '@/components/shared/IdCardCredit';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { EditCardDetailsDialog } from '@/components/students/EditCardDetailsDialog';
+import { ReissueCardsConfirmDialog } from '@/components/students/ReissueCardsConfirmDialog';
+import { getErrorMessage } from '@/lib/get-error-message';
 
 const ROLE_FILTERS: { value: StaffCardRole | 'all'; label: string }[] = [
   { value: 'all', label: 'All roles' },
@@ -28,15 +34,16 @@ const ROLE_FILTERS: { value: StaffCardRole | 'all'; label: string }[] = [
   { value: 'admin', label: 'Admin' },
 ];
 
-// A role-appropriate accent — distinct from student cards (which use
-// primary/accent) so staff cards are visually distinguishable from a
-// student's at a glance while remaining part of the same design system
-// (all four are already-used semantic tokens, not new arbitrary colors).
-const ROLE_STYLE: Record<StaffCardRole, { accent: string; band: string; soft: string; icon: typeof Briefcase; label: string }> = {
-  teacher: { accent: 'border-accent', band: 'bg-accent text-accent-foreground', soft: 'bg-accent/15 text-accent-foreground', icon: BookOpen, label: 'Teacher' },
-  staff: { accent: 'border-success', band: 'bg-success text-success-foreground', soft: 'bg-success-soft text-success', icon: Briefcase, label: 'Staff' },
-  accountant: { accent: 'border-warning', band: 'bg-warning text-warning-foreground', soft: 'bg-warning-soft text-warning', icon: Landmark, label: 'Accountant' },
-  admin: { accent: 'border-danger', band: 'bg-danger text-danger-foreground', soft: 'bg-danger-soft text-danger', icon: ShieldCheck, label: 'Admin' },
+// A role-appropriate accent — distinct from student cards so staff cards are
+// visually distinguishable from a student's at a glance. Header `band` is a
+// solid dark role color per the locked design (see ID_CARD_ROLE_COLORS) —
+// applied as an inline style at render time, not a Tailwind class, so it
+// can't be silently overridden by a conflicting utility class.
+const ROLE_STYLE: Record<StaffCardRole, { accent: string; bandColor: string; soft: string; icon: typeof Briefcase; label: string }> = {
+  teacher: { accent: 'border-accent', bandColor: ID_CARD_ROLE_COLORS.teacher, soft: 'bg-accent/15 text-accent-foreground', icon: BookOpen, label: 'Teacher' },
+  staff: { accent: 'border-success', bandColor: ID_CARD_ROLE_COLORS.staff, soft: 'bg-success-soft text-success', icon: Briefcase, label: 'Staff' },
+  accountant: { accent: 'border-warning', bandColor: ID_CARD_ROLE_COLORS.accountant, soft: 'bg-warning-soft text-warning', icon: Landmark, label: 'Accountant' },
+  admin: { accent: 'border-danger', bandColor: ID_CARD_ROLE_COLORS.admin, soft: 'bg-danger-soft text-danger', icon: ShieldCheck, label: 'Admin' },
 };
 
 export function StaffIdCardsView() {
@@ -56,6 +63,30 @@ export function StaffIdCardsView() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = useMemo(() => roster.find((s) => s.id === selectedId) ?? null, [roster, selectedId]);
+
+  const [reissueOpen, setReissueOpen] = useState(false);
+  const [reissueAllOpen, setReissueAllOpen] = useState(false);
+  const [reissueCards, { isLoading: reissuing }] = useReissueStaffCardsMutation();
+  const canReissue = roleParam !== 'all';
+  const handleReissue = async () => {
+    if (roleParam === 'all') return;
+    try {
+      const res = await reissueCards({ role: roleParam }).unwrap();
+      toast.success(`Re-issued cards for ${res.data.updatedCount} ${roleParam}${res.data.updatedCount === 1 ? '' : 's'}`);
+      setReissueOpen(false);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not re-issue cards'));
+    }
+  };
+  const handleReissueAll = async () => {
+    try {
+      const res = await reissueCards({ role: 'all' }).unwrap();
+      toast.success(`Re-issued cards for ${res.data.updatedCount} staff member${res.data.updatedCount === 1 ? '' : 's'} across all roles`);
+      setReissueAllOpen(false);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not re-issue cards'));
+    }
+  };
 
   const setRole = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -94,7 +125,45 @@ export function StaffIdCardsView() {
             />
           </div>
         </div>
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={!canReissue}
+            title={!canReissue ? 'Pick a specific role (not "All roles") to re-issue cards' : undefined}
+            onClick={() => setReissueOpen(true)}
+          >
+            <RefreshCw size={14} /> Re-issue cards for this role
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setReissueAllOpen(true)}
+          >
+            <RefreshCw size={14} /> Re-issue cards for all staff
+          </Button>
+        </div>
       </Card>
+
+      <ReissueCardsConfirmDialog
+        open={reissueOpen}
+        onClose={() => setReissueOpen(false)}
+        onConfirm={handleReissue}
+        loading={reissuing}
+        title="Re-issue cards for this role?"
+        description={`This resets the issue and expiry dates on every active ${roleParam === 'all' ? 'staff' : roleParam} member's card to a fresh validity window. It cannot be undone.`}
+        confirmLabel="Re-issue cards"
+      />
+
+      <ReissueCardsConfirmDialog
+        open={reissueAllOpen}
+        onClose={() => setReissueAllOpen(false)}
+        onConfirm={handleReissueAll}
+        loading={reissuing}
+        title="Re-issue cards for all staff?"
+        description="This resets the issue and expiry dates on every active staff member's card — teachers, staff, accountants, and admins — to a fresh validity window, in one go. It cannot be undone."
+        confirmLabel="Re-issue cards for all staff"
+      />
 
       {!selectedId ? (
         <Card className="no-print">
@@ -117,13 +186,18 @@ function StaffIdCardPreview({
   member, institution,
 }: {
   member: StaffIdCard;
-  institution: { name: string; logoUrl: string | null };
+  institution: StaffIdCardInstitution;
 }) {
   const [showBack, setShowBack] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const nationalIdLabel = 'CNIC';
 
   return (
     <>
       <div className="no-print flex items-center justify-end gap-2">
+        <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+          <Pencil size={14} /> Edit card details
+        </Button>
         <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
           <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
         </Button>
@@ -138,11 +212,27 @@ function StaffIdCardPreview({
             <IdCardBack
               institution={institution}
               qrValue={member.qr}
+              validityLabel={formatCardDate(member.cardExpiryDate)}
               rows={staffBackRows(member)}
             />
           </div>
         </div>
       </div>
+      {editOpen && (
+        <EditCardDetailsDialog
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          target={{
+            id: member.id,
+            name: member.name,
+            kind: 'staff',
+            nationalIdLabel,
+            nationalIdNumber: member.nationalIdNumber ?? null,
+            cardIssueDate: member.cardIssueDate ?? null,
+            cardExpiryDate: member.cardExpiryDate ?? null,
+          }}
+        />
+      )}
     </>
   );
 }
@@ -257,11 +347,18 @@ export const StaffIdCardItem = memo(function StaffIdCardItem({
   member, institution,
 }: {
   member: StaffIdCard;
-  institution: { name: string; logoUrl: string | null };
+  institution: StaffIdCardInstitution;
 }) {
   const [first = '', last = ''] = member.name.split(' ');
   const style = ROLE_STYLE[member.role] ?? ROLE_STYLE.staff;
   const RoleIcon = style.icon;
+  const roleSubtitle = member.role === 'teacher' ? 'Teacher identity card' : 'Staff identity card';
+  const issued = formatCardDate(member.cardIssueDate);
+  const expiry = formatCardDate(member.cardExpiryDate);
+  const settings = institution.settings?.idCard;
+  const showNationalId = settings?.showNationalId ?? true;
+  const showInstituteName = settings?.showInstituteName ?? true;
+  const logoUrl = settings?.customLogoUrl ?? institution.logoUrl;
 
   return (
     <div
@@ -271,24 +368,28 @@ export const StaffIdCardItem = memo(function StaffIdCardItem({
       )}
       style={{ aspectRatio: `${CARD_WIDTH_MM} / ${CARD_HEIGHT_MM}`, maxWidth: 380 }}
     >
-      {/* Header band — same institution-branding placement as student
-          cards, just tinted with this role's accent instead of primary. */}
-      <div className={cn('flex items-start gap-2 px-3 py-1.5', style.band)}>
-        {institution.logoUrl ? (
-          <div className="relative mt-0.5 h-7 w-7 shrink-0 overflow-hidden rounded-md bg-white/10">
-            <Image src={institution.logoUrl} alt="" fill sizes="28px" className="object-contain" unoptimized />
-          </div>
-        ) : (
-          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/10">
-            <GraduationCap size={17} />
-          </div>
-        )}
+      {/* Header band — solid dark role color (see idCardPrint.ts's
+          ID_CARD_ROLE_COLORS), applied as inline backgroundColor so it
+          can't be silently overridden by a conflicting Tailwind class. Text
+          on this band is always plain text-white/text-white/85. */}
+      <div className="flex items-center gap-2 px-3 py-1.5" style={{ backgroundColor: style.bandColor }}>
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white">
+          {logoUrl ? (
+            <div className="relative h-full w-full overflow-hidden rounded-full">
+              <Image src={logoUrl} alt="" fill sizes="28px" className="object-contain" unoptimized />
+            </div>
+          ) : (
+            <GraduationCap size={15} style={{ color: style.bandColor }} />
+          )}
+        </div>
         <div className="min-w-0">
-          <p className={cn('line-clamp-2 break-words font-bold leading-[1.15]', idCardNameSizeClass(institution.name))}>
-            {institution.name}
-          </p>
-          <p className="mt-0.5 text-[8.5px] font-medium uppercase leading-tight tracking-wide opacity-80">
-            Staff Identity Card
+          {showInstituteName && (
+            <p className={cn('line-clamp-2 break-words font-bold leading-[1.15] text-white', idCardNameSizeClass(institution.name))}>
+              {institution.name}
+            </p>
+          )}
+          <p className="mt-0.5 text-[8.5px] font-medium uppercase leading-tight tracking-wide text-white/85">
+            {roleSubtitle}
           </p>
         </div>
       </div>
@@ -324,10 +425,17 @@ export const StaffIdCardItem = memo(function StaffIdCardItem({
 
           <dl className="mt-auto grid grid-cols-2 gap-x-3 gap-y-1.5 text-[9.5px] leading-tight">
             <Field label="Staff ID" value={member.systemId} />
-            {member.subjectCount != null && (
-              <Field label="Subjects Taught" value={String(member.subjectCount)} />
+            {member.phone && <Field label="Mobile" value={member.phone} />}
+            {showNationalId && member.nationalIdNumber && (
+              <Field label="CNIC No." value={member.nationalIdNumber} className="col-span-2" />
             )}
           </dl>
+
+          {(issued || expiry) && (
+            <p className="text-[7.5px] leading-tight text-muted-foreground">
+              {issued ? `Issued ${issued}` : ''}{issued && expiry ? ' | ' : ''}{expiry ? `Valid until ${expiry}` : ''}
+            </p>
+          )}
 
           <div className="pt-1">
             <IdCardCredit />
@@ -344,9 +452,9 @@ export const StaffIdCardItem = memo(function StaffIdCardItem({
   );
 });
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className={cn('flex flex-col gap-0.5', className)}>
       <dt className="font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
       <dd className="truncate font-semibold text-foreground">{value}</dd>
     </div>

@@ -65,3 +65,32 @@ export function idCardNameSizeClass(name: string): string {
   if (len <= 48) return 'text-[10px]';
   return 'text-[9px]';
 }
+
+/** Short date format for the "Issued {date} | Valid until {date}" line
+ *  shown on every card front — e.g. "12 Aug 2026". Returns null for
+ *  missing/invalid input so callers can skip the line entirely rather than
+ *  print "Invalid Date". */
+export function formatCardDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/**
+ * Locked role-color palette for ID card headers — deliberately solid, dark,
+ * high-contrast colors (not lighter/muted tints) per explicit product-owner
+ * feedback that lighter headers read as low-contrast. Applied as an inline
+ * backgroundColor (not a Tailwind bg-* class) specifically so nothing else
+ * in the cascade can silently override it the way a utility class did in an
+ * earlier mockup — text color on top of these should always be plain
+ * `text-white`/`text-white/85`, never a semantic/muted token that could
+ * resolve to a light color against these dark backgrounds.
+ */
+export const ID_CARD_ROLE_COLORS = {
+  student: '#0f2a4a', // dark navy blue
+  teacher: '#0d3b36', // dark teal/green
+  staff: '#4a3220', // dark amber/brown
+  accountant: '#2e1065', // dark indigo/purple
+  admin: '#4a0f16', // dark maroon/red
+} as const;

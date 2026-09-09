@@ -1,4 +1,19 @@
 import { baseApi } from './baseApi';
+import type { IdCardSettings } from './institutionApi';
+
+// Shared shape for the `institution` object embedded in every ID-card
+// response (getIdCards, getMyStudentCard) — always includes
+// settings.idCard so card-rendering components can apply
+// showNationalId/showBloodGroup/showInstituteName/customLogoUrl without a
+// separate institution-settings fetch. See student.service.ts's
+// cardsForSection()/getMyCard().
+export interface IdCardInstitution {
+  name: string;
+  city: string | null;
+  logoUrl: string | null;
+  type?: string;
+  settings?: { idCard?: IdCardSettings | null };
+}
 
 export interface StudentListItem {
   id: string;
@@ -30,6 +45,12 @@ export interface StudentListItem {
   address: string | null;
   city: string | null;
   bloodGroup: string | null;
+  // Format NNNNN-NNNNNNN-N (Pakistani CNIC/Form-B numbering scheme) — see
+  // marksly-api's national-id.schema.ts. Label ("Form B" vs "CNIC") is
+  // derived from institution.type at display time, not stored per-field.
+  nationalIdNumber?: string | null;
+  cardIssueDate?: string | null;
+  cardExpiryDate?: string | null;
 }
 
 export interface StudentStats {
@@ -86,11 +107,17 @@ export interface CreateStudentBody {
   bloodGroup?: string;
   address?: string;
   city?: string;
+  nationalIdNumber?: string;
   previousSchool?: string;
   guardianIds?: string[];
   parentPhone?: string;
   parentName?: string;
   parentEmail?: string;
+  // Card-specific fields, admin-only via PATCH /students/:id — see
+  // student.validator.ts. Never accepted on the self-service contact-update
+  // endpoint (updateMyStudentContact), which silently strips them if sent.
+  cardIssueDate?: string;
+  cardExpiryDate?: string;
 }
 
 export interface BulkImportResult {
@@ -150,6 +177,9 @@ export interface IdCard {
   parentPhone: string | null;
   profilePhoto: string | null;
   qr: string;
+  nationalIdNumber?: string | null;
+  cardIssueDate?: string | null;
+  cardExpiryDate?: string | null;
 }
 
 export interface MyStudentContactInfo {
@@ -161,7 +191,7 @@ export interface MyStudentContactInfo {
 }
 
 export interface MyStudentCard extends IdCard {
-  institution: { name: string; city: string | null; logoUrl: string | null };
+  institution: IdCardInstitution;
   className: string | null;
   section: string | null;
   termName: string | null;
@@ -170,7 +200,7 @@ export interface MyStudentCard extends IdCard {
 }
 
 export interface IdCardSheet {
-  institution: { name: string; city: string | null; logoUrl: string | null };
+  institution: IdCardInstitution;
   className: string | null;
   section: string | null;
   termName: string | null;
@@ -242,7 +272,20 @@ export const studentsApi = baseApi.injectEndpoints({
       // BRAND-NEW parent account (no guardian existed before) — same shape
       // as createStudent's response, see student.service.ts's update().
       ApiObject<StudentListItem & { guardianTempPassword?: string }>,
-      { id: string; body: Partial<CreateStudentBody> & { status?: StudentListItem['status'] } }
+      {
+        id: string;
+        // `| null` on the three card-detail fields the quick card editor can
+        // clear (EditCardDetailsDialog.tsx) — omitting a key from body still
+        // means "untouched"; explicitly sending null means "admin cleared
+        // this field". See updateStudentSchema's nullable field variants.
+        body: Partial<Omit<CreateStudentBody, 'bloodGroup' | 'nationalIdNumber' | 'cardIssueDate' | 'cardExpiryDate'>> & {
+          status?: StudentListItem['status'];
+          bloodGroup?: string | null;
+          nationalIdNumber?: string | null;
+          cardIssueDate?: string | null;
+          cardExpiryDate?: string | null;
+        };
+      }
     >({
       query: ({ id, body }) => ({ url: `/students/${id}`, method: 'PATCH', body }),
       invalidatesTags: (_r, _e, { id }) => [
@@ -349,6 +392,14 @@ export const studentsApi = baseApi.injectEndpoints({
       providesTags: [{ type: 'Students', id: 'LIST' }, 'Students'],
     }),
 
+    // Admin-only bulk re-issue — resets cardIssueDate/cardExpiryDate for
+    // every active student in one class/section. See student.service.ts's
+    // reissueCards().
+    reissueStudentCards: builder.mutation<ApiObject<{ updatedCount: number }>, { classId: string; sectionId: string }>({
+      query: (body) => ({ url: '/students/reissue-cards', method: 'POST', body }),
+      invalidatesTags: [{ type: 'Students', id: 'LIST' }, 'Students'],
+    }),
+
     // Self-service — "My ID Card" page, for the student themself (or their
     // parent — pass studentId when the account has more than one child).
     getMyStudentContact: builder.query<ApiObject<MyStudentContactInfo>, { studentId?: string } | void>({
@@ -396,6 +447,7 @@ export const {
   useGetSectionRosterQuery,
   useLazyExportSectionRosterQuery,
   useGetIdCardsQuery,
+  useReissueStudentCardsMutation,
   useGetMyStudentContactQuery,
   useUpdateMyStudentContactMutation,
   useGetMyStudentCardQuery,

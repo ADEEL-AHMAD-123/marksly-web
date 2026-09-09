@@ -104,10 +104,10 @@ export function StudentsView() {
         }
       />
 
-      <InfoNote title="How do they log in?" link={{ href: '/admin/students/roster', label: 'Go to Class Roster' }}>
+      <InfoNote title="How do they log in?" link={{ href: '/admin/students/roster', label: 'Go to Student Logins' }}>
         <p>Students log in with their Login ID (printed on their ID card, e.g. MKS-XXXXXXXX) plus a PIN set by the school — shown once when the student is added, or any time via <strong>Reset PIN</strong> on the student. Students can change their own PIN later from their account.</p>
         <p>Guardians get a separate parent login — the phone/email entered as guardian for a student, emailed its own temporary password. One guardian phone linked to more than one child means one shared login for all of them.</p>
-        <p>Need to look up or reset a student&apos;s Login ID and PIN by class/section in bulk? Use the Class Roster page.</p>
+        <p>Need to look up or reset a student&apos;s Login ID and PIN by class/section in bulk? Use the Student Logins page.</p>
         <p>Missing or bounced guardian email? Open the student, use <strong>Resend parent login</strong> to send a fresh password.</p>
       </InfoNote>
 
@@ -321,15 +321,15 @@ export function StudentsView() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         title="Import Students"
-        columns={['firstName', 'lastName', 'rollNumber', 'admissionNumber', 'class', 'section', 'gender', 'guardianPhone', 'guardianName', 'guardianEmail']}
-        sample={['Ali', 'Khan', 'STD-2001', 'ADM-2001', 'Grade 5', 'A', 'male', '03009998888', 'Imran Khan', 'imran@example.com']}
+        columns={['firstName', 'lastName', 'rollNumber', 'admissionNumber', 'class', 'section', 'gender', 'guardianPhone', 'guardianName', 'guardianEmail', 'nationalIdNumber']}
+        sample={['Ali', 'Khan', 'STD-2001', 'ADM-2001', 'Grade 5', 'A', 'male', '03009998888', 'Imran Khan', 'imran@example.com', '42101-1234567-1']}
         filename="students-template.csv"
         onImport={async (csv) => (await bulkImport({ csv }).unwrap()).data}
-        helpText={'Students never have their own email/phone — only guardian contact (guardianPhone + guardianEmail) is collected, and is required for every row. Running more than one active term at once (e.g. overlapping semesters)? Add an optional "term" column with the exact term name if any class name exists in more than one active term — otherwise it can be left out.'}
+        helpText={'Students never have their own email/phone — only guardian contact (guardianPhone + guardianEmail) is collected, and is required for every row. "nationalIdNumber" (Form B/CNIC, format 42101-1234567-1) is optional. Running more than one active term at once (e.g. overlapping semesters)? Add an optional "term" column with the exact term name if any class name exists in more than one active term — otherwise it can be left out.'}
         resultNote={
           <>
             Logins aren&apos;t emailed or shown per row here — each student got a Login ID and PIN automatically. Find them on the{' '}
-            <Link href="/admin/students/roster" className="font-medium text-primary hover:underline">Class Roster</Link> page.
+            <Link href="/admin/students/roster" className="font-medium text-primary hover:underline">Student Logins</Link> page.
           </>
         }
       />

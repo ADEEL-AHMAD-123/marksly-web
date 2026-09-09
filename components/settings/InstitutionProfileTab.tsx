@@ -180,6 +180,9 @@ export function InstitutionProfileTab() {
                   <Trash2 size={14} /> Remove
                 </Button>
               )}
+              <p className="text-xs text-muted-foreground">
+                For best results on ID cards, use a PNG with a transparent background.
+              </p>
             </div>
           </div>
         </CardContent>

@@ -20,7 +20,7 @@ import { PhotoUpload } from '@/components/shared/PhotoUpload';
 import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetActiveTermsQuery } from '@/store/api/termsApi';
-import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
+import { useTerminology, getTerminologyForTermType, useNationalIdLabel } from '@/lib/terminology';
 import {
   useCreateStudentMutation,
   useUpdateStudentMutation,
@@ -49,6 +49,13 @@ const schema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   bloodGroup: z.string().optional(),
+  // Optional — format matches the backend's NATIONAL_ID_REGEX exactly (see
+  // marksly-api's national-id.schema.ts). Label ("Form B" vs "CNIC") is
+  // decided at display time from the institution's type, not stored here.
+  nationalIdNumber: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^\d{5}-\d{7}-\d$/.test(v), 'Enter a valid number in the format 42101-1234567-1'),
   // Guardian phone is what the absentee-report WhatsApp links (see
   // AttendanceReportView.tsx) actually message — capturing it in E.164 up
   // front means those links work without any later phone-normalization
@@ -104,6 +111,7 @@ interface Props {
 
 export function StudentFormDrawer({ open, onClose, student, classesOverride }: Props) {
   const terminology = useTerminology();
+  const nationalIdLabel = useNationalIdLabel();
   const isEdit = !!student;
   const { data: classesRes } = useGetClassesQuery(undefined, { skip: !!classesOverride });
   const classes = useMemo(() => classesOverride ?? classesRes?.data ?? [], [classesOverride, classesRes]);
@@ -137,7 +145,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
       firstName: '', lastName: '',
       rollNumber: '', admissionNumber: '', classId: '', sectionId: '', gender: 'male',
       parentPhone: '', parentName: '', parentEmail: '',
-      address: '', city: '', bloodGroup: '',
+      address: '', city: '', bloodGroup: '', nationalIdNumber: '',
     },
   });
 
@@ -166,6 +174,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         address: student.address ?? '',
         city: student.city ?? '',
         bloodGroup: student.bloodGroup ?? '',
+        nationalIdNumber: student.nationalIdNumber ?? '',
       });
     } else {
       // Auto-select when there's only one option — mainly for teachers, who
@@ -178,7 +187,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         rollNumber: '', admissionNumber: '',
         classId: onlyClass?.id ?? '', sectionId: onlySection?.id ?? '', gender: 'male',
         parentPhone: '', parentName: '', parentEmail: '',
-        address: '', city: '', bloodGroup: '',
+        address: '', city: '', bloodGroup: '', nationalIdNumber: '',
       });
     }
   }, [open, student, classes, reset]);
@@ -501,6 +510,18 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                     </Select>
                   )}
                 />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="nationalIdNumber">{nationalIdLabel} Number</Label>
+                <Input
+                  id="nationalIdNumber"
+                  dir="ltr"
+                  placeholder="42101-1234567-1"
+                  {...register('nationalIdNumber')}
+                />
+                {errors.nationalIdNumber && (
+                  <p className="mt-1 text-xs text-danger">{errors.nationalIdNumber.message}</p>
+                )}
               </div>
             </div>
 

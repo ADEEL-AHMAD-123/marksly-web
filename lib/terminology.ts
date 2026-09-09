@@ -120,3 +120,27 @@ export function useTerminology(): Terminology {
   const { data } = useGetMyInstitutionQuery();
   return getTerminology(data?.data?.academicStructure);
 }
+
+/**
+ * Locked product decision: the national-ID card field is labeled "Form B"
+ * for school/academy institutions (a Form B is the child's own CNIC-format
+ * number, issued before age 18) and "CNIC" for college/university
+ * institutions (adult students). Staff are always adults regardless of
+ * institution type, so callers for staff should just hardcode "CNIC" rather
+ * than call this. Same underlying `nationalIdNumber` field either way — see
+ * marksly-api's national-id.schema.ts.
+ */
+export function nationalIdLabelForInstitutionType(
+  institutionType: 'school' | 'college' | 'university' | 'academy' | string | undefined | null
+): 'Form B' | 'CNIC' {
+  if (institutionType === 'college' || institutionType === 'university') return 'CNIC';
+  return 'Form B';
+}
+
+/** Convenience hook — reads the current institution's type and returns the
+ *  matching national-ID label ("Form B" vs "CNIC"), same
+ *  useGetMyInstitutionQuery source as useTerminology() above. */
+export function useNationalIdLabel(): 'Form B' | 'CNIC' {
+  const { data } = useGetMyInstitutionQuery();
+  return nationalIdLabelForInstitutionType(data?.data?.type);
+}

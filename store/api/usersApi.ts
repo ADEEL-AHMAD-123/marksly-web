@@ -1,4 +1,15 @@
 import { baseApi } from './baseApi';
+import type { IdCardSettings } from './institutionApi';
+
+// Shared shape for the `institution` object embedded in every staff
+// ID-card response (getStaffIdCards, getMyCard) — see user.service.ts's
+// staffIdCards()/getMyCard().
+export interface StaffIdCardInstitution {
+  name: string;
+  logoUrl: string | null;
+  type?: string;
+  settings?: { idCard?: IdCardSettings | null };
+}
 
 export type ManageableRole = 'teacher' | 'staff' | 'accountant';
 
@@ -19,6 +30,12 @@ export interface ManagedUser {
   // (or gain it later) can display it without a type change.
   profilePhoto?: string | null;
   address?: string | null;
+  // Format NNNNN-NNNNNNN-N — same underlying field as Student's, always
+  // labeled "CNIC" for staff regardless of institution type (staff are
+  // adults). See marksly-api's national-id.schema.ts.
+  nationalIdNumber?: string | null;
+  cardIssueDate?: string | null;
+  cardExpiryDate?: string | null;
   // false means an activation-link invite is still pending (see the
   // invite-based creation flow in user.service.ts) — the account can't log
   // in yet at all, regardless of `isActive`.
@@ -44,6 +61,7 @@ export interface CreateUserBody {
   // Set on a resubmit after the backend flags EMAIL_DOMAIN_UNVERIFIED and
   // the admin confirms the address is correct anyway.
   confirmUnverifiedEmail?: boolean;
+  nationalIdNumber?: string;
 }
 
 export type StaffCardRole = 'teacher' | 'staff' | 'accountant' | 'admin';
@@ -58,6 +76,9 @@ export interface StaffIdCard {
   address: string | null;
   subjectCount: number | null;
   qr: string;
+  nationalIdNumber?: string | null;
+  cardIssueDate?: string | null;
+  cardExpiryDate?: string | null;
 }
 
 export interface MyContactInfo {
@@ -67,13 +88,13 @@ export interface MyContactInfo {
 }
 
 export interface MyStaffCard extends StaffIdCard {
-  institution: { name: string; logoUrl: string | null };
+  institution: StaffIdCardInstitution;
   missing: string[];
   photoMissing: boolean;
 }
 
 export interface StaffIdCardSheet {
-  institution: { name: string; logoUrl: string | null };
+  institution: StaffIdCardInstitution;
   staff: StaffIdCard[];
 }
 
@@ -115,9 +136,35 @@ export const usersApi = baseApi.injectEndpoints({
     }),
     updateUser: builder.mutation<
       ApiObject<ManagedUser>,
-      { id: string; body: Partial<CreateUserBody> & { isActive?: boolean; address?: string } }
+      {
+        id: string;
+        body: Partial<Omit<CreateUserBody, 'nationalIdNumber'>> & {
+          isActive?: boolean;
+          address?: string;
+          // `| null` — an admin can explicitly clear a previously-set value
+          // from the quick card editor (EditCardDetailsDialog.tsx); omitting
+          // the key entirely (not present in body) still means "untouched".
+          nationalIdNumber?: string | null;
+          // Card-specific fields, admin-only — see user.validator.ts. Never
+          // accepted on the self-service updateMyContact endpoint, which
+          // silently strips them if sent.
+          cardIssueDate?: string | null;
+          cardExpiryDate?: string | null;
+        };
+      }
     >({
       query: ({ id, body }) => ({ url: `/users/${id}`, method: 'PATCH', body }),
+      invalidatesTags: [{ type: 'Users', id: 'LIST' }],
+    }),
+    // Admin-only bulk re-issue — resets cardIssueDate/cardExpiryDate for
+    // every active staff member of one role, or every manageable role at
+    // once when role is 'all' (byRole is only present for the 'all' case).
+    // See user.service.ts's reissueCards().
+    reissueStaffCards: builder.mutation<
+      ApiObject<{ updatedCount: number; byRole?: Record<string, number> }>,
+      { role: StaffCardRole | 'all' }
+    >({
+      query: (body) => ({ url: '/users/reissue-cards', method: 'POST', body }),
       invalidatesTags: [{ type: 'Users', id: 'LIST' }],
     }),
     // Self-service — "My ID Card" page. Scoped to the caller's own account
@@ -202,6 +249,7 @@ export const {
   useUploadUserPhotoMutation,
   useRemoveUserPhotoMutation,
   useGetStaffIdCardsQuery,
+  useReissueStaffCardsMutation,
   useGetMyContactQuery,
   useUpdateMyContactMutation,
   useGetMyCardQuery,

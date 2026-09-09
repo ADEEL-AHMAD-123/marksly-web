@@ -195,7 +195,7 @@ export function EmailLogView() {
   return (
     <div ref={topRef} className="scroll-mt-4 space-y-5">
       <PageHeader
-        title="Login Emails"
+        title="Email Delivery Status"
         description="Whether the first login email you sent actually reached the person."
       />
 
@@ -337,7 +337,7 @@ export function EmailLogView() {
             <Card>
               <EmptyState
                 icon={AlertTriangle}
-                title="Couldn't load the email log"
+                title="Couldn't load email delivery status"
                 description="There was a problem reaching the server. Check that the API is running and try again."
                 action={<Button variant="secondary" size="sm" onClick={() => refetch()}>Retry</Button>}
               />

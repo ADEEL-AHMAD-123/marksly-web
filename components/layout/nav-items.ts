@@ -27,9 +27,9 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     // parents or staff, so it belongs next to where that data gets entered.
     // See SidebarNav.tsx for the red issue-count badge that also makes this
     // noticeable regardless of position.
-    { label: 'Login Emails', href: '/admin/email-log', icon: Mail },
+    { label: 'Email Delivery Status', href: '/admin/email-log', icon: Mail },
     { label: 'ID Cards', href: '/admin/id-cards', icon: CreditCard },
-    { label: 'Class Roster', href: '/admin/students/roster', icon: KeyRound },
+    { label: 'Student Logins', href: '/admin/students/roster', icon: KeyRound },
     // Academic structure — Academic Terms now comes first since it's the
     // foundational setup step Classes/Subjects/Timetable are actually scoped
     // to (you define a term before you can assign classes to it), not just
@@ -54,7 +54,7 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
   teacher: [
     { label: 'Dashboard', href: '/teacher', icon: LayoutDashboard },
     { label: 'My Classes', href: '/teacher/classes', icon: School },
-    { label: 'Class Roster', href: '/teacher/roster', icon: KeyRound },
+    { label: 'Student Logins', href: '/teacher/roster', icon: KeyRound },
     { label: 'Timetable', href: '/teacher/timetable', icon: CalendarClock },
     { label: 'Attendance', href: '/teacher/attendance', icon: CalendarCheck },
     { label: 'Exams', href: '/teacher/exams', icon: FileText },

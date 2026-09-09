@@ -2,7 +2,8 @@
 
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff, Search, X, UserCircle, MapPin, Users, RotateCw } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff, Search, X, UserCircle, MapPin, Users, RotateCw, Pencil, RefreshCw } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -14,12 +15,17 @@ import {
 import { Avatar } from '@/components/ui/avatar';
 import { QRCode } from '@/components/ui/qr-code';
 import { useGetClassesQuery } from '@/store/api/classesApi';
-import { useGetIdCardsQuery, type IdCard } from '@/store/api/studentsApi';
-import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
-import { CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS, idCardNameSizeClass } from '@/components/shared/idCardPrint';
+import { useGetIdCardsQuery, useReissueStudentCardsMutation, type IdCard, type IdCardInstitution } from '@/store/api/studentsApi';
+import { useTerminology, getTerminologyForTermType, nationalIdLabelForInstitutionType } from '@/lib/terminology';
+import {
+  CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS, idCardNameSizeClass, formatCardDate, ID_CARD_ROLE_COLORS,
+} from '@/components/shared/idCardPrint';
 import { IdCardBack, type IdCardBackRow } from '@/components/shared/IdCardBack';
 import { cn } from '@/lib/utils';
 import { IdCardCredit } from '@/components/shared/IdCardCredit';
+import { EditCardDetailsDialog } from '@/components/students/EditCardDetailsDialog';
+import { ReissueCardsConfirmDialog } from '@/components/students/ReissueCardsConfirmDialog';
+import { getErrorMessage } from '@/lib/get-error-message';
 
 export function IdCardsView() {
   const terminology = useTerminology();
@@ -44,6 +50,18 @@ export function IdCardsView() {
   const sheet = data?.data;
   const roster = sheet?.students ?? [];
   const selected = useMemo(() => roster.find((s) => s.id === selectedId) ?? null, [roster, selectedId]);
+
+  const [reissueOpen, setReissueOpen] = useState(false);
+  const [reissueCards, { isLoading: reissuing }] = useReissueStudentCardsMutation();
+  const handleReissue = async () => {
+    try {
+      const res = await reissueCards({ classId, sectionId }).unwrap();
+      toast.success(`Re-issued cards for ${res.data.updatedCount} student${res.data.updatedCount === 1 ? '' : 's'}`);
+      setReissueOpen(false);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not re-issue cards'));
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -83,7 +101,28 @@ export function IdCardsView() {
             />
           </div>
         </div>
+        <div className="flex justify-end">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={!ready}
+            title={!ready ? `Select a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()} first` : undefined}
+            onClick={() => setReissueOpen(true)}
+          >
+            <RefreshCw size={14} /> Re-issue cards for this {sectionLabel.toLowerCase()}
+          </Button>
+        </div>
       </Card>
+
+      <ReissueCardsConfirmDialog
+        open={reissueOpen}
+        onClose={() => setReissueOpen(false)}
+        onConfirm={handleReissue}
+        loading={reissuing}
+        title={`Re-issue cards for this ${sectionLabel.toLowerCase()}?`}
+        description={`This resets the issue and expiry dates on every active student's card in this ${sectionLabel.toLowerCase()} to a fresh validity window. It cannot be undone.`}
+        confirmLabel="Re-issue cards"
+      />
 
       {!ready ? (
         <Card className="no-print"><EmptyState icon={IdCardIcon} title={`Select a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()}`} description="Then search for a specific student to view their ID card." /></Card>
@@ -114,17 +153,23 @@ function StudentIdCardPreview({
   student, institution, className, section, termName,
 }: {
   student: IdCard;
-  institution: { name: string; city: string | null; logoUrl: string | null };
+  institution: IdCardInstitution;
   className: string | null;
   section: string | null;
   termName: string | null;
 }) {
   const [showBack, setShowBack] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const { term: termLabel } = useTerminology();
+  const nationalIdLabel = nationalIdLabelForInstitutionType(institution.type);
+  const settings = institution.settings?.idCard;
 
   return (
     <>
       <div className="no-print flex items-center justify-end gap-2">
+        <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+          <Pencil size={14} /> Edit card details
+        </Button>
         <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
           <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
         </Button>
@@ -142,18 +187,34 @@ function StudentIdCardPreview({
               institution={institution}
               qrValue={student.qr}
               validityLabel={termName ?? termLabel}
-              rows={studentBackRows(student)}
+              rows={studentBackRows(student, settings?.showBloodGroup ?? true)}
             />
           </div>
         </div>
       </div>
+      {editOpen && (
+        <EditCardDetailsDialog
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          target={{
+            id: student.id,
+            name: student.name,
+            kind: 'student',
+            nationalIdLabel,
+            nationalIdNumber: student.nationalIdNumber ?? null,
+            cardIssueDate: student.cardIssueDate ?? null,
+            cardExpiryDate: student.cardExpiryDate ?? null,
+            bloodGroup: student.bloodGroup,
+          }}
+        />
+      )}
     </>
   );
 }
 
-export function studentBackRows(student: IdCard): IdCardBackRow[] {
+export function studentBackRows(student: IdCard, showBloodGroup = true): IdCardBackRow[] {
   const rows: IdCardBackRow[] = [];
-  if (student.bloodGroup) rows.push({ icon: Droplet, label: 'Blood Group', value: student.bloodGroup });
+  if (showBloodGroup && student.bloodGroup) rows.push({ icon: Droplet, label: 'Blood Group', value: student.bloodGroup });
   // Students never have their own phone — `student.phone` is always null now
   // (see IdCard type). Parent/guardian contact is shown separately below.
   if (student.address || student.city) {
@@ -263,36 +324,54 @@ export const IdCardItem = memo(function IdCardItem({
   student, institution, className, section, termName,
 }: {
   student: IdCard;
-  institution: { name: string; city: string | null; logoUrl: string | null };
+  institution: IdCardInstitution;
   className: string | null;
   section: string | null;
   termName: string | null;
 }) {
   const [first = '', last = ''] = student.name.split(' ');
   const { term: termLabel } = useTerminology();
+  const nationalIdLabel = nationalIdLabelForInstitutionType(institution.type);
+  const issued = formatCardDate(student.cardIssueDate);
+  const expiry = formatCardDate(student.cardExpiryDate);
+  const settings = institution.settings?.idCard;
+  const showNationalId = settings?.showNationalId ?? true;
+  const showBloodGroup = settings?.showBloodGroup ?? true;
+  const showInstituteName = settings?.showInstituteName ?? true;
+  const logoUrl = settings?.customLogoUrl ?? institution.logoUrl;
 
   return (
     <div
       className="id-card mx-auto flex w-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm"
       style={{ aspectRatio: `${CARD_WIDTH_MM} / ${CARD_HEIGHT_MM}`, maxWidth: 380 }}
     >
-      {/* Header band — institution branding, not Marksly's */}
-      <div className="flex items-start gap-2 border-b-[3px] border-accent bg-primary px-3 py-1.5 text-primary-foreground">
-        {institution.logoUrl ? (
-          <div className="relative mt-0.5 h-7 w-7 shrink-0 overflow-hidden rounded-md bg-white/10">
-            <Image src={institution.logoUrl} alt="" fill sizes="28px" className="object-contain" unoptimized />
-          </div>
-        ) : (
-          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/10">
-            <GraduationCap size={17} />
-          </div>
-        )}
+      {/* Header band — solid dark navy per the locked ID-card design (not a
+          lighter/muted tint — see idCardPrint.ts's ID_CARD_ROLE_COLORS for
+          why this is an inline backgroundColor, not a Tailwind bg-* class).
+          Text on this band is always plain text-white/text-white/85, never
+          a semantic token that could resolve light-on-light or otherwise
+          get silently overridden by a conflicting utility class. */}
+      <div
+        className="flex items-center gap-2 px-3 py-1.5"
+        style={{ backgroundColor: ID_CARD_ROLE_COLORS.student }}
+      >
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white">
+          {logoUrl ? (
+            <div className="relative h-full w-full overflow-hidden rounded-full">
+              <Image src={logoUrl} alt="" fill sizes="28px" className="object-contain" unoptimized />
+            </div>
+          ) : (
+            <GraduationCap size={15} style={{ color: ID_CARD_ROLE_COLORS.student }} />
+          )}
+        </div>
         <div className="min-w-0">
-          <p className={cn('line-clamp-2 break-words font-bold leading-[1.15]', idCardNameSizeClass(institution.name))}>
-            {institution.name}
-          </p>
-          <p className="mt-0.5 text-[8.5px] font-medium uppercase leading-tight tracking-wide opacity-80">
-            Student Identity Card{termName ? ` · ${termName}` : ` · ${termLabel}`}
+          {showInstituteName && (
+            <p className={cn('line-clamp-2 break-words font-bold leading-[1.15] text-white', idCardNameSizeClass(institution.name))}>
+              {institution.name}
+            </p>
+          )}
+          <p className="mt-0.5 text-[8.5px] font-medium uppercase leading-tight tracking-wide text-white/85">
+            Student identity card{termName ? ` · ${termName}` : ` · ${termLabel}`}
           </p>
         </div>
       </div>
@@ -324,7 +403,7 @@ export const IdCardItem = memo(function IdCardItem({
             <div className="min-w-0">
               <p className="truncate text-[14px] font-bold leading-tight text-foreground">{student.name}</p>
               <p className="truncate text-[10px] text-muted-foreground">{className ?? '—'}{section ? ` · ${section}` : ''}</p>
-              {student.bloodGroup && (
+              {showBloodGroup && student.bloodGroup && (
                 <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-danger-soft px-1.5 py-0.5 text-[8px] font-semibold text-danger">
                   <Droplet size={8} /> {student.bloodGroup}
                 </span>
@@ -335,8 +414,16 @@ export const IdCardItem = memo(function IdCardItem({
           <dl className="mt-auto grid grid-cols-2 gap-x-3 gap-y-1.5 text-[9.5px] leading-tight">
             <Field label="Login ID" value={student.systemId} />
             <Field label={`Roll No. (${className ?? 'Class'})`} value={student.rollNumber} />
-            <Field label="Admission #" value={student.admissionNumber} className="col-span-2" />
+            {showNationalId && student.nationalIdNumber && (
+              <Field label={`${nationalIdLabel} No.`} value={student.nationalIdNumber} className="col-span-2" />
+            )}
           </dl>
+
+          {(issued || expiry) && (
+            <p className="text-[7.5px] leading-tight text-muted-foreground">
+              {issued ? `Issued ${issued}` : ''}{issued && expiry ? ' | ' : ''}{expiry ? `Valid until ${expiry}` : ''}
+            </p>
+          )}
 
           <div className="pt-1">
             <IdCardCredit />
