@@ -27,11 +27,12 @@ export interface CreateNoticeBody {
 
 export const noticesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getNotices: builder.query<ApiArray<Notice>, { page?: number; limit?: number } | void>({
+    getNotices: builder.query<ApiArray<Notice>, { page?: number; limit?: number; priority?: NoticePriority[] } | void>({
       query: (params) => {
         const s = new URLSearchParams();
         if (params?.page) s.set('page', String(params.page));
         if (params?.limit) s.set('limit', String(params.limit));
+        if (params?.priority?.length) s.set('priority', params.priority.join(','));
         const qs = s.toString();
         return `/notices${qs ? `?${qs}` : ''}`;
       },

@@ -6,10 +6,14 @@ import { useAppSelector } from '@/store/hooks';
 import { useMyClassesQuery } from '@/store/api/portalApi';
 import { TeacherDashboardEmptyState } from '@/components/dashboards/TeacherDashboardEmptyState';
 import { TeacherDashboardIdCardNudge } from '@/components/dashboards/TeacherDashboardIdCardNudge';
+import { TeacherDashboardNoticeBanner } from '@/components/dashboards/TeacherDashboardNoticeBanner';
+import { TeacherDashboardQuickActions } from '@/components/dashboards/TeacherDashboardQuickActions';
 import { TeacherDashboardToday } from '@/components/dashboards/TeacherDashboardToday';
+import { TeacherDashboardWeekStrip } from '@/components/dashboards/TeacherDashboardWeekStrip';
 import { TeacherDashboardClassesSummary } from '@/components/dashboards/TeacherDashboardClassesSummary';
 import { TeacherDashboardExamsQueue } from '@/components/dashboards/TeacherDashboardExamsQueue';
 import { TeacherDashboardNotices } from '@/components/dashboards/TeacherDashboardNotices';
+import { TeacherDashboardSchoolCard } from '@/components/dashboards/TeacherDashboardSchoolCard';
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -19,17 +23,24 @@ function greeting(): string {
 }
 
 /**
- * Teacher landing page — previously just a header + TeachNowCard, which was
- * a near-blank page the moment a teacher had no timetable slot happening
- * right that minute. Now composed of small, independently-loading widgets
- * (same pattern as AdminDashboard.tsx's split into
- * AdminDashboardStats/Attendance/Actions) so one slow or empty widget never
- * blanks the whole page — each one hides itself via `return null` when it
- * has nothing real to show, rather than rendering a fabricated empty card.
+ * Teacher landing page. Information hierarchy, in order of what a teacher
+ * actually opens this page to find out:
+ *  1. Attention layer — urgent/high notices banner, above everything else,
+ *     because it's externally pushed and time-sensitive.
+ *  2. Task layer (left/wide column on desktop, top of stack on mobile) —
+ *     today's schedule + quick actions: what to DO right now.
+ *  3. Context layer (right/narrow column, lower on mobile) — classes
+ *     summary, school info, notices: reference material, glanced at rather
+ *     than acted on.
+ * The two-column split isn't just visual — it's action items vs. reference
+ * data, so the wider column always carries more visual weight.
  *
- * The one true "nothing to show" case — zero classes/sections assigned at
- * all — is handled separately via TeacherDashboardEmptyState, which explains
- * that this is a pending admin setup step, not a broken page.
+ * Each widget independently hides itself (`return null`) when it has
+ * nothing real to show, EXCEPT TeacherDashboardSchoolCard, which always has
+ * something (the institution always exists) — that's what keeps the page
+ * from ever looking structurally empty even when a teacher has zero classes
+ * or nothing scheduled today; see TeacherDashboardEmptyState for the
+ * zero-classes case specifically.
  */
 export function TeacherDashboard() {
   const { user } = useAppSelector((state) => state.auth);
@@ -43,6 +54,7 @@ export function TeacherDashboard() {
         description="Here's your day at a glance."
       />
 
+      <TeacherDashboardNoticeBanner />
       <TeacherDashboardIdCardNudge />
 
       {classesLoading ? (
@@ -51,10 +63,19 @@ export function TeacherDashboard() {
         <TeacherDashboardEmptyState />
       ) : (
         <>
-          <TeacherDashboardToday />
-          <TeacherDashboardClassesSummary />
-          <TeacherDashboardExamsQueue />
-          <TeacherDashboardNotices />
+          <TeacherDashboardQuickActions />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <div className="space-y-6">
+              <TeacherDashboardToday />
+              <TeacherDashboardWeekStrip />
+              <TeacherDashboardExamsQueue />
+            </div>
+            <div className="space-y-6">
+              <TeacherDashboardClassesSummary />
+              <TeacherDashboardSchoolCard />
+              <TeacherDashboardNotices />
+            </div>
+          </div>
         </>
       )}
     </div>

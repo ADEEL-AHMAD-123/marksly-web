@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { useTerminology } from '@/lib/terminology';
+import { TeacherDashboardSchoolCard } from '@/components/dashboards/TeacherDashboardSchoolCard';
 
 /**
  * Shown instead of the normal widget stack when a teacher has zero
@@ -65,24 +66,27 @@ export function TeacherDashboardEmptyState() {
         </div>
       </Card>
 
-      <div>
-        <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">In the meantime</p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {meanwhile.map(({ icon: Icon, title, description, href }) => (
-            <Card key={title} className="flex items-start gap-3.5 p-4">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-soft-foreground">
-                <Icon size={18} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-foreground">{title}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-                <Link href={href} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                  Open <ArrowRight size={12} />
-                </Link>
-              </div>
-            </Card>
-          ))}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div>
+          <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">In the meantime</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {meanwhile.map(({ icon: Icon, title, description, href }) => (
+              <Card key={title} className="flex items-start gap-3.5 p-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-soft-foreground">
+                  <Icon size={18} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground">{title}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+                  <Link href={href} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                    Open <ArrowRight size={12} />
+                  </Link>
+                </div>
+              </Card>
+            ))}
+          </div>
         </div>
+        <TeacherDashboardSchoolCard />
       </div>
     </div>
   );

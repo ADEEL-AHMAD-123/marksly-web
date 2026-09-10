@@ -69,10 +69,25 @@ export interface UpdateIdCardSettingsBody {
   showInstituteName?: boolean;
 }
 
+// Trimmed, non-sensitive snapshot returned by GET /institutions/me/overview
+// — available to teacher/staff/accountant (not just admin), for dashboard
+// widgets that want a sense of the institution without the full profile.
+export interface InstitutionOverview {
+  name: string;
+  type: string;
+  logoUrl: string | null;
+  teacherCount: number;
+  studentCount: number;
+}
+
 export const institutionApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getMyInstitution: builder.query<ApiObject<InstitutionProfile>, void>({
       query: () => '/institutions/me',
+      providesTags: [{ type: 'Institutions', id: 'ME' }],
+    }),
+    getMyInstitutionOverview: builder.query<ApiObject<InstitutionOverview>, void>({
+      query: () => '/institutions/me/overview',
       providesTags: [{ type: 'Institutions', id: 'ME' }],
     }),
     updateMyInstitution: builder.mutation<ApiObject<InstitutionProfile>, UpdateInstitutionProfileBody>({
@@ -116,6 +131,7 @@ export const institutionApi = baseApi.injectEndpoints({
 
 export const {
   useGetMyInstitutionQuery,
+  useGetMyInstitutionOverviewQuery,
   useUpdateMyInstitutionMutation,
   useUploadInstitutionLogoMutation,
   useRemoveInstitutionLogoMutation,
