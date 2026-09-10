@@ -4,7 +4,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, School, Trash2, X, Users, AlertCircle, Layers, ChevronLeft, ChevronRight, Filter, Pencil, UserCog } from 'lucide-react';
+import { Plus, School, Trash2, X, Users, AlertCircle, Layers, ChevronLeft, ChevronRight, Filter, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
 import { PageHeader } from '@/components/ui/page-header';
@@ -24,7 +24,6 @@ import {
   useUpdateClassMutation,
   type ClassItem,
 } from '@/store/api/classesApi';
-import { useGetUsersQuery } from '@/store/api/usersApi';
 import { useGetActiveTermsQuery, useGetTermsQuery } from '@/store/api/termsApi';
 import { useTerminology } from '@/lib/terminology';
 import { useGetGradingSchemesQuery } from '@/store/api/gradingSchemesApi';
@@ -46,7 +45,6 @@ const schema = z.object({
         id: z.string().optional(),
         name: z.string().min(1, 'Required'),
         capacity: z.coerce.number().int().min(1).max(200).optional(),
-        teacherId: z.string().optional(),
       })
     )
     .min(1, 'Add at least one section'),
@@ -65,7 +63,6 @@ export function ClassesView() {
   const { data, isLoading, isError, refetch } = useGetClassesQuery();
   const [createClass, { isLoading: creating }] = useCreateClassMutation();
   const [updateClass, { isLoading: updating }] = useUpdateClassMutation();
-  const { data: teachersRes } = useGetUsersQuery({ role: 'teacher', limit: 100 });
   // termId is now required on every class (backend class.validator.ts) —
   // since multiple terms can be active at once, default new classes to the
   // most recently-started active term but let the admin pick another.
@@ -92,7 +89,6 @@ export function ClassesView() {
     }
     return options;
   }, [activeTerms, allTerms, editing]);
-  const teachers = teachersRes?.data ?? [];
   const classes = data?.data ?? [];
   const noTerms = activeTerms.length === 0;
 
@@ -112,7 +108,7 @@ export function ClassesView() {
 
   const { register, control, handleSubmit, reset, formState: { errors } } = useForm<Form>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', level: 1, termId: '', gradingSchemeId: '', sections: [{ name: 'A', capacity: 40, teacherId: '' }] },
+    defaultValues: { name: '', level: 1, termId: '', gradingSchemeId: '', sections: [{ name: 'A', capacity: 40 }] },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'sections' });
 
@@ -125,10 +121,10 @@ export function ClassesView() {
         level: editing.level,
         termId: editing.termId ?? '',
         gradingSchemeId: editing.gradingSchemeId ?? '',
-        sections: editing.sections.map((s) => ({ id: s.id, name: s.name, capacity: s.capacity ?? 40, teacherId: s.teacherId ?? '' })),
+        sections: editing.sections.map((s) => ({ id: s.id, name: s.name, capacity: s.capacity ?? 40 })),
       });
     } else {
-      reset({ name: '', level: 1, termId: activeTerms[0]?.id ?? '', gradingSchemeId: '', sections: [{ name: 'A', capacity: 40, teacherId: '' }] });
+      reset({ name: '', level: 1, termId: activeTerms[0]?.id ?? '', gradingSchemeId: '', sections: [{ name: 'A', capacity: 40 }] });
     }
   }, [open, editing, reset, activeTerms]);
 
@@ -140,7 +136,6 @@ export function ClassesView() {
       id: s.id || undefined,
       name: s.name,
       capacity: s.capacity,
-      teacherId: s.teacherId || undefined,
     }));
     setTypeLockedError(null);
     try {
@@ -239,9 +234,6 @@ export function ClassesView() {
                     {c.sections.map((s) => (
                       <div key={s.id} className="flex items-center justify-between gap-2 rounded-md bg-muted px-2.5 py-1.5 text-xs">
                         <span className="inline-flex items-center gap-1 text-muted-foreground"><Layers size={11} /> {s.name}{s.capacity ? <span className="opacity-60">/{s.capacity}</span> : null}</span>
-                        <span className={`inline-flex items-center gap-1 ${s.teacherName ? 'text-muted-foreground' : 'text-warning'}`}>
-                          <UserCog size={11} /> {s.teacherName ?? 'Unassigned'}
-                        </span>
                       </div>
                     ))}
                   </div>
@@ -343,8 +335,8 @@ export function ClassesView() {
 
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <Label className="mb-0">Sections &amp; teachers</Label>
-                  <button type="button" onClick={() => append({ name: '', capacity: 40, teacherId: '' })} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                  <Label className="mb-0">Sections</Label>
+                  <button type="button" onClick={() => append({ name: '', capacity: 40 })} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
                     <Plus size={13} /> Add section
                   </button>
                 </div>
@@ -358,24 +350,10 @@ export function ClassesView() {
                           <Trash2 size={16} />
                         </button>
                       </div>
-                      <div className="mt-2">
-                        <select
-                          {...register(`sections.${i}.teacherId` as const)}
-                          className="h-9 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        >
-                          <option value="">Class teacher — Unassigned</option>
-                          {teachers.map((t) => <option key={t.id} value={t.id}>{t.name} — {t.phone}</option>)}
-                        </select>
-                      </div>
                     </div>
                   ))}
                 </div>
                 {errors.sections && <p className="mt-1 text-xs text-danger">{(errors.sections as any).message || 'Check section names'}</p>}
-                <p className="mt-2 text-xs text-muted-foreground">
-                  This is the section&apos;s class teacher — separate from who teaches each subject (set on the Subjects page).
-                  It controls whether a teacher can see this section on their own portal, create exams for it, and view or
-                  export its roster. Leave it unassigned and only admins can do those things for this section.
-                </p>
               </div>
             </div>
 
