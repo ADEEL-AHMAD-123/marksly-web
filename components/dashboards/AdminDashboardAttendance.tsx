@@ -30,10 +30,19 @@ export function TodaysAttendanceCard({
   coverage,
   loading,
   onMarkAttendance,
+  // Staff has read-only backend access to attendance (roster/coverage) but
+  // cannot mark it — see attendance.routes.ts's canRead vs. the marking
+  // endpoint, which excludes staff. Reusing this card for a staff dashboard
+  // with a button literally labeled "Mark attendance" would be actively
+  // misleading (backend would reject the write), so `readOnly` swaps that
+  // for a plain "View attendance" link that's always shown rather than only
+  // when something's unmarked.
+  readOnly = false,
 }: {
   coverage: AttendanceCoverage | undefined;
   loading: boolean;
   onMarkAttendance: () => void;
+  readOnly?: boolean;
 }) {
   const terminology = useTerminology();
   const totalSections = coverage?.totalSections ?? 0;
@@ -55,7 +64,12 @@ export function TodaysAttendanceCard({
                   : `${markedSections} of ${totalSections} ${(totalSections === 1 ? terminology.section : terminology.sectionPlural).toLowerCase()} marked · ${pct}% coverage`}
             </CardDescription>
           </div>
-          {!loading && totalSections > 0 && coverage!.unmarkedSections > 0 && (
+          {!loading && totalSections > 0 && readOnly && (
+            <Button variant="secondary" size="sm" onClick={onMarkAttendance}>
+              <CalendarCheck size={15} /> View attendance
+            </Button>
+          )}
+          {!loading && totalSections > 0 && !readOnly && coverage!.unmarkedSections > 0 && (
             <Button variant="secondary" size="sm" onClick={onMarkAttendance}>
               <CalendarCheck size={15} /> Mark attendance
             </Button>

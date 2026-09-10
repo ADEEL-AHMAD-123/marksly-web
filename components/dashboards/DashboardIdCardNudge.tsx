@@ -8,6 +8,9 @@ import { cn } from '@/lib/utils';
 import { useGetMyCardQuery } from '@/store/api/usersApi';
 
 /**
+ * Shared across any non-admin dashboard (teacher, staff, ...) — useGetMyCard
+ * already works for teacher/staff/accountant/admin alike (see users
+ * module), so this was never really teacher-specific despite its old name.
  * Only rendered while there's something actually left to do (missing
  * contact info blocks the card, or the photo is missing) — once both are
  * done this returns null rather than becoming a permanent "here's your
@@ -15,7 +18,7 @@ import { useGetMyCardQuery } from '@/store/api/usersApi';
  * pattern) — a real incomplete profile should keep resurfacing, not get
  * silently buried by one click.
  */
-export function TeacherDashboardIdCardNudge() {
+export function DashboardIdCardNudge() {
   const { data } = useGetMyCardQuery();
   const card = data?.data;
   const [dismissed, setDismissed] = useState(false);

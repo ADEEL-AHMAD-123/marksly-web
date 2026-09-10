@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { AdminDashboard } from '@/components/dashboards/AdminDashboard';
+import { AdminOrStaffDashboard } from '@/components/dashboards/AdminOrStaffDashboard';
 
 export const metadata: Metadata = { title: 'Dashboard' };
 
 export default function Page() {
-  return <AdminDashboard />;
+  return <AdminOrStaffDashboard />;
 }

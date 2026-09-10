@@ -51,6 +51,26 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Billing', href: '/admin/billing', icon: CreditCard },
     { label: 'Settings', href: '/admin/settings', icon: Settings },
   ],
+  // Staff (non-teaching institution staff) is read-only across students,
+  // classes, subjects, exams, attendance, fees, and timetable on the
+  // backend, with full write access only on Notices (see
+  // notification.routes.ts / notice.routes.ts's canManage) — this nav is
+  // trimmed to exactly that, not a copy of admin's full list. Anything
+  // staff has zero backend access to (Teachers, Staff management, Billing,
+  // Settings, Reports, Academic Terms/setup, Question Bank, bulk ID Cards,
+  // Email Delivery Status) is both absent here AND locked out at the route
+  // level — see the per-page layout.tsx guards under app/(dashboard)/admin/.
+  staff: [
+    { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    { label: 'Students', href: '/admin/students', icon: GraduationCap },
+    { label: 'Classes', href: '/admin/classes', icon: School },
+    { label: 'Subjects', href: '/admin/subjects', icon: BookOpen },
+    { label: 'Timetable', href: '/admin/timetable', icon: CalendarClock },
+    { label: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
+    { label: 'Fees', href: '/admin/fees', icon: DollarSign },
+    { label: 'Exams', href: '/admin/exams', icon: FileText },
+    { label: 'Notices', href: '/admin/notices', icon: Bell },
+  ],
   teacher: [
     { label: 'Dashboard', href: '/teacher', icon: LayoutDashboard },
     { label: 'My Classes', href: '/teacher/classes', icon: School },

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { useTerminology } from '@/lib/terminology';
-import { TeacherDashboardSchoolCard } from '@/components/dashboards/TeacherDashboardSchoolCard';
+import { DashboardSchoolCard } from '@/components/dashboards/DashboardSchoolCard';
 
 /**
  * Shown instead of the normal widget stack when a teacher has zero
@@ -86,7 +86,7 @@ export function TeacherDashboardEmptyState() {
             ))}
           </div>
         </div>
-        <TeacherDashboardSchoolCard />
+        <DashboardSchoolCard />
       </div>
     </div>
   );

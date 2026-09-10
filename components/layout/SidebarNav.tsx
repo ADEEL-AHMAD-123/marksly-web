@@ -24,12 +24,11 @@ export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }:
   const { user } = useAppSelector((state) => state.auth);
 
   const role = user?.role || 'admin';
-  // Note this is keyed off the actual `role`, not which NAV_ITEMS array gets
-  // shown — a plain 'staff' account has no array of its own (see nav-items.ts)
-  // and falls back to NAV_ITEMS.admin, but they're still not an admin and
-  // should still get their own "My ID Card" self-service link. Every role
-  // except admin/superadmin/parent gets one (parents don't have a personal
-  // staff/student ID card of their own — see MyIdCardView.tsx).
+  // Every role except admin/superadmin/parent gets a personal "My ID Card"
+  // self-service link appended (parents don't have a personal staff/student
+  // ID card of their own — see MyIdCardView.tsx). Kept as a runtime append
+  // rather than baked into each NAV_ITEMS array so it isn't duplicated
+  // across teacher/staff/accountant/student's own lists.
   const showMyIdCard = ['teacher', 'staff', 'accountant', 'student'].includes(role);
   const items = showMyIdCard
     ? [...(NAV_ITEMS[role] || NAV_ITEMS.admin), { label: 'My ID Card', href: '/my-id-card', icon: CreditCard }]

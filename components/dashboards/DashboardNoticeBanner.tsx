@@ -16,6 +16,9 @@ const SEVERITY_STYLE = {
  * from the regular "Notices" card further down the page — a time-sensitive
  * announcement (exam schedule change, emergency closure) shouldn't be
  * competing for attention with routine ones inside a scrollable list.
+ * Shared across any non-admin dashboard (teacher, staff, ...) — the
+ * per-role "View" link target is the only thing that differs, so it's a
+ * prop rather than each dashboard forking its own copy.
  *
  * Filters by priority server-side (not client-side over the default
  * publishedAt-sorted page) — with only a plain recency-sorted list, an
@@ -26,7 +29,7 @@ const SEVERITY_STYLE = {
  * TeacherDashboardIdCardNudge) — reappears on next visit since the notice
  * itself is still live, this only clears it for the rest of this visit.
  */
-export function TeacherDashboardNoticeBanner() {
+export function DashboardNoticeBanner({ noticesHref }: { noticesHref: string }) {
   const { data } = useGetNoticesQuery({ limit: 5, priority: ['urgent', 'high'] });
   const notices = data?.data ?? [];
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
@@ -52,7 +55,7 @@ export function TeacherDashboardNoticeBanner() {
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               <Link
-                href="/teacher/notices"
+                href={noticesHref}
                 className="rounded-lg bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm ring-1 ring-inset ring-border transition-colors hover:bg-muted"
               >
                 View

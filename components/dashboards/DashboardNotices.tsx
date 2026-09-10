@@ -20,9 +20,10 @@ const PRIORITY_VARIANT: Record<NoticePriority, 'danger' | 'warning' | 'primary' 
  * targets notices to specific roles, and this endpoint only returns ones
  * addressed to the current user) — there's no per-user "read" tracking in
  * the backend at all, so this deliberately shows "recent notices" rather
- * than claiming an "unread count" that doesn't exist.
+ * than claiming an "unread count" that doesn't exist. Shared across any
+ * non-admin dashboard — only the "View all" link target differs per role.
  */
-export function TeacherDashboardNotices() {
+export function DashboardNotices({ noticesHref }: { noticesHref: string }) {
   const { data, isLoading } = useGetNoticesQuery({ limit: 3 });
   const notices = data?.data ?? [];
 
@@ -34,7 +35,7 @@ export function TeacherDashboardNotices() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2"><Bell size={18} /> Notices</CardTitle>
-          <Link href="/teacher/notices" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+          <Link href={noticesHref} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
             View all <ArrowRight size={12} />
           </Link>
         </div>
