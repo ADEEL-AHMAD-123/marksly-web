@@ -87,7 +87,6 @@ export const baseApi = createApi({
     'Messaging',
     'Billing',
     'Inbox',
-    'Questions',
     'EmailLog',
     'DashboardAlerts',
     'MyContact',

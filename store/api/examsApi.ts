@@ -4,6 +4,18 @@ import type { GradingSchemeType, GradingSchemeConfig } from './gradingSchemesApi
 export type ExamType = 'midterm' | 'final' | 'unit' | 'monthly' | 'board';
 export type ExamMode = 'online' | 'physical' | 'oral' | 'practical' | 'project' | 'assignment';
 export type IntegrityMode = 'none' | 'flag_only' | 'fullscreen_lock';
+export type QuestionType = 'mcq_single' | 'mcq_multi' | 'true_false' | 'short_answer' | 'essay' | 'fill_blank' | 'numeric';
+
+// A question authored directly on the exam (no separate question bank —
+// removed). Mirrors backend exam.validator.ts's examQuestionSchema.
+export interface ExamQuestion {
+  type: QuestionType;
+  text: string;
+  options?: { text: string; isCorrect: boolean }[];
+  correctAnswer?: string;
+  marks: number;
+  negativeMarks?: number;
+}
 
 // Mirrors backend exam.service.ts's getResultsRoster() — the class's own
 // scheme if assigned, else the institution's default. `null` only when
@@ -103,7 +115,7 @@ export interface CreateExamBody {
 
   // ─── Online-mode-only fields ──────────────────────────────────────
   subjectName?: string;
-  questionIds?: string[];
+  questions?: ExamQuestion[];
   durationMinutes?: number;
   windowStart?: string;
   windowEnd?: string;
@@ -140,7 +152,7 @@ export interface UpdateExamBody {
   examDate?: string;
   passingPercentage?: number;
   subjects?: { name: string; totalMarks: number; passingMarks?: number; notes?: string }[];
-  questionIds?: string[];
+  questions?: ExamQuestion[];
   durationMinutes?: number;
   windowStart?: string;
   windowEnd?: string;

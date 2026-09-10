@@ -11,6 +11,7 @@ import { useMyChildrenQuery } from '@/store/api/portalApi';
 import { formatCurrency } from '@/lib/utils';
 import { ParentDashboardChildCard } from '@/components/portal/ParentDashboardChildCard';
 import { ParentDashboardEmptyState } from '@/components/dashboards/ParentDashboardEmptyState';
+import { ParentDashboardExamsNudge } from '@/components/dashboards/ParentDashboardExamsNudge';
 import { DashboardNoticeBanner } from '@/components/dashboards/DashboardNoticeBanner';
 import { DashboardNotices } from '@/components/dashboards/DashboardNotices';
 import { DashboardSchoolCard } from '@/components/dashboards/DashboardSchoolCard';
@@ -35,6 +36,11 @@ export function ParentDashboardView() {
   return (
     <div className="space-y-6">
       <DashboardNoticeBanner noticesHref="/parent/notices" />
+      {/* Live/upcoming/missed online exams across every child — rendered
+          above the loading/empty-state branches below so it shows the
+          moment there's anything to see, same placement rationale as the
+          student dashboard's equivalent widget. */}
+      <ParentDashboardExamsNudge />
 
       <PageHeader
         title="Parent Portal"

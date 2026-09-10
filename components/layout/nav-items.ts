@@ -41,7 +41,6 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
     { label: 'Fees', href: '/admin/fees', icon: DollarSign },
     { label: 'Exams', href: '/admin/exams', icon: FileText },
-    { label: 'Question Bank', href: '/admin/question-bank', icon: HelpCircle },
     { label: 'Notices', href: '/admin/notices', icon: Bell },
     // Messaging hidden from the sidebar for now (temporarily disabled
     // feature, not removed) — the route/page/backend are untouched, so
@@ -78,7 +77,6 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Timetable', href: '/teacher/timetable', icon: CalendarClock },
     { label: 'Attendance', href: '/teacher/attendance', icon: CalendarCheck },
     { label: 'Exams', href: '/teacher/exams', icon: FileText },
-    { label: 'Question Bank', href: '/teacher/question-bank', icon: HelpCircle },
     { label: 'Notices', href: '/teacher/notices', icon: Bell },
   ],
   student: [
@@ -96,6 +94,7 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'My Children', href: '/parent/children', icon: GraduationCap },
     { label: 'Timetable', href: '/parent/timetable', icon: CalendarClock },
     { label: 'Attendance', href: '/parent/attendance', icon: CalendarCheck },
+    { label: 'Online Exams', href: '/parent/exams', icon: HelpCircle },
     { label: 'Fees', href: '/parent/fees', icon: DollarSign },
     { label: 'Results', href: '/parent/results', icon: FileText },
     { label: 'Notices', href: '/parent/notices', icon: Bell },

@@ -1,9 +1,19 @@
-import { FileText, Clock } from 'lucide-react';
+import { FileText, Clock, Laptop, User, CalendarDays } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { formatDate } from '@/lib/utils';
 import type { ResultItem } from '@/store/api/portalApi';
+
+const MODE_LABELS: Record<string, string> = {
+  online: 'Online test',
+  physical: 'Written exam',
+  oral: 'Oral',
+  practical: 'Practical',
+  project: 'Project',
+  assignment: 'Assignment',
+};
 
 export function ResultsList({ data, isLoading }: { data?: ResultItem[]; isLoading: boolean }) {
   if (isLoading || !data) return <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>;
@@ -22,7 +32,24 @@ export function ResultsList({ data, isLoading }: { data?: ResultItem[]; isLoadin
             <CardHeader className="flex-row items-center justify-between">
               <div>
                 <CardTitle>{r.examTitle}</CardTitle>
-                <p className="text-xs capitalize text-muted-foreground">{r.type}</p>
+                <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs capitalize text-muted-foreground">
+                  <span>{r.type}</span>
+                  {r.mode && (
+                    <span className="flex items-center gap-1 normal-case">
+                      <Laptop size={11} /> {MODE_LABELS[r.mode] ?? r.mode}
+                    </span>
+                  )}
+                  {r.examDate && (
+                    <span className="flex items-center gap-1 normal-case">
+                      <CalendarDays size={11} /> {formatDate(r.examDate)}
+                    </span>
+                  )}
+                  {r.teacherName && (
+                    <span className="flex items-center gap-1 normal-case">
+                      <User size={11} /> {r.teacherName}
+                    </span>
+                  )}
+                </p>
               </div>
               <div className="text-right">
                 {isPending ? (

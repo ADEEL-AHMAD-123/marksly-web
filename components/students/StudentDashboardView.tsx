@@ -66,6 +66,11 @@ export function StudentDashboardView() {
       <PageHeader title="My Dashboard" description="Track your attendance, results and fees." />
 
       <DashboardNoticeBanner noticesHref="/student/notices" />
+      {/* Live/upcoming/missed online exams — deliberately rendered above
+          everything else (even the empty-state/loading branches below) so
+          a student sees this the moment they land here, not buried after
+          scrolling past attendance/fees/academics. */}
+      <StudentDashboardExamsNudge />
       <StudentDashboardIdCardNudge />
 
       {structuralLoading ? (
@@ -100,7 +105,6 @@ export function StudentDashboardView() {
               <StudentDashboardToday />
               <StudentDashboardAcademicsSnapshot />
               <StudentDashboardFeesNudge />
-              <StudentDashboardExamsNudge />
 
               <Card>
                 <CardHeader>

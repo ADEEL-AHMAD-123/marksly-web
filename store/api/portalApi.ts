@@ -1,6 +1,9 @@
 import { baseApi } from './baseApi';
 import type { CumulativeGpaResult, TermGpaResult } from './studentsApi';
 import type { TimetableEntry } from './timetableApi';
+import type { MyOnlineExamItem } from './examAttemptApi';
+
+export type { MyOnlineExamItem };
 
 export type { CumulativeGpaResult, TermGpaResult };
 
@@ -27,6 +30,15 @@ export interface AttendanceData {
 export interface ResultItem {
   examTitle: string;
   type: string;
+  // 'online' vs the manually-graded modes (physical/oral/practical/
+  // project/assignment) — lets the UI show e.g. "Online test" vs "Written
+  // exam" instead of just the exam `type` (midterm/final/etc).
+  mode?: string;
+  examDate?: string | null;
+  // Name of the teacher who created this exam — null if unresolved (e.g. a
+  // legacy exam predating attribution). See exam.model.ts's
+  // createdByUserId docs.
+  teacherName?: string | null;
   totalObtained: number;
   totalMarks: number;
   percentage: number;
@@ -149,6 +161,20 @@ export const portalApi = baseApi.injectEndpoints({
       query: (id) => `/me/children/${id}/results`,
       providesTags: ['Results'],
     }),
+    // Read-only scheduling/status visibility into a child's online exams —
+    // same shape as the student's own useMyOnlineExamsQuery (see
+    // examAttemptApi.ts), just scoped server-side to a verified guardian.
+    childExams: builder.query<ApiObject<MyOnlineExamItem[]>, string>({
+      query: (id) => `/me/children/${id}/exams`,
+      providesTags: (_r, _e, id) => [{ type: 'Exams', id: `ONLINE-CHILD-${id}` }],
+    }),
+    // Every child's online exams in one call, each row tagged with
+    // childId/childName — used by the parent dashboard nudge and the
+    // /parent/exams page instead of one query per child.
+    childrenExams: builder.query<ApiObject<(MyOnlineExamItem & { childId: string; childName: string })[]>, void>({
+      query: () => '/me/children/exams',
+      providesTags: [{ type: 'Exams', id: 'ONLINE-CHILDREN' }],
+    }),
     childCgpa: builder.query<ApiObject<CumulativeGpaResult>, string>({
       query: (id) => `/me/children/${id}/cgpa`,
       providesTags: (_r, _e, id) => [{ type: 'Students', id: `CGPA-${id}` }],
@@ -185,6 +211,8 @@ export const {
   useMyChildrenQuery,
   useChildAttendanceQuery,
   useChildResultsQuery,
+  useChildExamsQuery,
+  useChildrenExamsQuery,
   useChildCgpaQuery,
   useChildTermGpaQuery,
   useChildFeesQuery,

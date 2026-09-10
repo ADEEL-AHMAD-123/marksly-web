@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Send, Save, CheckCircle2, AlertTriangle, Clock, PauseCircle, PlayCircle, Paperclip } from 'lucide-react';
+import { ArrowLeft, Send, Save, CheckCircle2, AlertTriangle, Clock, PauseCircle, PlayCircle, Paperclip, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -112,6 +112,7 @@ function GradeCell({
   status,
   onSetOfficialGrade,
   onTogglePending,
+  withholdDisabled = false,
 }: {
   scheme: ExamGradingScheme | null;
   percentage: number;
@@ -121,6 +122,11 @@ function GradeCell({
   status: 'final' | 'pending';
   onSetOfficialGrade: (studentId: string, resultId: string, value: string) => void;
   onTogglePending: (studentId: string) => void;
+  /** Withholding only takes effect once Save is clicked — hidden entirely
+   *  for a read-only viewer (e.g. admin) who can't save. Official-grade
+   *  editing above this is a separate, always-live mutation and stays
+   *  interactive regardless. */
+  withholdDisabled?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(officialGrade ?? '');
@@ -203,24 +209,32 @@ function GradeCell({
         </div>
 
         <div className="flex w-full items-center justify-center border-t border-border pt-2">
-          <button
-            type="button"
-            onClick={() => onTogglePending(studentId)}
-            title={status === 'pending' ? 'Result is withheld — click to release' : 'Withhold this result from publishing'}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors',
-              status === 'pending'
-                ? 'text-warning hover:bg-warning-soft'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            )}
-          >
-            {status === 'pending' ? (
-              <PlayCircle size={16} className="shrink-0" />
-            ) : (
-              <PauseCircle size={16} className="shrink-0" />
-            )}
-            {status === 'pending' ? 'Withheld' : 'Withhold'}
-          </button>
+          {withholdDisabled ? (
+            status === 'pending' && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-warning">
+                <PauseCircle size={14} className="shrink-0" /> Withheld
+              </span>
+            )
+          ) : (
+            <button
+              type="button"
+              onClick={() => onTogglePending(studentId)}
+              title={status === 'pending' ? 'Result is withheld — click to release' : 'Withhold this result from publishing'}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors',
+                status === 'pending'
+                  ? 'text-warning hover:bg-warning-soft'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              {status === 'pending' ? (
+                <PlayCircle size={16} className="shrink-0" />
+              ) : (
+                <PauseCircle size={16} className="shrink-0" />
+              )}
+              {status === 'pending' ? 'Withheld' : 'Withhold'}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -230,7 +244,7 @@ function GradeCell({
   return <Badge variant={computed.isPassed ? 'success' : 'danger'}>{computed.grade}</Badge>;
 }
 
-export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () => void }) {
+export function ResultsEntry({ examId, onBack, readOnly = false }: { examId: string; onBack: () => void; readOnly?: boolean }) {
   // refetchOnFocus off here too, same reasoning as AttendanceView's roster
   // query: this screen holds unsaved typed marks in local state seeded from
   // this query, and a background refetch that returns genuinely different
@@ -443,28 +457,41 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            loading={saving}
-            onClick={save}
-            disabled={!scheme}
-            title={scheme ? undefined : 'Set up a grading scheme first — results can\'t be saved without one'}
-          >
-            <Save size={16} /> Save
-          </Button>
-          <Button
-            size="sm"
-            loading={publishing}
-            onClick={publish}
-            disabled={exam.published || !scheme}
-            title={!scheme && !exam.published ? 'Set up a grading scheme first — results can\'t be published without one' : undefined}
-          >
-            {exam.published ? <><CheckCircle2 size={16} /> Published</> : <><Send size={16} /> Publish</>}
-          </Button>
-        </div>
+        {readOnly ? (
+          exam.published && (
+            <Badge variant="success"><CheckCircle2 size={12} /> Published</Badge>
+          )
+        ) : (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={saving}
+              onClick={save}
+              disabled={!scheme}
+              title={scheme ? undefined : 'Set up a grading scheme first — results can\'t be saved without one'}
+            >
+              <Save size={16} /> Save
+            </Button>
+            <Button
+              size="sm"
+              loading={publishing}
+              onClick={publish}
+              disabled={exam.published || !scheme}
+              title={!scheme && !exam.published ? 'Set up a grading scheme first — results can\'t be published without one' : undefined}
+            >
+              {exam.published ? <><CheckCircle2 size={16} /> Published</> : <><Send size={16} /> Publish</>}
+            </Button>
+          </div>
+        )}
       </div>
+
+      {readOnly && (
+        <Card className="flex items-start gap-2.5 border-border bg-muted p-3.5 text-sm text-muted-foreground">
+          <Eye size={16} className="mt-0.5 shrink-0" />
+          <span>You have read-only access to results — only the class teacher can enter marks or publish them.</span>
+        </Card>
+      )}
 
       {/* Disables Save/Publish above rather than just warning — the backend
           actually rejects saving results with no grading scheme resolved
@@ -532,26 +559,32 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
                       return (
                         <TableCell key={sub.name} className="text-center align-top">
                           <div className="flex flex-col items-center gap-1">
-                            <div className="flex items-center gap-1">
-                              <input
-                                inputMode="numeric"
-                                value={marks[s.studentId]?.[sub.name] ?? ''}
-                                onChange={(e) => setMark(s.studentId, sub.name, e.target.value, sub.totalMarks)}
-                                className="h-9 w-16 rounded-lg border border-input bg-card text-center text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setOpenAttachmentFor(openAttachmentFor === cellKey ? null : cellKey)}
-                                title={attachmentValue ? 'Attachment linked' : 'Add attachment URL'}
-                                className={cn(
-                                  'flex h-9 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground',
-                                  attachmentValue && 'text-primary'
-                                )}
-                              >
-                                <Paperclip size={14} />
-                              </button>
-                            </div>
-                            {openAttachmentFor === cellKey && (
+                            {readOnly ? (
+                              <p className="flex h-9 w-16 items-center justify-center text-sm font-medium text-foreground">
+                                {marks[s.studentId]?.[sub.name] || '—'}
+                              </p>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  inputMode="numeric"
+                                  value={marks[s.studentId]?.[sub.name] ?? ''}
+                                  onChange={(e) => setMark(s.studentId, sub.name, e.target.value, sub.totalMarks)}
+                                  className="h-9 w-16 rounded-lg border border-input bg-card text-center text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenAttachmentFor(openAttachmentFor === cellKey ? null : cellKey)}
+                                  title={attachmentValue ? 'Attachment linked' : 'Add attachment URL'}
+                                  className={cn(
+                                    'flex h-9 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground',
+                                    attachmentValue && 'text-primary'
+                                  )}
+                                >
+                                  <Paperclip size={14} />
+                                </button>
+                              </div>
+                            )}
+                            {!readOnly && openAttachmentFor === cellKey && (
                               <input
                                 type="url"
                                 placeholder="Attachment URL"
@@ -581,6 +614,7 @@ export function ResultsEntry({ examId, onBack }: { examId: string; onBack: () =>
                         status={rowStatus}
                         onSetOfficialGrade={handleSetOfficialGrade}
                         onTogglePending={togglePending}
+                        withholdDisabled={readOnly}
                       />
                     </TableCell>
                   </TableRow>

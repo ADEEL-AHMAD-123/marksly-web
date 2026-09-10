@@ -101,13 +101,23 @@ export interface IntegrityFlagEntry {
   at: string;
 }
 
+// 'not_started' is synthetic — never persisted on an ExamAttempt document
+// (there IS no attempt yet) — it's how listAttemptsForExam represents a
+// roster student who never began the exam at all, so the monitoring screen
+// can show them instead of silently omitting them.
+export type RosterAttemptStatus = AttemptStatus | 'not_started';
+
 export interface AttemptListItem {
-  attemptId: string;
+  attemptId: string | null;
   studentId: string;
   studentName: string;
   attemptNumber: number;
-  status: AttemptStatus;
-  startedAt: string;
+  status: RosterAttemptStatus;
+  // Only meaningful when status === 'not_started' — true once the exam's
+  // window has already closed (so this student missed it outright), false
+  // while the window is still open (they simply haven't started yet).
+  missed: boolean;
+  startedAt: string | null;
   submittedAt: string | null;
   autoSubmitted: boolean;
   totalAwarded: number | null;
@@ -115,8 +125,21 @@ export interface AttemptListItem {
   integrityFlags: IntegrityFlagEntry[];
 }
 
+// Every bucket is mutually exclusive — they always sum to `assigned`.
+export interface AttemptsForExamSummary {
+  assigned: number;
+  notStarted: number;
+  inProgress: number;
+  submitted: number;
+  autoGraded: number;
+  needsReview: number;
+  graded: number;
+  published: number;
+}
+
 export interface AttemptsForExam {
-  exam: { id: string; title: string; subjectName: string | null; mode: ExamMode };
+  exam: { id: string; title: string; subjectName: string | null; mode: ExamMode; windowClosed: boolean };
+  summary: AttemptsForExamSummary;
   attempts: AttemptListItem[];
 }
 
@@ -174,11 +197,29 @@ export interface PublishAttemptResultResponse {
   isPassed: boolean;
 }
 
+export interface TeacherAttentionItem {
+  examId: string;
+  title: string;
+  className: string | null;
+  needsReview: number;
+  readyToPublish: number;
+}
+
 export const examAttemptApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     myOnlineExams: builder.query<ApiObject<MyOnlineExamItem[]>, void>({
       query: () => '/exams/online/mine',
       providesTags: [{ type: 'Exams', id: 'ONLINE-MINE' }],
+    }),
+    // Teacher dashboard "needs your attention" summary — see
+    // exam-attempt.service.ts#teacherAttentionSummary for why this exists
+    // as its own endpoint rather than being folded into getExams: the
+    // exam-level published flag never flips for online exams, so a
+    // per-exam list can't answer "does this need grading/publishing"
+    // without also fetching every exam's attempts.
+    teacherExamAttention: builder.query<ApiObject<TeacherAttentionItem[]>, void>({
+      query: () => '/exams/online/my-attention',
+      providesTags: [{ type: 'Exams', id: 'ONLINE-ATTENTION' }],
     }),
     getMyAttemptState: builder.query<ApiObject<MyAttemptState>, string>({
       query: (examId) => `/exams/${examId}/my-attempt`,
@@ -211,7 +252,14 @@ export const examAttemptApi = baseApi.injectEndpoints({
         method: 'POST',
         body: { autoSubmitted },
       }),
-      invalidatesTags: (_r, _e, { examId }) => [{ type: 'Exams', id: `ATTEMPT-${examId}` }, { type: 'Exams', id: 'ONLINE-MINE' }, 'Results'],
+      invalidatesTags: (_r, _e, { examId }) => [
+        { type: 'Exams', id: `ATTEMPT-${examId}` },
+        { type: 'Exams', id: 'ONLINE-MINE' },
+        // A fresh submission may now need grading/publishing — the
+        // teacher's dashboard attention count should reflect it.
+        { type: 'Exams', id: 'ONLINE-ATTENTION' },
+        'Results',
+      ],
     }),
 
     // ─── Teacher/admin monitoring + grading ──────────────────────────────
@@ -237,6 +285,7 @@ export const examAttemptApi = baseApi.injectEndpoints({
         // grades a question and navigates back to the exam grid sees a
         // stale Pending/Graded status until an unrelated refetch happens.
         { type: 'Exams', id: 'LIST' },
+        { type: 'Exams', id: 'ONLINE-ATTENTION' },
       ],
     }),
     publishAttemptResult: builder.mutation<ApiObject<PublishAttemptResultResponse>, { attemptId: string; examId: string }>({
@@ -245,6 +294,7 @@ export const examAttemptApi = baseApi.injectEndpoints({
         { type: 'Exams', id: `ATTEMPT-DETAIL-${attemptId}` },
         { type: 'Exams', id: `ATTEMPTS-LIST-${examId}` },
         { type: 'Exams', id: 'LIST' },
+        { type: 'Exams', id: 'ONLINE-ATTENTION' },
         'Results',
       ],
     }),
@@ -253,6 +303,7 @@ export const examAttemptApi = baseApi.injectEndpoints({
 
 export const {
   useMyOnlineExamsQuery,
+  useTeacherExamAttentionQuery,
   useGetMyAttemptStateQuery,
   useStartAttemptMutation,
   useSaveAnswerMutation,

@@ -14,7 +14,7 @@ import {
   useListAttemptsForExamQuery,
   usePublishAttemptResultMutation,
   type AttemptListItem,
-  type AttemptStatus,
+  type RosterAttemptStatus,
 } from '@/store/api/examAttemptApi';
 import { useGetExamAnalysisQuery } from '@/store/api/examsApi';
 import { AttemptGradingView } from './AttemptGradingView';
@@ -27,8 +27,10 @@ import toast from 'react-hot-toast';
 // (milliseconds).
 const MONITORING_POLL_MS = 15000;
 
-function statusBadge(status: AttemptStatus) {
+function statusBadge(status: RosterAttemptStatus, missed: boolean) {
   switch (status) {
+    case 'not_started':
+      return missed ? <Badge variant="danger">Missed</Badge> : <Badge variant="outline">Not started</Badge>;
     case 'in_progress':
       return <Badge variant="neutral">In progress</Badge>;
     case 'submitted':
@@ -46,13 +48,17 @@ function statusBadge(status: AttemptStatus) {
   }
 }
 
-export function ExamMonitoringView({ examId, onBack }: { examId: string; onBack: () => void }) {
+export function ExamMonitoringView({ examId, onBack, readOnly = false }: { examId: string; onBack: () => void; readOnly?: boolean }) {
   const { data, isLoading } = useListAttemptsForExamQuery(examId, { pollingInterval: MONITORING_POLL_MS });
   const [gradingAttemptId, setGradingAttemptId] = useState<string | null>(null);
 
   const roster = data?.data;
 
-  if (gradingAttemptId) {
+  // Grading/publishing an attempt is teacher-only on the backend now — an
+  // admin never reaches this branch since the "Grade" button below is
+  // hidden when readOnly, but guarding here too keeps this component safe
+  // to reuse even if that changes.
+  if (gradingAttemptId && !readOnly) {
     return (
       <AttemptGradingView
         attemptId={gradingAttemptId}
@@ -66,9 +72,7 @@ export function ExamMonitoringView({ examId, onBack }: { examId: string; onBack:
     return <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>;
   }
 
-  const { exam, attempts } = roster;
-  const startedCount = attempts.filter((a) => a.status === 'in_progress').length;
-  const submittedCount = attempts.filter((a) => a.status !== 'in_progress').length;
+  const { exam, attempts, summary } = roster;
   const flaggedCount = attempts.filter((a) => a.integrityFlagCount > 0).length;
 
   return (
@@ -81,22 +85,41 @@ export function ExamMonitoringView({ examId, onBack }: { examId: string; onBack:
           <div>
             <h2 className="text-lg font-bold text-foreground">{exam.title}</h2>
             <p className="text-xs text-muted-foreground">
-              {exam.subjectName ?? '—'} · {attempts.length} students
+              {exam.subjectName ?? '—'} · {summary.assigned} student{summary.assigned === 1 ? '' : 's'} assigned
+              {exam.windowClosed && <span className="ml-1 text-warning">· Window closed</span>}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 text-xs">
-          <Badge variant="neutral">{startedCount} in progress</Badge>
-          <Badge variant="primary">{submittedCount} submitted</Badge>
-          {flaggedCount > 0 && <Badge variant="danger"><AlertTriangle size={11} /> {flaggedCount} flagged</Badge>}
-        </div>
+      </div>
+
+      {/* At-a-glance status breakdown — this is what answers "how many
+          students got the exam, how many are in progress / done / never
+          started" without the teacher having to scroll and count rows. */}
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <Badge variant="neutral">{summary.assigned} assigned</Badge>
+        {summary.notStarted > 0 && (
+          <Badge variant={exam.windowClosed ? 'danger' : 'outline'}>
+            {summary.notStarted} {exam.windowClosed ? 'missed' : 'not started'}
+          </Badge>
+        )}
+        <Badge variant="neutral">{summary.inProgress} in progress</Badge>
+        {/* Raw 'submitted' is a brief transitional state (grading normally
+            resolves it to auto-graded/needs-review synchronously) — only
+            shown when nonzero so the common case doesn't clutter this row
+            with an always-zero badge. */}
+        {summary.submitted > 0 && <Badge variant="neutral">{summary.submitted} submitted</Badge>}
+        {summary.autoGraded > 0 && <Badge variant="primary">{summary.autoGraded} auto-graded</Badge>}
+        {summary.needsReview > 0 && <Badge variant="warning">{summary.needsReview} need grading</Badge>}
+        {summary.graded > 0 && <Badge variant="primary">{summary.graded} graded</Badge>}
+        <Badge variant="success">{summary.published} published</Badge>
+        {flaggedCount > 0 && <Badge variant="danger"><AlertTriangle size={11} /> {flaggedCount} flagged</Badge>}
       </div>
 
       <ExamAnalysisCard examId={examId} />
 
       {attempts.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">
-          No student has started this exam yet.
+          No students are assigned to this exam's class/section.
         </Card>
       ) : (
         <Card>
@@ -115,10 +138,11 @@ export function ExamMonitoringView({ examId, onBack }: { examId: string; onBack:
               <TableBody>
                 {attempts.map((a) => (
                   <AttemptRow
-                    key={a.attemptId}
+                    key={a.studentId}
                     attempt={a}
                     examId={examId}
-                    onGrade={() => setGradingAttemptId(a.attemptId)}
+                    onGrade={() => a.attemptId && setGradingAttemptId(a.attemptId)}
+                    readOnly={readOnly}
                   />
                 ))}
               </TableBody>
@@ -131,11 +155,12 @@ export function ExamMonitoringView({ examId, onBack }: { examId: string; onBack:
 }
 
 const AttemptRow = memo(function AttemptRow({
-  attempt, examId, onGrade,
+  attempt, examId, onGrade, readOnly = false,
 }: {
   attempt: AttemptListItem;
   examId: string;
   onGrade: () => void;
+  readOnly?: boolean;
 }) {
   // Each row owns its own mutation instance — a single shared hook at the
   // parent level would disable/spin EVERY row's Publish button the moment
@@ -155,7 +180,7 @@ const AttemptRow = memo(function AttemptRow({
     .join('\n');
 
   const onPublish = async () => {
-    if (publishingRef.current) return;
+    if (!attempt.attemptId || publishingRef.current) return;
     publishingRef.current = true;
     try {
       await publishAttemptResult({ attemptId: attempt.attemptId, examId }).unwrap();
@@ -168,9 +193,9 @@ const AttemptRow = memo(function AttemptRow({
   };
 
   return (
-    <TableRow>
+    <TableRow className={attempt.status === 'not_started' ? 'opacity-70' : undefined}>
       <TableCell className="font-medium text-foreground">{attempt.studentName}</TableCell>
-      <TableCell>{statusBadge(attempt.status)}</TableCell>
+      <TableCell>{statusBadge(attempt.status, attempt.missed)}</TableCell>
       <TableCell className="text-muted-foreground">
         {attempt.submittedAt ? formatDate(attempt.submittedAt) : '—'}
         {attempt.autoSubmitted && <span className="ml-1 text-xs text-warning">(auto)</span>}
@@ -186,17 +211,23 @@ const AttemptRow = memo(function AttemptRow({
         )}
       </TableCell>
       <TableCell className="text-right">
-        {canGrade && (
-          <Button size="sm" variant="secondary" onClick={onGrade}>
-            <ClipboardCheck size={14} /> Grade
-          </Button>
+        {readOnly ? (
+          <span className="text-xs text-muted-foreground">View only</span>
+        ) : (
+          <>
+            {canGrade && (
+              <Button size="sm" variant="secondary" onClick={onGrade}>
+                <ClipboardCheck size={14} /> Grade
+              </Button>
+            )}
+            {!canGrade && canPublish && (
+              <Button size="sm" loading={publishing} onClick={onPublish}>
+                <Send size={14} /> Publish
+              </Button>
+            )}
+            {!canGrade && !canPublish && <span className="text-xs text-muted-foreground">—</span>}
+          </>
         )}
-        {!canGrade && canPublish && (
-          <Button size="sm" loading={publishing} onClick={onPublish}>
-            <Send size={14} /> Publish
-          </Button>
-        )}
-        {!canGrade && !canPublish && <span className="text-xs text-muted-foreground">—</span>}
       </TableCell>
     </TableRow>
   );
