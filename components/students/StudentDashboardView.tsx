@@ -10,24 +10,31 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { useMyAttendanceQuery, useMyResultsQuery, useMyFeesQuery } from '@/store/api/portalApi';
 import { useMyStudentTimetableQuery } from '@/store/api/timetableApi';
 import { useGetNoticesQuery } from '@/store/api/noticesApi';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { StudentDashboardIdCardNudge } from '@/components/dashboards/StudentDashboardIdCardNudge';
 import { StudentDashboardToday } from '@/components/dashboards/StudentDashboardToday';
 import { StudentDashboardExamsNudge } from '@/components/dashboards/StudentDashboardExamsNudge';
 import { StudentDashboardFeesNudge } from '@/components/dashboards/StudentDashboardFeesNudge';
 import { StudentDashboardAcademicsSnapshot } from '@/components/dashboards/StudentDashboardAcademicsSnapshot';
 import { StudentDashboardEmptyState } from '@/components/dashboards/StudentDashboardEmptyState';
+import { DashboardNoticeBanner } from '@/components/dashboards/DashboardNoticeBanner';
+import { DashboardNotices } from '@/components/dashboards/DashboardNotices';
+import { DashboardSchoolCard } from '@/components/dashboards/DashboardSchoolCard';
 
 // This page used to render entirely hardcoded, fabricated data (a fixed
 // "Ali Khan"-style results table, a fake "94%" attendance figure, invented
 // notices) with no API calls at all — every student saw the exact same
 // invented numbers regardless of their real school records. Rewritten to
-// pull everything from the real portal endpoints (already existed and
-// worked, just weren't wired up here) so this actually reflects each
-// student's own data. Later extended with today's schedule, an online-exam
-// nudge and an ID-card nudge — same treatment given to the teacher
-// dashboard — plus a real empty state for when nothing's set up for their
-// class yet, instead of five simultaneous "no data" placeholder cards.
+// pull everything from the real portal endpoints, then later extended with
+// today's schedule, an online-exam nudge and an ID-card nudge.
+//
+// Now brought in line with the teacher/staff dashboard pattern: an
+// urgent/high notice banner up top (DashboardNoticeBanner), a task/context
+// two-column split on larger screens (schedule/academics/nudges on the
+// wider left, results/notices/school info on the narrower right), and the
+// shared DashboardNotices/DashboardSchoolCard widgets instead of a
+// one-off inline notices card — same visual language wherever a student
+// or any other role lands after logging in.
 export function StudentDashboardView() {
   const { data: attRes, isLoading: attLoading } = useMyAttendanceQuery();
   const attendance = attRes?.data;
@@ -58,6 +65,7 @@ export function StudentDashboardView() {
     <div className="space-y-6">
       <PageHeader title="My Dashboard" description="Track your attendance, results and fees." />
 
+      <DashboardNoticeBanner noticesHref="/student/notices" />
       <StudentDashboardIdCardNudge />
 
       {structuralLoading ? (
@@ -87,64 +95,44 @@ export function StudentDashboardView() {
             />
           </div>
 
-          <StudentDashboardAcademicsSnapshot />
-          <StudentDashboardToday />
-          <StudentDashboardFeesNudge />
-          <StudentDashboardExamsNudge />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <div className="space-y-6">
+              <StudentDashboardToday />
+              <StudentDashboardAcademicsSnapshot />
+              <StudentDashboardFeesNudge />
+              <StudentDashboardExamsNudge />
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Results</CardTitle>
-                <CardDescription>Your most recent exams</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <Skeleton className="h-40 w-full" />
-                ) : results.length === 0 ? (
-                  <EmptyState icon={FileText} title="No results yet" description="Results will show up here once they're published." />
-                ) : (
-                  <ul className="divide-y divide-border">
-                    {results.slice(0, 5).map((r, i) => (
-                      <li key={`${r.examTitle}-${i}`} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">{r.examTitle}</p>
-                          <p className="text-xs text-muted-foreground">{r.totalObtained} / {r.totalMarks} ({r.percentage}%)</p>
-                        </div>
-                        <Badge variant={r.isPassed ? 'primary' : 'danger'}>{r.grade}</Badge>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Results</CardTitle>
+                  <CardDescription>Your most recent exams</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <Skeleton className="h-40 w-full" />
+                  ) : results.length === 0 ? (
+                    <EmptyState icon={FileText} title="No results yet" description="Results will show up here once they're published." />
+                  ) : (
+                    <ul className="divide-y divide-border">
+                      {results.slice(0, 5).map((r, i) => (
+                        <li key={`${r.examTitle}-${i}`} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-foreground">{r.examTitle}</p>
+                            <p className="text-xs text-muted-foreground">{r.totalObtained} / {r.totalMarks} ({r.percentage}%)</p>
+                          </div>
+                          <Badge variant={r.isPassed ? 'primary' : 'danger'}>{r.grade}</Badge>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Notices</CardTitle>
-                <CardDescription>From your institution</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <Skeleton className="h-40 w-full" />
-                ) : notices.length === 0 ? (
-                  <EmptyState icon={Bell} title="No notices" description="You're all caught up." />
-                ) : (
-                  <ul className="space-y-3">
-                    {notices.map((n) => (
-                      <li key={n.id} className="flex items-start gap-3 rounded-lg border border-border p-3">
-                        <Bell size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground">{n.title}</p>
-                          <p className="text-xs text-muted-foreground">{formatDate(n.publishedAt)}</p>
-                        </div>
-                        {(n.priority === 'high' || n.priority === 'urgent') && <Badge variant="danger">Important</Badge>}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              <DashboardSchoolCard />
+              <DashboardNotices noticesHref="/student/notices" />
+            </div>
           </div>
         </>
       )}
