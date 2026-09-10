@@ -17,6 +17,7 @@ export interface InstitutionRow {
   slug: string;
   type: string;
   city: string | null;
+  logoUrl: string | null;
   plan: string;
   status: 'active' | 'trial' | 'suspended' | 'pending' | 'past_due';
   students: number;
@@ -95,10 +96,19 @@ export interface InstitutionDetail {
   institution: {
     id: string; name: string; slug: string; type: string; status: InstitutionRow['status'];
     plan: string; contactEmail: string | null; contactPhone: string | null;
-    city: string | null; province: string | null; createdAt: string;
+    city: string | null; province: string | null; address: string | null; createdAt: string;
     trialEndsAt: string | null; monthlyAmount: number; studentsLimit: number | null;
     subscribedSince: string | null; lastPaymentAt: string | null; nextBillingAt: string | null;
     autoRenew: boolean; savedCardLast4: string | null;
+    academicStructure: 'yearly' | 'semester' | 'short_session' | 'custom';
+    idCard: {
+      showNationalId: boolean;
+      showBloodGroup: boolean;
+      studentValidityMonths: number;
+      staffValidityMonths: number;
+      customLogoUrl: string | null;
+      showInstituteName: boolean;
+    } | null;
   };
   counts: { students: number; teachers: number; classes: number; subjects: number };
   classes: { id: string; name: string; termId: string | null; termName: string | null; sections: { name: string; students: number }[] }[];
@@ -112,6 +122,9 @@ export interface InstitutionDetail {
     success: boolean;
     reasonCode: 'insufficient_funds' | 'expired_card' | 'card_blocked' | 'auth_failed' | 'gateway_error' | 'other' | null;
   }[];
+  lastActivityAt: string | null;
+  cardStats: { totalActiveStudents: number; expiringOrExpiredCards: number };
+  recentEmailFailures: number;
 }
 
 export interface PlanHistoryEntry {

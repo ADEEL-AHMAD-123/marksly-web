@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar } from '@/components/ui/avatar';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -19,6 +20,17 @@ import { SearchInput } from '@/components/ui/search-input';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDate } from '@/lib/utils';
 import { useGetInstitutionsQuery, type InstitutionRow } from '@/store/api/superadminApi';
+
+// Institutions aren't people, so lib/utils's getInitials (which takes
+// separate first/last names) doesn't fit — this derives initials from
+// however many words are in the institution's name instead (e.g. "Al Noor
+// Grammar School" -> "AG", "Beaconhouse" -> "B").
+function institutionInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
 
 const statusBadge: Record<InstitutionRow['status'], { variant: 'success' | 'warning' | 'danger' | 'neutral'; label: string }> = {
   active: { variant: 'success', label: 'Active' },
@@ -108,7 +120,7 @@ export function InstitutionsView() {
                     <TableRow key={i.id} className="cursor-pointer" onClick={() => openDetail(i.id)}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-foreground"><Building2 size={16} /></span>
+                          <Avatar size="sm" photoUrl={i.logoUrl} initials={institutionInitials(i.name)} alt={i.name} />
                           <div>
                             <p className="font-medium text-foreground">{i.name}</p>
                             <p className="text-xs capitalize text-muted-foreground">{i.type}{i.city ? ` · ${i.city}` : ''}</p>
@@ -140,7 +152,7 @@ export function InstitutionsView() {
               <Card key={i.id} className="p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-foreground"><Building2 size={16} /></span>
+                    <Avatar size="sm" photoUrl={i.logoUrl} initials={institutionInitials(i.name)} alt={i.name} />
                     <div className="min-w-0">
                       <p className="truncate font-medium text-foreground">{i.name}</p>
                       <p className="text-xs capitalize text-muted-foreground">{i.plan} · {i.students} students</p>

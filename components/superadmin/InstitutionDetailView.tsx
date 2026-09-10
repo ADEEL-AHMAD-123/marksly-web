@@ -25,7 +25,11 @@ import { InstitutionStudentsTab } from './InstitutionStudentsTab';
 import { InstitutionBillingTab } from './InstitutionBillingTab';
 
 export function InstitutionDetailView({ id }: { id: string }) {
-  const { data, isLoading } = useGetInstitutionQuery(id);
+  // Activity/health monitoring view — freshness of lastActivityAt and
+  // email-failure counts matters more than avoiding a redundant request,
+  // so always refetch on mount/arg-change instead of relying on the
+  // default cache window.
+  const { data, isLoading } = useGetInstitutionQuery(id, { refetchOnMountOrArgChange: true });
   const [update, { isLoading: saving }] = useUpdateInstitutionMutation();
   const { data: planHistoryRes } = useGetPlanHistoryQuery(id);
   const planHistory = planHistoryRes?.data ?? [];
@@ -128,7 +132,12 @@ export function InstitutionDetailView({ id }: { id: string }) {
         </TabsList>
 
         <TabsContent value="overview">
-          <InstitutionOverviewTab inst={inst} />
+          <InstitutionOverviewTab
+            inst={inst}
+            lastActivityAt={d.lastActivityAt}
+            cardStats={d.cardStats}
+            recentEmailFailures={d.recentEmailFailures}
+          />
         </TabsContent>
 
         <TabsContent value="classes">

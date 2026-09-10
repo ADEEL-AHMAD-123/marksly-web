@@ -525,7 +525,7 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
                     <Select value={field.value || undefined} onValueChange={field.onChange}>
                       <SelectTrigger><SelectValue placeholder="Select a teacher…" /></SelectTrigger>
                       <SelectContent>
-                        {teachers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                        {teachers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} — {t.phone}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   )}
@@ -571,7 +571,7 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
                           <SelectTrigger className={`h-8 w-[180px] text-xs ${!isCovered ? 'border-danger' : ''}`}><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="default">Same as default</SelectItem>
-                            {teachers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                            {teachers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} — {t.phone}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>

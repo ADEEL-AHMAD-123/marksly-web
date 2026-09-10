@@ -364,14 +364,18 @@ export function ClassesView() {
                           className="h-9 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           <option value="">Class teacher — Unassigned</option>
-                          {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                          {teachers.map((t) => <option key={t.id} value={t.id}>{t.name} — {t.phone}</option>)}
                         </select>
                       </div>
                     </div>
                   ))}
                 </div>
                 {errors.sections && <p className="mt-1 text-xs text-danger">{(errors.sections as any).message || 'Check section names'}</p>}
-                <p className="mt-2 text-xs text-muted-foreground">The assigned teacher can mark attendance for that section.</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  This is the section&apos;s class teacher — separate from who teaches each subject (set on the Subjects page).
+                  It controls whether a teacher can see this section on their own portal, create exams for it, and view or
+                  export its roster. Leave it unassigned and only admins can do those things for this section.
+                </p>
               </div>
             </div>
 
