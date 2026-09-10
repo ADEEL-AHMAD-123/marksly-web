@@ -12,6 +12,9 @@ import { buttonVariants } from '@/components/ui/button-variants';
 import { useGetFeesSummaryQuery, useGetInvoicesQuery } from '@/store/api/feesApi';
 import { useGetMyOwedQuery } from '@/store/api/feesOnlineApi';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { DashboardNoticeBanner } from '@/components/dashboards/DashboardNoticeBanner';
+import { DashboardNotices } from '@/components/dashboards/DashboardNotices';
+import { DashboardSchoolCard } from '@/components/dashboards/DashboardSchoolCard';
 
 const statusBadge = {
   paid: { variant: 'success' as const, label: 'Paid' },
@@ -37,6 +40,8 @@ export function AccountantDashboard() {
 
   return (
     <div className="space-y-6">
+      <DashboardNoticeBanner noticesHref="/accountant/notices" />
+
       <PageHeader
         title="Accountant Dashboard"
         description="Fee collection, online payouts and dues at a glance."
@@ -119,6 +124,11 @@ export function AccountantDashboard() {
           )}
         </CardContent>
       </Card>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <DashboardSchoolCard />
+        <DashboardNotices noticesHref="/accountant/notices" />
+      </div>
     </div>
   );
 }

@@ -49,7 +49,17 @@ export function ParentDashboardView() {
       />
 
       {isLoading ? (
-        <Skeleton className="h-40 w-full rounded-2xl" />
+        // Roughly matches the loaded layout's shape (stat row + child
+        // cards) instead of one short block, so there's no visible jump in
+        // page height once the real data arrives.
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)}
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-2xl" />)}
+          </div>
+        </div>
       ) : children.length === 0 ? (
         <ParentDashboardEmptyState />
       ) : (
@@ -79,13 +89,13 @@ export function ParentDashboardView() {
             </div>
           </InfoNote>
 
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <StatCard label="Children" value={String(children.length)} icon={Users} tone="primary" />
             <StatCard
               label="Fees Due"
               value={formatCurrency(totalFeesDue)}
               icon={Wallet}
-              tone={totalFeesDue > 0 ? 'warning' : 'info'}
+              tone={totalFeesDue > 0 ? 'warning' : 'success'}
             />
             <StatCard
               label="Needs Attention"

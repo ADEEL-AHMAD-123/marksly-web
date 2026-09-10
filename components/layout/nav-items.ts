@@ -113,6 +113,7 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
   superadmin: [
     { label: 'Dashboard', href: '/superadmin', icon: LayoutDashboard },
     { label: 'Institutions', href: '/superadmin/institutions', icon: School },
+    { label: 'Announcements', href: '/superadmin/announcements', icon: Bell },
     { label: 'Plans', href: '/superadmin/plans', icon: Package },
     { label: 'Payments', href: '/superadmin/billing', icon: CreditCard },
     { label: 'Fee Payouts', href: '/superadmin/fee-payouts', icon: DollarSign },

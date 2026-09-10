@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, AlertTriangle, X } from 'lucide-react';
+import { AlertCircle, AlertTriangle, X, Sparkles } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useGetNoticesQuery } from '@/store/api/noticesApi';
 
@@ -48,9 +49,14 @@ export function DashboardNoticeBanner({ noticesHref }: { noticesHref: string }) 
               <Icon size={16} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-foreground">{n.title}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="truncate text-sm font-semibold text-foreground">{n.title}</p>
+                {n.isPlatformAnnouncement && (
+                  <Badge variant="primary" className="shrink-0 gap-1"><Sparkles size={10} /> Platform</Badge>
+                )}
+              </div>
               <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                {n.author ? `From ${n.author}` : 'From your institution'} · {new Date(n.publishedAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}
+                {n.isPlatformAnnouncement ? 'From Marksly' : n.author ? `From ${n.author}` : 'From your institution'} · {new Date(n.publishedAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
@@ -64,7 +70,7 @@ export function DashboardNoticeBanner({ noticesHref }: { noticesHref: string }) 
                 type="button"
                 onClick={() => setDismissed((prev) => new Set(prev).add(n.id))}
                 aria-label="Dismiss for now"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
               >
                 <X size={14} />
               </button>

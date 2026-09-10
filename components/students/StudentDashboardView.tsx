@@ -74,7 +74,7 @@ export function StudentDashboardView() {
         <StudentDashboardEmptyState />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <StatCard
               label="Attendance"
               value={attLoading ? '…' : attendance?.total ? `${attendance.rate}%` : '—'}
@@ -85,7 +85,7 @@ export function StudentDashboardView() {
               label="Fees Due"
               value={feesLoading ? '…' : formatCurrency(feesDue)}
               icon={Wallet}
-              tone={feesDue > 0 ? 'warning' : 'info'}
+              tone={feesDue > 0 ? 'warning' : 'success'}
             />
             <StatCard
               label="Notices"
@@ -120,7 +120,7 @@ export function StudentDashboardView() {
                             <p className="truncate text-sm font-medium text-foreground">{r.examTitle}</p>
                             <p className="text-xs text-muted-foreground">{r.totalObtained} / {r.totalMarks} ({r.percentage}%)</p>
                           </div>
-                          <Badge variant={r.isPassed ? 'primary' : 'danger'}>{r.grade}</Badge>
+                          <Badge variant={r.isPassed ? 'success' : 'danger'}>{r.grade}</Badge>
                         </li>
                       ))}
                     </ul>

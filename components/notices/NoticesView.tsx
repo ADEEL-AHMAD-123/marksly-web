@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, X, Bell, Trash2 } from 'lucide-react';
+import { Plus, X, Bell, Trash2, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
@@ -78,15 +78,18 @@ export function NoticesView({ manage = false }: { manage?: boolean }) {
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold text-foreground">{n.title}</h3>
                     <Badge variant={priorityBadge[n.priority].variant}>{priorityBadge[n.priority].label}</Badge>
+                    {n.isPlatformAnnouncement && (
+                      <Badge variant="primary" className="gap-1"><Sparkles size={10} /> Platform</Badge>
+                    )}
                   </div>
                   <p className="mt-1.5 whitespace-pre-line text-sm text-muted-foreground">{n.body}</p>
                   <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span>{formatDate(n.publishedAt)}</span>
-                    {n.author && <span>· {n.author}</span>}
+                    {n.isPlatformAnnouncement ? <span>· Marksly</span> : n.author && <span>· {n.author}</span>}
                     <span>· {n.targetRoles.length === 0 ? 'Everyone' : n.targetRoles.map((r) => r + 's').join(', ')}</span>
                   </div>
                 </div>
-                {manage && (
+                {manage && !n.isPlatformAnnouncement && (
                   confirmId === n.id ? (
                     <div className="flex shrink-0 items-center gap-1">
                       <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)}>Cancel</Button>

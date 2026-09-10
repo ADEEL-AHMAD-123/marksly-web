@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, ArrowRight } from 'lucide-react';
+import { Bell, ArrowRight, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -45,14 +45,19 @@ export function DashboardNotices({ noticesHref }: { noticesHref: string }) {
           <div key={n.id} className="rounded-xl border border-border p-3">
             <div className="flex items-start justify-between gap-2">
               <p className="text-sm font-medium text-foreground">{n.title}</p>
-              {n.priority !== 'normal' && (
-                <Badge variant={PRIORITY_VARIANT[n.priority]} className="shrink-0 capitalize">{n.priority}</Badge>
-              )}
+              <div className="flex shrink-0 items-center gap-1.5">
+                {n.isPlatformAnnouncement && (
+                  <Badge variant="primary" className="gap-1"><Sparkles size={10} /> Platform</Badge>
+                )}
+                {n.priority !== 'normal' && (
+                  <Badge variant={PRIORITY_VARIANT[n.priority]} className="capitalize">{n.priority}</Badge>
+                )}
+              </div>
             </div>
             <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{n.body}</p>
             <p className="mt-1 text-[11px] text-muted-foreground">
               {new Date(n.publishedAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}
-              {n.author ? ` · ${n.author}` : ''}
+              {n.isPlatformAnnouncement ? ' · Marksly' : n.author ? ` · ${n.author}` : ''}
             </p>
           </div>
         ))}

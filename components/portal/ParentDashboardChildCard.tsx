@@ -83,7 +83,7 @@ export function ParentDashboardChildCard({ child }: { child: ChildSummary }) {
                 <span className="flex items-center gap-1.5 text-muted-foreground"><FileText size={12} /> Latest result</span>
                 <span className="flex items-center gap-1.5 font-medium text-foreground">
                   {latestResult.examTitle} · {latestResult.percentage}%
-                  <Badge variant={latestResult.isPassed ? 'primary' : 'danger'} className="ml-0.5">{latestResult.grade}</Badge>
+                  <Badge variant={latestResult.isPassed ? 'success' : 'danger'} className="ml-0.5">{latestResult.grade}</Badge>
                 </span>
               </p>
             )}

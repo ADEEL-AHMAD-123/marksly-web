@@ -22,6 +22,8 @@ import { looksAbbreviated } from '@/lib/institution-name';
 import { AdminDashboardStats } from '@/components/dashboards/AdminDashboardStats';
 import { OnboardingCard, type OnboardingStep } from '@/components/dashboards/AdminDashboardOnboarding';
 import { DashboardAlertBanner } from '@/components/dashboards/DashboardAlertBanner';
+import { DashboardNoticeBanner } from '@/components/dashboards/DashboardNoticeBanner';
+import { DashboardNotices } from '@/components/dashboards/DashboardNotices';
 import { TodaysAttendanceCard } from '@/components/dashboards/AdminDashboardAttendance';
 import { FeeCollectionCard, QuickActionsCard } from '@/components/dashboards/AdminDashboardActions';
 
@@ -185,6 +187,7 @@ export function AdminDashboard() {
   return (
     <div className="space-y-6">
       <DashboardAlertBanner />
+      <DashboardNoticeBanner noticesHref="/admin/notices" />
 
       {overLimit && (
         <div className="flex items-start gap-2.5 rounded-xl border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-warning">
@@ -272,6 +275,14 @@ export function AdminDashboard() {
 
           {/* Quick actions — always accurate, never fabricated */}
           <QuickActionsCard />
+
+          {/* Recent notices — same shared widget every other role's
+              dashboard now shows, including platform-wide announcements
+              from Marksly itself alongside this institution's own. Admin
+              already has a direct "Post a notice" quick action above; this
+              is what lets them (and everyone else) actually see what's been
+              posted without leaving the dashboard. */}
+          <DashboardNotices noticesHref="/admin/notices" />
         </>
       )}
     </div>

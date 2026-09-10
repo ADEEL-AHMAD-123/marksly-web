@@ -12,6 +12,12 @@ export interface Notice {
   publishedAt: string;
   expiresAt: string | null;
   author: string | null;
+  // True only for the per-institution copy of a superadmin platform
+  // broadcast (see marksly-api's platform-announcement.model.ts /
+  // superadmin-announcements.service.ts) — drives the "Platform" badge
+  // everywhere a notice renders, so people can tell it's from Marksly
+  // itself rather than their own institution's admin.
+  isPlatformAnnouncement: boolean;
 }
 
 interface ApiArray<T> { success: boolean; data: T[]; message: string; meta?: any }

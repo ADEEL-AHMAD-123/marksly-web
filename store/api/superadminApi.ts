@@ -144,6 +144,30 @@ export interface BankDetails {
   bankIban: string;
 }
 
+export interface PlatformAnnouncement {
+  id: string;
+  title: string;
+  body: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  targetRoles: string[];
+  institutionScope: 'all' | 'selected';
+  institutionCount: number;
+  failedInstitutionCount: number;
+  expiresAt: string | null;
+  createdAt: string;
+  author: string | null;
+}
+
+export interface CreatePlatformAnnouncementBody {
+  title: string;
+  body: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  targetRoles?: string[];
+  expiresAt?: string;
+  institutionScope: 'all' | 'selected';
+  institutionIds?: string[];
+}
+
 interface ApiArray<T> { success: boolean; data: T[]; message: string; meta?: any }
 interface ApiObject<T> { success: boolean; data: T; message: string }
 
@@ -236,6 +260,23 @@ export const superadminApi = baseApi.injectEndpoints({
       query: (body) => ({ url: '/superadmin/bank-details', method: 'PATCH', body }),
       invalidatesTags: [{ type: 'Institutions', id: 'BANK_DETAILS' }],
     }),
+    getAnnouncements: builder.query<ApiArray<PlatformAnnouncement>, { page?: number; limit?: number } | void>({
+      query: (params) => {
+        const s = new URLSearchParams();
+        if (params?.page) s.set('page', String(params.page));
+        if (params?.limit) s.set('limit', String(params.limit));
+        const qs = s.toString();
+        return `/superadmin/announcements${qs ? `?${qs}` : ''}`;
+      },
+      providesTags: [{ type: 'Institutions', id: 'ANNOUNCEMENTS' }],
+    }),
+    createAnnouncement: builder.mutation<
+      ApiObject<{ id: string; institutionCount: number; failedInstitutionCount: number }>,
+      CreatePlatformAnnouncementBody
+    >({
+      query: (body) => ({ url: '/superadmin/announcements', method: 'POST', body }),
+      invalidatesTags: [{ type: 'Institutions', id: 'ANNOUNCEMENTS' }],
+    }),
   }),
 });
 
@@ -255,4 +296,6 @@ export const {
   useGetPlanHistoryQuery,
   useGetBankDetailsQuery,
   useUpdateBankDetailsMutation,
+  useGetAnnouncementsQuery,
+  useCreateAnnouncementMutation,
 } = superadminApi;
