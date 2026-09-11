@@ -7,7 +7,7 @@ import { z } from 'zod';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
   Plus, X, Users, BookOpen, Briefcase, Landmark, AlertCircle, ChevronLeft, ChevronRight,
-  Pencil, Eye, EyeOff, KeyRound, Loader2, Send,
+  Pencil, Eye, EyeOff, KeyRound, Loader2, Send, Mail, MailWarning,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
@@ -73,6 +73,34 @@ const ROLE_META: Record<ManageableRole, { label: string; icon: typeof Briefcase 
 
 function roleLabel(role: ManageableRole) {
   return ROLE_META[role].label;
+}
+
+/** Small badge summarizing whether this account can actually be reached by
+ *  email — mirrors StudentsView.tsx's guardianEmailMeta/GuardianEmailBadge,
+ *  folded in here so login-email delivery issues are visible right on this
+ *  row instead of on the retired standalone Email Delivery Status page.
+ *  No 'no_guardian' equivalent here — every row here always represents one
+ *  actual account with a phone/email of its own. */
+const staffEmailMeta: Record<
+  NonNullable<ManagedUser['emailStatus']>,
+  { icon: typeof Mail; label: string; className: string; title: string }
+> = {
+  ok: { icon: Mail, label: 'Email OK', className: 'text-success', title: 'Login email was delivered fine' },
+  problem: { icon: MailWarning, label: 'Email delivery failed', className: 'text-danger', title: 'The latest login email failed or bounced' },
+  no_email: { icon: MailWarning, label: 'No email', className: 'text-warning', title: 'No email on file — nothing was ever sent' },
+};
+
+/** Hidden for 'ok' to keep rows calm — only surfaces when there's something
+ *  worth noticing, same threshold as StudentsView.tsx's GuardianEmailBadge. */
+function StaffEmailBadge({ status }: { status?: ManagedUser['emailStatus'] }) {
+  if (!status || status === 'ok') return null;
+  const meta = staffEmailMeta[status];
+  const Icon = meta.icon;
+  return (
+    <p className={cn('mt-0.5 flex items-center gap-1 text-[11px] font-medium', meta.className)} title={meta.title}>
+      <Icon size={11} className="shrink-0" /> {meta.label}
+    </p>
+  );
 }
 
 /** Mirrors StudentsView.tsx's missingIdInfo() — fields the ID card feature
@@ -315,7 +343,10 @@ export function StaffManagementView() {
                         <TableCell><Badge variant="neutral">{roleLabel(m.role)}</Badge></TableCell>
                       )}
                       <TableCell className="text-muted-foreground">{m.phone}</TableCell>
-                      <TableCell className="text-muted-foreground">{m.email ?? '—'}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {m.email ?? '—'}
+                        <StaffEmailBadge status={m.emailStatus} />
+                      </TableCell>
                       <TableCell><Badge variant={m.isActive ? 'success' : 'neutral'}>{m.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
                       <TableCell><PinCell member={m} /></TableCell>
                       <TableCell className="text-right">
@@ -450,6 +481,7 @@ function StaffCard({
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium text-foreground">{member.name}</p>
           <p className="text-xs text-muted-foreground">{member.phone}{member.email ? ` · ${member.email}` : ''}</p>
+          <StaffEmailBadge status={member.emailStatus} />
           {missingStaffInfo(member).length > 0 && (
             <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning">
               <AlertCircle size={11} className="shrink-0" /> Missing {missingStaffInfo(member).join(', ')}

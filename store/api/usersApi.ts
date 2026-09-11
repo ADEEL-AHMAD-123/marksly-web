@@ -52,6 +52,12 @@ export interface ManagedUser {
   createdAt: string;
   unassignedSubjects?: number;
   unassignedSections?: number;
+  // Only present on the list() response — mirrors StudentListItem's
+  // guardianEmailStatus (minus 'no_guardian', which has no staff
+  // equivalent): 'no_email' when there's no address on file at all,
+  // 'problem' when the latest login/invite email failed or bounced, 'ok'
+  // otherwise. See user.service.ts's list().
+  emailStatus?: 'no_email' | 'problem' | 'ok';
 }
 
 interface ApiArray<T> { success: boolean; data: T[]; message: string; meta?: any }
