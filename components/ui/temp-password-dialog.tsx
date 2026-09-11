@@ -20,6 +20,13 @@ interface Props {
    *  copy says "also emailed" instead of implying it's the only record).
    *  Never true for the PIN flow — there's no email/phone to send it to. */
   emailed?: boolean;
+  /** Who this login actually belongs to, e.g. "Parent", "Teacher" — shown
+   *  alongside the name so it's clear whose account this is. Matters most
+   *  for a guardian's login: the name shown here is the PARENT's name, not
+   *  the student's, and without this label that reads as ambiguous or even
+   *  like the wrong person's credentials. Omit when the name alone is
+   *  unambiguous (e.g. creating a teacher/staff account for themselves). */
+  roleLabel?: string;
 }
 
 /**
@@ -40,7 +47,7 @@ interface Props {
  * student.service.ts's getStudentPin()). The copy below reflects that,
  * rather than implying this is the only chance to record it.
  */
-export function TempPasswordDialog({ open, onClose, name, phone, tempPassword, systemId, pin, emailed }: Props) {
+export function TempPasswordDialog({ open, onClose, name, phone, tempPassword, systemId, pin, emailed, roleLabel }: Props) {
   const [copied, setCopied] = useState(false);
   const isPin = pin !== undefined;
   const idLabel = isPin ? 'Login ID' : 'Phone';
@@ -78,14 +85,21 @@ export function TempPasswordDialog({ open, onClose, name, phone, tempPassword, s
               <KeyRound size={16} />
             </span>
             <DialogPrimitive.Title className="text-base font-semibold">
-              {isPin ? `${name}'s login PIN` : `${name}'s login was created`}
+              {isPin
+                ? `${name}'s login PIN`
+                : roleLabel
+                  ? `Login created for ${name} (${roleLabel})`
+                  : `${name}'s login was created`}
             </DialogPrimitive.Title>
           </div>
           <DialogPrimitive.Description className="mt-2 text-sm text-muted-foreground">
             {isPin
-              ? `Write this down now, or look it up anytime later from the Student Logins page. Use it with the Login ID below to sign in.`
-              : <>Save this password now — it{"'"}s only shown once and can&apos;t be retrieved later.
-                  {emailed ? ' It was also emailed to them.' : ' They’ll be asked to set their own on first login.'}</>}
+              ? `This PIN is saved — view or reset it anytime from the Student Logins page. Use it with the Login ID below to sign in.`
+              : <>Copy this password now — it{"'"}s shown here only once and can&apos;t be viewed again later.
+                  {emailed ? ` It's also been emailed to ${roleLabel ? 'them' : name}.` : ' They can set their own the first time they log in.'}
+                  {roleLabel === 'Parent'
+                    ? ' You can change it anytime from this student’s details, under Guardian login.'
+                    : ''}</>}
           </DialogPrimitive.Description>
 
           <div className="mt-4 space-y-2 rounded-xl border border-border bg-muted/50 p-3.5">

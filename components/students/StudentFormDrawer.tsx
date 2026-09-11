@@ -230,7 +230,12 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   // just reusing TempPasswordDialog's plain password shape) since it needs
   // to show the systemId alongside the PIN.
   type TempPasswordInfo =
-    | { kind: 'password'; name: string; phone: string; tempPassword: string; emailed: boolean }
+    // 'password' is the guardian in most cases here (the student normally
+    // gets the 'pin' kind below) — roleLabel makes that explicit in the
+    // dialog, since the name shown is the parent's, not the student's. Left
+    // optional/omitted for the one legacy resend-to-student-phone path below,
+    // where the name shown already unambiguously belongs to the student.
+    | { kind: 'password'; name: string; phone: string; tempPassword: string; emailed: boolean; roleLabel?: 'Parent' }
     | { kind: 'pin'; name: string; systemId: string; pin: string };
   // A queue, not a single value — creating a student can mint up to TWO new
   // logins at once (the student's own + a brand-new guardian's), each with
@@ -297,6 +302,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
             phone: parentPhone || '',
             tempPassword: res.data.guardianTempPassword,
             emailed: true,
+            roleLabel: 'Parent',
           }]);
         }
       } else {
@@ -329,6 +335,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
             phone: parentPhone || '',
             tempPassword: res.data.guardianTempPassword,
             emailed: true,
+            roleLabel: 'Parent',
           });
         }
         if (queue.length) setTempPasswordQueue(queue);
@@ -361,6 +368,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         phone: target === 'student' ? student.phone ?? '' : student.guardianPhone ?? '',
         tempPassword: res.data.tempPassword,
         emailed: true,
+        roleLabel: target === 'parent' ? 'Parent' : undefined,
       }]);
       toast.success(`New login details sent to ${res.data.sentTo}`);
     } catch (e: any) {

@@ -118,7 +118,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
   const [setGuardianPassword, { isLoading: settingPassword }] = useSetGuardianPasswordMutation();
   type CredentialAction = 'resend' | 'pin' | 'setpw';
   const [pendingCredAction, setPendingCredAction] = useState<CredentialAction | null>(null);
-  const [credReveal, setCredReveal] = useState<{ name: string; systemId?: string; pin?: string; password?: string } | null>(null);
+  const [credReveal, setCredReveal] = useState<{ name: string; systemId?: string; pin?: string; password?: string; roleLabel?: string } | null>(null);
 
   const openResendConfirm = () => setPendingCredAction('resend');
   const openResetPinConfirm = () => setPendingCredAction('pin');
@@ -136,7 +136,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
         setRevealedPin(undefined);
       } else {
         const res = await setGuardianPassword({ id: studentId }).unwrap();
-        setCredReveal({ name: res.data.guardianName, password: res.data.password });
+        setCredReveal({ name: res.data.guardianName, password: res.data.password, roleLabel: 'Parent' });
       }
       setPendingCredAction(null);
     } catch (e: any) {
@@ -642,6 +642,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
         systemId={credReveal?.systemId}
         pin={credReveal?.pin}
         tempPassword={credReveal?.password}
+        roleLabel={credReveal?.roleLabel}
       />
     </Sheet>
   );

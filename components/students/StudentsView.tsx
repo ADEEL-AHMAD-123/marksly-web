@@ -167,22 +167,30 @@ export function StudentsView() {
           isLoading ? 'Loading…' : `${total} student${total === 1 ? '' : 's'} total`
         }
         actions={
-          <>
-            {/* Demoted below Add Student, and relabeled — "Import CSV" named
-                the file format, not what the action does. "Bulk import"
-                says what it's for; the file-format detail still lives in
-                the drawer itself. Used a handful of times per admission
-                cycle, not per visit, so it stays visually secondary. */}
-            <Button variant="ghost" size="sm" onClick={() => setRosterOpen(true)}>
-              <Users2 size={16} /> Class logins
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)}>
-              <Upload size={16} /> Bulk import
-            </Button>
-            <Button variant="primary" size="sm" onClick={openAdd}>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            {/* Secondary actions — relabeled to say what they actually do
+                rather than naming a feature/file-format ("Class logins" and
+                "Bulk import" didn't explain themselves to a first-time
+                admin). Grouped and evenly split so they don't wrap
+                unpredictably on narrow screens; demoted below Add Student
+                since they're used a handful of times per admission cycle,
+                not per visit. */}
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" className="flex-1 sm:flex-none" onClick={() => setRosterOpen(true)}>
+                <Users2 size={16} /> View/export logins
+              </Button>
+              <Button variant="ghost" size="sm" className="flex-1 sm:flex-none" onClick={() => setImportOpen(true)}>
+                <Upload size={16} /> Import from CSV
+              </Button>
+            </div>
+            {/* Full-width on mobile and listed last in source order but
+                visually primary — the one action most admins want most
+                often, so it shouldn't have to compete for wrap space with
+                the two secondary buttons above on a narrow screen. */}
+            <Button variant="primary" size="sm" className="w-full sm:w-auto" onClick={openAdd}>
               <Plus size={16} /> Add Student
             </Button>
-          </>
+          </div>
         }
       />
 
@@ -472,7 +480,7 @@ export function StudentsView() {
           <p>Guardians get a separate parent login — the phone/email entered as guardian for a student is automatically emailed its own temporary password. One guardian phone linked to more than one child means one shared login for all of them.</p>
         </InfoNote>
         <InfoNote title="Lost a Login ID or PIN, or need to look one up later?">
-          <p>Every student&apos;s Login ID and PIN is shown right here in the table — click the eye icon to reveal a PIN, or open a student to reset it from their details. For bulk lookup or CSV export by class/section, use the <strong>Class logins</strong> button above.</p>
+          <p>Every student&apos;s Login ID and PIN is shown right here in the table — click the eye icon to reveal a PIN, or open a student to reset it from their details. For bulk lookup or CSV export by class/section, use the <strong>View/export logins</strong> button above.</p>
         </InfoNote>
         <InfoNote title="Guardian email missing or bounced?">
           <p>Open the student and use <strong>Resend login</strong> or <strong>Set password</strong> under Guardian login. It&apos;ll warn you first if that guardian has already signed in, since resending overwrites their current password.</p>
@@ -496,7 +504,7 @@ export function StudentsView() {
             onInteractOutside={(e) => { if (isInsideRadixPopper(e.target)) e.preventDefault(); }}
           >
             <div className="flex items-center justify-between">
-              <DialogPrimitive.Title className="text-base font-semibold">Class logins</DialogPrimitive.Title>
+              <DialogPrimitive.Title className="text-base font-semibold">View/export logins</DialogPrimitive.Title>
               <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Close">
                 <X size={16} />
               </DialogPrimitive.Close>
@@ -538,7 +546,7 @@ export function StudentsView() {
         helpText={'Students never have their own email/phone — only guardian contact (guardianPhone + guardianEmail) is collected, and is required for every row. "nationalIdNumber" (Form B/CNIC, format 42101-1234567-1) is optional. Running more than one active term at once (e.g. overlapping semesters)? Add an optional "term" column with the exact term name if any class name exists in more than one active term — otherwise it can be left out.'}
         resultNote={
           <>
-            Logins aren&apos;t emailed or shown per row here — each student got a Login ID and PIN automatically. Find them in the table above, or use the <strong>Class logins</strong> button for bulk lookup/export.
+            Logins aren&apos;t emailed or shown per row here — each student got a Login ID and PIN automatically. Find them in the table above, or use the <strong>View/export logins</strong> button for bulk lookup/export.
           </>
         }
       />
