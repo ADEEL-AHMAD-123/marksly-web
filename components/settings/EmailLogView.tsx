@@ -44,18 +44,20 @@ type View = EmailCategory | 'all' | 'missing';
 
 const VIEW_TABS: { value: View; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'welcome_credentials', label: 'Students & parents' },
+  { value: 'welcome_credentials', label: 'Parents / guardians' },
   { value: 'invite', label: 'Teachers & staff' },
   { value: 'missing', label: 'No email on file' },
 ];
 
 const CATEGORY_LABEL: Record<EmailCategory, string> = {
-  welcome_credentials: 'Student / parent login',
+  // Students log in with an auto-generated Login ID + PIN, not email — only
+  // their guardian gets an email, so this is never a "student" email.
+  welcome_credentials: 'Parent / guardian login',
   invite: 'Teacher / staff invite',
 };
 
 const CATEGORY_MEANING: Record<EmailCategory, string> = {
-  welcome_credentials: 'A temporary password so this student or parent can log in — sent the moment you added them.',
+  welcome_credentials: 'A temporary password so this student’s guardian can log in — sent the moment you added the student.',
   invite: 'An activation link so this teacher/staff/accountant can set their own password — sent the moment you added them.',
 };
 
@@ -142,7 +144,12 @@ export function EmailLogView() {
   };
   const jumpToProblems = () => {
     setView('all');
-    setStatus('all');
+    // The status filter only accepts one value at a time, and 'failed' is
+    // the larger/more common bucket of the two problem statuses — bounced
+    // emails still show up via the alert banner's counts and are visible by
+    // switching the status pill. Previously this set 'all', which matched
+    // the already-default state and made the button do nothing.
+    setStatus('failed');
     setPage(1);
     requestAnimationFrame(() => topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
@@ -207,7 +214,7 @@ export function EmailLogView() {
           title rather than the (removed) generic "How do they log in?"
           default that used to show here by mistake. */}
       <InfoNote title="What is this page for?">
-        <p>When you add a student, parent, teacher, or staff member with an email on file, Marksly sends their login details right away — a temporary password for students/parents, an activation link for teachers/staff. This page shows whether that first email actually reached them.</p>
+        <p>When you add a student, teacher, or staff member, Marksly sends login details right away by email — a temporary password to the student&apos;s guardian (students log in with an ID + PIN, not email), or an activation link for teachers/staff. This page shows whether that first email actually reached them.</p>
         <p>It only covers that one first email — not password resets or anything else, since those are requested by the person themselves.</p>
       </InfoNote>
 

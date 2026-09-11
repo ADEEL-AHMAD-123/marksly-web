@@ -101,9 +101,9 @@ export function TeachersView() {
         }
       />
 
-      <InfoNote title="How do they log in?">
+      <InfoNote title="How do they log in?" link={{ href: '/admin/email-log', label: 'Check Email Delivery Status' }}>
         <p>Teachers log in at the same <strong>Log in</strong> page as everyone else, using the phone or email entered when they were added. They&apos;re emailed an activation link and choose their own password the first time — there&apos;s no temporary password to hand out.</p>
-        <p>Activation email never arrived? Use <strong>Resend invite</strong> on their row.</p>
+        <p>Activation email never arrived? Use <strong>Resend invite</strong> on their row, or check <strong>Email Delivery Status</strong> to see if it bounced.</p>
       </InfoNote>
 
       <Card className="p-4">

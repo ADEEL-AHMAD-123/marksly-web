@@ -106,9 +106,9 @@ export function StudentsView() {
       />
 
       <InfoNote title="How do they log in?" link={{ href: '/admin/students/roster', label: 'Go to Student Logins' }}>
-        <p>Students log in with their Login ID (printed on their ID card, e.g. MKS-XXXXXXXX) plus a PIN set by the school — shown once when the student is added, or any time via <strong>Reset PIN</strong> on the student. Students can change their own PIN later from their account.</p>
-        <p>Guardians get a separate parent login — the phone/email entered as guardian for a student, emailed its own temporary password. One guardian phone linked to more than one child means one shared login for all of them.</p>
-        <p>Need to look up or reset a student&apos;s Login ID and PIN by class/section in bulk? Use the Student Logins page.</p>
+        <p>Students log in with a Login ID (e.g. MKS-XXXXXXXX) and a PIN — both generated automatically by the system the moment a student is added, no setup needed. Both are shown once right after adding the student, and printed on their ID card. Students can change their own PIN later from their account.</p>
+        <p>Guardians get a separate parent login — the phone/email entered as guardian for a student is automatically emailed its own temporary password. One guardian phone linked to more than one child means one shared login for all of them.</p>
+        <p>Lost the Login ID/PIN, or need to look one up or reset it later? Every student&apos;s Login ID and PIN can be viewed, edited, or reset — one at a time or in bulk by class/section — from the <strong>Student Logins</strong> page.</p>
         <p>Missing or bounced guardian email? Open the student, use <strong>Resend parent login</strong> to send a fresh password.</p>
       </InfoNote>
 
