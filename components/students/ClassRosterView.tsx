@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Download, Eye, EyeOff, KeyRound, Loader2, Users2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Eye, EyeOff, KeyRound, Loader2, Users2, X } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -81,6 +81,25 @@ export function ClassRosterView({ mode, embedded }: Props) {
     { skip: !ready }
   );
   const roster = data?.data;
+
+  // The section roster is fetched in one shot (a section is bounded — even
+  // a large one rarely exceeds a hundred students, so there's no need for
+  // server-side paging), but a class of 40-50 students rendered as one long
+  // table/card list was still unwieldy to scan — paginate client-side
+  // instead. Resets to page 1 whenever the selected section (or its
+  // student count) changes, so switching sections never leaves you
+  // stranded on a page number that no longer has any rows.
+  const PAGE_SIZE = 15;
+  const [page, setPage] = useState(1);
+  const students = roster?.students ?? [];
+  const totalPages = Math.max(1, Math.ceil(students.length / PAGE_SIZE));
+  const pagedStudents = students.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  useEffect(() => {
+    setPage(1);
+  }, [classId, sectionId]);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const [exportRoster, { isFetching: exporting }] = useLazyExportSectionRosterQuery();
   const onExport = async () => {
@@ -166,39 +185,94 @@ export function ClassRosterView({ mode, embedded }: Props) {
       ) : roster.students.length === 0 ? (
         <Card><EmptyState icon={Users2} title="No active students in this section" description="Add students to this class/section first." /></Card>
       ) : (
-        <TableWrapper>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Name</TableHead>
-                <TableHead>Login ID</TableHead>
-                <TableHead>Student PIN</TableHead>
-                {isAdmin && (
-                  <>
-                    <TableHead>Guardian</TableHead>
-                    <TableHead>Guardian PIN</TableHead>
-                  </>
-                )}
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {roster.students.map((s) => (
-                <RosterRow
-                  key={s.id}
-                  student={s}
-                  isAdmin={isAdmin}
-                  onResetPin={() => setResetTarget({ id: s.id, name: s.name, systemId: s.systemId })}
-                  onResetGuardianPin={
-                    s.guardianId
-                      ? () => setResetGuardianTarget({ studentId: s.id, guardianId: s.guardianId!, name: s.guardianName || 'Parent' })
-                      : undefined
-                  }
-                />
-              ))}
-            </TableBody>
-          </Table>
-        </TableWrapper>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block">
+            <TableWrapper>
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Name</TableHead>
+                    <TableHead>Login ID</TableHead>
+                    <TableHead>Student PIN</TableHead>
+                    {isAdmin && (
+                      <>
+                        <TableHead>Guardian</TableHead>
+                        <TableHead>Guardian PIN</TableHead>
+                      </>
+                    )}
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pagedStudents.map((s) => (
+                    <RosterRow
+                      key={s.id}
+                      student={s}
+                      isAdmin={isAdmin}
+                      onResetPin={() => setResetTarget({ id: s.id, name: s.name, systemId: s.systemId })}
+                      onResetGuardianPin={
+                        s.guardianId
+                          ? () => setResetGuardianTarget({ studentId: s.id, guardianId: s.guardianId!, name: s.guardianName || 'Parent' })
+                          : undefined
+                      }
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            </TableWrapper>
+          </div>
+
+          {/* Mobile cards — the 5-column admin table has no reasonable
+              small-screen equivalent, so this is a full card layout rather
+              than a squeezed table, matching StudentsView.tsx's own
+              desktop-table/mobile-card split. */}
+          <div className="space-y-3 md:hidden">
+            {pagedStudents.map((s) => (
+              <RosterCard
+                key={s.id}
+                student={s}
+                isAdmin={isAdmin}
+                onResetPin={() => setResetTarget({ id: s.id, name: s.name, systemId: s.systemId })}
+                onResetGuardianPin={
+                  s.guardianId
+                    ? () => setResetGuardianTarget({ studentId: s.id, guardianId: s.guardianId!, name: s.guardianName || 'Parent' })
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+
+          {/* Pagination — same pattern as StudentsView.tsx's own list. */}
+          {students.length > PAGE_SIZE && (
+            <Card className="flex items-center justify-between px-4 py-3">
+              <p className="text-sm text-muted-foreground">
+                Page <span className="font-medium text-foreground">{page}</span> of {totalPages}
+                <span className="ml-1.5">· {students.length} student{students.length === 1 ? '' : 's'}</span>
+              </p>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={16} />
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  aria-label="Next page"
+                >
+                  <ChevronRight size={16} />
+                </Button>
+              </div>
+            </Card>
+          )}
+        </>
       )}
 
       {resetTarget && (
@@ -222,48 +296,61 @@ export function ClassRosterView({ mode, embedded }: Props) {
   );
 }
 
-function RosterRow({
-  student, isAdmin, onResetPin, onResetGuardianPin,
-}: {
-  student: {
-    id: string; name: string; rollNumber: string; profilePhoto?: string | null; systemId: string | null;
-    pinState: 'school_issued' | 'student_set'; pin?: string | null;
-    guardianId?: string | null; guardianName?: string | null; guardianPhone?: string | null;
-    guardianPinState?: 'school_issued' | 'guardian_set' | null;
-  };
-  isAdmin: boolean;
-  onResetPin: () => void;
-  onResetGuardianPin?: () => void;
-}) {
+type RosterStudent = {
+  id: string; name: string; rollNumber: string; profilePhoto?: string | null; systemId: string | null;
+  pinState: 'school_issued' | 'student_set'; pin?: string | null;
+  guardianId?: string | null; guardianName?: string | null; guardianPhone?: string | null;
+  guardianPinState?: 'school_issued' | 'guardian_set' | null;
+};
+
+/** Reveal-on-demand state for a student's own PIN — shared between the
+ *  desktop row and mobile card so the interaction (and its loading/error
+ *  handling) stays identical in both. */
+function useStudentPinReveal(studentId: string) {
   const [revealed, setRevealed] = useState<string | null | 'loading'>(null);
   const [triggerGetPin] = useLazyGetStudentPinQuery();
-
   const onReveal = async () => {
     if (revealed && revealed !== 'loading') { setRevealed(null); return; }
     setRevealed('loading');
     try {
-      const res = await triggerGetPin(student.id).unwrap();
+      const res = await triggerGetPin(studentId).unwrap();
       setRevealed(res.data.pin);
     } catch (e) {
       toast.error(getErrorMessage(e, 'Could not fetch PIN'));
       setRevealed(null);
     }
   };
+  return { revealed, onReveal };
+}
 
-  // Same reveal-on-demand pattern, for the guardian's PIN.
-  const [revealedGuardianPin, setRevealedGuardianPin] = useState<string | null | 'loading'>(null);
+/** Same reveal-on-demand pattern, for the guardian's PIN. */
+function useGuardianPinReveal(studentId: string) {
+  const [revealed, setRevealed] = useState<string | null | 'loading'>(null);
   const [triggerGetGuardianPin] = useLazyGetGuardianPinQuery();
-  const onRevealGuardian = async () => {
-    if (revealedGuardianPin && revealedGuardianPin !== 'loading') { setRevealedGuardianPin(null); return; }
-    setRevealedGuardianPin('loading');
+  const onReveal = async () => {
+    if (revealed && revealed !== 'loading') { setRevealed(null); return; }
+    setRevealed('loading');
     try {
-      const res = await triggerGetGuardianPin({ id: student.id }).unwrap();
-      setRevealedGuardianPin(res.data.pin);
+      const res = await triggerGetGuardianPin({ id: studentId }).unwrap();
+      setRevealed(res.data.pin);
     } catch (e) {
       toast.error(getErrorMessage(e, 'Could not fetch PIN'));
-      setRevealedGuardianPin(null);
+      setRevealed(null);
     }
   };
+  return { revealed, onReveal };
+}
+
+function RosterRow({
+  student, isAdmin, onResetPin, onResetGuardianPin,
+}: {
+  student: RosterStudent;
+  isAdmin: boolean;
+  onResetPin: () => void;
+  onResetGuardianPin?: () => void;
+}) {
+  const { revealed, onReveal } = useStudentPinReveal(student.id);
+  const { revealed: revealedGuardianPin, onReveal: onRevealGuardian } = useGuardianPinReveal(student.id);
   const canRevealGuardian = isAdmin && !!student.guardianId && (student.guardianPinState ?? 'school_issued') === 'school_issued';
 
   // `pin` is only ever present in the roster row itself for an admin-scoped
@@ -365,6 +452,118 @@ function RosterRow({
         </div>
       </TableCell>
     </TableRow>
+  );
+}
+
+/** Mobile equivalent of RosterRow — a self-contained card instead of a table
+ *  row, since the admin view's 5 columns have no reasonable squeezed-table
+ *  form on a phone-width screen. */
+function RosterCard({
+  student, isAdmin, onResetPin, onResetGuardianPin,
+}: {
+  student: RosterStudent;
+  isAdmin: boolean;
+  onResetPin: () => void;
+  onResetGuardianPin?: () => void;
+}) {
+  const { revealed, onReveal } = useStudentPinReveal(student.id);
+  const { revealed: revealedGuardianPin, onReveal: onRevealGuardian } = useGuardianPinReveal(student.id);
+  const canRevealGuardian = isAdmin && !!student.guardianId && (student.guardianPinState ?? 'school_issued') === 'school_issued';
+  const canReveal = isAdmin && student.pinState === 'school_issued';
+
+  return (
+    <Card className="p-3.5">
+      <div className="flex items-center gap-3">
+        <Avatar
+          photoUrl={student.profilePhoto}
+          alt={student.name}
+          initials={getInitials(student.name.split(' ')[0] || '', student.name.split(' ')[1] || '')}
+          size="sm"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium text-foreground">{student.name}</p>
+          <p className="text-xs text-muted-foreground">
+            Roll: {student.rollNumber}
+            {student.systemId && <span dir="ltr" className="ml-1 font-mono">· {student.systemId}</span>}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 space-y-2 border-t border-border pt-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">Student PIN</span>
+          {student.pinState === 'student_set' ? (
+            <Badge variant="neutral">Student-set</Badge>
+          ) : canReveal ? (
+            <div className="flex items-center gap-2">
+              {revealed && revealed !== 'loading' && (
+                <span dir="ltr" className="font-mono font-semibold tracking-wide">{revealed}</span>
+              )}
+              <Button size="sm" variant="ghost" onClick={onReveal}>
+                {revealed === 'loading' ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : revealed ? (
+                  <EyeOff size={14} />
+                ) : (
+                  <Eye size={14} />
+                )}
+                {revealed && revealed !== 'loading' ? 'Hide' : 'Reveal'}
+              </Button>
+            </div>
+          ) : (
+            <span className="text-sm text-muted-foreground">Not viewable</span>
+          )}
+        </div>
+
+        {isAdmin && (
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <span className="text-xs text-muted-foreground">Guardian</span>
+              {student.guardianId ? (
+                <>
+                  <p className="truncate text-sm text-foreground">{student.guardianName || '—'}</p>
+                  {student.guardianPhone && <p dir="ltr" className="text-xs text-muted-foreground">{student.guardianPhone}</p>}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">None</p>
+              )}
+            </div>
+            {student.guardianId && (
+              student.guardianPinState === 'guardian_set' ? (
+                <Badge variant="neutral">Self-set</Badge>
+              ) : canRevealGuardian ? (
+                <div className="flex shrink-0 items-center gap-2">
+                  {revealedGuardianPin && revealedGuardianPin !== 'loading' && (
+                    <span dir="ltr" className="font-mono text-sm font-semibold tracking-wide">{revealedGuardianPin}</span>
+                  )}
+                  <Button size="sm" variant="ghost" onClick={onRevealGuardian}>
+                    {revealedGuardianPin === 'loading' ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : revealedGuardianPin ? (
+                      <EyeOff size={14} />
+                    ) : (
+                      <Eye size={14} />
+                    )}
+                    {revealedGuardianPin && revealedGuardianPin !== 'loading' ? 'Hide' : 'Reveal'}
+                  </Button>
+                </div>
+              ) : null
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+        <Button size="sm" variant="secondary" onClick={onResetPin}>
+          <KeyRound size={14} /> Reset student PIN
+        </Button>
+        {onResetGuardianPin && (
+          <Button size="sm" variant="secondary" onClick={onResetGuardianPin}>
+            <KeyRound size={14} /> Reset guardian PIN
+          </Button>
+        )}
+      </div>
+    </Card>
   );
 }
 
