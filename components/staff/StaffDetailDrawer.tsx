@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { useUpdateUserMutation, type ManagedUser } from '@/store/api/usersApi';
 import { Avatar } from '@/components/ui/avatar';
@@ -295,18 +296,13 @@ export function StaffDetailDrawer({ member, open, onClose, onEdit }: Props) {
       />
 
       {resetResultPin && m && (
-        <ConfirmDialog
+        <TempPasswordDialog
           open
           onClose={() => setResetResultPin(null)}
-          onConfirm={() => setResetResultPin(null)}
-          title="New PIN"
-          description={
-            <>
-              <strong>{m.name}</strong>&apos;s new PIN is <strong dir="ltr">{resetResultPin}</strong>. Hand it over
-              directly — it won&apos;t be shown again after you close this.
-            </>
-          }
-          confirmLabel="Done"
+          name={m.name}
+          systemId={m.systemId ?? undefined}
+          pin={resetResultPin}
+          roleLabel={roleLabel(m.role)}
         />
       )}
 

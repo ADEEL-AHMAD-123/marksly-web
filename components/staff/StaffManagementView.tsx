@@ -40,7 +40,6 @@ import {
   useUpdateUserMutation,
   useBulkImportUsersMutation,
   useLazyGetStaffPinQuery,
-  useResetStaffPinMutation,
   useResendInviteMutation,
   type ManageableRole,
   type ManagedUser,
@@ -491,85 +490,6 @@ function LoadingState() {
         </div>
       ))}
     </div>
-  );
-}
-
-/** Resets (or sets a custom) PIN for a staff-type account — same
- *  random/custom choice and reveal-once flow as ClassRosterView.tsx's
- *  ResetPinDialog for students. */
-export function ResetPinDialog({ userId, name, systemId, onClose }: { userId: string; name: string; systemId?: string | null; onClose: () => void }) {
-  const [resetPin, { isLoading }] = useResetStaffPinMutation();
-  const [mode, setMode] = useState<'random' | 'custom'>('random');
-  const [customPin, setCustomPin] = useState('');
-  const [result, setResult] = useState<string | null>(null);
-
-  const digitsOnly = (v: string) => v.replace(/\D/g, '').slice(0, 6);
-  const validCustom = mode === 'random' || (customPin.length >= 4 && customPin.length <= 6);
-
-  const onSubmit = async () => {
-    try {
-      const res = await resetPin({ id: userId, customPin: mode === 'custom' ? customPin : undefined }).unwrap();
-      setResult(res.data.pin);
-    } catch (e) {
-      toast.error(getErrorMessage(e, 'Could not reset PIN'));
-    }
-  };
-
-  if (result) {
-    return <TempPasswordDialog open onClose={onClose} name={name} systemId={systemId ?? undefined} pin={result} />;
-  }
-
-  return (
-    <DialogPrimitive.Root open onOpenChange={(o) => !o && onClose()}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm" />
-        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none">
-          <div className="flex items-center justify-between">
-            <DialogPrimitive.Title className="text-base font-semibold">Reset PIN — {name}</DialogPrimitive.Title>
-            <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
-              <X size={16} />
-            </DialogPrimitive.Close>
-          </div>
-          <div className="mt-4 space-y-3">
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setMode('random')}
-                className={cn('flex-1 rounded-lg border px-3 py-2 text-sm font-medium', mode === 'random' ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border text-muted-foreground')}
-              >
-                Random PIN
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('custom')}
-                className={cn('flex-1 rounded-lg border px-3 py-2 text-sm font-medium', mode === 'custom' ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border text-muted-foreground')}
-              >
-                Custom PIN
-              </button>
-            </div>
-            {mode === 'custom' && (
-              <div>
-                <Label htmlFor="custom-pin">New PIN (4-6 digits)</Label>
-                <Input
-                  id="custom-pin"
-                  dir="ltr"
-                  inputMode="numeric"
-                  value={customPin}
-                  onChange={(e) => setCustomPin(digitsOnly(e.target.value))}
-                  placeholder="e.g. 1234"
-                />
-              </div>
-            )}
-          </div>
-          <div className="mt-5 flex items-center justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
-            <Button size="sm" disabled={!validCustom || isLoading} loading={isLoading} onClick={onSubmit}>
-              Reset PIN
-            </Button>
-          </div>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
   );
 }
 
