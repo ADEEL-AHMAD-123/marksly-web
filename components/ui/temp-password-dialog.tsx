@@ -47,10 +47,15 @@ export function TempPasswordDialog({ open, onClose, name, phone, tempPassword, s
   const idValue = isPin ? systemId : phone;
   const secretLabel = isPin ? 'PIN' : 'Password';
   const secretValue = isPin ? pin! : tempPassword!;
+  // idValue can be absent for a plain password reveal with no phone/systemId
+  // context handy (e.g. handing a guardian a password directly from the
+  // student detail drawer) — the id row is simply skipped in that case,
+  // rather than showing a blank value.
+  const showIdRow = !!idValue;
 
   const copyAll = async () => {
     try {
-      await navigator.clipboard.writeText(`${idLabel}: ${idValue}\n${secretLabel}: ${secretValue}`);
+      await navigator.clipboard.writeText(`${showIdRow ? `${idLabel}: ${idValue}\n` : ''}${secretLabel}: ${secretValue}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -84,10 +89,12 @@ export function TempPasswordDialog({ open, onClose, name, phone, tempPassword, s
           </DialogPrimitive.Description>
 
           <div className="mt-4 space-y-2 rounded-xl border border-border bg-muted/50 p-3.5">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{idLabel}</span>
-              <span dir="ltr" className="font-medium">{idValue}</span>
-            </div>
+            {showIdRow && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">{idLabel}</span>
+                <span dir="ltr" className="font-medium">{idValue}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">{secretLabel}</span>
               <span dir="ltr" className="font-mono font-semibold tracking-wide">{secretValue}</span>

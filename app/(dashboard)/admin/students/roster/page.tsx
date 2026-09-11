@@ -1,8 +1,8 @@
-import type { Metadata } from 'next';
-import { ClassRosterView } from '@/components/students/ClassRosterView';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = { title: 'Student Logins' };
-
+// The standalone Student Logins page was merged into the Students page (see
+// StudentsView.tsx's "Class logins" dialog and its Login column) — this
+// route is kept only so old bookmarks/links don't 404.
 export default function Page() {
-  return <ClassRosterView mode="admin" />;
+  redirect('/admin/students');
 }

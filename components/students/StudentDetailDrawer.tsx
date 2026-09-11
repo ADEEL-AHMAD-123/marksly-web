@@ -1,19 +1,29 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Pencil, UserMinus, UserCheck, AlertCircle, Wallet, Printer, GraduationCap, ChevronDown } from 'lucide-react';
+import {
+  X, Pencil, UserMinus, UserCheck, AlertCircle, Wallet, Printer, GraduationCap, ChevronDown,
+  KeyRound, Eye, EyeOff, Send, LockKeyhole, Mail, MailWarning, UserX,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import {
   useGetStudentQuery,
   useDeleteStudentMutation,
   useUpdateStudentMutation,
   useGetStudentCgpaQuery,
   useGetStudentTermGpaQuery,
+  useGetStudentContactStatusQuery,
+  useLazyGetStudentPinQuery,
+  useResendStudentCredentialsMutation,
+  useResetStudentPinMutation,
+  useSetGuardianPasswordMutation,
   type StudentListItem,
 } from '@/store/api/studentsApi';
 import { useGetFeeCardQuery } from '@/store/api/feesApi';
@@ -77,6 +87,62 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
     { skip: !studentId || !expandedTermId }
   );
   const termGpa = termGpaData?.data;
+
+  // Login + Guardian login sections — see getContactStatus() in
+  // student.service.ts. Same informed-confirm pattern as the row quick
+  // actions on StudentsView.tsx (fetch context first, then confirm),
+  // reused here so a "resend"/"reset"/"set password" from the drawer
+  // behaves identically to one from the table row.
+  const { data: contactStatusData } = useGetStudentContactStatusQuery(studentId as string, { skip: !studentId || !open });
+  const contactStatus = contactStatusData?.data;
+
+  const [fetchPin] = useLazyGetStudentPinQuery();
+  const [revealedPin, setRevealedPin] = useState<string | null | undefined>(undefined);
+  const [revealingPin, setRevealingPin] = useState(false);
+  const togglePinReveal = async () => {
+    if (!studentId) return;
+    if (revealedPin !== undefined) { setRevealedPin(undefined); return; }
+    setRevealingPin(true);
+    try {
+      const res = await fetchPin(studentId).unwrap();
+      setRevealedPin(res.data.pin);
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Could not reveal PIN'));
+    } finally {
+      setRevealingPin(false);
+    }
+  };
+
+  const [resendCredentials, { isLoading: resending }] = useResendStudentCredentialsMutation();
+  const [resetPin, { isLoading: resettingPin }] = useResetStudentPinMutation();
+  const [setGuardianPassword, { isLoading: settingPassword }] = useSetGuardianPasswordMutation();
+  type CredentialAction = 'resend' | 'pin' | 'setpw';
+  const [pendingCredAction, setPendingCredAction] = useState<CredentialAction | null>(null);
+  const [credReveal, setCredReveal] = useState<{ name: string; systemId?: string; pin?: string; password?: string } | null>(null);
+
+  const openResendConfirm = () => setPendingCredAction('resend');
+  const openResetPinConfirm = () => setPendingCredAction('pin');
+  const openSetPasswordConfirm = () => setPendingCredAction('setpw');
+
+  const runCredAction = async () => {
+    if (!studentId || !pendingCredAction || !s) return;
+    try {
+      if (pendingCredAction === 'resend') {
+        const res = await resendCredentials({ id: studentId, target: 'parent' }).unwrap();
+        toast.success(`Sent to ${res.data.sentTo}`);
+      } else if (pendingCredAction === 'pin') {
+        const res = await resetPin({ id: studentId }).unwrap();
+        setCredReveal({ name: s.name, systemId: s.systemId ?? '—', pin: res.data.pin });
+        setRevealedPin(undefined);
+      } else {
+        const res = await setGuardianPassword({ id: studentId }).unwrap();
+        setCredReveal({ name: res.data.guardianName, password: res.data.password });
+      }
+      setPendingCredAction(null);
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Could not complete this action'));
+    }
+  };
 
   const s = data?.data as any;
   const card = cardData?.data;
@@ -180,6 +246,46 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                   {s.status !== 'active' && s.leftReason && (
                     <Row label="Reason" value={s.leftReason} />
                   )}
+                </div>
+
+                {/* Login — Login ID + PIN, reveal/reset right here instead
+                    of routing to a separate page. See getContactStatus()
+                    for pinState (whether the current PIN can even be
+                    viewed vs. only reset). */}
+                <div className="mt-5">
+                  <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <KeyRound size={12} /> Login
+                  </p>
+                  <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
+                    <div>
+                      <p className="font-mono text-sm text-foreground">{s.systemId ?? 'Not generated yet'}</p>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        {contactStatus?.pinState === 'student_set' ? (
+                          <span className="text-xs text-muted-foreground" title="This student changed their own PIN — only viewable by resetting it.">
+                            Student-set PIN (not viewable)
+                          </span>
+                        ) : revealedPin !== undefined ? (
+                          <span className="font-mono text-sm font-medium text-foreground">{revealedPin}</span>
+                        ) : (
+                          <span className="font-mono text-sm text-muted-foreground">••••</span>
+                        )}
+                        {s.systemId && contactStatus?.pinState !== 'student_set' && (
+                          <button
+                            type="button"
+                            disabled={revealingPin}
+                            onClick={togglePinReveal}
+                            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                            aria-label={revealedPin !== undefined ? 'Hide PIN' : 'Reveal PIN'}
+                          >
+                            {revealedPin !== undefined ? <EyeOff size={13} /> : <Eye size={13} />}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <Button variant="secondary" size="sm" onClick={openResetPinConfirm}>
+                      <KeyRound size={14} /> Reset
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="mt-5">
@@ -318,6 +424,48 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                     </div>
                   </div>
                 )}
+
+                {/* Guardian login — folded in from the old Email Delivery
+                    Status page: status of the guardian's welcome email,
+                    plus the two recovery actions (resend, or hand over a
+                    password directly). Both go through the informed-confirm
+                    dialog below rather than firing blind. */}
+                <div className="mt-5">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Guardian login
+                  </p>
+                  {!contactStatus?.guardian ? (
+                    <div className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-sm text-muted-foreground">
+                      <UserX size={14} /> No guardian account on file.
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-border px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-foreground">{contactStatus.guardian.name}</p>
+                        {contactStatus.guardian.email ? (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Mail size={11} /> {contactStatus.guardian.email}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-xs text-warning">
+                            <MailWarning size={11} /> No email on file
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {contactStatus.guardian.hasLoggedIn ? 'Has signed in before.' : 'Has not signed in yet.'}
+                      </p>
+                      <div className="mt-2.5 flex items-center gap-2">
+                        <Button variant="secondary" size="sm" onClick={openResendConfirm}>
+                          <Send size={13} /> Resend login
+                        </Button>
+                        <Button variant="secondary" size="sm" onClick={openSetPasswordConfirm}>
+                          <LockKeyhole size={13} /> Set password
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -421,6 +569,73 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
           )}
         </div>
       </SheetContent>
+
+      {/* Resend / reset / set-password confirm — same informed-confirm
+          pattern as StudentsView.tsx's row quick actions. */}
+      <ConfirmDialog
+        open={!!pendingCredAction}
+        onClose={() => setPendingCredAction(null)}
+        onConfirm={runCredAction}
+        loading={pendingCredAction === 'resend' ? resending : pendingCredAction === 'pin' ? resettingPin : settingPassword}
+        tone={pendingCredAction === 'pin' && contactStatus?.pinState === 'student_set' ? 'warning' : 'default'}
+        title={
+          pendingCredAction === 'resend' ? 'Resend parent login?'
+          : pendingCredAction === 'pin' ? "Reset this student's PIN?"
+          : "Set this guardian's password?"
+        }
+        description={
+          pendingCredAction === 'resend' ? (
+            <>
+              {contactStatus?.guardian?.hasLoggedIn ? (
+                <>
+                  <strong>{contactStatus.guardian.name}</strong> has already signed in before — sending this mints a brand-new
+                  temporary password and emails it to them, which will lock them out of whatever password they&apos;re
+                  currently using, and uses one of your email sends.
+                </>
+              ) : (
+                <>
+                  This resends a fresh temporary password to <strong>{contactStatus?.guardian?.name}</strong> at{' '}
+                  {contactStatus?.guardian?.email ?? 'their email on file'}.
+                </>
+              )}
+            </>
+          ) : pendingCredAction === 'pin' ? (
+            contactStatus?.pinState === 'student_set' ? (
+              <>
+                <strong>{s?.name}</strong> has already set their own PIN. Resetting will overwrite it with a new one
+                you&apos;ll need to hand to them directly — their current PIN will stop working immediately.
+              </>
+            ) : (
+              <>
+                This mints a new PIN for <strong>{s?.name}</strong>. It&apos;s shown once right after — write it down
+                and hand it to the student or their guardian directly.
+              </>
+            )
+          ) : (
+            <>
+              This sets a new password for <strong>{contactStatus?.guardian?.name}</strong> directly — no email is sent.
+              It&apos;s shown once right after for you to hand over in person, and immediately replaces whatever password
+              they&apos;re currently using.
+            </>
+          )
+        }
+        confirmLabel={
+          pendingCredAction === 'resend' ? 'Send login email'
+          : pendingCredAction === 'pin' ? 'Reset PIN'
+          : 'Set password'
+        }
+      />
+
+      {/* One-time reveal — reused for both a fresh PIN reset and a fresh
+          guardian password, same contract as StudentsView.tsx's pinReveal. */}
+      <TempPasswordDialog
+        open={!!credReveal}
+        onClose={() => setCredReveal(null)}
+        name={credReveal?.name ?? ''}
+        systemId={credReveal?.systemId}
+        pin={credReveal?.pin}
+        tempPassword={credReveal?.password}
+      />
     </Sheet>
   );
 }

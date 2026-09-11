@@ -45,6 +45,10 @@ interface Props {
    *  and can reset/set a PIN but never view the current one — the backend
    *  simply omits the `pin` field for a teacher-scoped roster call. */
   mode: 'admin' | 'teacher';
+  /** True when rendered inside the Students page's "Class logins" dialog
+   *  instead of its own standalone page — hides the page-level header
+   *  since the dialog already has its own title. */
+  embedded?: boolean;
 }
 
 /**
@@ -53,7 +57,7 @@ interface Props {
  * import and single-add no longer show them per-row after the fact (see
  * StudentsView.tsx / StudentFormDrawer.tsx).
  */
-export function ClassRosterView({ mode }: Props) {
+export function ClassRosterView({ mode, embedded }: Props) {
   const terminology = useTerminology();
   const isAdmin = mode === 'admin';
   const { data: classesRes } = useGetClassesQuery(undefined, { skip: !isAdmin });
@@ -100,10 +104,12 @@ export function ClassRosterView({ mode }: Props) {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Student Logins"
-        description="Look up or reset a student's Login ID and PIN by class and section."
-      />
+      {!embedded && (
+        <PageHeader
+          title="Student Logins"
+          description="Look up or reset a student's Login ID and PIN by class and section."
+        />
+      )}
 
       <Card className="space-y-3 p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

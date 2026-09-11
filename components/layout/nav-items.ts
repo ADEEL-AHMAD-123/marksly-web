@@ -29,7 +29,11 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     // noticeable regardless of position.
     { label: 'Email Delivery Status', href: '/admin/email-log', icon: Mail },
     { label: 'ID Cards', href: '/admin/id-cards', icon: CreditCard },
-    { label: 'Student Logins', href: '/admin/students/roster', icon: KeyRound },
+    // "Student Logins" removed as a standalone nav item — every Login
+    // ID/PIN now lives right in the Students table, with bulk lookup/export
+    // via the "Class logins" button on that page (see StudentsView.tsx).
+    // The route itself is kept as a redirect for old bookmarks — see
+    // app/(dashboard)/admin/students/roster/page.tsx.
     // Academic structure — Academic Terms now comes first since it's the
     // foundational setup step Classes/Subjects/Timetable are actually scoped
     // to (you define a term before you can assign classes to it), not just

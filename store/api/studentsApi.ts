@@ -51,6 +51,13 @@ export interface StudentListItem {
   nationalIdNumber?: string | null;
   cardIssueDate?: string | null;
   cardExpiryDate?: string | null;
+  // Added for the merged Students table (replaces the standalone Student
+  // Logins/Email Delivery Status pages) — see student.service.ts's list().
+  pinState?: 'school_issued' | 'student_set' | null;
+  // 'no_guardian' when no guardian is linked at all, 'no_email' when a
+  // guardian exists but has no email on file, 'problem' when their latest
+  // welcome email failed/bounced, 'ok' otherwise.
+  guardianEmailStatus?: 'no_guardian' | 'no_email' | 'problem' | 'ok';
 }
 
 export interface StudentStats {
@@ -74,6 +81,12 @@ export interface ListStudentsParams {
   sortBy?: 'createdAt' | 'rollNumber' | 'admissionDate';
   sortOrder?: 'asc' | 'desc';
   incomplete?: boolean;
+  guardianEmailStatus?: 'problem' | 'no_email';
+}
+
+export interface GuardianEmailStats {
+  problem: number;
+  noEmail: number;
 }
 
 interface ApiList<T> {
@@ -233,6 +246,14 @@ export const studentsApi = baseApi.injectEndpoints({
       providesTags: [{ type: 'Students', id: 'STATS' }],
     }),
 
+    // Backs the Students page's needs-attention banner (folded in from the
+    // old Email Delivery Status page) — see student.service.ts's
+    // guardianEmailStats().
+    getGuardianEmailStats: builder.query<ApiObject<GuardianEmailStats>, void>({
+      query: () => '/students/guardian-email-stats',
+      providesTags: [{ type: 'Students', id: 'GUARDIAN_EMAIL_STATS' }],
+    }),
+
     getStudent: builder.query<ApiObject<StudentListItem>, string>({
       query: (id) => `/students/${id}`,
       providesTags: (_r, _e, id) => [{ type: 'Students', id }],
@@ -330,6 +351,23 @@ export const studentsApi = baseApi.injectEndpoints({
     // shown in the students list/table itself.
     resendStudentCredentials: builder.mutation<ApiObject<{ sentTo: string; tempPassword: string }>, { id: string; target: 'student' | 'parent' }>({
       query: ({ id, target }) => ({ url: `/students/${id}/resend-credentials`, method: 'POST', body: { target } }),
+    }),
+
+    // Admin hands a guardian's password directly — no email sent, the
+    // password is returned once for the admin to reveal on-screen. See
+    // student.service.ts's setGuardianPassword(). Refreshes guardian email
+    // stats too since a guardian who previously had no way to log in now
+    // does (doesn't change guardianEmailStatus itself, but keeps behavior
+    // consistent with other credential actions).
+    setGuardianPassword: builder.mutation<
+      ApiObject<{ password: string; guardianName: string }>,
+      { id: string; guardianUserId?: string; password?: string }
+    >({
+      query: ({ id, guardianUserId, password }) => ({
+        url: `/students/${id}/set-guardian-password`,
+        method: 'POST',
+        body: { guardianUserId, password },
+      }),
     }),
 
     // Admin or teacher (own sections only, enforced server-side) — mints a
@@ -447,17 +485,20 @@ export const studentsApi = baseApi.injectEndpoints({
 export const {
   useGetStudentsQuery,
   useGetStudentStatsQuery,
+  useGetGuardianEmailStatsQuery,
   useGetStudentQuery,
   useCreateStudentMutation,
   useUpdateStudentMutation,
   useDeleteStudentMutation,
   useBulkImportStudentsMutation,
   useResendStudentCredentialsMutation,
+  useSetGuardianPasswordMutation,
   useResetStudentPinMutation,
   useChangeMyPinMutation,
   useGetStudentPinQuery,
   useLazyGetStudentPinQuery,
   useLazyGetStudentContactStatusQuery,
+  useGetStudentContactStatusQuery,
   useGetSectionRosterQuery,
   useLazyExportSectionRosterQuery,
   useGetIdCardsQuery,
