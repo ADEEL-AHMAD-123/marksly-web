@@ -45,7 +45,7 @@ const TYPE_TONE: Record<InboxItemType, string> = {
 };
 
 /** The bell's dropdown — a real, working notification center (see
- *  RoleGuard/StaffView etc for the rest of this session's work; previously
+ *  RoleGuard/StaffManagementView etc for the rest of this session's work; previously
  *  this was a static, permanently-"unread" icon with nothing behind it,
  *  see Navbar.tsx's git history). Polls the unread count every 30s
  *  (see inboxApi.ts's comment on why polling over Socket.io for phase one)

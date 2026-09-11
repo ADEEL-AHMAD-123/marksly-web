@@ -47,9 +47,9 @@ interface Props {
    *  and can reset/set a PIN but never view the current one — the backend
    *  simply omits the `pin` field for a teacher-scoped roster call. */
   mode: 'admin' | 'teacher';
-  /** True when rendered inside the Students page's "Class logins" dialog
-   *  instead of its own standalone page — hides the page-level header
-   *  since the dialog already has its own title. */
+  /** True when rendered inside the "Login IDs & PINs" page's Students tab
+   *  (see LoginIdsView.tsx) instead of its own standalone page — hides the
+   *  page-level header since the parent page already has its own title. */
   embedded?: boolean;
 }
 

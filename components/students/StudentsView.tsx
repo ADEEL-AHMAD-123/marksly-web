@@ -573,9 +573,9 @@ export function StudentsView() {
   );
 }
 
-/** Login ID + masked/revealed PIN, inline in the table — replaces the old
- *  separate Student Logins page for the common "look up one PIN" case
- *  (bulk roster/export still lives behind the "Class logins" popup). Same
+/** Login ID + masked/revealed PIN, inline in the table — covers the common
+ *  "look up one PIN" case without leaving this page (bulk roster/export by
+ *  class/section lives on the dedicated Login IDs & PINs page). Same
  *  reveal/hide interaction as ClassRosterView's RosterRow. */
 function LoginCell({
   student, pin, revealing, onToggle,

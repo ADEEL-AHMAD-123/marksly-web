@@ -94,13 +94,12 @@ export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }:
 
           return items.map(({ label, href, icon: Icon }) => {
           const active = href === bestMatchHref;
-          const badgeCount = 0;
           return (
             <Link
               key={href}
               href={href}
               onClick={onNavigate}
-              title={collapsed ? (badgeCount > 0 ? `${label} (${badgeCount} need attention)` : label) : undefined}
+              title={collapsed ? label : undefined}
               className={cn(
                 'relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors lg:gap-3.5 lg:rounded-xl lg:px-3.5 lg:py-3',
                 collapsed && 'justify-center px-0 lg:px-0',
@@ -114,16 +113,8 @@ export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }:
               )}
               <span className="relative shrink-0">
                 <Icon size={18} className="lg:h-5 lg:w-5" />
-                {collapsed && badgeCount > 0 && (
-                  <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-danger" />
-                )}
               </span>
               {!collapsed && <span className="truncate lg:text-[15px]">{label}</span>}
-              {!collapsed && badgeCount > 0 && (
-                <span className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-semibold leading-none text-danger-foreground">
-                  {badgeCount > 99 ? '99+' : badgeCount}
-                </span>
-              )}
             </Link>
           );
           });

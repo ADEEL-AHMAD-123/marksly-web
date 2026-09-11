@@ -15,6 +15,14 @@ import { cn } from '@/lib/utils';
 import { useAcceptInviteMutation, useResendInviteSelfMutation } from '@/store/api/authApi';
 import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
 
+// LEGACY-ACCOUNTS-ONLY PAGE — teacher/staff/accountant accounts now log in
+// with a PIN (same phone/email + PIN mechanism as students/guardians),
+// active immediately with no verification gate; see user.service.ts's
+// create()/bulkImport(). This page only remains reachable for accounts
+// created before that PIN rewrite that still have an unused invite token
+// (see auth.service.ts's acceptInvite()) — it is not part of the current
+// account-creation flow and should not be treated as a template for it.
+
 // Same password rule used everywhere else (register, reset-password).
 const schema = z
   .object({
