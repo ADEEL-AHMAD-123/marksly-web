@@ -355,6 +355,18 @@ export const studentsApi = baseApi.injectEndpoints({
       query: (id) => `/students/${id}/pin`,
     }),
 
+    // Backs the "Resend parent login" / "Reset PIN" confirm dialogs — lazy
+    // (fetched only when the admin opens one of those actions), so the
+    // dialog can warn "this guardian already logged in, resending will
+    // overwrite their password" / "this student already set their own PIN,
+    // resetting will overwrite it" instead of firing blind.
+    getStudentContactStatus: builder.query<
+      ApiObject<{ guardian: { name: string; email: string | null; hasLoggedIn: boolean } | null; pinState: 'school_issued' | 'student_set' | null }>,
+      string
+    >({
+      query: (id) => `/students/${id}/contact-status`,
+    }),
+
     // Admin (any section) or teacher (their own assigned sections only,
     // enforced server-side — a 403 surfaces for a stale/foreign link).
     // `pin` is only present in each row for admin callers.
@@ -445,6 +457,7 @@ export const {
   useChangeMyPinMutation,
   useGetStudentPinQuery,
   useLazyGetStudentPinQuery,
+  useLazyGetStudentContactStatusQuery,
   useGetSectionRosterQuery,
   useLazyExportSectionRosterQuery,
   useGetIdCardsQuery,
