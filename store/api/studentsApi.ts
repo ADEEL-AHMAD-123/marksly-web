@@ -489,6 +489,15 @@ export const studentsApi = baseApi.injectEndpoints({
           systemId: string | null;
           pinState: 'school_issued' | 'student_set';
           pin?: string | null;
+          // Admin-only fields (see student.service.ts's getSectionRoster()) —
+          // a teacher-scoped call omits all of these, not just guardianPin.
+          admissionNumber?: string | null;
+          guardianId?: string | null;
+          guardianName?: string | null;
+          guardianPhone?: string | null;
+          guardianEmail?: string | null;
+          guardianPinState?: 'school_issued' | 'guardian_set' | null;
+          guardianPin?: string | null;
         }[];
       }>,
       { classId: string; sectionId: string }
