@@ -33,8 +33,11 @@ export function idCardFieldLabel(key: string, nationalIdLabel = 'Form B'): strin
 /**
  * Fields the backend's self-service `getMyCard` endpoints can ever include
  * in `missing` (see student.service.ts / user.service.ts) — confirmed by
- * reading the actual backend logic: only ever 'address' and 'bloodGroup'
- * (student only). Anything else that shows up here is presumed admin-only —
+ * reading the actual backend logic: 'address' and 'bloodGroup' (student
+ * only), plus 'nationalId' (CNIC/Form-B) for both, now that self-service
+ * editing of it exists (see updateMyContactSchema's/
+ * updateMyStudentContactSchema's own comments on why that's no longer
+ * admin-only). Anything else that shows up here is presumed admin-only —
  * i.e. not something the signed-in person has a mutation for.
  */
-export const SELF_FIXABLE_MISSING_KEYS: ReadonlySet<string> = new Set(['address', 'bloodGroup']);
+export const SELF_FIXABLE_MISSING_KEYS: ReadonlySet<string> = new Set(['address', 'bloodGroup', 'nationalId']);

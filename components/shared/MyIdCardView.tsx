@@ -161,11 +161,12 @@ function AdminOnlyMissingNote({ keys }: { keys: string[] }) {
 }
 
 /**
- * Self-service "My ID Card" page — for every role except admin/superadmin/
- * parent (see SidebarNav.tsx for the nav-link gating). Shows nothing until
- * the account's own required fields are filled in (same "no card before
- * complete info" principle as the admin bulk views), then renders the exact
- * same printable card component the admin's own ID Cards page uses.
+ * Self-service "My ID Card" page — for every role except superadmin/parent
+ * (see SidebarNav.tsx for the nav-link gating; admin gets this page too,
+ * same as teacher/staff/accountant). Shows nothing until the account's own
+ * required fields are filled in (same "no card before complete info"
+ * principle as the admin bulk views), then renders the exact same printable
+ * card component the admin's own ID Cards page uses.
  */
 export function MyIdCardView() {
   const { user } = useAppSelector((state) => state.auth);
@@ -274,6 +275,8 @@ function StaffMyIdCard() {
   const card = data?.data;
   const [updateContact, { isLoading: saving }] = useUpdateMyContactMutation();
   const [address, setAddress] = useState('');
+  const [nationalId, setNationalId] = useState('');
+  const [nationalIdError, setNationalIdError] = useState<string | null>(null);
   const [showBack, setShowBack] = useState(false);
 
   const missing = card?.missing ?? [];
@@ -284,6 +287,8 @@ function StaffMyIdCard() {
   // permanently hide someone's card, so those just get an informational
   // note alongside the normal card below.
   const blocked = fixableMissing.length > 0;
+  const needsAddress = fixableMissing.includes('address');
+  const needsNationalId = fixableMissing.includes('nationalId');
 
   return (
     <div className="space-y-6">
@@ -302,22 +307,47 @@ function StaffMyIdCard() {
             </span>
             <div>
               <p className="text-sm font-semibold text-foreground">One more thing before your card is ready</p>
-              <p className="mt-0.5 text-sm text-muted-foreground">Your address is missing — add it below and your card appears immediately.</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {fixableMissing.length === 1 ? 'One field is' : 'A couple of fields are'} missing — add {fixableMissing.length === 1 ? 'it' : 'them'} below and your card appears immediately.
+              </p>
             </div>
           </div>
-          <div>
-            <Label htmlFor="my-address">Address</Label>
-            <Input id="my-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House #, street, area" />
-          </div>
+          {needsAddress && (
+            <div>
+              <Label htmlFor="my-address">Address</Label>
+              <Input id="my-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House #, street, area" />
+            </div>
+          )}
+          {needsNationalId && (
+            <div>
+              <Label htmlFor="my-nid">CNIC Number</Label>
+              <Input
+                id="my-nid"
+                dir="ltr"
+                placeholder="42101-1234567-1"
+                inputMode="numeric"
+                value={nationalId}
+                onChange={(e) => { setNationalId(formatNationalId(e.target.value)); setNationalIdError(null); }}
+              />
+              {nationalIdError && <p className="mt-1 text-xs text-danger">{nationalIdError}</p>}
+            </div>
+          )}
           <Button
             size="sm"
-            disabled={!address.trim() || saving}
+            disabled={(needsAddress && !address.trim()) || (needsNationalId && !nationalId.trim()) || saving}
             onClick={async () => {
+              if (needsNationalId && !/^\d{5}-\d{7}-\d$/.test(nationalId)) {
+                setNationalIdError('Enter a valid CNIC in the format 42101-1234567-1');
+                return;
+              }
               try {
-                await updateContact({ address: address.trim() }).unwrap();
-                toast.success('Address saved — your card is ready');
+                await updateContact({
+                  ...(needsAddress ? { address: address.trim() } : {}),
+                  ...(needsNationalId ? { nationalIdNumber: nationalId } : {}),
+                }).unwrap();
+                toast.success('Saved — your card is ready');
               } catch (e) {
-                toast.error(getErrorMessage(e, 'Could not save your address'));
+                toast.error(getErrorMessage(e, 'Could not save your details'));
               }
             }}
           >
@@ -454,9 +484,9 @@ function ChangeMyPinCard() {
 
 /**
  * Always-available "Edit my details" card for a student/parent — same
- * pattern as EditMyStaffDetailsCard, for Address/City/Blood Group (all
- * genuinely self-service, see student.service.ts's updateMyContact()).
- * CNIC/Form-B is deliberately excluded — admin-only by design.
+ * pattern as EditMyStaffDetailsCard, for Address/City/Blood Group/CNIC
+ * (Form-B), all genuinely self-service (see student.service.ts's
+ * updateMyContact()/updateMyStudentContactSchema).
  */
 function EditMyStudentDetailsCard({
   currentAddress, currentCity, currentBloodGroup, currentNationalId, nationalIdLabel,
@@ -572,8 +602,11 @@ function StudentMyIdCard() {
   const [updateContact, { isLoading: saving }] = useUpdateMyStudentContactMutation();
   const [address, setAddress] = useState('');
   const [bloodGroup, setBloodGroup] = useState('');
+  const [nationalId, setNationalId] = useState('');
+  const [nationalIdError, setNationalIdError] = useState<string | null>(null);
   const [showBack, setShowBack] = useState(false);
   const { term: termLabel } = useTerminology();
+  const nationalIdLabel = nationalIdLabelForInstitutionType(card?.institution?.type);
 
   const missing = card?.missing ?? [];
   const fixableMissing = missing.filter((k) => SELF_FIXABLE_MISSING_KEYS.has(k));
@@ -628,14 +661,38 @@ function StudentMyIdCard() {
               </Select>
             </div>
           )}
+          {fixableMissing.includes('nationalId') && (
+            <div>
+              <Label htmlFor="my-student-nid">{nationalIdLabel} Number</Label>
+              <Input
+                id="my-student-nid"
+                dir="ltr"
+                placeholder="42101-1234567-1"
+                inputMode="numeric"
+                value={nationalId}
+                onChange={(e) => { setNationalId(formatNationalId(e.target.value)); setNationalIdError(null); }}
+              />
+              {nationalIdError && <p className="mt-1 text-xs text-danger">{nationalIdError}</p>}
+            </div>
+          )}
           <Button
             size="sm"
-            disabled={saving || (fixableMissing.includes('address') && !address.trim()) || (fixableMissing.includes('bloodGroup') && !bloodGroup)}
+            disabled={
+              saving ||
+              (fixableMissing.includes('address') && !address.trim()) ||
+              (fixableMissing.includes('bloodGroup') && !bloodGroup) ||
+              (fixableMissing.includes('nationalId') && !nationalId.trim())
+            }
             onClick={async () => {
+              if (fixableMissing.includes('nationalId') && !/^\d{5}-\d{7}-\d$/.test(nationalId)) {
+                setNationalIdError(`Enter a valid ${nationalIdLabel} number in the format 42101-1234567-1`);
+                return;
+              }
               try {
                 await updateContact({
                   ...(fixableMissing.includes('address') ? { address: address.trim() } : {}),
                   ...(fixableMissing.includes('bloodGroup') ? { bloodGroup } : {}),
+                  ...(fixableMissing.includes('nationalId') ? { nationalIdNumber: nationalId } : {}),
                 }).unwrap();
                 toast.success('Saved — your card is ready');
               } catch (e) {

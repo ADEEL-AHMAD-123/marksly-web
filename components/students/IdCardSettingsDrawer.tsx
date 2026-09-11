@@ -16,6 +16,7 @@ import {
   useUploadInstitutionIdCardLogoMutation,
   useRemoveInstitutionIdCardLogoMutation,
 } from '@/store/api/institutionApi';
+import { nationalIdLabelForInstitutionType } from '@/lib/terminology';
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif'];
@@ -72,6 +73,15 @@ export function IdCardSettingsDrawer({ open, onClose }: { open: boolean; onClose
 
   const settings = data?.data?.settings?.idCard;
   const mainLogoUrl = data?.data?.logoUrl;
+  // Students' label follows the institution type (Form B for schools/
+  // academies, CNIC for colleges/universities — see terminology.ts's own
+  // "locked product decision" comment); staff always show "CNIC" regardless
+  // of institution type (staff are always adults). This one toggle controls
+  // both, so the description below spells out both labels explicitly
+  // rather than the drawer just saying the generic combined "Form B/CNIC"
+  // it used to, which read as always-both regardless of what actually
+  // prints on either card.
+  const studentNationalIdLabel = nationalIdLabelForInstitutionType(data?.data?.type);
 
   const [showNationalId, setShowNationalId] = useState(true);
   const [showBloodGroup, setShowBloodGroup] = useState(true);
@@ -173,8 +183,8 @@ export function IdCardSettingsDrawer({ open, onClose }: { open: boolean; onClose
           ) : (
             <div className="mt-4 space-y-1 divide-y divide-border">
               <Toggle
-                label="Show Form B / CNIC number"
-                description="National ID number line on student and staff cards."
+                label={`Show ${studentNationalIdLabel} / CNIC number`}
+                description={`National ID number line on cards — shown as "${studentNationalIdLabel}" for students, "CNIC" for staff.`}
                 checked={showNationalId}
                 onChange={(v) => { setShowNationalId(v); handleToggle({ showNationalId: v }); }}
               />
