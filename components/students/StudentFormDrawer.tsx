@@ -30,6 +30,7 @@ import {
   useUpdateGuardianContactMutation,
   useResendStudentCredentialsMutation,
   useResetStudentPinMutation,
+  useResetGuardianPinMutation,
   type StudentListItem,
 } from '@/store/api/studentsApi';
 
@@ -130,6 +131,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   const [updateGuardianContact, { isLoading: updatingGuardianContact }] = useUpdateGuardianContactMutation();
   const [resendCredentials, { isLoading: resending }] = useResendStudentCredentialsMutation();
   const [resetPin, { isLoading: resettingPin }] = useResetStudentPinMutation();
+  const [resetGuardianPin, { isLoading: resettingGuardianPin }] = useResetGuardianPinMutation();
   const [resendingTarget, setResendingTarget] = useState<'student' | 'parent' | null>(null);
   // An existing guardian already satisfies "someone can be reached" even if
   // this edit leaves the guardian fields blank — see makeSchema.
@@ -409,6 +411,31 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
     }
   };
 
+  // Same reveal-on-reset pattern as onResetPin above, for the guardian
+  // instead — matches StudentDetailDrawer's "Reset guardian PIN" action so
+  // the result is shown the same way (one-time reveal card) regardless of
+  // which drawer the admin used to trigger it.
+  const onResetGuardianPin = async () => {
+    if (!student) return;
+    const guardianUserId = student.guardians?.[0]?.id;
+    try {
+      const res = await resetGuardianPin({ id: student.id, guardianUserId }).unwrap();
+      setTempPasswordQueue((q) => [...q, {
+        kind: 'guardianPin',
+        name: res.data.guardianName,
+        pin: res.data.pin,
+        emailed: false,
+        roleLabel: 'Parent',
+      }]);
+      toast.success('Guardian PIN reset');
+      if (res.data.siblingCount > 0) {
+        toast(`Also updates login for ${res.data.siblingCount} other linked ${res.data.siblingCount === 1 ? 'child' : 'children'}`, { icon: 'ℹ️' });
+      }
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Could not reset guardian PIN'));
+    }
+  };
+
   return (
     <>
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -438,7 +465,8 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               <div className="border-b border-border pb-4">
                 <Label>Login credentials</Label>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  This student logs in with their ID card&apos;s Login ID and a PIN. Resetting immediately replaces their current PIN.
+                  The student signs in with their ID card&apos;s Login ID and a PIN; the parent signs in with their
+                  phone or email plus their own PIN. Resetting either one replaces it immediately.
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Button
@@ -449,7 +477,18 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                     disabled={resettingPin}
                     onClick={onResetPin}
                   >
-                    <KeyRound size={14} /> Reset PIN
+                    <KeyRound size={14} /> Reset student PIN
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    loading={resettingGuardianPin}
+                    disabled={resettingGuardianPin || !student.guardianPhone}
+                    onClick={onResetGuardianPin}
+                    title={!student.guardianPhone ? 'No parent/guardian account on file' : undefined}
+                  >
+                    <KeyRound size={14} /> Reset guardian PIN
                   </Button>
                   <Button
                     type="button"
@@ -460,7 +499,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                     onClick={() => onResendCredentials('parent')}
                     title={!student.guardianPhone ? 'No parent/guardian account on file' : undefined}
                   >
-                    <KeyRound size={14} /> Resend parent login
+                    <KeyRound size={14} /> Email parent login details
                   </Button>
                 </div>
               </div>
