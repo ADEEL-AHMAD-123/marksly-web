@@ -43,21 +43,27 @@ export function InfoNote({
   link?: InfoNoteLink;
 }) {
   return (
-    <details className="group rounded-lg border border-border bg-card/60 px-3.5 py-2.5 text-sm open:pb-3">
+    <details className="group rounded-lg border border-border bg-card/60 px-3.5 py-2.5 text-sm open:border-primary/30 open:bg-primary-soft/40 open:pb-3.5 open:shadow-sm">
       <summary className="flex cursor-pointer list-none items-center gap-2 text-muted-foreground marker:content-none">
         <Info size={15} className="shrink-0 text-primary" />
-        <span className="font-medium text-foreground">{title}</span>
-        <span className="ml-auto text-xs text-muted-foreground group-open:hidden">Show</span>
-        <span className="ml-auto hidden text-xs text-muted-foreground group-open:inline">Hide</span>
+        <span className="font-semibold text-foreground">{title}</span>
+        <span className="ml-auto text-xs font-medium text-primary group-open:hidden">Show answer</span>
+        <span className="ml-auto hidden text-xs font-medium text-primary group-open:inline">Hide</span>
       </summary>
-      <div className="mt-2 space-y-1 pl-[23px] text-xs leading-relaxed text-muted-foreground">
+      {/* Answer text bumped from text-xs/muted-foreground to text-sm on the
+          near-full-contrast foreground/90 — the previous combination was
+          hard to read at a glance, especially against the (also muted)
+          bg-card/60 panel background. A thin left border under the icon
+          column gives the answer a clear "this is the content" visual
+          anchor separate from the clickable summary line above it. */}
+      <div className="mt-2.5 space-y-1.5 border-l-2 border-primary/25 pl-[19px] text-sm leading-relaxed text-foreground/90">
         {children}
         {link && (
           <Link
             href={link.href}
-            className="!mt-2.5 inline-flex items-center gap-1 font-medium text-primary hover:underline"
+            className="!mt-3 inline-flex items-center gap-1 font-semibold text-primary hover:underline"
           >
-            {link.label} <ArrowRight size={12} />
+            {link.label} <ArrowRight size={13} />
           </Link>
         )}
       </div>
