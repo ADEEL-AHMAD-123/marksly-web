@@ -371,23 +371,32 @@ export function AnnouncementsView() {
           <Card><EmptyState icon={Bell} title="No announcements sent yet" description="Once you send one, it'll show up here." /></Card>
         ) : (
           <div className="space-y-3">
-            {history.map((a) => (
-              <Card key={a.id} className="p-5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-semibold text-foreground">{a.title}</h3>
-                  <Badge variant={priorityBadge[a.priority].variant}>{priorityBadge[a.priority].label}</Badge>
-                </div>
-                <p className="mt-1.5 whitespace-pre-line text-sm text-muted-foreground">{a.body}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                  <span>{formatDate(a.createdAt)}</span>
-                  {a.author && <span>· {a.author}</span>}
-                  <span>· {a.targetRoles.length === 0 ? 'Everyone' : a.targetRoles.map((r: string) => r + 's').join(', ')}</span>
-                  <span>· {a.institutionScope === 'all' ? 'All institutions' : 'Selected institutions'}</span>
-                  <span className="text-success">· Delivered to {a.institutionCount}</span>
-                  {a.failedInstitutionCount > 0 && <span className="text-danger">· Failed for {a.failedInstitutionCount}</span>}
-                </div>
-              </Card>
-            ))}
+            {history.map((a) => {
+              // Falls back rather than throwing if a row's priority is ever
+              // missing or doesn't match one of the four known values — a
+              // page-crashing TypeError here (Cannot read 'label' of
+              // undefined) previously took down the entire Announcements
+              // page for every admin, not just hidden the one bad badge.
+              const badge = priorityBadge[a.priority] ?? priorityBadge.normal;
+              const targetRoles = a.targetRoles ?? [];
+              return (
+                <Card key={a.id} className="p-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold text-foreground">{a.title}</h3>
+                    <Badge variant={badge.variant}>{badge.label}</Badge>
+                  </div>
+                  <p className="mt-1.5 whitespace-pre-line text-sm text-muted-foreground">{a.body}</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span>{formatDate(a.createdAt)}</span>
+                    {a.author && <span>· {a.author}</span>}
+                    <span>· {targetRoles.length === 0 ? 'Everyone' : targetRoles.map((r: string) => r + 's').join(', ')}</span>
+                    <span>· {a.institutionScope === 'all' ? 'All institutions' : 'Selected institutions'}</span>
+                    <span className="text-success">· Delivered to {a.institutionCount}</span>
+                    {a.failedInstitutionCount > 0 && <span className="text-danger">· Failed for {a.failedInstitutionCount}</span>}
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>

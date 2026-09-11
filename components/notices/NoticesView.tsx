@@ -71,13 +71,21 @@ export function NoticesView({ manage = false }: { manage?: boolean }) {
         <Card><EmptyState icon={Bell} title="No notices yet" description={manage ? 'Post your first announcement.' : 'Check back later for announcements.'} /></Card>
       ) : (
         <div className="space-y-3">
-          {notices.map((n) => (
+          {notices.map((n) => {
+            // Falls back rather than throwing if a notice's priority is ever
+            // missing or doesn't match one of the four known values (e.g.
+            // older data from before priority existed) — a page-crashing
+            // TypeError here would take down the entire Notices page for
+            // every role at every institution, not just one bad badge.
+            const badge = priorityBadge[n.priority] ?? priorityBadge.normal;
+            const targetRoles = n.targetRoles ?? [];
+            return (
             <Card key={n.id} className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold text-foreground">{n.title}</h3>
-                    <Badge variant={priorityBadge[n.priority].variant}>{priorityBadge[n.priority].label}</Badge>
+                    <Badge variant={badge.variant}>{badge.label}</Badge>
                     {n.isPlatformAnnouncement && (
                       <Badge variant="primary" className="gap-1"><Sparkles size={10} /> Platform</Badge>
                     )}
@@ -86,7 +94,7 @@ export function NoticesView({ manage = false }: { manage?: boolean }) {
                   <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span>{formatDate(n.publishedAt)}</span>
                     {n.isPlatformAnnouncement ? <span>· Marksly</span> : n.author && <span>· {n.author}</span>}
-                    <span>· {n.targetRoles.length === 0 ? 'Everyone' : n.targetRoles.map((r) => r + 's').join(', ')}</span>
+                    <span>· {targetRoles.length === 0 ? 'Everyone' : targetRoles.map((r) => r + 's').join(', ')}</span>
                   </div>
                 </div>
                 {manage && !n.isPlatformAnnouncement && (
@@ -107,7 +115,8 @@ export function NoticesView({ manage = false }: { manage?: boolean }) {
                 )}
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 
