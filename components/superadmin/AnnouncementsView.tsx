@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn, formatDate } from '@/lib/utils';
+import { useDebounce } from '@/hooks/useDebounce';
 import { useGetInstitutionsQuery } from '@/store/api/superadminApi';
 import { useGetAnnouncementsQuery, useCreateAnnouncementMutation } from '@/store/api/superadminApi';
 
@@ -57,16 +58,22 @@ export function AnnouncementsView() {
   const [roles, setRoles] = useState<string[]>([]);
   const [scope, setScope] = useState<'all' | 'selected'>('all');
   const [selectedInstitutionIds, setSelectedInstitutionIds] = useState<Set<string>>(new Set());
+  const [selectedInstitutionNames, setSelectedInstitutionNames] = useState<Map<string, string>>(new Map());
   const [institutionSearch, setInstitutionSearch] = useState('');
+  const debouncedInstitutionSearch = useDebounce(institutionSearch, 300);
 
-  const { data: institutionsRes, isLoading: institutionsLoading } = useGetInstitutionsQuery(
-    { limit: 200 },
+  // Server-side search, not a one-shot fetch-then-filter — the backend's
+  // /superadmin/institutions caps `limit` at 100 (listInstitutionsQuerySchema),
+  // so an earlier version of this picker that requested `limit: 200` had
+  // every request rejected outright (400), silently leaving the picker
+  // permanently empty no matter what was typed. This also means the picker
+  // now actually works past 100 institutions, instead of only ever seeing
+  // whatever fit in one oversized page.
+  const { data: institutionsRes, isLoading: institutionsLoading, isFetching: institutionsFetching } = useGetInstitutionsQuery(
+    { search: debouncedInstitutionSearch || undefined, limit: 50 },
     { skip: scope !== 'selected' }
   );
-  const institutions = institutionsRes?.data ?? [];
-  const filteredInstitutions = institutionSearch.trim()
-    ? institutions.filter((i) => i.name.toLowerCase().includes(institutionSearch.trim().toLowerCase()))
-    : institutions;
+  const filteredInstitutions = institutionsRes?.data ?? [];
 
   const { data: historyRes, isLoading: historyLoading } = useGetAnnouncementsQuery();
   const history = historyRes?.data ?? [];
@@ -81,12 +88,35 @@ export function AnnouncementsView() {
   const toggleRole = (r: string) =>
     setRoles((prev) => (prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]));
 
-  const toggleInstitution = (id: string) =>
+  // Tracks names alongside ids so a selected institution stays visible (and
+  // removable) as its own chip even after the search box moves on to a
+  // different query and its row scrolls out of the current results — the
+  // id alone isn't enough to show the admin what they picked.
+  const toggleInstitution = (id: string, name: string) => {
     setSelectedInstitutionIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+    setSelectedInstitutionNames((prev) => {
+      const next = new Map(prev);
+      if (next.has(id)) next.delete(id); else next.set(id, name);
+      return next;
+    });
+  };
+
+  const removeInstitution = (id: string) => {
+    setSelectedInstitutionIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    setSelectedInstitutionNames((prev) => {
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+  };
 
   const onSubmit = async (values: AnnouncementForm) => {
     if (scope === 'selected' && selectedInstitutionIds.size === 0) {
@@ -108,6 +138,7 @@ export function AnnouncementsView() {
       setRoles([]);
       setScope('all');
       setSelectedInstitutionIds(new Set());
+      setSelectedInstitutionNames(new Map());
       setInstitutionSearch('');
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not send announcement');
@@ -222,34 +253,50 @@ export function AnnouncementsView() {
                     <div className="flex items-center gap-3 border-b border-border px-3 py-1.5">
                       <button
                         type="button"
-                        onClick={() => setSelectedInstitutionIds((prev) => {
-                          const next = new Set(prev);
-                          filteredInstitutions.forEach((i) => next.add(i.id));
-                          return next;
-                        })}
+                        onClick={() => {
+                          setSelectedInstitutionIds((prev) => {
+                            const next = new Set(prev);
+                            filteredInstitutions.forEach((i) => next.add(i.id));
+                            return next;
+                          });
+                          setSelectedInstitutionNames((prev) => {
+                            const next = new Map(prev);
+                            filteredInstitutions.forEach((i) => next.set(i.id, i.name));
+                            return next;
+                          });
+                        }}
                         className="text-xs font-medium text-primary hover:underline"
                       >
                         Select all{institutionSearch.trim() ? ' (matching)' : ''}
                       </button>
                       <button
                         type="button"
-                        onClick={() => setSelectedInstitutionIds((prev) => {
-                          const next = new Set(prev);
-                          filteredInstitutions.forEach((i) => next.delete(i.id));
-                          return next;
-                        })}
+                        onClick={() => {
+                          setSelectedInstitutionIds((prev) => {
+                            const next = new Set(prev);
+                            filteredInstitutions.forEach((i) => next.delete(i.id));
+                            return next;
+                          });
+                          setSelectedInstitutionNames((prev) => {
+                            const next = new Map(prev);
+                            filteredInstitutions.forEach((i) => next.delete(i.id));
+                            return next;
+                          });
+                        }}
                         className="text-xs font-medium text-muted-foreground hover:underline"
                       >
-                        Clear
+                        Clear{institutionSearch.trim() ? ' (matching)' : ''}
                       </button>
                     </div>
                   )}
 
                   <div className="max-h-56 overflow-y-auto p-2" role="group" aria-label="Select institutions to send this announcement to">
-                    {institutionsLoading ? (
+                    {institutionsLoading || institutionsFetching ? (
                       <Skeleton className="h-24 w-full" />
                     ) : filteredInstitutions.length === 0 ? (
-                      <p className="p-3 text-center text-xs text-muted-foreground">No institutions match.</p>
+                      <p className="p-3 text-center text-xs text-muted-foreground">
+                        {institutionSearch.trim() ? 'No institutions match your search.' : 'No institutions found.'}
+                      </p>
                     ) : (
                       <div className="space-y-0.5">
                         {filteredInstitutions.map((inst) => {
@@ -260,7 +307,7 @@ export function AnnouncementsView() {
                               type="button"
                               role="checkbox"
                               aria-checked={checked}
-                              onClick={() => toggleInstitution(inst.id)}
+                              onClick={() => toggleInstitution(inst.id, inst.name)}
                               className={cn(
                                 'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors',
                                 checked ? 'bg-primary-soft text-primary-soft-foreground' : 'text-foreground hover:bg-muted'
@@ -282,6 +329,29 @@ export function AnnouncementsView() {
                       </div>
                     )}
                   </div>
+
+                  {/* Selected institutions, independent of whatever's currently
+                      typed in the search box above — without this, picking an
+                      institution under one search term and then searching for
+                      another made the first pick invisible (though still
+                      selected), with no way to see or undo it short of
+                      guessing the original search again. */}
+                  {selectedInstitutionNames.size > 0 && (
+                    <div className="flex flex-wrap gap-1.5 border-t border-border p-2.5">
+                      {Array.from(selectedInstitutionNames.entries()).map(([id, name]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => removeInstitution(id)}
+                          className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary-soft px-2.5 py-1 text-xs font-medium text-primary-soft-foreground hover:border-primary/60"
+                          title={`Remove ${name}`}
+                        >
+                          {name}
+                          <span aria-hidden="true">×</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
