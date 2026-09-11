@@ -476,10 +476,10 @@ export function StaffManagementView() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         title={tab === 'all' ? 'Import Staff' : `Import ${roleLabel(tab)}s`}
-        columns={['firstName', 'lastName', 'phone', 'email', 'gender', 'designation', 'joiningDate']}
-        sample={['Bilal', 'Ahmed', '03007654321', 'bilal@example.com', 'male', 'Senior Math Teacher', '2024-06-01']}
+        columns={['firstName', 'lastName', 'phone', 'email', 'nationalIdNumber', 'gender', 'designation', 'joiningDate']}
+        sample={['Bilal', 'Ahmed', '03007654321', 'bilal@example.com', '42101-1234567-1', 'male', 'Senior Math Teacher', '2024-06-01']}
         filename={`${tab === 'all' ? 'staff' : tab}-template.csv`}
-        helpText='Each row gets a Login ID and PIN emailed to it, same as adding one person at a time. "gender" (male, female, or other) is required for every row. "designation" (job title) and "joiningDate" (format YYYY-MM-DD) are both optional.'
+        helpText='Each row gets a Login ID and PIN emailed to it, same as adding one person at a time. "nationalIdNumber" (CNIC, format 42101-1234567-1) and "gender" (male, female, or other) are required for every row. "designation" (job title) and "joiningDate" (format YYYY-MM-DD) are both optional.'
         onImport={async (csv) => (await bulkImport({ csv, role: tab === 'all' ? 'teacher' : tab }).unwrap()).data}
       />
     </div>
@@ -598,11 +598,13 @@ const schema = z.object({
   address: z.string().optional(),
   // Staff are always adults regardless of institution type, so this is
   // always labeled "CNIC" (never "Form B") — same format as the student
-  // field, matching the backend's NATIONAL_ID_REGEX exactly.
+  // field, matching the backend's NATIONAL_ID_REGEX exactly. Required
+  // (unlike the student form's equivalent field) — mirrors
+  // createUserSchema's nationalIdNumber, which is required for staff.
   nationalIdNumber: z
     .string()
-    .optional()
-    .refine((v) => !v || /^\d{5}-\d{7}-\d$/.test(v), 'Enter a valid CNIC in the format 42101-1234567-1'),
+    .min(1, 'CNIC is required')
+    .refine((v) => /^\d{5}-\d{7}-\d$/.test(v), 'Enter a valid CNIC in the format 42101-1234567-1'),
 });
 type StaffForm = z.infer<typeof schema>;
 
@@ -788,18 +790,9 @@ function AddStaffDrawer({
 
             <div className="border-t border-border pt-4">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                ID card details (optional)
+                ID card details
               </p>
-              {/* Not required — but shown on the printable ID card (see
-                  StaffIdCardsView.tsx). Left optional so this person can
-                  also fill it in themselves via "My ID Card" instead of
-                  this being the only way. Now available at creation time
-                  too, not just when editing — matches the student form. */}
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="address">Address</Label>
-                  <Input id="address" {...register('address')} placeholder="House #, street, area" />
-                </div>
                 <div>
                   <Label htmlFor="nationalIdNumber">CNIC Number</Label>
                   <Controller
@@ -823,6 +816,13 @@ function AddStaffDrawer({
                   {errors.nationalIdNumber && (
                     <p className="mt-1 text-xs text-danger">{errors.nationalIdNumber.message}</p>
                   )}
+                </div>
+                {/* Address stays optional — not required for the ID card the
+                    way CNIC is, and can also be filled in later by the
+                    account holder themselves via "My ID Card". */}
+                <div>
+                  <Label htmlFor="address">Address <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
+                  <Input id="address" {...register('address')} placeholder="House #, street, area" />
                 </div>
               </div>
             </div>
