@@ -27,6 +27,7 @@ import { ReissueCardsConfirmDialog } from '@/components/students/ReissueCardsCon
 import { getErrorMessage } from '@/lib/get-error-message';
 import { IdCardMissingFieldsBanner, type IdCardMissingFieldItem } from '@/components/shared/IdCardMissingFieldsBanner';
 import { idCardFieldLabel } from '@/lib/id-card-missing';
+import { PrintAllCardsDialog } from '@/components/shared/PrintAllCardsDialog';
 
 const ROLE_FILTERS: { value: StaffCardRole | 'all'; label: string }[] = [
   { value: 'all', label: 'All roles' },
@@ -80,6 +81,7 @@ export function StaffIdCardsView() {
 
   const [reissueOpen, setReissueOpen] = useState(false);
   const [reissueAllOpen, setReissueAllOpen] = useState(false);
+  const [printAllOpen, setPrintAllOpen] = useState(false);
   const [reissueCards, { isLoading: reissuing }] = useReissueStaffCardsMutation();
   const canReissue = roleParam !== 'all';
   const handleReissue = async () => {
@@ -159,6 +161,14 @@ export function StaffIdCardsView() {
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <Button
+            variant="outline"
+            size="sm"
+            disabled={roster.length === 0}
+            onClick={() => setPrintAllOpen(true)}
+          >
+            <Printer size={14} /> Print all
+          </Button>
+          <Button
             variant="ghost"
             size="sm"
             disabled={!canReissue || roster.length === 0}
@@ -177,6 +187,18 @@ export function StaffIdCardsView() {
           </Button>
         </div>
       </div>
+
+      {sheet && (
+        <PrintAllCardsDialog
+          open={printAllOpen}
+          onClose={() => setPrintAllOpen(false)}
+          title={`Print all cards — ${roleCountLabel === 'staff' ? 'All roles' : ROLE_STYLE[roleParam as StaffCardRole]?.label ?? roleCountLabel}`}
+          subtitle={`${roster.length} active member${roster.length === 1 ? '' : 's'}, front side only`}
+          items={roster}
+          keyOf={(s) => s.id}
+          renderCard={(s) => <StaffIdCardItem member={s} institution={sheet.institution} />}
+        />
+      )}
 
       <ReissueCardsConfirmDialog
         open={reissueOpen}

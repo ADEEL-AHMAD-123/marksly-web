@@ -28,6 +28,7 @@ import { ReissueCardsConfirmDialog } from '@/components/students/ReissueCardsCon
 import { getErrorMessage } from '@/lib/get-error-message';
 import { IdCardMissingFieldsBanner, type IdCardMissingFieldItem } from '@/components/shared/IdCardMissingFieldsBanner';
 import { idCardFieldLabel } from '@/lib/id-card-missing';
+import { PrintAllCardsDialog } from '@/components/shared/PrintAllCardsDialog';
 
 export function IdCardsView() {
   const terminology = useTerminology();
@@ -54,6 +55,7 @@ export function IdCardsView() {
   const selected = useMemo(() => roster.find((s) => s.id === selectedId) ?? null, [roster, selectedId]);
 
   const [reissueOpen, setReissueOpen] = useState(false);
+  const [printAllOpen, setPrintAllOpen] = useState(false);
   const [reissueCards, { isLoading: reissuing }] = useReissueStudentCardsMutation();
   const handleReissue = async () => {
     try {
@@ -128,15 +130,39 @@ export function IdCardsView() {
               ? 'Loading roster…'
               : `${roster.length} active student${roster.length === 1 ? '' : 's'} in this ${sectionLabel.toLowerCase()}`}
           </p>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={roster.length === 0}
-            onClick={() => setReissueOpen(true)}
-          >
-            <RefreshCw size={14} /> Re-issue cards for this {sectionLabel.toLowerCase()}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={roster.length === 0}
+              onClick={() => setPrintAllOpen(true)}
+            >
+              <Printer size={14} /> Print all
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={roster.length === 0}
+              onClick={() => setReissueOpen(true)}
+            >
+              <RefreshCw size={14} /> Re-issue cards for this {sectionLabel.toLowerCase()}
+            </Button>
+          </div>
         </div>
+      )}
+
+      {sheet && (
+        <PrintAllCardsDialog
+          open={printAllOpen}
+          onClose={() => setPrintAllOpen(false)}
+          title={`Print all cards — ${sheet.className ?? ''}${sheet.section ? ` — ${sheet.section}` : ''}`}
+          subtitle={`${roster.length} active student${roster.length === 1 ? '' : 's'}, front side only`}
+          items={roster}
+          keyOf={(s) => s.id}
+          renderCard={(s) => (
+            <IdCardItem student={s} institution={sheet.institution} className={sheet.className} section={sheet.section} termName={sheet.termName} />
+          )}
+        />
       )}
 
       <ReissueCardsConfirmDialog

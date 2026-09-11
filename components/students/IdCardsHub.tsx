@@ -78,11 +78,13 @@ export function IdCardsHub() {
             institute name) and how long a card stays valid before it needs reissuing.
           </p>
         </InfoNote>
-        <InfoNote title="Need to fix or renew one or more cards?">
+        <InfoNote title="Need to fix, renew, or print more than one card?">
           <p>
             Need to fix one person&apos;s card — their Form B/CNIC number, blood group, or issue/expiry dates? Select
             them below and use <strong>Edit card details</strong>. To renew a whole class, section, or staff role at
-            once, use <strong>Re-issue cards</strong> instead of editing one by one.
+            once, use <strong>Re-issue cards</strong> instead of editing one by one. Need to print several cards in
+            one go instead of one at a time? Use <strong>Print all</strong> — it lays every active person&apos;s card
+            out on one printable sheet (front side only).
           </p>
         </InfoNote>
       </div>

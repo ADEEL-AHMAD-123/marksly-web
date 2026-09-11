@@ -17,7 +17,8 @@ export const ID_CARD_PRINT_CSS = `
 @media print {
   @page { size: A4; margin: 10mm; }
   body * { visibility: hidden !important; }
-  #id-card-print, #id-card-print * { visibility: visible !important; }
+  #id-card-print, #id-card-print *,
+  #id-card-print-sheet, #id-card-print-sheet * { visibility: visible !important; }
   #id-card-print {
     position: absolute;
     left: 0;
@@ -26,13 +27,32 @@ export const ID_CARD_PRINT_CSS = `
     padding: 0 !important;
     background: transparent !important;
     border-radius: 0 !important;
-    /* One card (front, then back) at a time — this app only ever shows a
-       single person's card, never a bulk sheet — so faces stack vertically
-       rather than sitting in a multi-column grid meant for many cards. */
+    /* One card (front, then back) at a time — this is the single-person
+       preview flow, so faces stack vertically rather than sitting in a
+       multi-column grid. For printing many people at once, see
+       #id-card-print-sheet below (PrintAllCardsDialog). */
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 6mm;
+  }
+  /* Bulk "Print all" sheet — a real multi-card layout (front only; the
+     single-card flow above is still how anyone prints a back face) so a
+     school issuing many cards at once doesn't have to repeat the
+     single-card flow once per person. Two columns fit comfortably on A4
+     with the CR80 physical width; break-inside:avoid on each card keeps
+     one person's card from splitting across a page boundary. */
+  #id-card-print-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0 !important;
+    background: transparent !important;
+    display: grid;
+    grid-template-columns: repeat(2, ${CARD_WIDTH_MM}mm);
+    justify-content: center;
+    gap: 6mm 8mm;
   }
   .no-print { display: none !important; }
   .id-card {
@@ -44,7 +64,7 @@ export const ID_CARD_PRINT_CSS = `
   }
   /* Keep the "Powered by marksly.pk" credit visible when printed — it's
      genuinely part of the card design, not on-screen-only chrome, so it
-     must not get caught by anything hiding non-#id-card-print content. */
+     must not get caught by anything hiding non-printed content. */
   .id-card .id-card-credit {
     visibility: visible !important;
     opacity: 1 !important;
