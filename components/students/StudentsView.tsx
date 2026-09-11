@@ -414,48 +414,61 @@ export function StudentsView() {
               </Table>
             </div>
 
-            {/* Mobile rows — divided list rows (matching the desktop table's
-                rhythm) instead of individually-boxed cards, so the panel
-                doesn't nest a border-within-a-border on small screens. */}
-            <div className="divide-y divide-border md:hidden">
+            {/* Mobile cards — redesigned from a single dense flex row (name,
+                roll, class, left-reason, guardian line, login line, and a
+                badge all crammed together) into a clearer two-tier layout:
+                a header line (avatar, name, status badge) that reads at a
+                glance, then a compact indented details block below it,
+                aligned under the name rather than squeezed into the same
+                row as the avatar. Each row is its own lightly-elevated
+                card (not just a divider line) so the boundary between
+                students is obvious without relying on a thin 1px rule. */}
+            <div className="flex flex-col gap-2 p-3 md:hidden">
               {students.map((s) => (
                 <div
                   key={s.id}
-                  className="flex cursor-pointer items-center gap-3 p-4 active:bg-muted/40"
+                  className="cursor-pointer rounded-xl border border-border bg-card p-3.5 shadow-sm transition-colors active:bg-muted/40"
                   onClick={() => { setDetailId(s.id); setDetailFocus(null); }}
                 >
-                  <Avatar
-                    size="md"
-                    photoUrl={s.profilePhoto}
-                    alt={s.name}
-                    initials={getInitials(s.firstName, s.lastName)}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-foreground">{s.name}</p>
-                    <p className="text-xs text-foreground/70">
-                      Roll: <span className="font-medium">{s.rollNumber}</span>
-                      {s.className ? ` · ${s.className}${s.section ? ` — ${s.section}` : ''}` : ''}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <Avatar
+                      size="md"
+                      photoUrl={s.profilePhoto}
+                      alt={s.name}
+                      initials={getInitials(s.firstName, s.lastName)}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate font-semibold text-foreground">{s.name}</p>
+                        <Badge variant={statusBadge[s.status].variant} className="ml-auto shrink-0">
+                          {statusBadge[s.status].label}
+                        </Badge>
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-foreground/70">
+                        Roll <span className="font-medium">{s.rollNumber}</span>
+                        {s.className ? ` · ${s.className}${s.section ? ` — ${s.section}` : ''}` : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-2.5 space-y-1.5 border-t border-border pl-[52px] pt-2.5">
                     {s.status !== 'active' && s.leftReason && (
-                      <p className="mt-1 truncate text-xs text-foreground/70">Left — {s.leftReason}</p>
+                      <p className="truncate text-xs text-foreground/70">Left — {s.leftReason}</p>
                     )}
                     {(s.guardianName || s.guardianPhone || s.guardianEmail) && (
-                      <p className="mt-1 truncate text-xs text-foreground/70">
-                        Guardian: {s.guardianName ?? '—'}{s.guardianPhone ? ` · ${s.guardianPhone}` : ''}{s.guardianEmail ? ` · ${s.guardianEmail}` : ''}
+                      <p className="truncate text-xs text-foreground/70">
+                        {s.guardianName ?? 'Guardian'}{s.guardianPhone ? ` · ${s.guardianPhone}` : ''}
                       </p>
                     )}
-                    {s.systemId && (
-                      <p className="mt-1 truncate font-mono text-[11px] text-foreground/60">Login: {s.systemId}</p>
-                    )}
-                    <GuardianEmailBadge status={s.guardianEmailStatus} onOpenDetail={() => openGuardianLoginDetail(s.id)} />
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1.5">
-                    <Badge variant={statusBadge[s.status].variant}>
-                      {statusBadge[s.status].label}
-                    </Badge>
-                    <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary">
-                      View <ChevronRight size={12} />
-                    </span>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      {s.systemId && (
+                        <span className="truncate font-mono text-[11px] text-foreground/60">{s.systemId}</span>
+                      )}
+                      <GuardianEmailBadge status={s.guardianEmailStatus} onOpenDetail={() => openGuardianLoginDetail(s.id)} />
+                      <span className="ml-auto inline-flex items-center gap-0.5 text-[11px] font-medium text-primary">
+                        View <ChevronRight size={12} />
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}

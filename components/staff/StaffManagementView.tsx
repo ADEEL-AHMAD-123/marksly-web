@@ -249,13 +249,19 @@ export function StaffManagementView() {
           all inside a single bordered/shadowed container instead of a
           separately-boxed Tabs bar, filter Card, and floating pagination. */}
       <Tabs value={tab} onValueChange={(v) => { setTab(v as TabValue); setPage(1); }}>
-        <TabsList>
-          {ROLE_TABS.map((t) => (
-            <TabsTrigger key={t.value} value={t.value}>
-              <t.icon size={14} className="mr-1.5" /> {t.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        {/* overflow-x-auto + inline-flex (TabsList's own default) lets the
+            four tabs scroll horizontally on a narrow phone instead of
+            squeezing down to unreadable widths or wrapping — whichever
+            happened before depended on exactly how much text truncated. */}
+        <div className="overflow-x-auto">
+          <TabsList>
+            {ROLE_TABS.map((t) => (
+              <TabsTrigger key={t.value} value={t.value} className="shrink-0">
+                <t.icon size={14} className="mr-1.5" /> {t.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
       </Tabs>
 
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
@@ -384,46 +390,61 @@ export function StaffManagementView() {
               </Table>
             </div>
 
-            {/* Mobile rows — divided clickable list rows, matching
-                StudentsView.tsx's mobile block instead of individually
-                boxed cards with their own inline action buttons. */}
-            <div className="divide-y divide-border md:hidden">
+            {/* Mobile cards — same redesign as StudentsView.tsx's mobile
+                block: a scannable header line (avatar, name, status badge)
+                instead of everything (phone, email, login, last login,
+                badges) crammed into one dense row, then a compact indented
+                details block underneath, each row its own bordered card
+                rather than a thin divider so rows are unmistakably
+                separate on a narrow screen. */}
+            <div className="flex flex-col gap-2 p-3 md:hidden">
               {members.map((m) => (
                 <div
                   key={m.id}
-                  className="flex cursor-pointer items-center gap-3 p-4 active:bg-muted/40"
+                  className="cursor-pointer rounded-xl border border-border bg-card p-3.5 shadow-sm transition-colors active:bg-muted/40"
                   onClick={() => setDetailMember(m)}
                 >
-                  <Avatar
-                    size="md"
-                    photoUrl={m.profilePhoto}
-                    alt={m.name}
-                    initials={getInitials(m.firstName, m.lastName)}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-foreground">{m.name}</p>
-                    <p className="text-xs text-foreground/70">
-                      {m.phone}{m.email ? ` · ${m.email}` : ''}
-                    </p>
-                    {m.systemId && (
-                      <p className="mt-0.5 truncate font-mono text-[11px] text-foreground/60">Login: {m.systemId}</p>
+                  <div className="flex items-center gap-3">
+                    <Avatar
+                      size="md"
+                      photoUrl={m.profilePhoto}
+                      alt={m.name}
+                      initials={getInitials(m.firstName, m.lastName)}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate font-semibold text-foreground">{m.name}</p>
+                        <Badge variant={m.isActive ? 'success' : 'neutral'} className="ml-auto shrink-0">
+                          {m.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-foreground/70">
+                        {tab === 'all' ? `${roleLabel(m.role)} · ` : ''}{m.phone}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-2.5 space-y-1.5 border-t border-border pl-[52px] pt-2.5">
+                    {m.email && (
+                      <p className="truncate text-xs text-foreground/70">{m.email}</p>
                     )}
-                    <p className="mt-0.5 text-[11px] text-foreground/60">
-                      Last login: {m.lastLoginAt ? formatDate(m.lastLoginAt) : 'Never'}
-                    </p>
-                    <StaffEmailBadge status={m.emailStatus} />
                     {missingStaffInfo(m).length > 0 && (
-                      <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning">
+                      <p className="flex items-center gap-1 text-[11px] font-medium text-warning">
                         <AlertCircle size={11} className="shrink-0" /> Missing {missingStaffInfo(m).join(', ')}
                       </p>
                     )}
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1.5">
-                    {tab === 'all' && <Badge variant="neutral">{roleLabel(m.role)}</Badge>}
-                    <Badge variant={m.isActive ? 'success' : 'neutral'}>{m.isActive ? 'Active' : 'Inactive'}</Badge>
-                    <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary">
-                      View <ChevronRight size={12} />
-                    </span>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      {m.systemId && (
+                        <span className="truncate font-mono text-[11px] text-foreground/60">{m.systemId}</span>
+                      )}
+                      <span className="text-[11px] text-foreground/60">
+                        {m.lastLoginAt ? `Last in ${formatDate(m.lastLoginAt)}` : 'Never logged in'}
+                      </span>
+                      <StaffEmailBadge status={m.emailStatus} />
+                      <span className="ml-auto inline-flex items-center gap-0.5 text-[11px] font-medium text-primary">
+                        View <ChevronRight size={12} />
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
