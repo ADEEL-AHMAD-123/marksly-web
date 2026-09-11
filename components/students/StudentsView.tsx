@@ -180,10 +180,27 @@ export function StudentsView() {
                 since they're used a handful of times per admission cycle,
                 not per visit. */}
             <div className="flex gap-2">
-              <Button variant="ghost" size="sm" className="flex-1 sm:flex-none" onClick={() => setRosterOpen(true)}>
-                <Users2 size={16} /> View/export logins
+              {/* "View/export logins" still tested as unclear to a
+                  first-time admin — "logins" alone doesn't say what you'll
+                  actually see. Named the concrete thing (Login IDs & PINs)
+                  instead, with a tooltip spelling out the full action for
+                  anyone still unsure before they click. */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 sm:flex-none"
+                onClick={() => setRosterOpen(true)}
+                title="See every student's Login ID and PIN, grouped by class/section — or export the list as a CSV"
+              >
+                <Users2 size={16} /> Login IDs &amp; PINs
               </Button>
-              <Button variant="ghost" size="sm" className="flex-1 sm:flex-none" onClick={() => setImportOpen(true)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 sm:flex-none"
+                onClick={() => setImportOpen(true)}
+                title="Add many students at once by uploading a CSV spreadsheet"
+              >
                 <Upload size={16} /> Import from CSV
               </Button>
             </div>
@@ -495,7 +512,7 @@ export function StudentsView() {
           <p>Guardians get a separate parent login — the phone/email entered as guardian for a student is automatically emailed its own temporary password. One guardian phone linked to more than one child means one shared login for all of them.</p>
         </InfoNote>
         <InfoNote title="Lost a Login ID or PIN, or need to look one up later?">
-          <p>Every student&apos;s Login ID and PIN is shown right here in the table — click the eye icon to reveal a PIN, or open a student to reset it from their details. For bulk lookup or CSV export by class/section, use the <strong>View/export logins</strong> button above.</p>
+          <p>Every student&apos;s Login ID and PIN is shown right here in the table — click the eye icon to reveal a PIN, or open a student to reset it from their details. For bulk lookup or CSV export by class/section, use the <strong>Login IDs &amp; PINs</strong> button above.</p>
         </InfoNote>
         <InfoNote title="Guardian email missing or bounced?">
           <p>Open the student and use <strong>Resend login</strong> or <strong>Set password</strong> under Guardian login. It&apos;ll warn you first if that guardian has already signed in, since resending overwrites their current password.</p>
@@ -519,7 +536,7 @@ export function StudentsView() {
             onInteractOutside={(e) => { if (isInsideRadixPopper(e.target)) e.preventDefault(); }}
           >
             <div className="flex items-center justify-between">
-              <DialogPrimitive.Title className="text-base font-semibold">View/export logins</DialogPrimitive.Title>
+              <DialogPrimitive.Title className="text-base font-semibold">Login IDs &amp; PINs</DialogPrimitive.Title>
               <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Close">
                 <X size={16} />
               </DialogPrimitive.Close>
@@ -562,7 +579,7 @@ export function StudentsView() {
         helpText={'Students never have their own email/phone — only guardian contact (guardianPhone + guardianEmail) is collected, and is required for every row. "nationalIdNumber" (Form B/CNIC, format 42101-1234567-1) is optional. Running more than one active term at once (e.g. overlapping semesters)? Add an optional "term" column with the exact term name if any class name exists in more than one active term — otherwise it can be left out.'}
         resultNote={
           <>
-            Logins aren&apos;t emailed or shown per row here — each student got a Login ID and PIN automatically. Find them in the table above, or use the <strong>View/export logins</strong> button for bulk lookup/export.
+            Logins aren&apos;t emailed or shown per row here — each student got a Login ID and PIN automatically. Find them in the table above, or use the <strong>Login IDs &amp; PINs</strong> button for bulk lookup/export.
           </>
         }
       />
