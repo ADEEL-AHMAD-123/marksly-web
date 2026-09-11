@@ -640,7 +640,14 @@ function AddStaffDrawer({
             phone: editing.phone,
             email: editing.email ?? '',
             role: editing.role,
-            gender: editing.gender ?? 'male',
+            // Deliberately NOT defaulted to 'male' like the blank-add branch
+            // below — gender wasn't collected before this feature existed,
+            // so a legacy account can genuinely have none yet. Leaving this
+            // undefined shows the Select's placeholder and requires the
+            // admin to actively pick a value before they can save any other
+            // change to this record, rather than silently writing a guess
+            // the moment they save an unrelated edit (e.g. a phone number).
+            gender: editing.gender as 'male' | 'female' | 'other' | undefined,
             designation: editing.designation ?? '',
             joiningDate: editing.joiningDate ? editing.joiningDate.slice(0, 10) : '',
             address: editing.address ?? '',
