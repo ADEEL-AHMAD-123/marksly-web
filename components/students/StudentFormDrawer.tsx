@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
+import { StudentCreatedDialog } from '@/components/students/StudentCreatedDialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { PhotoUpload } from '@/components/shared/PhotoUpload';
 import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
@@ -249,6 +250,17 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   const tempPasswordInfo = tempPasswordQueue[0] ?? null;
   const dismissTempPasswordInfo = () => setTempPasswordQueue((q) => q.slice(1));
 
+  // Brand-new student + (optionally) brand-new guardian, shown together in
+  // one combined panel right after creation — see StudentCreatedDialog's own
+  // comment on why this replaces using tempPasswordQueue for this one case.
+  // Every other credential reveal (resend, edit-time guardian link, roster
+  // reset) keeps using the single TempPasswordDialog/queue above, since
+  // those are one-off, not a "just created two logins at once" moment.
+  const [createdInfo, setCreatedInfo] = useState<{
+    studentName: string; systemId: string; studentPin: string;
+    guardian?: { name: string; pin: string; emailed: boolean } | null;
+  } | null>(null);
+
   // A guardian's email/phone doubles as their login identifier, so changing
   // either isn't a quiet side-effect of a routine edit — it's caught here
   // and routed through a confirm step (see pendingGuardianChange) before
@@ -323,25 +335,18 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         // guardianPin is separate: present only when a BRAND-NEW parent
         // account was just created alongside this student — same PIN-based
         // login mechanism, just no systemId (guardians use phone/email).
-        const queue: TempPasswordInfo[] = [];
+        // Shown together in one combined panel (see StudentCreatedDialog)
+        // rather than the old one-popup-per-login queue.
         if (res.data.pin) {
-          queue.push({
-            kind: 'pin',
-            name: `${core.firstName} ${core.lastName}`,
+          setCreatedInfo({
+            studentName: `${core.firstName} ${core.lastName}`,
             systemId: res.data.systemId || '',
-            pin: res.data.pin,
+            studentPin: res.data.pin,
+            guardian: res.data.guardianPin
+              ? { name: parentName || 'Parent', pin: res.data.guardianPin, emailed: true }
+              : null,
           });
         }
-        if (res.data.guardianPin) {
-          queue.push({
-            kind: 'guardianPin',
-            name: parentName || 'Parent',
-            pin: res.data.guardianPin,
-            emailed: true,
-            roleLabel: 'Parent',
-          });
-        }
-        if (queue.length) setTempPasswordQueue(queue);
       }
     } catch (e: any) {
       setPendingGuardianChange(null);
@@ -704,6 +709,17 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         open={!!tempPasswordInfo}
         onClose={dismissTempPasswordInfo}
         {...tempPasswordInfo}
+      />
+    )}
+
+    {createdInfo && (
+      <StudentCreatedDialog
+        open={!!createdInfo}
+        onClose={() => setCreatedInfo(null)}
+        studentName={createdInfo.studentName}
+        systemId={createdInfo.systemId}
+        studentPin={createdInfo.studentPin}
+        guardian={createdInfo.guardian}
       />
     )}
 
