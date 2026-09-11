@@ -386,7 +386,13 @@ export function StudentsView() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <ChevronRight size={16} className="ml-auto text-muted-foreground" />
+                        {/* Row itself is already the click target (onClick on
+                            TableRow above) — this is just a legible affordance
+                            instead of a bare chevron, which didn't say what
+                            clicking the row would actually do. */}
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+                          View <ChevronRight size={14} />
+                        </span>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -433,7 +439,9 @@ export function StudentsView() {
                     <Badge variant={statusBadge[s.status].variant}>
                       {statusBadge[s.status].label}
                     </Badge>
-                    <ChevronRight size={15} className="text-muted-foreground" />
+                    <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary">
+                      View <ChevronRight size={12} />
+                    </span>
                   </div>
                 </div>
               ))}
