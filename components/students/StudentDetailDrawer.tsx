@@ -182,6 +182,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
           id: studentId,
           target: 'parent',
           email: resendEmail.trim() || undefined,
+          guardianUserId: contactStatus?.guardian?.id,
         }).unwrap();
         toast.success(`Sent to ${res.data.sentTo}`);
       } else if (pendingCredAction === 'pin') {
@@ -189,7 +190,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
         setCredReveal({ name: s.name, systemId: s.systemId ?? '—', pin: res.data.pin });
         setRevealedPin(undefined);
       } else {
-        const res = await resetGuardianPin({ id: studentId }).unwrap();
+        const res = await resetGuardianPin({ id: studentId, guardianUserId: contactStatus?.guardian?.id }).unwrap();
         setCredReveal({ name: res.data.guardianName, pin: res.data.pin, roleLabel: 'Parent' });
         setRevealedGuardianPin(undefined);
         if (res.data.siblingCount > 0) {
