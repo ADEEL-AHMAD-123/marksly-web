@@ -53,7 +53,7 @@ const guardianEmailMeta: Record<
   { icon: typeof Mail; label: string; className: string; title: string }
 > = {
   ok: { icon: Mail, label: 'Email OK', className: 'text-success', title: 'Guardian welcome email was delivered fine' },
-  problem: { icon: MailWarning, label: 'Email failed', className: 'text-danger', title: 'Guardian’s latest welcome email failed or bounced' },
+  problem: { icon: MailWarning, label: 'Email delivery failed', className: 'text-danger', title: 'Guardian’s latest welcome email failed or bounced' },
   no_email: { icon: MailWarning, label: 'No email', className: 'text-warning', title: 'Guardian has no email on file — nothing was ever sent' },
   no_guardian: { icon: UserX, label: 'No guardian', className: 'text-muted-foreground', title: 'No guardian linked to this student' },
 };

@@ -29,7 +29,7 @@ import {
 import { useGetFeeCardQuery } from '@/store/api/feesApi';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useTerminology } from '@/lib/terminology';
-import { getInitials, formatCurrency, formatDate } from '@/lib/utils';
+import { getInitials, formatCurrency, formatDate, cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { openAuthedPdf } from '@/lib/downloadFile';
 import { getErrorMessage } from '@/lib/get-error-message';
@@ -50,6 +50,17 @@ function Row({ label, value }: { label: string; value?: string | null }) {
     </div>
   );
 }
+
+/** Plain-language label for the guardian welcome email's delivery status —
+ *  see email-log.model.ts's EmailStatus for what each value actually means
+ *  (e.g. 'sent' is just "our API call succeeded", not a delivery guarantee). */
+const EMAIL_LOG_STATUS_LABEL: Record<'sent' | 'failed' | 'delivered' | 'bounced' | 'delayed', string> = {
+  sent: 'Sent',
+  delivered: 'Delivered',
+  failed: 'Delivery failed',
+  bounced: 'Bounced back',
+  delayed: 'Delayed — still trying',
+};
 
 const END_ENROLLMENT_REASONS: { value: 'transferred' | 'withdrawn' | 'expelled' | 'inactive'; label: string }[] = [
   { value: 'transferred', label: 'Transferred to another school' },
@@ -450,14 +461,14 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                     </div>
                   ) : (
                     <div className="rounded-xl border border-border px-4 py-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-3">
                         <p className="text-sm font-medium text-foreground">{contactStatus.guardian.name}</p>
                         {contactStatus.guardian.email ? (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                             <Mail size={11} /> {contactStatus.guardian.email}
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 text-xs text-warning">
+                          <span className="flex shrink-0 items-center gap-1 text-xs text-warning">
                             <MailWarning size={11} /> No email on file
                           </span>
                         )}
@@ -465,6 +476,42 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                       <p className="mt-1 text-xs text-muted-foreground">
                         {contactStatus.guardian.hasLoggedIn ? 'Has signed in before.' : 'Has not signed in yet.'}
                       </p>
+
+                      {/* Delivery status of the most recent welcome-credentials
+                          email — this is the "why" behind the "Email delivery
+                          failed" badge on the Students table row: exactly
+                          when it was sent/attempted, to which address, and
+                          (when it failed) the actual error so the admin isn't
+                          left guessing before deciding to resend. */}
+                      {contactStatus.guardian.emailLog && (
+                        <div
+                          className={cn(
+                            'mt-2.5 rounded-lg px-3 py-2 text-xs',
+                            contactStatus.guardian.emailLog.status === 'failed' || contactStatus.guardian.emailLog.status === 'bounced'
+                              ? 'bg-danger-soft text-danger'
+                              : contactStatus.guardian.emailLog.status === 'delayed'
+                                ? 'bg-warning-soft text-warning'
+                                : 'bg-muted/60 text-muted-foreground'
+                          )}
+                        >
+                          <div className="flex items-center gap-1.5 font-medium">
+                            {contactStatus.guardian.emailLog.status === 'failed' || contactStatus.guardian.emailLog.status === 'bounced' ? (
+                              <MailWarning size={12} className="shrink-0" />
+                            ) : (
+                              <Mail size={12} className="shrink-0" />
+                            )}
+                            {EMAIL_LOG_STATUS_LABEL[contactStatus.guardian.emailLog.status]}
+                            {contactStatus.guardian.emailLog.isResend && <span className="font-normal opacity-80">(resend)</span>}
+                          </div>
+                          <p className="mt-1 opacity-90">
+                            To {contactStatus.guardian.emailLog.to} · {formatDate(contactStatus.guardian.emailLog.sentAt)}
+                          </p>
+                          {contactStatus.guardian.emailLog.error && (
+                            <p className="mt-1 break-words font-mono text-[11px] opacity-90">{contactStatus.guardian.emailLog.error}</p>
+                          )}
+                        </div>
+                      )}
+
                       <div className="mt-2.5 flex items-center gap-2">
                         <Button variant="secondary" size="sm" onClick={openResendConfirm}>
                           <Send size={13} /> Resend login

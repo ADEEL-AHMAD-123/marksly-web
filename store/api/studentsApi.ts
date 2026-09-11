@@ -422,7 +422,23 @@ export const studentsApi = baseApi.injectEndpoints({
     // overwrite their password" / "this student already set their own PIN,
     // resetting will overwrite it" instead of firing blind.
     getStudentContactStatus: builder.query<
-      ApiObject<{ guardian: { name: string; email: string | null; hasLoggedIn: boolean } | null; pinState: 'school_issued' | 'student_set' | null }>,
+      ApiObject<{
+        guardian: {
+          name: string;
+          email: string | null;
+          hasLoggedIn: boolean;
+          // Full detail on the guardian's most recent welcome-credentials
+          // email — null if none was ever sent (e.g. no email on file).
+          emailLog: {
+            status: 'sent' | 'failed' | 'delivered' | 'bounced' | 'delayed';
+            error: string | null;
+            to: string;
+            sentAt: string;
+            isResend: boolean;
+          } | null;
+        } | null;
+        pinState: 'school_issued' | 'student_set' | null;
+      }>,
       string
     >({
       query: (id) => `/students/${id}/contact-status`,
