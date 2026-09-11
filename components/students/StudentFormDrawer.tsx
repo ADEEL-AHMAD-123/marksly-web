@@ -38,7 +38,7 @@ import {
 // channel that will ever exist for a student is their guardian, collected
 // below via parentEmail/parentPhone, which is now unconditionally required
 // (mirrors the backend's createStudentSchema exactly — see student.validator.ts).
-const schema = z.object({
+const baseSchema = z.object({
   firstName: z.string().min(1, 'Required'),
   lastName: z.string().min(1, 'Required'),
   rollNumber: z.string().min(1, 'Required'),
@@ -54,9 +54,11 @@ const schema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   bloodGroup: z.string().optional(),
-  // Optional — format matches the backend's NATIONAL_ID_REGEX exactly (see
+  // Format matches the backend's NATIONAL_ID_REGEX exactly (see
   // marksly-api's national-id.schema.ts). Label ("Form B" vs "CNIC") is
   // decided at display time from the institution's type, not stored here.
+  // Required-ness itself is layered on below (see makeSchema) rather than
+  // here, since it differs between add and edit.
   nationalIdNumber: z
     .string()
     .optional()
@@ -71,7 +73,8 @@ const schema = z.object({
     .refine((v) => !v || isValidPhoneNumber(v), 'Enter a valid phone number'),
   parentName: z.string().optional(),
   parentEmail: z.string().email('Enter a valid email address').optional().or(z.literal('')),
-}).refine((d) => !d.parentPhone || !!d.parentEmail, {
+});
+const schema = baseSchema.refine((d) => !d.parentPhone || !!d.parentEmail, {
   message: 'Guardian email is required when adding a guardian',
   path: ['parentEmail'],
 });
@@ -80,17 +83,30 @@ const schema = z.object({
  * Cross-field "someone needs to be reachable" rule, mirroring the backend's
  * createStudentSchema: a guardian contact is unconditionally required, either
  * a brand-new one (parentEmail/parentPhone) or an already-linked one (only
- * possible when editing). Kept as a factory since "already has a guardian"
- * depends on the `student` prop, not just the form's own fields.
+ * possible when editing). Also enforces CNIC/Form-B as required — same
+ * mirrored backend rule (createStudentSchema's own nationalIdNumber is now
+ * required, see student.validator.ts) — UNLESS this is an edit of a student
+ * who already has one on file with nothing entered here, in which case the
+ * existing value stays as-is (this form only ever sends fields that
+ * changed, so a blank input here doesn't erase a real stored value). A
+ * brand-new student, or an edit of a legacy record with no CNIC yet, must
+ * provide one. Kept as a factory since both "already has a guardian" and
+ * "already has a CNIC" depend on the `student` prop, not just the form's
+ * own fields.
  */
-function makeSchema(hasExistingGuardian: boolean) {
-  return schema.refine(
-    (d) => !!d.parentPhone || !!d.parentEmail || hasExistingGuardian,
-    {
-      message: "Add a parent/guardian's contact info so someone can be reached — students don't have their own login contact info.",
-      path: ['parentEmail'],
-    }
-  );
+function makeSchema(hasExistingGuardian: boolean, hasExistingNationalId: boolean) {
+  return schema
+    .refine(
+      (d) => !!d.parentPhone || !!d.parentEmail || hasExistingGuardian,
+      {
+        message: "Add a parent/guardian's contact info so someone can be reached — students don't have their own login contact info.",
+        path: ['parentEmail'],
+      }
+    )
+    .refine((d) => !!d.nationalIdNumber || hasExistingNationalId, {
+      message: 'CNIC/Form-B is required',
+      path: ['nationalIdNumber'],
+    });
 }
 
 type Form = z.infer<typeof schema>;
@@ -135,7 +151,10 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   const [resendingTarget, setResendingTarget] = useState<'student' | 'parent' | null>(null);
   // An existing guardian already satisfies "someone can be reached" even if
   // this edit leaves the guardian fields blank — see makeSchema.
-  const activeSchema = useMemo(() => makeSchema(!!student?.guardianName), [student?.guardianName]);
+  const activeSchema = useMemo(
+    () => makeSchema(!!student?.guardianName, !!student?.nationalIdNumber),
+    [student?.guardianName, student?.nationalIdNumber]
+  );
   // The guardian's contact values as prefilled from the server, captured at
   // drawer-open time — used purely to detect "did the admin actually change
   // this" on submit, since changing email/phone changes the guardian's login
@@ -610,6 +629,35 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               {errors.gender && <p className="mt-1 text-xs text-danger">{errors.gender.message}</p>}
             </div>
 
+            <div>
+              <Label htmlFor="nationalIdNumber">{nationalIdLabel} Number <span className="font-normal normal-case text-danger">*</span></Label>
+              <Controller
+                control={control}
+                name="nationalIdNumber"
+                render={({ field }) => (
+                  <Input
+                    id="nationalIdNumber"
+                    dir="ltr"
+                    placeholder="42101-1234567-1"
+                    inputMode="numeric"
+                    value={field.value ?? ''}
+                    onBlur={field.onBlur}
+                    // Auto-inserts the dashes as digits are typed/pasted,
+                    // so entering the 13 raw digits (e.g. 1620115034803)
+                    // lands as 16201-1503480-3 without the admin adding
+                    // the dashes by hand.
+                    onChange={(e) => field.onChange(formatNationalId(e.target.value))}
+                  />
+                )}
+              />
+              {errors.nationalIdNumber && (
+                <p className="mt-1 text-xs text-danger">{errors.nationalIdNumber.message}</p>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                Required to create the account — if it&apos;s wrong or changes later, the student or parent can correct it themselves from their own My ID Card page.
+              </p>
+            </div>
+
             <div className="border-t border-border pt-4">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Parent / Guardian <span className="font-normal normal-case text-danger">(required)</span>
@@ -671,8 +719,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
             )}
 
             {/* Optional section, deliberately last — none of this blocks
-                saving. Every field here (address, city, blood group, and
-                now the {nationalIdLabel} number too) can genuinely be added
+                saving. Address, City and Blood Group can genuinely be added
                 or corrected later by the student/parent themselves — see
                 MyIdCardView.tsx's "Edit my details" card, backed by
                 student.service.ts's updateMyContact()/
@@ -685,8 +732,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 <span aria-hidden>💡</span>
                 <span>
                   None of these need to be filled in now — the student or parent can add or update any of them
-                  (including the {nationalIdLabel} number) anytime from their own dashboard&apos;s{' '}
-                  <span className="font-medium text-foreground">My ID Card</span> page.
+                  anytime from their own dashboard&apos;s <span className="font-medium text-foreground">My ID Card</span> page.
                 </span>
               </p>
               <div className="grid grid-cols-2 gap-3">
@@ -714,31 +760,6 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                       </Select>
                     )}
                   />
-                </div>
-                <div>
-                  <Label htmlFor="nationalIdNumber">{nationalIdLabel} Number <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
-                  <Controller
-                    control={control}
-                    name="nationalIdNumber"
-                    render={({ field }) => (
-                      <Input
-                        id="nationalIdNumber"
-                        dir="ltr"
-                        placeholder="42101-1234567-1"
-                        inputMode="numeric"
-                        value={field.value ?? ''}
-                        onBlur={field.onBlur}
-                        // Auto-inserts the dashes as digits are typed/pasted,
-                        // so entering the 13 raw digits (e.g. 1620115034803)
-                        // lands as 16201-1503480-3 without the admin adding
-                        // the dashes by hand.
-                        onChange={(e) => field.onChange(formatNationalId(e.target.value))}
-                      />
-                    )}
-                  />
-                  {errors.nationalIdNumber && (
-                    <p className="mt-1 text-xs text-danger">{errors.nationalIdNumber.message}</p>
-                  )}
                 </div>
               </div>
             </div>
