@@ -199,11 +199,9 @@ function StaffIdCardPreview({
   // since the card face already has its own warning badge for that.
   // Edit-form location depends on role: teachers have their own page, staff/
   // accountant share one, and admin accounts have no dedicated edit UI here.
-  const profileHref = member.role === 'teacher'
-    ? `/admin/teachers?q=${encodeURIComponent(member.systemId)}`
-    : member.role === 'staff' || member.role === 'accountant'
-      ? `/admin/staff?role=${member.role}&q=${encodeURIComponent(member.systemId)}`
-      : null;
+  const profileHref = member.role === 'teacher' || member.role === 'staff' || member.role === 'accountant'
+    ? `/admin/staff?tab=${member.role}&q=${encodeURIComponent(member.systemId)}`
+    : null;
   const missingItems: IdCardMissingFieldItem[] = [];
   if (!member.address) {
     missingItems.push({

@@ -140,7 +140,7 @@ export function AdminDashboard() {
     },
     {
       label: 'Add your teachers',
-      href: '/admin/teachers',
+      href: '/admin/staff?tab=teacher',
       icon: Users,
       done: teacherCount > 0,
       hint: 'Already have a staff list? Import it as a CSV in one go.',

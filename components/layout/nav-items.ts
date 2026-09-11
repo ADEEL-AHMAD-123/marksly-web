@@ -19,7 +19,9 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     // and Teachers (it's a students-only utility, but sitting mid-list made
     // it read as its own category) to sit alongside the rest of this group.
     { label: 'Students', href: '/admin/students', icon: GraduationCap },
-    { label: 'Teachers', href: '/admin/teachers', icon: Users },
+    // Teachers/Staff/Accountant now live together on one page, under tabs
+    // (see StaffManagementView.tsx) — the old standalone "Teachers" nav
+    // item is gone, its route now redirects to /admin/staff?tab=teacher.
     { label: 'Staff', href: '/admin/staff', icon: Briefcase },
     // Sits right after the people-management group, not buried near
     // Billing/Settings at the bottom — this is where an admin needs it: it

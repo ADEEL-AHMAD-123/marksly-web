@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { StaffView } from '@/components/staff/StaffView';
+import { StaffManagementView } from '@/components/staff/StaffManagementView';
 
 export const metadata: Metadata = { title: 'Staff' };
 
 export default function Page() {
-  return <StaffView />;
+  return <StaffManagementView />;
 }

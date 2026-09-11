@@ -13,7 +13,13 @@ export interface StaffIdCardInstitution {
 
 export type ManageableRole = 'teacher' | 'staff' | 'accountant';
 
-export type EmailDeliveryStatus = 'pending' | 'sent' | 'delivered' | 'bounced' | 'failed' | 'delayed' | null;
+// Mirrors the student/guardian PIN model exactly (see studentsApi.ts) —
+// 'staff_set' means the account holder changed their own PIN, so it's no
+// longer decryptable/viewable server-side, only resettable.
+// 'guardian_set' never actually occurs for staff-managed users (that value
+// only applies to the parent role) but is part of the same backend enum, so
+// it's included here rather than narrowed away.
+export type StaffPinState = 'school_issued' | 'guardian_set' | 'staff_set';
 
 export interface ManagedUser {
   id: string;
@@ -36,12 +42,12 @@ export interface ManagedUser {
   nationalIdNumber?: string | null;
   cardIssueDate?: string | null;
   cardExpiryDate?: string | null;
-  // false means an activation-link invite is still pending (see the
-  // invite-based creation flow in user.service.ts) — the account can't log
-  // in yet at all, regardless of `isActive`.
-  emailVerified: boolean;
-  emailDeliveryStatus: EmailDeliveryStatus;
-  emailDeliveryError: string | null;
+  // Login ID shown alongside the PIN, same concept as a student's systemId.
+  systemId: string | null;
+  // Every staff-type account now logs in with a school-issued PIN, same
+  // mechanism as students/guardians — no more invite links or email
+  // verification gating login. See getStaffPin/resetStaffPin below.
+  pinState: StaffPinState;
   lastLoginAt: string | null;
   createdAt: string;
   unassignedSubjects?: number;
@@ -56,7 +62,6 @@ export interface CreateUserBody {
   lastName: string;
   phone: string;
   email: string;
-  password?: string;
   role: ManageableRole;
   // Set on a resubmit after the backend flags EMAIL_DOMAIN_UNVERIFIED and
   // the admin confirms the address is correct anyway.
@@ -122,16 +127,32 @@ export const usersApi = baseApi.injectEndpoints({
       },
       providesTags: [{ type: 'Users', id: 'LIST' }],
     }),
-    // tempPassword is only present for the explicit-password override path
-    // (dto.password sent in the request) — normal creation goes through the
-    // invite-link flow instead and never returns a password at all. Never
-    // returned from getUsers/update, never persisted anywhere else.
-    createUser: builder.mutation<ApiObject<ManagedUser & { tempPassword?: string }>, CreateUserBody>({
+    // `pin` is always present — every new staff-type account is minted with
+    // a school-issued PIN synchronously at creation (see user.service.ts's
+    // create()), no more explicit-password override or invite-link path.
+    createUser: builder.mutation<ApiObject<ManagedUser & { pin: string }>, CreateUserBody>({
       query: (body) => ({ url: '/users', method: 'POST', body }),
       invalidatesTags: [{ type: 'Users', id: 'LIST' }],
     }),
-    resendInvite: builder.mutation<ApiObject<ManagedUser>, { id: string; email?: string; confirmUnverifiedEmail?: boolean }>({
+    // Re-sends the account's login PIN by email (a fresh one if the current
+    // one is no longer school-issued) — informational only now, not an
+    // activation step; the account can already log in. `pin` is the plaintext
+    // value that was (re)sent, returned so the admin can also hand it over
+    // directly if the email doesn't arrive.
+    resendInvite: builder.mutation<ApiObject<ManagedUser & { pin: string }>, { id: string; email?: string; confirmUnverifiedEmail?: boolean }>({
       query: ({ id, ...body }) => ({ url: `/users/${id}/resend-invite`, method: 'POST', body }),
+      invalidatesTags: [{ type: 'Users', id: 'LIST' }],
+    }),
+    // Admin-only decrypted PIN lookup — only non-null while pinState is
+    // 'school_issued'. Mirrors studentsApi.ts's getStudentPin exactly.
+    getStaffPin: builder.query<ApiObject<{ pin: string | null; state: StaffPinState }>, string>({
+      query: (id) => `/users/${id}/pin`,
+    }),
+    // Mints a brand-new PIN (random, or a custom one if `customPin` is
+    // passed) and marks pinState back to 'school_issued'. Mirrors
+    // studentsApi.ts's resetStudentPin.
+    resetStaffPin: builder.mutation<ApiObject<{ pin: string }>, { id: string; customPin?: string }>({
+      query: ({ id, customPin }) => ({ url: `/users/${id}/reset-pin`, method: 'POST', body: customPin ? { customPin } : {} }),
       invalidatesTags: [{ type: 'Users', id: 'LIST' }],
     }),
     updateUser: builder.mutation<
@@ -227,8 +248,6 @@ export const usersApi = baseApi.injectEndpoints({
           name?: string;
           message?: string;
           email?: string;
-          emailDeliveryStatus?: EmailDeliveryStatus;
-          emailDeliveryError?: string;
         }[];
       }>,
       { csv: string; role: ManageableRole }
@@ -246,6 +265,9 @@ export const {
   useDeleteUserMutation,
   useBulkImportUsersMutation,
   useResendInviteMutation,
+  useGetStaffPinQuery,
+  useLazyGetStaffPinQuery,
+  useResetStaffPinMutation,
   useUploadUserPhotoMutation,
   useRemoveUserPhotoMutation,
   useGetStaffIdCardsQuery,

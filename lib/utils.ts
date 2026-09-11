@@ -74,7 +74,7 @@ export function truncate(str: string, length: number): string {
  *  cards, no dashes) still lands in the format the backend's
  *  NATIONAL_ID_REGEX requires, instead of failing validation and leaving
  *  the admin to add the dashes themselves. Shared by the student and staff
- *  forms (StudentFormDrawer.tsx, StaffView.tsx). */
+ *  forms (StudentFormDrawer.tsx, StaffManagementView.tsx). */
 export function formatNationalId(raw: string): string {
   const digits = raw.replace(/\D/g, '').slice(0, 13);
   if (digits.length <= 5) return digits;

@@ -1,13 +1,12 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { X, Upload, Download, FileSpreadsheet, CheckCircle2, AlertCircle, Mail, MailWarning, Clock } from 'lucide-react';
+import { X, Upload, Download, FileSpreadsheet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
-import type { EmailDeliveryStatus } from '@/store/api/usersApi';
 
 export interface ImportResultRow {
   row: number;
@@ -15,8 +14,6 @@ export interface ImportResultRow {
   name?: string;
   message?: string;
   email?: string;
-  emailDeliveryStatus?: EmailDeliveryStatus;
-  emailDeliveryError?: string;
 }
 
 export interface ImportResult {
@@ -36,48 +33,14 @@ interface Props {
   sample: string[];
   filename: string;
   onImport: (csv: string) => Promise<ImportResult>;
-  /** Shown under the file picker before an import runs — the invite-link
-   *  copy only applies to teacher/staff/accountant imports, so this isn't
-   *  hardcoded (students, the other user of this drawer, have no invite
-   *  step at all). Omit for no help text. */
+  /** Shown under the file picker before an import runs — not hardcoded
+   *  since the wording differs per caller (e.g. students vs. staff-type
+   *  roles). Omit for no help text. */
   helpText?: string;
   /** Shown at the top of the results screen after a successful import —
    *  e.g. students have no per-row credential display here (no email/phone
    *  to show), so this points the admin at the Class Roster page instead. */
   resultNote?: React.ReactNode;
-}
-
-/** Small per-row indicator for a created account's invite email — same
- *  information as InviteStatusBadge (used in the Teachers/Staff tables)
- *  but compact enough for a dense results list, since bulk imports can
- *  produce dozens of rows here at once. */
-function InviteResultBadge({ status, error }: { status?: EmailDeliveryStatus; error?: string }) {
-  if (status === 'bounced' || status === 'failed') {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-danger" title={error || undefined}>
-        <MailWarning size={12} /> Invite failed
-      </span>
-    );
-  }
-  if (status === 'delivered') {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
-        <CheckCircle2 size={12} /> Delivered
-      </span>
-    );
-  }
-  if (status === 'sent') {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-        <Mail size={12} /> Invited
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-      <Clock size={12} /> Sending…
-    </span>
-  );
 }
 
 export function ImportCsvDrawer({ open, onClose, title, columns, sample, filename, onImport, helpText, resultNote }: Props) {
@@ -125,17 +88,6 @@ export function ImportCsvDrawer({ open, onClose, title, columns, sample, filenam
 
   const errorRows = result?.results.filter((r) => r.status === 'error') ?? [];
   const createdRows = result?.results.filter((r) => r.status === 'created') ?? [];
-  // Only teacher/staff/accountant imports go through the invite-link flow —
-  // student imports (StudentsView.tsx also uses this drawer, via a
-  // different bulk-import endpoint) never populate emailDeliveryStatus at
-  // all. Gate every invite-related bit of UI on actually having that data,
-  // rather than rendering a permanently-"Sending…" badge and a meaningless
-  // always-zero "Invites failed" stat for an import type that has no
-  // invite step in the first place.
-  const hasInviteData = createdRows.some((r) => r.emailDeliveryStatus != null);
-  const failedInvites = hasInviteData
-    ? createdRows.filter((r) => r.emailDeliveryStatus === 'failed' || r.emailDeliveryStatus === 'bounced').length
-    : 0;
 
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
@@ -185,7 +137,7 @@ export function ImportCsvDrawer({ open, onClose, title, columns, sample, filenam
                     {resultNote}
                   </div>
                 )}
-                <div className={cn('grid gap-2', hasInviteData ? 'grid-cols-3' : 'grid-cols-2')}>
+                <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-xl border border-border bg-muted/40 p-3 text-center">
                     <p className="text-xl font-semibold text-foreground">{result.created}</p>
                     <p className="text-xs text-muted-foreground">Created</p>
@@ -194,12 +146,6 @@ export function ImportCsvDrawer({ open, onClose, title, columns, sample, filenam
                     <p className={cn('text-xl font-semibold', result.failed > 0 ? 'text-danger' : 'text-foreground')}>{result.failed}</p>
                     <p className="text-xs text-muted-foreground">Row errors</p>
                   </div>
-                  {hasInviteData && (
-                    <div className={cn('rounded-xl border p-3 text-center', failedInvites > 0 ? 'border-warning/30 bg-warning-soft' : 'border-border bg-muted/40')}>
-                      <p className={cn('text-xl font-semibold', failedInvites > 0 ? 'text-warning' : 'text-foreground')}>{failedInvites}</p>
-                      <p className="text-xs text-muted-foreground">Invites failed</p>
-                    </div>
-                  )}
                 </div>
 
                 {createdRows.length > 0 && (
@@ -214,13 +160,7 @@ export function ImportCsvDrawer({ open, onClose, title, columns, sample, filenam
                             <div className="min-w-0">
                               <p className="truncate font-medium text-foreground">{r.name}</p>
                               {r.email && <p className="truncate text-muted-foreground" dir="ltr">{r.email}</p>}
-                              {hasInviteData && r.emailDeliveryError && <p className="mt-0.5 text-danger">{r.emailDeliveryError}</p>}
                             </div>
-                            {hasInviteData && (
-                              <div className="shrink-0">
-                                <InviteResultBadge status={r.emailDeliveryStatus} error={r.emailDeliveryError} />
-                              </div>
-                            )}
                           </div>
                         ))}
                       </div>
@@ -233,11 +173,6 @@ export function ImportCsvDrawer({ open, onClose, title, columns, sample, filenam
                         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 rounded-b-lg bg-gradient-to-t from-card to-transparent" />
                       )}
                     </div>
-                    {hasInviteData && failedInvites > 0 && (
-                      <p className="mt-1.5 text-xs text-muted-foreground">
-                        Accounts with a failed invite were still created — use &quot;Resend invite&quot; for them from the list after closing this.
-                      </p>
-                    )}
                   </div>
                 )}
 
