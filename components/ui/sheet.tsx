@@ -31,10 +31,24 @@ interface SheetContentProps
   hideClose?: boolean;
 }
 
+// A Select/DropdownMenu/Popover inside the drawer renders its open content
+// into a portal on document.body — outside the drawer's own DOM subtree.
+// Radix Dialog's default "click outside closes" behavior sees that click as
+// outside the drawer and closes it (silently discarding whatever the admin
+// had typed into the form so far), even though the admin was still
+// interacting with a control that's visually INSIDE the drawer. Every such
+// popup content renders through a `[data-radix-popper-content-wrapper]`
+// (Select/DropdownMenu/Popover all share this Radix Popper primitive), so
+// ignoring outside-clicks that land there fixes the drawer-closing bug for
+// all of them at once, in this one shared place, rather than patching each
+// form separately.
+const isInsideRadixPopper = (target: EventTarget | null) =>
+  target instanceof Element && !!target.closest('[data-radix-popper-content-wrapper]');
+
 export const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   SheetContentProps
->(({ className, children, side = 'left', hideClose, ...props }, ref) => (
+>(({ className, children, side = 'left', hideClose, onPointerDownOutside, onInteractOutside, ...props }, ref) => (
   <DialogPrimitive.Portal>
     <SheetOverlay />
     <DialogPrimitive.Content
@@ -45,6 +59,14 @@ export const SheetContent = React.forwardRef<
         'data-[state=open]:animate-fade-in',
         className
       )}
+      onPointerDownOutside={(e) => {
+        if (isInsideRadixPopper(e.target)) { e.preventDefault(); return; }
+        onPointerDownOutside?.(e);
+      }}
+      onInteractOutside={(e) => {
+        if (isInsideRadixPopper(e.target)) { e.preventDefault(); return; }
+        onInteractOutside?.(e);
+      }}
       {...props}
     >
       {children}
