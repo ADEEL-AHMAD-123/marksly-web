@@ -346,9 +346,9 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                     viewed vs. only reset). */}
                 <div className="mt-5">
                   <p className="mb-0.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    <KeyRound size={12} /> Login
+                    <KeyRound size={12} /> Student login
                   </p>
-                  <p className="mb-2 text-xs text-muted-foreground">Signs in with this Login ID and PIN.</p>
+                  <p className="mb-2 text-xs text-muted-foreground">The student can sign in using this Login ID and PIN.</p>
                   <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
                     <div>
                       <p className="font-mono text-sm text-foreground">{s.systemId ?? 'Not generated yet'}</p>
@@ -528,7 +528,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                     Guardian login
                   </p>
                   <p className="mb-2 text-xs text-muted-foreground">
-                    Signs in with their phone number or email — whichever&apos;s on file — plus this PIN. No password to remember.
+                    The parent can sign in using either their phone number or email, along with this PIN.
                   </p>
                   {!contactStatus?.guardian ? (
                     <div className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-sm text-muted-foreground">

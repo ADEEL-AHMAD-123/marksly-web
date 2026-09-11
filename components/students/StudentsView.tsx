@@ -507,18 +507,17 @@ export function StudentsView() {
       <div className="space-y-2">
         <InfoNote title="How do students log in?">
           <p>
-            Each student gets a Login ID (e.g. MKS-XXXXXXXX) and a PIN, generated automatically the moment they&apos;re
-            added — there&apos;s nothing to set up. Both are shown once right after creation and printed on the ID
-            card, and can be looked up again anytime from this table or the student&apos;s details. A student can
-            change their own PIN afterward from their account.
+            Every student gets a Login ID (e.g. MKS-XXXXXXXX) and a PIN, generated automatically as soon as they&apos;re
+            added — nothing to set up. Both are shown once right after creation and printed on the ID card, and can
+            be looked up again anytime from this table or the student&apos;s details. A student can change their own
+            PIN later from their own account.
           </p>
         </InfoNote>
         <InfoNote title="How do guardians log in?">
           <p>
-            A guardian signs in with their phone number or email — whichever is on file — plus a PIN, the same
-            mechanism as a student&apos;s login. There&apos;s no password to remember, and email is optional: it&apos;s
-            only a convenient way to hand over the PIN, never required for logging in. If the same phone or email is
-            linked as guardian for more than one child, that&apos;s one shared login covering all of them.
+            A parent can sign in using either their phone number or email, along with a PIN — the same login shown
+            in the student&apos;s details. If the same phone or email is linked as guardian for more than one child,
+            that one login covers all of them.
           </p>
         </InfoNote>
         <InfoNote title="Where do I look up or reset a Login ID or PIN?">
