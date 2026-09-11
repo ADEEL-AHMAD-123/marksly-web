@@ -1,13 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import {
   Plus, Upload, Filter, ChevronLeft, ChevronRight,
   AlertCircle, Eye, EyeOff, Users2, Mail, MailWarning, UserX, X,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -33,11 +34,8 @@ import { getInitials, formatDate, cn } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/get-error-message';
 import { StudentFormDrawer } from './StudentFormDrawer';
 import { StudentDetailDrawer } from './StudentDetailDrawer';
-import { ClassRosterView } from './ClassRosterView';
 import { useTerminology } from '@/lib/terminology';
 import { InfoNote } from '@/components/ui/info-note';
-import { isInsideRadixPopper, POINTER_EVENTS_OVERRIDE } from '@/components/ui/sheet';
-import * as DialogPrimitive from '@radix-ui/react-dialog';
 
 interface ClassOption {
   id: string;
@@ -109,7 +107,6 @@ export function StudentsView() {
   const [detailFocus, setDetailFocus] = useState<'guardianLogin' | null>(null);
   const openGuardianLoginDetail = (id: string) => { setDetailId(id); setDetailFocus('guardianLogin'); };
   const [importOpen, setImportOpen] = useState(false);
-  const [rosterOpen, setRosterOpen] = useState(false);
   const [bulkImport] = useBulkImportStudentsMutation();
 
   // Inline PIN reveal in the Login column — mirrors ClassRosterView's
@@ -184,16 +181,16 @@ export function StudentsView() {
                   first-time admin — "logins" alone doesn't say what you'll
                   actually see. Named the concrete thing (Login IDs & PINs)
                   instead, with a tooltip spelling out the full action for
-                  anyone still unsure before they click. */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex-1 sm:flex-none"
-                onClick={() => setRosterOpen(true)}
+                  anyone still unsure before they click. Now a link to the
+                  dedicated Login IDs & PINs page (covering students AND
+                  staff) instead of a Students-only modal. */}
+              <Link
+                href="/admin/login-ids"
+                className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'flex-1 sm:flex-none')}
                 title="See every student's Login ID and PIN, grouped by class/section — or export the list as a CSV"
               >
                 <Users2 size={16} /> Login IDs &amp; PINs
-              </Button>
+              </Link>
               <Button
                 variant="ghost"
                 size="sm"
@@ -520,13 +517,13 @@ export function StudentsView() {
             that one login covers all of them.
           </p>
         </InfoNote>
-        <InfoNote title="Where do I look up or reset a Login ID or PIN?">
+        <InfoNote title="Where do I look up or reset a Login ID or PIN?" link={{ href: '/admin/login-ids', label: 'Login IDs & PINs' }}>
           <p>
             Every student&apos;s Login ID and PIN status are shown right here in the table — click the eye icon to
             reveal a PIN, or open a student&apos;s details to reset either their own PIN or their guardian&apos;s.
             Resetting a guardian&apos;s PIN changes login for every child linked to that guardian, not just this one.
-            For looking up or exporting PINs by class or section in bulk, use the <strong>Login IDs &amp; PINs</strong>{' '}
-            view above.
+            For looking up or exporting PINs by class or section in bulk — or for teacher/staff/accountant logins —
+            use the dedicated <strong>Login IDs &amp; PINs</strong> page.
           </p>
         </InfoNote>
         <InfoNote title="A guardian's login email never arrived?">
@@ -538,38 +535,6 @@ export function StudentsView() {
           </p>
         </InfoNote>
       </div>
-
-      {/* Class logins — bulk Login ID/PIN lookup + CSV export by class and
-          section, folded in from the old standalone Student Logins page.
-          Reuses ClassRosterView's own picker/table/reset-PIN logic wholesale
-          (embedded mode just hides its page header) rather than duplicating
-          it here. */}
-      <DialogPrimitive.Root open={rosterOpen} onOpenChange={setRosterOpen}>
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm" />
-          <DialogPrimitive.Content
-            className={cn(
-              'fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-[95vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none',
-              POINTER_EVENTS_OVERRIDE
-            )}
-            onPointerDownOutside={(e) => { if (isInsideRadixPopper(e.target)) e.preventDefault(); }}
-            onInteractOutside={(e) => { if (isInsideRadixPopper(e.target)) e.preventDefault(); }}
-          >
-            <div className="flex items-center justify-between">
-              <DialogPrimitive.Title className="text-base font-semibold">Login IDs &amp; PINs</DialogPrimitive.Title>
-              <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Close">
-                <X size={16} />
-              </DialogPrimitive.Close>
-            </div>
-            <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
-              Look up or reset every student&apos;s Login ID and PIN by class and section, or export the whole section as CSV.
-            </DialogPrimitive.Description>
-            <div className="mt-4">
-              {rosterOpen && <ClassRosterView mode="admin" embedded />}
-            </div>
-          </DialogPrimitive.Content>
-        </DialogPrimitive.Portal>
-      </DialogPrimitive.Root>
 
       {/* Add / Edit drawer */}
       <StudentFormDrawer
