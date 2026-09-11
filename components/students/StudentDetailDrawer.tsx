@@ -52,6 +52,18 @@ interface Props {
   focus?: 'guardianLogin' | null;
 }
 
+/** Renders a list of names with each one bolded, joined naturally ("Ali",
+ *  "Ali and Sara", "Ali, Sara and Bilal") — used wherever a child's or
+ *  guardian's name appears inline in confirm-dialog copy. */
+function boldNameList(names: string[]) {
+  return names.map((name, i) => (
+    <span key={i}>
+      {i > 0 && (i === names.length - 1 ? ' and ' : ', ')}
+      <strong>{name}</strong>
+    </span>
+  ));
+}
+
 function Row({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="flex items-center justify-between gap-4 py-2.5">
@@ -752,7 +764,8 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
             <div className="space-y-3">
               <p>
                 This emails <strong>{contactStatus?.guardian?.name}</strong> their login details: their phone or email
-                (whichever they sign in with) plus their current PIN — and {s?.name}&apos;s Login ID and PIN too, so
+                (whichever they sign in with) plus their current PIN — along with the Login ID and PIN for{' '}
+                {boldNameList([s?.name, ...(contactStatus?.guardian?.otherChildrenNames ?? [])].filter(Boolean))}, so
                 everything is in the one email. It&apos;s just a convenience copy for them to keep — nothing about
                 actually logging in depends on this email arriving or being opened.
               </p>
@@ -786,16 +799,19 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
           ) : contactStatus?.guardian?.pinState === 'guardian_set' ? (
             <>
               <strong>{contactStatus?.guardian?.name}</strong> already changed their own PIN, so the current one
-              can&apos;t be shown — resetting replaces it with a new one immediately. Since this login is shared
-              across every child linked to this guardian, it changes their access for all of them, not just{' '}
-              {s?.name}.
+              can&apos;t be shown — resetting replaces it with a new one immediately.
+              {(contactStatus?.guardian?.otherChildrenNames?.length ?? 0) > 0 && (
+                <> This login is shared with {boldNameList(contactStatus!.guardian!.otherChildrenNames)} too, so it changes their access as well, not just <strong>{s?.name}</strong>&apos;s.</>
+              )}
             </>
           ) : (
             <>
               This replaces <strong>{contactStatus?.guardian?.name}</strong>&apos;s current PIN with a new one
               immediately. You can view it again anytime from the Guardian login section above, or the Login IDs
-              &amp; PINs page. Since this login is shared across every child linked to this guardian, it changes
-              their access for all of them, not just {s?.name}.
+              &amp; PINs page.
+              {(contactStatus?.guardian?.otherChildrenNames?.length ?? 0) > 0 && (
+                <> This login is shared with {boldNameList(contactStatus!.guardian!.otherChildrenNames)} too, so it changes their access as well, not just <strong>{s?.name}</strong>&apos;s.</>
+              )}
             </>
           )
         }

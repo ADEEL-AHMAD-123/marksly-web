@@ -172,8 +172,13 @@ export function ClassRosterView({ mode, embedded }: Props) {
               <TableRow className="hover:bg-transparent">
                 <TableHead>Name</TableHead>
                 <TableHead>Login ID</TableHead>
-                <TableHead>PIN status</TableHead>
-                {isAdmin && <TableHead>Guardian</TableHead>}
+                <TableHead>Student PIN</TableHead>
+                {isAdmin && (
+                  <>
+                    <TableHead>Guardian</TableHead>
+                    <TableHead>Guardian PIN</TableHead>
+                  </>
+                )}
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -309,48 +314,52 @@ function RosterRow({
         )}
       </TableCell>
       {isAdmin && (
-        <TableCell>
-          {!student.guardianId ? (
-            <span className="text-sm text-muted-foreground">No guardian</span>
-          ) : (
-            <div>
-              <p className="text-sm text-foreground">{student.guardianName || '—'}</p>
-              {student.guardianPhone && <p dir="ltr" className="text-xs text-muted-foreground">{student.guardianPhone}</p>}
-              {student.guardianPinState === 'guardian_set' ? (
-                <span className="text-xs text-muted-foreground">Self-set PIN (not viewable)</span>
-              ) : canRevealGuardian ? (
-                <div className="mt-0.5 flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={onRevealGuardian}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    {revealedGuardianPin === 'loading' ? (
-                      <Loader2 size={12} className="animate-spin" />
-                    ) : revealedGuardianPin ? (
-                      <EyeOff size={12} />
-                    ) : (
-                      <Eye size={12} />
-                    )}
-                    PIN
-                  </button>
-                  {revealedGuardianPin && revealedGuardianPin !== 'loading' && (
-                    <span dir="ltr" className="font-mono text-xs font-semibold tracking-wide">{revealedGuardianPin}</span>
+        <>
+          <TableCell>
+            {!student.guardianId ? (
+              <span className="text-sm text-muted-foreground">No guardian</span>
+            ) : (
+              <div>
+                <p className="text-sm text-foreground">{student.guardianName || '—'}</p>
+                {student.guardianPhone && <p dir="ltr" className="text-xs text-muted-foreground">{student.guardianPhone}</p>}
+              </div>
+            )}
+          </TableCell>
+          <TableCell>
+            {!student.guardianId ? (
+              <span className="text-sm text-muted-foreground">—</span>
+            ) : student.guardianPinState === 'guardian_set' ? (
+              <Badge variant="neutral">Self-set (not viewable)</Badge>
+            ) : canRevealGuardian ? (
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="ghost" onClick={onRevealGuardian}>
+                  {revealedGuardianPin === 'loading' ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : revealedGuardianPin ? (
+                    <EyeOff size={14} />
+                  ) : (
+                    <Eye size={14} />
                   )}
-                </div>
-              ) : null}
-            </div>
-          )}
-        </TableCell>
+                  {revealedGuardianPin && revealedGuardianPin !== 'loading' ? 'Hide' : 'Reveal'}
+                </Button>
+                {revealedGuardianPin && revealedGuardianPin !== 'loading' && (
+                  <span dir="ltr" className="font-mono font-semibold tracking-wide">{revealedGuardianPin}</span>
+                )}
+              </div>
+            ) : (
+              <span className="text-sm text-muted-foreground">Not viewable</span>
+            )}
+          </TableCell>
+        </>
       )}
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">
           <Button size="sm" variant="secondary" onClick={onResetPin}>
-            <KeyRound size={14} /> Reset / Set PIN
+            <KeyRound size={14} /> Reset student PIN
           </Button>
           {onResetGuardianPin && (
-            <Button size="sm" variant="ghost" onClick={onResetGuardianPin} title="Reset guardian PIN">
-              <KeyRound size={14} />
+            <Button size="sm" variant="secondary" onClick={onResetGuardianPin}>
+              <KeyRound size={14} /> Reset guardian PIN
             </Button>
           )}
         </div>

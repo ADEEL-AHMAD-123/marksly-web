@@ -457,6 +457,10 @@ export const studentsApi = baseApi.injectEndpoints({
           // means the PIN is still admin-revealable, 'guardian_set' means
           // the guardian changed it and only a reset (not a reveal) works.
           pinState: 'school_issued' | 'guardian_set';
+          // First names of any OTHER active children sharing this same
+          // guardian — resending/resetting affects all of them, not just
+          // the student this drawer is currently open for.
+          otherChildrenNames: string[];
           // Full detail on the guardian's most recent welcome-credentials
           // email — null if none was ever sent (e.g. no email on file).
           emailLog: {
