@@ -32,9 +32,13 @@ interface Props {
  * password reset.
  *
  * Also reused for the PIN-login flow (students with no email/phone) — pass
- * `systemId`/`pin` instead of `phone`/`tempPassword`. Same one-time-reveal
- * guarantee: the PIN is never shown again after this dialog closes, only a
- * fresh "Reset PIN" mints a new one.
+ * `systemId`/`pin` instead of `phone`/`tempPassword`. UNLIKE the temp
+ * password above, the PIN is NOT gone once this dialog closes: as long as
+ * the student hasn't changed it themselves (pinState stays 'school_issued'
+ * server-side), an admin can look it up again anytime from the Student
+ * Logins page's "Reveal" control (GET /students/:id/pin — see
+ * student.service.ts's getStudentPin()). The copy below reflects that,
+ * rather than implying this is the only chance to record it.
  */
 export function TempPasswordDialog({ open, onClose, name, phone, tempPassword, systemId, pin, emailed }: Props) {
   const [copied, setCopied] = useState(false);
@@ -74,7 +78,7 @@ export function TempPasswordDialog({ open, onClose, name, phone, tempPassword, s
           </div>
           <DialogPrimitive.Description className="mt-2 text-sm text-muted-foreground">
             {isPin
-              ? `Write this down now — it won't be shown again. Use it with the Login ID below to sign in.`
+              ? `Write this down now, or look it up anytime later from the Student Logins page. Use it with the Login ID below to sign in.`
               : <>Save this password now — it{"'"}s only shown once and can&apos;t be retrieved later.
                   {emailed ? ' It was also emailed to them.' : ' They’ll be asked to set their own on first login.'}</>}
           </DialogPrimitive.Description>
