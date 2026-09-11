@@ -772,31 +772,30 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
           ) : pendingCredAction === 'pin' ? (
             contactStatus?.pinState === 'student_set' ? (
               <>
-                <strong>{s?.name}</strong> already chose their own PIN, so it can&apos;t be shown here — but resetting
-                it creates a fresh one you&apos;ll see right away. It replaces their current PIN immediately, so
-                you&apos;ll need to hand the new one to them or their guardian in person. You can look it up again
-                anytime afterward, right here in the Login section above, or from the Login IDs &amp; PINs page.
+                <strong>{s?.name}</strong> already changed their own PIN, so the current one can&apos;t be shown —
+                resetting replaces it with a new one immediately, and you&apos;ll need to hand it to them or their
+                guardian yourself. You can view it again anytime from the Login section above, or the Login IDs &amp;
+                PINs page.
               </>
             ) : (
               <>
-                This creates a new PIN for <strong>{s?.name}</strong>. You&apos;ll see it once, right after this — no
-                need to rush and write it down, since it stays viewable anytime from the Login section above, or from
-                the Login IDs &amp; PINs page.
+                This replaces <strong>{s?.name}</strong>&apos;s current PIN with a new one immediately. You can view
+                it anytime afterward from the Login section above, or the Login IDs &amp; PINs page.
               </>
             )
           ) : contactStatus?.guardian?.pinState === 'guardian_set' ? (
             <>
-              <strong>{contactStatus?.guardian?.name}</strong> already chose their own PIN, so it can&apos;t be shown
-              here — but resetting it creates a fresh one you&apos;ll see right away. Their old PIN stops working
-              immediately, and since this is the same login for every child linked to this guardian, it changes their
-              access for all of them, not just {s?.name}.
+              <strong>{contactStatus?.guardian?.name}</strong> already changed their own PIN, so the current one
+              can&apos;t be shown — resetting replaces it with a new one immediately. Since this login is shared
+              across every child linked to this guardian, it changes their access for all of them, not just{' '}
+              {s?.name}.
             </>
           ) : (
             <>
-              This creates a new PIN for <strong>{contactStatus?.guardian?.name}</strong>. You&apos;ll see it once,
-              right after this — no need to rush and write it down, since it stays viewable anytime from the Guardian
-              login section above, or from the Login IDs &amp; PINs page. Since a guardian&apos;s login is shared across
-              every child linked to them, this changes their access for all of those children, not just {s?.name}.
+              This replaces <strong>{contactStatus?.guardian?.name}</strong>&apos;s current PIN with a new one
+              immediately. You can view it again anytime from the Guardian login section above, or the Login IDs
+              &amp; PINs page. Since this login is shared across every child linked to this guardian, it changes
+              their access for all of them, not just {s?.name}.
             </>
           )
         }

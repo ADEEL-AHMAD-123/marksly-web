@@ -70,8 +70,7 @@ export function StudentCreatedDialog({ open, onClose, studentName, systemId, stu
           </div>
           <DialogPrimitive.Description className="mt-2 text-sm text-muted-foreground">
             Here's how {studentName.split(' ')[0]} {guardian ? 'and their parent' : ''} sign in. Both PINs are saved —
-            you can view or reset them anytime from the Login IDs &amp; PINs page, so there's no rush to write this
-            down right now.
+            you can view or reset them anytime from the Login IDs &amp; PINs page.
           </DialogPrimitive.Description>
 
           <div className="mt-4 space-y-3">
