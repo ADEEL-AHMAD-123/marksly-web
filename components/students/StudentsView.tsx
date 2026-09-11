@@ -104,6 +104,10 @@ export function StudentsView() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<StudentListItem | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  // Set when the drawer should open scrolled straight to Guardian login —
+  // e.g. clicking the "Email delivery failed" badge — instead of at the top.
+  const [detailFocus, setDetailFocus] = useState<'guardianLogin' | null>(null);
+  const openGuardianLoginDetail = (id: string) => { setDetailId(id); setDetailFocus('guardianLogin'); };
   const [importOpen, setImportOpen] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
   const [bulkImport] = useBulkImportStudentsMutation();
@@ -323,7 +327,7 @@ export function StudentsView() {
                 </TableHeader>
                 <TableBody>
                   {students.map((s) => (
-                    <TableRow key={s.id} className="cursor-pointer" onClick={() => setDetailId(s.id)}>
+                    <TableRow key={s.id} className="cursor-pointer" onClick={() => { setDetailId(s.id); setDetailFocus(null); }}>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar
@@ -361,7 +365,10 @@ export function StudentsView() {
                         {s.guardianPhone && (
                           <p className="text-xs text-foreground/70">{s.guardianPhone}</p>
                         )}
-                        <GuardianEmailBadge status={s.guardianEmailStatus} />
+                        {s.guardianEmail && (
+                          <p className="text-xs text-foreground/70">{s.guardianEmail}</p>
+                        )}
+                        <GuardianEmailBadge status={s.guardianEmailStatus} onOpenDetail={() => openGuardianLoginDetail(s.id)} />
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -395,7 +402,7 @@ export function StudentsView() {
                 <div
                   key={s.id}
                   className="flex cursor-pointer items-center gap-3 p-4 active:bg-muted/40"
-                  onClick={() => setDetailId(s.id)}
+                  onClick={() => { setDetailId(s.id); setDetailFocus(null); }}
                 >
                   <Avatar
                     size="md"
@@ -412,15 +419,15 @@ export function StudentsView() {
                     {s.status !== 'active' && s.leftReason && (
                       <p className="mt-1 truncate text-xs text-foreground/70">Left — {s.leftReason}</p>
                     )}
-                    {(s.guardianName || s.guardianPhone) && (
+                    {(s.guardianName || s.guardianPhone || s.guardianEmail) && (
                       <p className="mt-1 truncate text-xs text-foreground/70">
-                        Guardian: {s.guardianName ?? '—'}{s.guardianPhone ? ` · ${s.guardianPhone}` : ''}
+                        Guardian: {s.guardianName ?? '—'}{s.guardianPhone ? ` · ${s.guardianPhone}` : ''}{s.guardianEmail ? ` · ${s.guardianEmail}` : ''}
                       </p>
                     )}
                     {s.systemId && (
                       <p className="mt-1 truncate font-mono text-[11px] text-foreground/60">Login: {s.systemId}</p>
                     )}
-                    <GuardianEmailBadge status={s.guardianEmailStatus} />
+                    <GuardianEmailBadge status={s.guardianEmailStatus} onOpenDetail={() => openGuardianLoginDetail(s.id)} />
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1.5">
                     <Badge variant={statusBadge[s.status].variant}>
@@ -530,7 +537,8 @@ export function StudentsView() {
       <StudentDetailDrawer
         studentId={detailId}
         open={!!detailId}
-        onClose={() => setDetailId(null)}
+        focus={detailFocus}
+        onClose={() => { setDetailId(null); setDetailFocus(null); }}
         onEdit={openEdit}
       />
 
@@ -606,14 +614,25 @@ function LoginCell({
 /** Guardian email deliverability, folded in from the old Email Delivery
  *  Status page — see guardianEmailMeta above. Hidden for 'ok' to keep rows
  *  calm; only surfaces when there's something worth noticing. */
-function GuardianEmailBadge({ status }: { status?: StudentListItem['guardianEmailStatus'] }) {
+function GuardianEmailBadge({ status, onOpenDetail }: { status?: StudentListItem['guardianEmailStatus']; onOpenDetail?: () => void }) {
   if (!status || status === 'ok' || status === 'no_guardian') return null;
   const meta = guardianEmailMeta[status];
   const Icon = meta.icon;
+  // Clickable straight into the Guardian login section of the detail
+  // drawer — this badge is exactly the kind of thing an admin clicks
+  // expecting to see more, not just a static label.
   return (
-    <p className={cn('mt-0.5 flex items-center gap-1 text-[11px] font-medium', meta.className)} title={meta.title}>
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onOpenDetail?.(); }}
+      className={cn(
+        'mt-0.5 flex items-center gap-1 text-[11px] font-medium underline-offset-2 hover:underline',
+        meta.className
+      )}
+      title={`${meta.title} — click for details`}
+    >
       <Icon size={11} className="shrink-0" /> {meta.label}
-    </p>
+    </button>
   );
 }
 

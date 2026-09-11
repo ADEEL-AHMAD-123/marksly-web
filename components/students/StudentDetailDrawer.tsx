@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   X, Pencil, UserMinus, UserCheck, AlertCircle, Wallet, Printer, GraduationCap, ChevronDown,
   KeyRound, Eye, EyeOff, Send, LockKeyhole, Mail, MailWarning, UserX,
@@ -40,6 +40,12 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onEdit: (s: StudentListItem) => void;
+  /** When 'guardianLogin', the drawer scrolls straight to the Guardian
+   *  login section once its content has loaded — used when opened from the
+   *  Students table's "Email delivery failed"/"No email" badge, so the
+   *  admin lands right on the detail instead of having to scroll and hunt
+   *  for it themselves. */
+  focus?: 'guardianLogin' | null;
 }
 
 function Row({ label, value }: { label: string; value?: string | null }) {
@@ -69,7 +75,7 @@ const END_ENROLLMENT_REASONS: { value: 'transferred' | 'withdrawn' | 'expelled' 
   { value: 'inactive', label: 'Other' },
 ];
 
-export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props) {
+export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }: Props) {
   const { data, isLoading } = useGetStudentQuery(studentId as string, { skip: !studentId });
   const [deleteStudent, { isLoading: deleting }] = useDeleteStudentMutation();
   const [updateStudent, { isLoading: reactivating }] = useUpdateStudentMutation();
@@ -156,6 +162,17 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
   };
 
   const s = data?.data as any;
+
+  // Scroll straight to the Guardian login section once its content has
+  // actually loaded (contactStatus, not just the student — the section's
+  // content depends on it) — see the `focus` prop's own comment above.
+  const guardianLoginRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (open && focus === 'guardianLogin' && s && contactStatus) {
+      guardianLoginRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [open, focus, s, contactStatus]);
+
   const card = cardData?.data;
   const cgpa = cgpaData?.data;
   // The backend returns cgpa: null with an empty termBreakdown when the
@@ -451,7 +468,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                     plus the two recovery actions (resend, or hand over a
                     password directly). Both go through the informed-confirm
                     dialog below rather than firing blind. */}
-                <div className="mt-5">
+                <div ref={guardianLoginRef} className="mt-5 scroll-mt-4">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Guardian login
                   </p>
