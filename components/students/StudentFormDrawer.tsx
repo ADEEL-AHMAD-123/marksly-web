@@ -610,125 +610,139 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               {errors.gender && <p className="mt-1 text-xs text-danger">{errors.gender.message}</p>}
             </div>
 
-            {/* Not required, but shown on the printable ID card — see
-                IdCardsView.tsx. Left optional here so a student/parent can
-                also fill these in themselves via "My ID Card" instead of
-                this being the only way. */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="address">Address</Label>
-                <Input id="address" {...register('address')} placeholder="House #, street, area" />
+            <div className="border-t border-border pt-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Parent / Guardian <span className="font-normal normal-case text-danger">(required)</span>
+              </p>
+              {isEdit && !originalGuardian && (
+                <p className="-mt-1 mb-2 text-xs text-muted-foreground">
+                  This student has no guardian on file yet — add one below.
+                </p>
+              )}
+              {isEdit && originalGuardian && (
+                <p className="-mt-1 mb-2 text-xs text-muted-foreground">
+                  Changing the phone or email below changes this guardian&apos;s login — you&apos;ll be asked to confirm.
+                </p>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="parentPhone">Parent phone</Label>
+                  <Controller
+                    control={control}
+                    name="parentPhone"
+                    render={({ field }) => (
+                      <PhoneInput
+                        id="parentPhone"
+                        international
+                        labels={en}
+                        defaultCountry="PK"
+                        countryCallingCodeEditable={false}
+                        value={field.value}
+                        onChange={(v) => field.onChange(v ?? '')}
+                        placeholder="300 1234567"
+                        className={errors.parentPhone ? 'PhoneInput-danger' : undefined}
+                      />
+                    )}
+                  />
+                  {errors.parentPhone && <p className="mt-1 text-xs text-danger">{errors.parentPhone.message}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="parentName">Parent name</Label>
+                  <Input id="parentName" {...register('parentName')} />
+                </div>
+                <div className="col-span-2">
+                  <Label htmlFor="parentEmail">Parent email</Label>
+                  <Input id="parentEmail" type="email" dir="ltr" {...register('parentEmail')} />
+                  {errors.parentEmail && <p className="mt-1 text-xs text-danger">{errors.parentEmail.message}</p>}
+                </div>
               </div>
-              <div>
-                <Label htmlFor="city">City</Label>
-                <Input id="city" {...register('city')} />
-              </div>
-              <div>
-                <Label>Blood Group</Label>
-                <Controller
-                  control={control}
-                  name="bloodGroup"
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger><SelectValue placeholder="Select blood group" /></SelectTrigger>
-                      <SelectContent>
-                        {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((g) => (
-                          <SelectItem key={g} value={g}>{g}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-              <div className="col-span-2">
-                <Label htmlFor="nationalIdNumber">{nationalIdLabel} Number</Label>
-                <Controller
-                  control={control}
-                  name="nationalIdNumber"
-                  render={({ field }) => (
-                    <Input
-                      id="nationalIdNumber"
-                      dir="ltr"
-                      placeholder="42101-1234567-1"
-                      inputMode="numeric"
-                      value={field.value ?? ''}
-                      onBlur={field.onBlur}
-                      // Auto-inserts the dashes as digits are typed/pasted,
-                      // so entering the 13 raw digits (e.g. 1620115034803)
-                      // lands as 16201-1503480-3 without the admin adding
-                      // the dashes by hand.
-                      onChange={(e) => field.onChange(formatNationalId(e.target.value))}
-                    />
-                  )}
-                />
-                {errors.nationalIdNumber && (
-                  <p className="mt-1 text-xs text-danger">{errors.nationalIdNumber.message}</p>
-                )}
-              </div>
+              {!originalGuardian && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  If a parent with this phone already has an account here, this student is just added to it — one login, both kids show up in it.
+                  Otherwise a brand-new parent account is created and emailed its own login details — make sure this phone and email genuinely belong to the parent, since they&apos;ll use them to sign in.
+                </p>
+              )}
             </div>
 
-            {(
-              <>
-                <div className="border-t border-border pt-4">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Parent / Guardian
-                  </p>
-                  {isEdit && !originalGuardian && (
-                    <p className="-mt-1 mb-2 text-xs text-muted-foreground">
-                      This student has no guardian on file yet — add one below.
-                    </p>
-                  )}
-                  {isEdit && originalGuardian && (
-                    <p className="-mt-1 mb-2 text-xs text-muted-foreground">
-                      Changing the phone or email below changes this guardian&apos;s login — you&apos;ll be asked to confirm.
-                    </p>
-                  )}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="parentPhone">Parent phone</Label>
-                      <Controller
-                        control={control}
-                        name="parentPhone"
-                        render={({ field }) => (
-                          <PhoneInput
-                            id="parentPhone"
-                            international
-                            labels={en}
-                            defaultCountry="PK"
-                            countryCallingCodeEditable={false}
-                            value={field.value}
-                            onChange={(v) => field.onChange(v ?? '')}
-                            placeholder="300 1234567"
-                            className={errors.parentPhone ? 'PhoneInput-danger' : undefined}
-                          />
-                        )}
+            {!isEdit && (
+              <p className="rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-xs text-muted-foreground">
+                A student login is created automatically — a Login ID and PIN are both generated by the system, no setup needed. Both are shown once right after saving, and the Login ID also prints on their ID card. The student can change their own PIN later from their account, and you can always look up, edit or reset either one afterward from the Login IDs &amp; PINs page.
+              </p>
+            )}
+
+            {/* Optional section, deliberately last — none of this blocks
+                saving. Address and Blood Group can genuinely be filled in
+                later by the student/parent themselves (see MyIdCardView.tsx's
+                "Edit my details" card, backed by student.service.ts's
+                updateMyContact()) — City too, though there's currently no
+                dedicated input for it there. CNIC/Form-B stays admin-only by
+                design (updateMyContactSchema deliberately strips it — see
+                student.validator.test.ts), so it's NOT included in that promise. */}
+            <div className="border-t border-border pt-4">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Optional details
+              </p>
+              <p className="mb-2 flex items-start gap-1.5 text-xs text-muted-foreground">
+                <span aria-hidden>💡</span>
+                <span>
+                  Address and Blood Group don&apos;t need to be filled in now — the student or parent can add or
+                  update these anytime from their own dashboard&apos;s <span className="font-medium text-foreground">My ID Card</span> page.
+                  The {nationalIdLabel} number is managed here by the school only.
+                </span>
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="address">Address <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
+                  <Input id="address" {...register('address')} placeholder="House #, street, area" />
+                </div>
+                <div>
+                  <Label htmlFor="city">City <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
+                  <Input id="city" {...register('city')} />
+                </div>
+                <div>
+                  <Label>Blood Group <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
+                  <Controller
+                    control={control}
+                    name="bloodGroup"
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger><SelectValue placeholder="Select blood group" /></SelectTrigger>
+                        <SelectContent>
+                          {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((g) => (
+                            <SelectItem key={g} value={g}>{g}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="nationalIdNumber">{nationalIdLabel} Number <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
+                  <Controller
+                    control={control}
+                    name="nationalIdNumber"
+                    render={({ field }) => (
+                      <Input
+                        id="nationalIdNumber"
+                        dir="ltr"
+                        placeholder="42101-1234567-1"
+                        inputMode="numeric"
+                        value={field.value ?? ''}
+                        onBlur={field.onBlur}
+                        // Auto-inserts the dashes as digits are typed/pasted,
+                        // so entering the 13 raw digits (e.g. 1620115034803)
+                        // lands as 16201-1503480-3 without the admin adding
+                        // the dashes by hand.
+                        onChange={(e) => field.onChange(formatNationalId(e.target.value))}
                       />
-                      {errors.parentPhone && <p className="mt-1 text-xs text-danger">{errors.parentPhone.message}</p>}
-                    </div>
-                    <div>
-                      <Label htmlFor="parentName">Parent name</Label>
-                      <Input id="parentName" {...register('parentName')} />
-                    </div>
-                    <div className="col-span-2">
-                      <Label htmlFor="parentEmail">Parent email</Label>
-                      <Input id="parentEmail" type="email" dir="ltr" {...register('parentEmail')} />
-                      {errors.parentEmail && <p className="mt-1 text-xs text-danger">{errors.parentEmail.message}</p>}
-                    </div>
-                  </div>
-                  {!originalGuardian && (
-                    <p className="mt-1.5 text-xs text-muted-foreground">
-                      If a parent with this phone already has an account here, this student is just added to it — one login, both kids show up in it.
-                      Otherwise a brand-new parent account is created and emailed its own login details — make sure this phone and email genuinely belong to the parent, since they&apos;ll use them to sign in.
-                    </p>
+                    )}
+                  />
+                  {errors.nationalIdNumber && (
+                    <p className="mt-1 text-xs text-danger">{errors.nationalIdNumber.message}</p>
                   )}
                 </div>
-                {!isEdit && (
-                  <p className="text-xs text-muted-foreground">
-                    A student login is created automatically — a Login ID and PIN are both generated by the system, no setup needed. Both are shown once right after saving, and the Login ID also prints on their ID card. The student can change their own PIN later from their account, and you can always look up, edit or reset either one afterward from the Login IDs &amp; PINs page.
-                  </p>
-                )}
-              </>
-            )}
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">

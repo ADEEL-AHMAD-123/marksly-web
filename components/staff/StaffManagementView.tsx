@@ -757,77 +757,27 @@ function AddStaffDrawer({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Gender</Label>
-                <Controller
-                  control={control}
-                  name="gender"
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="female">Female</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.gender && <p className="mt-1 text-xs text-danger">{errors.gender.message}</p>}
-              </div>
-              <div>
-                <Label htmlFor="designation">Designation</Label>
-                <Input id="designation" {...register('designation')} placeholder="e.g. Senior Math Teacher" />
-                {errors.designation && <p className="mt-1 text-xs text-danger">{errors.designation.message}</p>}
-              </div>
+            <div>
+              <Label>Gender <span className="font-normal normal-case text-danger">*</span></Label>
+              <Controller
+                control={control}
+                name="gender"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.gender && <p className="mt-1 text-xs text-danger">{errors.gender.message}</p>}
             </div>
 
             <div>
-              <Label htmlFor="joiningDate">Joining date</Label>
-              <Input id="joiningDate" type="date" {...register('joiningDate')} />
-            </div>
-
-            <div className="border-t border-border pt-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                ID card details
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="nationalIdNumber">CNIC Number</Label>
-                  <Controller
-                    control={control}
-                    name="nationalIdNumber"
-                    render={({ field }) => (
-                      <Input
-                        id="nationalIdNumber"
-                        dir="ltr"
-                        placeholder="42101-1234567-1"
-                        inputMode="numeric"
-                        value={field.value ?? ''}
-                        onBlur={field.onBlur}
-                        // Auto-inserts the dashes as digits are typed/pasted
-                        // — entering the 13 raw digits lands already in the
-                        // 42101-1234567-1 shape the validator requires.
-                        onChange={(e) => field.onChange(formatNationalId(e.target.value))}
-                      />
-                    )}
-                  />
-                  {errors.nationalIdNumber && (
-                    <p className="mt-1 text-xs text-danger">{errors.nationalIdNumber.message}</p>
-                  )}
-                </div>
-                {/* Address stays optional — not required for the ID card the
-                    way CNIC is, and can also be filled in later by the
-                    account holder themselves via "My ID Card". */}
-                <div>
-                  <Label htmlFor="address">Address <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
-                  <Input id="address" {...register('address')} placeholder="House #, street, area" />
-                </div>
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="phone">Phone</Label>
+              <Label htmlFor="phone">Phone <span className="font-normal normal-case text-danger">*</span></Label>
               <Controller
                 control={control}
                 name="phone"
@@ -848,13 +798,73 @@ function AddStaffDrawer({
               {errors.phone && <p className="mt-1 text-xs text-danger">{errors.phone.message}</p>}
             </div>
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email <span className="font-normal normal-case text-danger">*</span></Label>
               <Input id="email" type="email" dir="ltr" {...register('email')} />
               {errors.email && <p className="mt-1 text-xs text-danger">{errors.email.message}</p>}
+              {!isEditing && (
+                <p className="mt-1 text-xs text-muted-foreground">A Login ID and PIN are generated automatically and emailed to this address — shown once here as well right after saving.</p>
+              )}
             </div>
-            {!isEditing && (
-              <p className="text-xs text-muted-foreground">A Login ID and PIN are generated automatically and emailed to this address — shown once here as well right after saving.</p>
-            )}
+            <div>
+              <Label htmlFor="nationalIdNumber">CNIC Number <span className="font-normal normal-case text-danger">*</span></Label>
+              <Controller
+                control={control}
+                name="nationalIdNumber"
+                render={({ field }) => (
+                  <Input
+                    id="nationalIdNumber"
+                    dir="ltr"
+                    placeholder="42101-1234567-1"
+                    inputMode="numeric"
+                    value={field.value ?? ''}
+                    onBlur={field.onBlur}
+                    // Auto-inserts the dashes as digits are typed/pasted
+                    // — entering the 13 raw digits lands already in the
+                    // 42101-1234567-1 shape the validator requires.
+                    onChange={(e) => field.onChange(formatNationalId(e.target.value))}
+                  />
+                )}
+              />
+              {errors.nationalIdNumber && (
+                <p className="mt-1 text-xs text-danger">{errors.nationalIdNumber.message}</p>
+              )}
+            </div>
+
+            {/* Optional section, deliberately last — nothing here blocks
+                saving. Address genuinely can be filled in or changed later by
+                the account holder via their own "My ID Card" page (see
+                MyIdCardView.tsx's "Edit my details" card, backed by
+                updateMyContactSchema/updateMyContact()). Designation and
+                joining date stay admin-managed only — there's no self-service
+                mutation for either, so that promise isn't made here. */}
+            <div className="border-t border-border pt-4">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Optional details
+              </p>
+              <p className="mb-2 flex items-start gap-1.5 text-xs text-muted-foreground">
+                <span aria-hidden>💡</span>
+                <span>
+                  Address doesn&apos;t need to be filled in now — the {roleLabel(isEditing ? editing.role : defaultRole).toLowerCase()} can add or
+                  update it anytime from their own dashboard&apos;s <span className="font-medium text-foreground">My ID Card</span> page.
+                  Designation and joining date are set by the school only.
+                </span>
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="designation">Designation <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
+                  <Input id="designation" {...register('designation')} placeholder="e.g. Senior Math Teacher" />
+                  {errors.designation && <p className="mt-1 text-xs text-danger">{errors.designation.message}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="joiningDate">Joining date <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
+                  <Input id="joiningDate" type="date" {...register('joiningDate')} />
+                </div>
+                <div className="col-span-2">
+                  <Label htmlFor="address">Address <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
+                  <Input id="address" {...register('address')} placeholder="House #, street, area" />
+                </div>
+              </div>
+            </div>
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
             <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>

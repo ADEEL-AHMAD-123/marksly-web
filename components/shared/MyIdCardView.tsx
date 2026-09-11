@@ -183,6 +183,68 @@ export function MyIdCardView() {
   );
 }
 
+/**
+ * Always-available "Edit my details" card for staff — lets someone update
+ * their own Address any time, not just during the one-time "card blocked
+ * until this is filled in" gate below. Collapsed by default, same low-key
+ * pattern as ChangeMyPinCard. Designation/joining date/CNIC are deliberately
+ * NOT editable here — those stay admin-managed (see user.validator.ts's
+ * updateMyContactSchema, which only ever accepts phone/address).
+ */
+function EditMyStaffDetailsCard({ currentAddress }: { currentAddress: string | null }) {
+  const [open, setOpen] = useState(false);
+  const [address, setAddress] = useState(currentAddress ?? '');
+  const [updateContact, { isLoading: saving }] = useUpdateMyContactMutation();
+
+  if (!open) {
+    return (
+      <Card className="no-print flex max-w-sm items-center justify-between gap-3 p-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+            <MapPin size={16} />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-foreground">My details</p>
+            <p className="text-xs text-muted-foreground">{currentAddress ? 'Update your address.' : 'Add your address.'}</p>
+          </div>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => { setAddress(currentAddress ?? ''); setOpen(true); }}>Edit</Button>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="no-print max-w-sm space-y-3 p-4">
+      <p className="text-sm font-semibold text-foreground">Edit my details</p>
+      <div>
+        <Label htmlFor="edit-my-address">Address</Label>
+        <Input id="edit-my-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House #, street, area" />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Other details (designation, joining date, CNIC) are managed by your school — ask your admin to update those.
+      </p>
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          disabled={saving}
+          onClick={async () => {
+            try {
+              await updateContact({ address: address.trim() }).unwrap();
+              toast.success('Details saved');
+              setOpen(false);
+            } catch (e) {
+              toast.error(getErrorMessage(e, 'Could not save your details'));
+            }
+          }}
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+      </div>
+    </Card>
+  );
+}
+
 function StaffMyIdCard() {
   const { data, isFetching, isError } = useGetMyCardQuery();
   const card = data?.data;
@@ -244,6 +306,7 @@ function StaffMyIdCard() {
         <>
           <AdminOnlyMissingNote keys={adminOnlyMissing} />
           <MyPhotoUploader hasPhoto={!card.photoMissing} />
+          <EditMyStaffDetailsCard currentAddress={card.address ?? null} />
           <div className="no-print flex items-center justify-end gap-2">
             <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
               <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
@@ -365,6 +428,92 @@ function ChangeMyPinCard() {
   );
 }
 
+/**
+ * Always-available "Edit my details" card for a student/parent — same
+ * pattern as EditMyStaffDetailsCard, for Address/City/Blood Group (all
+ * genuinely self-service, see student.service.ts's updateMyContact()).
+ * CNIC/Form-B is deliberately excluded — admin-only by design.
+ */
+function EditMyStudentDetailsCard({
+  currentAddress, currentCity, currentBloodGroup,
+}: { currentAddress: string | null; currentCity: string | null; currentBloodGroup: string | null }) {
+  const [open, setOpen] = useState(false);
+  const [address, setAddress] = useState(currentAddress ?? '');
+  const [city, setCity] = useState(currentCity ?? '');
+  const [bloodGroup, setBloodGroup] = useState(currentBloodGroup ?? '');
+  const [updateContact, { isLoading: saving }] = useUpdateMyStudentContactMutation();
+
+  if (!open) {
+    return (
+      <Card className="no-print flex max-w-sm items-center justify-between gap-3 p-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+            <MapPin size={16} />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-foreground">My details</p>
+            <p className="text-xs text-muted-foreground">Update address, city, or blood group.</p>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setAddress(currentAddress ?? '');
+            setCity(currentCity ?? '');
+            setBloodGroup(currentBloodGroup ?? '');
+            setOpen(true);
+          }}
+        >
+          Edit
+        </Button>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="no-print max-w-sm space-y-3 p-4">
+      <p className="text-sm font-semibold text-foreground">Edit my details</p>
+      <div>
+        <Label htmlFor="edit-my-student-address">Address</Label>
+        <Input id="edit-my-student-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House #, street, area" />
+      </div>
+      <div>
+        <Label htmlFor="edit-my-student-city">City</Label>
+        <Input id="edit-my-student-city" value={city} onChange={(e) => setCity(e.target.value)} />
+      </div>
+      <div>
+        <Label>Blood Group</Label>
+        <Select value={bloodGroup} onValueChange={setBloodGroup}>
+          <SelectTrigger><SelectValue placeholder="Select blood group" /></SelectTrigger>
+          <SelectContent>{BLOOD_GROUPS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Other details (CNIC/Form-B, class, roll number) are managed by the school — ask your admin to update those.
+      </p>
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          disabled={saving}
+          onClick={async () => {
+            try {
+              await updateContact({ address: address.trim(), city: city.trim(), bloodGroup: bloodGroup || undefined }).unwrap();
+              toast.success('Details saved');
+              setOpen(false);
+            } catch (e) {
+              toast.error(getErrorMessage(e, 'Could not save your details'));
+            }
+          }}
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+      </div>
+    </Card>
+  );
+}
+
 function StudentMyIdCard() {
   const { data, isFetching, isError } = useGetMyStudentCardQuery();
   const card = data?.data;
@@ -452,6 +601,11 @@ function StudentMyIdCard() {
         <>
           <AdminOnlyMissingNote keys={adminOnlyMissing} />
           <MyPhotoUploader hasPhoto={!card.photoMissing} />
+          <EditMyStudentDetailsCard
+            currentAddress={card.address ?? null}
+            currentCity={card.city ?? null}
+            currentBloodGroup={card.bloodGroup ?? null}
+          />
           <ChangeMyPinCard />
           <div className="no-print flex items-center justify-end gap-2">
             <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
