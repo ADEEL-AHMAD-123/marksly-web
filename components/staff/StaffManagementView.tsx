@@ -171,7 +171,13 @@ export function StaffManagementView() {
   const [query, setQuery] = useState(() =>
     typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('q') ?? ''
   );
-  const [incompleteOnly, setIncompleteOnly] = useState(false);
+  // Replaces the old "Missing ID info" filter button — Status and Gender
+  // are much more commonly reached-for slices of the staff list than the
+  // incomplete-info one was. The per-row "Missing address" badge (see
+  // missingStaffInfo()) still surfaces incomplete accounts individually,
+  // this just isn't a dedicated top-level filter anymore.
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female' | 'other'>('all');
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ManagedUser | null>(null);
@@ -187,7 +193,8 @@ export function StaffManagementView() {
     search: debounced || undefined,
     page,
     limit: PAGE_SIZE,
-    incomplete: incompleteOnly || undefined,
+    isActive: statusFilter === 'all' ? undefined : statusFilter === 'active',
+    gender: genderFilter === 'all' ? undefined : genderFilter,
   });
   const [detailMember, setDetailMember] = useState<ManagedUser | null>(null);
 
@@ -196,11 +203,12 @@ export function StaffManagementView() {
   const totalPages = data?.meta?.totalPages ?? 1;
   const activeTab = ROLE_TABS.find((t) => t.value === tab) ?? ROLE_TABS[0];
   const listLabel = tab === 'all' ? 'staff' : `${roleLabel(tab).toLowerCase()}s`;
-  const filtersActive = !!debounced || tab !== 'all' || incompleteOnly;
+  const filtersActive = !!debounced || tab !== 'all' || statusFilter !== 'all' || genderFilter !== 'all';
   const resetFilters = () => {
     setQuery('');
     setTab('all');
-    setIncompleteOnly(false);
+    setStatusFilter('all');
+    setGenderFilter('all');
     setPage(1);
   };
   const showResults = !isError && !isLoading && members.length > 0;
@@ -259,19 +267,23 @@ export function StaffManagementView() {
               placeholder="Search by name or phone…"
             />
           </div>
-          <button
-            type="button"
-            onClick={() => { setIncompleteOnly((v) => !v); setPage(1); }}
-            className={cn(
-              'flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
-              incompleteOnly
-                ? 'border-warning bg-warning-soft text-warning'
-                : 'border-border bg-card text-foreground hover:bg-muted'
-            )}
-            title="Show only accounts missing an address"
-          >
-            Missing ID info
-          </button>
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as typeof statusFilter); setPage(1); }}>
+            <SelectTrigger className="w-full shrink-0 sm:w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={genderFilter} onValueChange={(v) => { setGenderFilter(v as typeof genderFilter); setPage(1); }}>
+            <SelectTrigger className="w-full shrink-0 sm:w-[140px]"><SelectValue placeholder="Gender" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All genders</SelectItem>
+              <SelectItem value="male">Male</SelectItem>
+              <SelectItem value="female">Female</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
           {filtersActive && (
             <button
               type="button"

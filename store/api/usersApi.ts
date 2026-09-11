@@ -136,7 +136,10 @@ export const usersApi = baseApi.injectEndpoints({
     }),
     getUsers: builder.query<
       ApiArray<ManagedUser>,
-      { role?: ManageableRole; search?: string; page?: number; limit?: number; incomplete?: boolean } | void
+      {
+        role?: ManageableRole; search?: string; page?: number; limit?: number; incomplete?: boolean;
+        isActive?: boolean; gender?: 'male' | 'female' | 'other';
+      } | void
     >({
       query: (params) => {
         const s = new URLSearchParams();
