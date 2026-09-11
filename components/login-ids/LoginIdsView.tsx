@@ -130,7 +130,7 @@ function StaffLoginRoster() {
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const debounced = useDebounce(query, 350);
-  const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null);
+  const [resetTarget, setResetTarget] = useState<{ id: string; name: string; systemId: string | null } | null>(null);
 
   const { data, isLoading, isFetching, isError, refetch } = useGetUsersQuery({
     role: role === 'all' ? undefined : role,
@@ -184,7 +184,7 @@ function StaffLoginRoster() {
                 </TableHeader>
                 <TableBody>
                   {members.map((m) => (
-                    <StaffLoginRow key={m.id} member={m} onResetPin={() => setResetTarget({ id: m.id, name: m.name })} />
+                    <StaffLoginRow key={m.id} member={m} onResetPin={() => setResetTarget({ id: m.id, name: m.name, systemId: m.systemId })} />
                   ))}
                 </TableBody>
               </Table>
@@ -194,7 +194,7 @@ function StaffLoginRoster() {
           {/* Mobile cards */}
           <div className="space-y-3 md:hidden">
             {members.map((m) => (
-              <StaffLoginCard key={m.id} member={m} onResetPin={() => setResetTarget({ id: m.id, name: m.name })} />
+              <StaffLoginCard key={m.id} member={m} onResetPin={() => setResetTarget({ id: m.id, name: m.name, systemId: m.systemId })} />
             ))}
           </div>
 
@@ -218,7 +218,12 @@ function StaffLoginRoster() {
       )}
 
       {resetTarget && (
-        <ResetStaffPinDialog userId={resetTarget.id} name={resetTarget.name} onClose={() => setResetTarget(null)} />
+        <ResetStaffPinDialog
+          userId={resetTarget.id}
+          name={resetTarget.name}
+          systemId={resetTarget.systemId}
+          onClose={() => setResetTarget(null)}
+        />
       )}
     </div>
   );
@@ -308,7 +313,7 @@ function StaffLoginCard({ member, onResetPin }: { member: ManagedUser; onResetPi
 
 /** Same random/custom choice and reveal-once flow as ClassRosterView.tsx's
  *  ResetPinDialog / StaffManagementView.tsx's ResetPinDialog. */
-function ResetStaffPinDialog({ userId, name, onClose }: { userId: string; name: string; onClose: () => void }) {
+function ResetStaffPinDialog({ userId, name, systemId, onClose }: { userId: string; name: string; systemId?: string | null; onClose: () => void }) {
   const [resetPin, { isLoading }] = useResetStaffPinMutation();
   const [mode, setMode] = useState<'random' | 'custom'>('random');
   const [customPin, setCustomPin] = useState('');
@@ -327,7 +332,7 @@ function ResetStaffPinDialog({ userId, name, onClose }: { userId: string; name: 
   };
 
   if (result) {
-    return <TempPasswordDialog open onClose={onClose} name={name} pin={result} />;
+    return <TempPasswordDialog open onClose={onClose} name={name} systemId={systemId ?? undefined} pin={result} />;
   }
 
   return (

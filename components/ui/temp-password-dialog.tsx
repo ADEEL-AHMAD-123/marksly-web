@@ -94,7 +94,7 @@ export function TempPasswordDialog({ open, onClose, name, phone, tempPassword, s
           </div>
           <DialogPrimitive.Description className="mt-2 text-sm text-muted-foreground">
             {isPin
-              ? `This PIN is saved — view or reset it anytime from the Student Logins page. Use it with the Login ID below to sign in.`
+              ? `This PIN is saved — view or reset it anytime from the Login IDs & PINs page. Use it with the Login ID below to sign in.`
               : <>Copy this password now — it{"'"}s shown here only once and can&apos;t be viewed again later.
                   {emailed ? ` It's also been emailed to ${roleLabel ? 'them' : name}.` : ' They can set their own the first time they log in.'}
                   {roleLabel === 'Parent'

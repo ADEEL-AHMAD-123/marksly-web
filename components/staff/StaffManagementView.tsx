@@ -188,7 +188,7 @@ export function StaffManagementView() {
   const [updateUser, { isLoading: updating }] = useUpdateUserMutation();
   const [confirmDeactivateId, setConfirmDeactivateId] = useState<string | null>(null);
   const [resendTarget, setResendTarget] = useState<{ id: string; name: string; email: string } | null>(null);
-  const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null);
+  const [resetTarget, setResetTarget] = useState<{ id: string; name: string; systemId: string | null } | null>(null);
 
   const members = data?.data ?? [];
   const totalPages = data?.meta?.totalPages ?? 1;
@@ -360,7 +360,7 @@ export function StaffManagementView() {
                             <Button variant="ghost" size="sm" onClick={() => { setEditing(m); setOpen(true); }}>
                               <Pencil size={14} /> Edit
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => setResetTarget({ id: m.id, name: m.name })}>
+                            <Button variant="ghost" size="sm" onClick={() => setResetTarget({ id: m.id, name: m.name, systemId: m.systemId })}>
                               <KeyRound size={14} /> Reset PIN
                             </Button>
                             {m.email && (
@@ -394,7 +394,7 @@ export function StaffManagementView() {
                 confirmDeactivate={confirmDeactivateId === m.id}
                 updating={updating}
                 onEdit={() => { setEditing(m); setOpen(true); }}
-                onResetPin={() => setResetTarget({ id: m.id, name: m.name })}
+                onResetPin={() => setResetTarget({ id: m.id, name: m.name, systemId: m.systemId })}
                 onResend={m.email ? () => setResendTarget({ id: m.id, name: m.name, email: m.email! }) : undefined}
                 onToggleActive={() => (m.isActive ? setConfirmDeactivateId(m.id) : toggleActive(m))}
                 onCancelDeactivate={() => setConfirmDeactivateId(null)}
@@ -433,6 +433,7 @@ export function StaffManagementView() {
         <ResetPinDialog
           userId={resetTarget.id}
           name={resetTarget.name}
+          systemId={resetTarget.systemId}
           onClose={() => setResetTarget(null)}
         />
       )}
@@ -523,7 +524,7 @@ function StaffCard({
 /** Resets (or sets a custom) PIN for a staff-type account — same
  *  random/custom choice and reveal-once flow as ClassRosterView.tsx's
  *  ResetPinDialog for students. */
-function ResetPinDialog({ userId, name, onClose }: { userId: string; name: string; onClose: () => void }) {
+function ResetPinDialog({ userId, name, systemId, onClose }: { userId: string; name: string; systemId?: string | null; onClose: () => void }) {
   const [resetPin, { isLoading }] = useResetStaffPinMutation();
   const [mode, setMode] = useState<'random' | 'custom'>('random');
   const [customPin, setCustomPin] = useState('');
@@ -542,7 +543,7 @@ function ResetPinDialog({ userId, name, onClose }: { userId: string; name: strin
   };
 
   if (result) {
-    return <TempPasswordDialog open onClose={onClose} name={name} pin={result} />;
+    return <TempPasswordDialog open onClose={onClose} name={name} systemId={systemId ?? undefined} pin={result} />;
   }
 
   return (
