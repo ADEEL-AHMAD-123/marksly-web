@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getErrorMessage } from '@/lib/get-error-message';
+import { formatNationalId } from '@/lib/utils';
 import { useUpdateStudentMutation } from '@/store/api/studentsApi';
 import { useUpdateUserMutation } from '@/store/api/usersApi';
 
@@ -127,8 +128,9 @@ export function EditCardDetailsDialog({ open, onClose, target }: Props) {
               <Input
                 id="card-national-id"
                 dir="ltr"
+                inputMode="numeric"
                 value={nationalIdNumber}
-                onChange={(e) => setNationalIdNumber(e.target.value)}
+                onChange={(e) => setNationalIdNumber(formatNationalId(e.target.value))}
                 placeholder="42101-1234567-1"
               />
             </div>

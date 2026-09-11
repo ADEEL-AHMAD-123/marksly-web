@@ -27,7 +27,7 @@ import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { SearchInput } from '@/components/ui/search-input';
 import { useDebounce } from '@/hooks/useDebounce';
-import { getInitials, cn } from '@/lib/utils';
+import { getInitials, cn, formatNationalId } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { getErrorMessage, getErrorCode, getErrorDetails } from '@/lib/get-error-message';
 import {
@@ -466,11 +466,23 @@ function AddStaffDrawer({
                 </div>
                 <div>
                   <Label htmlFor="nationalIdNumber">CNIC Number</Label>
-                  <Input
-                    id="nationalIdNumber"
-                    dir="ltr"
-                    placeholder="42101-1234567-1"
-                    {...register('nationalIdNumber')}
+                  <Controller
+                    control={control}
+                    name="nationalIdNumber"
+                    render={({ field }) => (
+                      <Input
+                        id="nationalIdNumber"
+                        dir="ltr"
+                        placeholder="42101-1234567-1"
+                        inputMode="numeric"
+                        value={field.value ?? ''}
+                        onBlur={field.onBlur}
+                        // Auto-inserts the dashes as digits are typed/pasted
+                        // — entering the 13 raw digits lands already in the
+                        // 42101-1234567-1 shape the validator requires.
+                        onChange={(e) => field.onChange(formatNationalId(e.target.value))}
+                      />
+                    )}
                   />
                   {errors.nationalIdNumber && (
                     <p className="mt-1 text-xs text-danger">{errors.nationalIdNumber.message}</p>

@@ -18,6 +18,7 @@ import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { PhotoUpload } from '@/components/shared/PhotoUpload';
 import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
+import { formatNationalId } from '@/lib/utils';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetActiveTermsQuery } from '@/store/api/termsApi';
 import { useTerminology, getTerminologyForTermType, useNationalIdLabel } from '@/lib/terminology';
@@ -89,19 +90,6 @@ function makeSchema(hasExistingGuardian: boolean) {
 }
 
 type Form = z.infer<typeof schema>;
-
-/** Strips everything but digits, caps at 13 (5+7+1), and re-inserts the
- *  dashes at the fixed 42101-1234567-1 positions as the admin types — so
- *  pasting/typing the 13 raw digits (as printed on most physical CNICs/
- *  Form Bs, no dashes) still lands in the format the backend's
- *  NATIONAL_ID_REGEX requires, instead of failing validation and leaving
- *  the admin to figure out where to put the dashes themselves. */
-function formatNationalId(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 13);
-  if (digits.length <= 5) return digits;
-  if (digits.length <= 12) return `${digits.slice(0, 5)}-${digits.slice(5)}`;
-  return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
-}
 
 interface ClassOption {
   id: string;
@@ -526,19 +514,24 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               </div>
               <div className="col-span-2">
                 <Label htmlFor="nationalIdNumber">{nationalIdLabel} Number</Label>
-                <Input
-                  id="nationalIdNumber"
-                  dir="ltr"
-                  placeholder="42101-1234567-1"
-                  inputMode="numeric"
-                  {...register('nationalIdNumber', {
-                    // Auto-inserts the dashes as digits are typed/pasted, so
-                    // entering the 13 raw digits (e.g. 1620115034803) lands
-                    // as 16201-1503480-3 without the admin adding them by hand.
-                    onChange: (e) => {
-                      e.target.value = formatNationalId(e.target.value);
-                    },
-                  })}
+                <Controller
+                  control={control}
+                  name="nationalIdNumber"
+                  render={({ field }) => (
+                    <Input
+                      id="nationalIdNumber"
+                      dir="ltr"
+                      placeholder="42101-1234567-1"
+                      inputMode="numeric"
+                      value={field.value ?? ''}
+                      onBlur={field.onBlur}
+                      // Auto-inserts the dashes as digits are typed/pasted,
+                      // so entering the 13 raw digits (e.g. 1620115034803)
+                      // lands as 16201-1503480-3 without the admin adding
+                      // the dashes by hand.
+                      onChange={(e) => field.onChange(formatNationalId(e.target.value))}
+                    />
+                  )}
                 />
                 {errors.nationalIdNumber && (
                   <p className="mt-1 text-xs text-danger">{errors.nationalIdNumber.message}</p>
