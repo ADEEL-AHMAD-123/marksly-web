@@ -4,12 +4,10 @@ import { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   Plus, Upload, Filter, ChevronLeft, ChevronRight,
-  AlertCircle, MoreVertical, Send, KeyRound, SquareCheck, Square, X, Info,
-  Eye, EyeOff, Users2, Mail, MailWarning, UserX,
+  AlertCircle, Eye, EyeOff, Users2, Mail, MailWarning, UserX, X,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
-import { buttonVariants } from '@/components/ui/button-variants';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,20 +17,12 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
 import { SearchInput } from '@/components/ui/search-input';
-import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   useGetStudentsQuery,
   useGetGuardianEmailStatsQuery,
   useBulkImportStudentsMutation,
-  useResendStudentCredentialsMutation,
-  useResetStudentPinMutation,
-  useLazyGetStudentContactStatusQuery,
   useLazyGetStudentPinQuery,
   type StudentListItem,
 } from '@/store/api/studentsApi';
@@ -81,30 +71,22 @@ const statusBadge: Record<
 
 const PAGE_SIZE = 20;
 
-/** What "Missing ID info" actually checks — kept as one source of truth so
- *  the filter toggle's tooltip, the backend's `incomplete` query, and the
- *  per-row chip can never silently drift out of sync with each other. */
-const MISSING_INFO_EXPLAINER =
-  'Flags any student missing something their ID card needs: home address, blood group, a linked guardian, or a photo.';
-
-type PendingAction =
-  | { type: 'resend'; student: StudentListItem }
-  | { type: 'pin'; student: StudentListItem };
-
 export function StudentsView() {
   const terminology = useTerminology();
   const [query, setQuery] = useState(() =>
     typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('q') ?? ''
   );
   const [status, setStatus] = useState<string>('all');
-  const [incompleteOnly, setIncompleteOnly] = useState(false);
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
+  // Not exposed as its own filter dropdown — set only by clicking the
+  // needs-attention banner below, as a shortcut into the relevant subset
+  // rather than a manual option someone has to know to pick.
   const [guardianEmailStatus, setGuardianEmailStatus] = useState<string>('all');
   const [page, setPage] = useState(1);
   const debouncedQuery = useDebounce(query, 350);
   const filtersActive =
-    !!debouncedQuery || status !== 'all' || incompleteOnly || !!classId || guardianEmailStatus !== 'all';
+    !!debouncedQuery || status !== 'all' || !!classId || guardianEmailStatus !== 'all';
 
   const { data: classesRes } = useGetClassesQuery();
   const classes: ClassOption[] = classesRes?.data ?? [];
@@ -124,27 +106,6 @@ export function StudentsView() {
   const [importOpen, setImportOpen] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
   const [bulkImport] = useBulkImportStudentsMutation();
-
-  // Row quick-actions — resend parent login / reset PIN, without opening the
-  // full detail drawer. Kept deliberately narrow (no "End enrollment" here):
-  // that's a destructive lifecycle change and stays behind the detail
-  // drawer's explicit reason-and-confirm step, so a fast row menu can't turn
-  // it into a one-misclick mistake.
-  //
-  // Neither action fires directly from the menu click. Both cost something
-  // real — resending burns an email send, resetting silently overwrites
-  // whatever PIN a student may have already chosen for themselves — so
-  // clicking the menu item only fetches the current guardian/PIN status
-  // (checkingId below) and opens a confirm dialog with that context, rather
-  // than acting blind. See getContactStatus() in student.service.ts.
-  const [resendCredentials, { isLoading: resending }] = useResendStudentCredentialsMutation();
-  const [resetPin, { isLoading: resettingPin }] = useResetStudentPinMutation();
-  const [fetchContactStatus] = useLazyGetStudentContactStatusQuery();
-  const [checkingId, setCheckingId] = useState<string | null>(null);
-  const [pending, setPending] = useState<PendingAction | null>(null);
-  const [pendingWarning, setPendingWarning] = useState(false);
-  const [pendingDescription, setPendingDescription] = useState<React.ReactNode>(null);
-  const [pinReveal, setPinReveal] = useState<{ name: string; systemId: string; pin: string } | null>(null);
 
   // Inline PIN reveal in the Login column — mirrors ClassRosterView's
   // reveal/hide pattern, one PIN fetched (and cached in state) at a time per
@@ -171,89 +132,11 @@ export function StudentsView() {
   const openAdd = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (s: StudentListItem) => { setDetailId(null); setEditing(s); setFormOpen(true); };
 
-  const openResendConfirm = async (s: StudentListItem) => {
-    setCheckingId(s.id);
-    try {
-      const res = await fetchContactStatus(s.id).unwrap();
-      const guardian = res.data.guardian;
-      if (!guardian) {
-        toast.error('This student has no parent/guardian account on file to resend to.');
-        return;
-      }
-      const warning = guardian.hasLoggedIn;
-      setPendingWarning(warning);
-      setPendingDescription(
-        warning ? (
-          <>
-            <strong>{guardian.name}</strong> has already signed in before — sending this mints a brand-new
-            temporary password and emails it to them, which will lock them out of whatever password they&apos;re
-            currently using, and uses one of your email sends. Only continue if they&apos;ve actually lost access.
-          </>
-        ) : (
-          <>
-            <strong>{guardian.name}</strong> hasn&apos;t signed in yet, so their original welcome email is likely
-            still unused. This resends a fresh temporary password to {guardian.email ?? 'their email on file'}.
-          </>
-        )
-      );
-      setPending({ type: 'resend', student: s });
-    } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Could not check this student\'s guardian status'));
-    } finally {
-      setCheckingId(null);
-    }
-  };
-
-  const openResetPinConfirm = async (s: StudentListItem) => {
-    setCheckingId(s.id);
-    try {
-      const res = await fetchContactStatus(s.id).unwrap();
-      const warning = res.data.pinState === 'student_set';
-      setPendingWarning(warning);
-      setPendingDescription(
-        warning ? (
-          <>
-            <strong>{s.name}</strong> has already set their own PIN. Resetting will overwrite it with a new one
-            you&apos;ll need to hand to them directly — their current PIN will stop working immediately.
-          </>
-        ) : (
-          <>
-            This mints a new PIN for <strong>{s.name}</strong>. It&apos;s shown once right after — write it down
-            and hand it to the student or their guardian directly.
-          </>
-        )
-      );
-      setPending({ type: 'pin', student: s });
-    } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Could not check this student\'s PIN status'));
-    } finally {
-      setCheckingId(null);
-    }
-  };
-
-  const runPendingAction = async () => {
-    if (!pending) return;
-    const { type, student: s } = pending;
-    try {
-      if (type === 'resend') {
-        const res = await resendCredentials({ id: s.id, target: 'parent' }).unwrap();
-        toast.success(`Sent to ${res.data.sentTo}`);
-      } else {
-        const res = await resetPin({ id: s.id }).unwrap();
-        setPinReveal({ name: s.name, systemId: s.systemId ?? '—', pin: res.data.pin });
-      }
-      setPending(null);
-    } catch (e: any) {
-      toast.error(getErrorMessage(e, type === 'resend' ? 'Could not resend parent login' : 'Could not reset PIN'));
-    }
-  };
-
   const { data, isLoading, isFetching, isError, refetch } = useGetStudentsQuery({
     page,
     limit: PAGE_SIZE,
     search: debouncedQuery || undefined,
     status: status === 'all' ? undefined : (status as StudentListItem['status']),
-    incomplete: incompleteOnly || undefined,
     classId: classId || undefined,
     sectionId: sectionId || undefined,
     guardianEmailStatus: guardianEmailStatus === 'all' ? undefined : (guardianEmailStatus as 'problem' | 'no_email'),
@@ -267,7 +150,6 @@ export function StudentsView() {
   const resetFilters = () => {
     setQuery('');
     setStatus('all');
-    setIncompleteOnly(false);
     setClassId('');
     setSectionId('');
     setGuardianEmailStatus('all');
@@ -377,38 +259,6 @@ export function StudentsView() {
               <SelectItem value="transferred">Transferred</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={guardianEmailStatus} onValueChange={(v) => { setGuardianEmailStatus(v); setPage(1); }}>
-            <SelectTrigger className="sm:w-44">
-              <SelectValue placeholder="Guardian email" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Any guardian email</SelectItem>
-              <SelectItem value="problem">Failed / bounced</SelectItem>
-              <SelectItem value="no_email">No email on file</SelectItem>
-            </SelectContent>
-          </Select>
-          {/* Restyled onto the shared Button visual vocabulary (radius,
-              border, hover) instead of a bespoke one-off style, with a
-              checkbox-style icon so the ON/OFF state doesn't rely on color
-              alone. Relabeled + given a real tooltip and a visible (i) —
-              "Missing ID info" alone doesn't tell a new admin what "ID"
-              refers to or what counts as missing. */}
-          <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              onClick={() => { setIncompleteOnly((v) => !v); setPage(1); }}
-              className={cn(buttonVariants({ variant: incompleteOnly ? 'soft' : 'secondary', size: 'sm' }))}
-              title={MISSING_INFO_EXPLAINER}
-            >
-              {incompleteOnly ? <SquareCheck size={14} /> : <Square size={14} />} Missing ID card info
-            </button>
-            <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-              title={MISSING_INFO_EXPLAINER}
-            >
-              <Info size={14} />
-            </span>
-          </div>
           {filtersActive && (
             <button
               type="button"
@@ -483,7 +333,6 @@ export function StudentsView() {
                             <p className="text-xs text-foreground/70">
                               Roll: <span className="font-medium">{s.rollNumber}</span>
                             </p>
-                            <MissingInfoChip missing={missingIdInfo(s)} />
                           </div>
                         </div>
                       </TableCell>
@@ -521,15 +370,7 @@ export function StudentsView() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                          <StudentQuickActions
-                            student={s}
-                            checking={checkingId === s.id}
-                            onResendParentLogin={openResendConfirm}
-                            onResetPin={openResetPinConfirm}
-                          />
-                          <ChevronRight size={16} className="text-muted-foreground" />
-                        </div>
+                        <ChevronRight size={16} className="ml-auto text-muted-foreground" />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -559,7 +400,6 @@ export function StudentsView() {
                       Roll: <span className="font-medium">{s.rollNumber}</span>
                       {s.className ? ` · ${s.className}${s.section ? ` — ${s.section}` : ''}` : ''}
                     </p>
-                    <MissingInfoChip missing={missingIdInfo(s)} />
                     {s.status !== 'active' && s.leftReason && (
                       <p className="mt-1 truncate text-xs text-foreground/70">Left — {s.leftReason}</p>
                     )}
@@ -577,14 +417,7 @@ export function StudentsView() {
                     <Badge variant={statusBadge[s.status].variant}>
                       {statusBadge[s.status].label}
                     </Badge>
-                    <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-                      <StudentQuickActions
-                        student={s}
-                        checking={checkingId === s.id}
-                        onResendParentLogin={openResendConfirm}
-                        onResetPin={openResetPinConfirm}
-                      />
-                    </div>
+                    <ChevronRight size={15} className="text-muted-foreground" />
                   </div>
                 </div>
               ))}
@@ -638,10 +471,10 @@ export function StudentsView() {
           <p>Guardians get a separate parent login — the phone/email entered as guardian for a student is automatically emailed its own temporary password. One guardian phone linked to more than one child means one shared login for all of them.</p>
         </InfoNote>
         <InfoNote title="Lost a Login ID or PIN, or need to look one up later?">
-          <p>Every student&apos;s Login ID and PIN is shown right here in the table — click the eye icon to reveal a PIN. For bulk lookup or CSV export by class/section, use the <strong>Class logins</strong> button above. Or use <strong>Reset PIN</strong> right from a student&apos;s row here.</p>
+          <p>Every student&apos;s Login ID and PIN is shown right here in the table — click the eye icon to reveal a PIN, or open a student to reset it from their details. For bulk lookup or CSV export by class/section, use the <strong>Class logins</strong> button above.</p>
         </InfoNote>
         <InfoNote title="Guardian email missing or bounced?">
-          <p>Use <strong>Resend parent login</strong> from a student&apos;s row here, or open the student for more detail. It&apos;ll warn you first if that guardian has already signed in, since resending overwrites their current password.</p>
+          <p>Open the student and use <strong>Resend login</strong> or <strong>Set password</strong> under Guardian login. It&apos;ll warn you first if that guardian has already signed in, since resending overwrites their current password.</p>
         </InfoNote>
       </div>
 
@@ -702,97 +535,8 @@ export function StudentsView() {
         }
       />
 
-      {/* Resend / reset confirm — fetched-status-aware, see openResendConfirm
-          / openResetPinConfirm above. Never fires either action directly. */}
-      <ConfirmDialog
-        open={!!pending}
-        onClose={() => setPending(null)}
-        onConfirm={runPendingAction}
-        loading={pending?.type === 'resend' ? resending : resettingPin}
-        tone={pendingWarning ? 'warning' : 'default'}
-        title={pending?.type === 'resend' ? 'Resend parent login?' : 'Reset this student\'s PIN?'}
-        description={pendingDescription}
-        confirmLabel={
-          pendingWarning
-            ? 'Yes, do it anyway'
-            : pending?.type === 'resend' ? 'Send login email' : 'Reset PIN'
-        }
-      />
-
-      {/* Reset-PIN reveal — reuses the same one-time-reveal dialog pattern
-          as the creation flow, since a fresh reset genuinely mints a new
-          PIN the admin needs to hand to the guardian/student right now. */}
-      <TempPasswordDialog
-        open={!!pinReveal}
-        onClose={() => setPinReveal(null)}
-        name={pinReveal?.name ?? ''}
-        systemId={pinReveal?.systemId}
-        pin={pinReveal?.pin}
-      />
     </div>
   );
-}
-
-/** Row-level quick actions — the two highest-frequency, lowest-risk tasks
- *  (login help) pulled out of the full detail drawer so they're one click
- *  instead of open-drawer-scroll-past-profile-click. Deliberately does NOT
- *  include "End enrollment": that's a destructive status change and stays
- *  gated behind the detail drawer's explicit reason/confirm step so a fast
- *  row menu can't turn it into a one-misclick mistake.
- *
- *  Styled as a bordered "secondary" button rather than a bare low-contrast
- *  icon — the previous ghost/muted-only trigger was easy to miss entirely,
- *  especially against a busy row. */
-function StudentQuickActions({
-  student, checking, onResendParentLogin, onResetPin,
-}: {
-  student: StudentListItem;
-  checking: boolean;
-  onResendParentLogin: (s: StudentListItem) => void;
-  onResetPin: (s: StudentListItem) => void;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          disabled={checking}
-          aria-label={`More actions for ${student.name}`}
-          className={cn(
-            'flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-foreground',
-            'transition-colors hover:border-primary hover:bg-primary-soft hover:text-primary-soft-foreground disabled:opacity-50'
-          )}
-        >
-          <MoreVertical size={16} />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          disabled={!student.guardianName}
-          onClick={() => onResendParentLogin(student)}
-        >
-          <Send size={14} /> Resend parent login
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onResetPin(student)}>
-          <KeyRound size={14} /> Reset PIN
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-/** Fields the ID card contact-info feature needs, per student — surfaced
- *  right in the row so an admin browsing the list already sees who needs
- *  attention, instead of only finding out via the "Missing ID card info"
- *  filter or by opening each record one at a time. Kept in sync with the
- *  backend's `incomplete` filter (student.service.ts's list()). */
-function missingIdInfo(s: StudentListItem): string[] {
-  const missing: string[] = [];
-  if (!s.address) missing.push('Address');
-  if (!s.bloodGroup) missing.push('Blood group');
-  if (!s.guardianName) missing.push('Guardian');
-  if (!s.profilePhoto) missing.push('Photo');
-  return missing;
 }
 
 /** Login ID + masked/revealed PIN, inline in the table — replaces the old
@@ -853,19 +597,6 @@ function GuardianEmailBadge({ status }: { status?: StudentListItem['guardianEmai
   return (
     <p className={cn('mt-0.5 flex items-center gap-1 text-[11px] font-medium', meta.className)} title={meta.title}>
       <Icon size={11} className="shrink-0" /> {meta.label}
-    </p>
-  );
-}
-
-function MissingInfoChip({ missing }: { missing: string[] }) {
-  if (missing.length === 0) return null;
-  return (
-    <p
-      className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning"
-      title={`Missing for ID card: ${missing.join(', ')}`}
-    >
-      <AlertCircle size={11} className="shrink-0" />
-      <span className="truncate">Missing {missing.join(', ')}</span>
     </p>
   );
 }
