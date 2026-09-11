@@ -2,7 +2,7 @@
 
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff, Search, X, UserCircle, Phone, MapPin, RotateCw, Pencil, RefreshCw } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff, Search, X, UserCircle, Phone, MapPin, RotateCw, Pencil, RefreshCw, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -199,18 +199,79 @@ export function StaffIdCardsView() {
       />
 
       {!selectedId ? (
-        <Card className="no-print">
-          <EmptyState
-            icon={IdCardIcon}
-            title="Search for a staff member"
-            description="Narrow by role if you like, then pick a specific name to view and print their ID card."
-          />
-        </Card>
+        isFetching ? (
+          <Card className="p-4 no-print"><Skeleton className="h-64 w-full" /></Card>
+        ) : roster.length === 0 ? (
+          <Card className="no-print">
+            <EmptyState
+              icon={IdCardIcon}
+              title="No active staff match this filter"
+              description="Try a different role, or check the Staff page for who's active."
+            />
+          </Card>
+        ) : (
+          <StaffRosterList roster={roster} settings={sheet?.institution.settings?.idCard} onSelect={setSelectedId} />
+        )
       ) : !selected ? (
         <Card className="p-5 no-print"><Skeleton className="h-64 w-full" /></Card>
       ) : (
         <StaffIdCardPreview member={selected} institution={sheet!.institution} />
       )}
+    </div>
+  );
+}
+
+/**
+ * Lightweight, scannable roster list — same pattern as IdCardsView.tsx's
+ * StudentRosterList (see that component's comment for the full reasoning).
+ * Role badge stands in for the "which kind of card" signal the student
+ * version doesn't need, since a staff roster can mix roles.
+ */
+function StaffRosterList({
+  roster, settings, onSelect,
+}: {
+  roster: StaffIdCard[];
+  settings?: { showNationalId: boolean } | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm no-print">
+      <div className="divide-y divide-border">
+        {roster.map((s) => {
+          const style = ROLE_STYLE[s.role] ?? ROLE_STYLE.staff;
+          const missing = !s.address || ((settings?.showNationalId ?? true) && !s.nationalIdNumber);
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => onSelect(s.id)}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50"
+            >
+              <div className="relative shrink-0">
+                <Avatar
+                  size="sm"
+                  photoUrl={s.profilePhoto}
+                  alt={s.name}
+                  initials={s.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}
+                />
+                {missing && (
+                  <span
+                    title="Missing card info"
+                    className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-warning"
+                  />
+                )}
+              </div>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-foreground">{s.name}</span>
+                <span className={cn('mt-0.5 inline-flex w-fit items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide', style.soft)}>
+                  {style.label}
+                </span>
+              </span>
+              <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

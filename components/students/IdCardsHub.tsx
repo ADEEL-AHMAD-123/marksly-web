@@ -59,9 +59,9 @@ export function IdCardsHub() {
       <div className="space-y-2">
         <InfoNote title="Someone missing from a list here?">
           <p>
-            A card only appears once every required detail is on file. If someone&apos;s missing from the name search
-            below, it just means nobody&apos;s filled in their details yet — search for them on the Students or Staff
-            page instead, where a warning badge shows exactly what&apos;s missing from their record.
+            Everyone active shows up in the list below, even with incomplete info — a small warning dot on their
+            avatar means something&apos;s still missing. Look them up on the Students or Staff page instead for the
+            full list of what&apos;s missing and to fix it directly.
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
             <Link href="/admin/students" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">

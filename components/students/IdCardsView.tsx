@@ -2,7 +2,7 @@
 
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff, Search, X, UserCircle, MapPin, Users, RotateCw, Pencil, RefreshCw } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff, Search, X, UserCircle, MapPin, Users, RotateCw, Pencil, RefreshCw, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -150,15 +150,21 @@ export function IdCardsView() {
       />
 
       {!ready ? (
-        <Card className="no-print"><EmptyState icon={IdCardIcon} title={`Select a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()}`} description="Then search for a specific student to view their ID card." /></Card>
+        <Card className="no-print"><EmptyState icon={IdCardIcon} title={`Select a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()}`} description="Then pick a specific student to view their ID card." /></Card>
       ) : !selectedId ? (
-        <Card className="no-print">
-          <EmptyState
-            icon={IdCardIcon}
-            title="Search for a student"
-            description="Type a name in the box above and pick the student whose card you want to view and print."
-          />
-        </Card>
+        isFetching ? (
+          <Card className="p-4 no-print"><Skeleton className="h-64 w-full" /></Card>
+        ) : roster.length === 0 ? (
+          <Card className="no-print">
+            <EmptyState
+              icon={IdCardIcon}
+              title="No active students in this section"
+              description="Once students are enrolled here, they'll show up below to pick from."
+            />
+          </Card>
+        ) : (
+          <StudentRosterList roster={roster} settings={sheet?.institution.settings?.idCard} onSelect={setSelectedId} />
+        )
       ) : !selected ? (
         <Card className="p-5 no-print"><Skeleton className="h-64 w-full" /></Card>
       ) : (
@@ -170,6 +176,66 @@ export function IdCardsView() {
           termName={sheet!.termName}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * Lightweight, scannable roster list — avatars, names, roll numbers, and a
+ * small warning dot for anyone missing a field their card is configured to
+ * show. Deliberately NOT a full data table (sort/pagination/bulk-select):
+ * this is just "browse and pick one," the type-ahead search above stays the
+ * fast path for a known name in a large section. No QR/card is rendered per
+ * row — this list only ever holds names/avatars/booleans, which is exactly
+ * the "cheap to fetch, expensive to render as a full card" split the
+ * roster-fetch-for-the-picker comment above already relies on.
+ */
+function StudentRosterList({
+  roster, settings, onSelect,
+}: {
+  roster: IdCard[];
+  settings?: { showNationalId: boolean; showBloodGroup: boolean } | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm no-print">
+      <div className="divide-y divide-border">
+        {roster.map((s) => {
+          const missing =
+            ((settings?.showBloodGroup ?? true) && !s.bloodGroup) ||
+            (!s.address && !s.city) ||
+            !s.parentName ||
+            ((settings?.showNationalId ?? true) && !s.nationalIdNumber);
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => onSelect(s.id)}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50"
+            >
+              <div className="relative shrink-0">
+                <Avatar
+                  size="sm"
+                  photoUrl={s.profilePhoto}
+                  alt={s.name}
+                  initials={s.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}
+                />
+                {missing && (
+                  <span
+                    title="Missing card info"
+                    className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-warning"
+                  />
+                )}
+              </div>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-foreground">{s.name}</span>
+                <span className="block truncate text-xs text-muted-foreground">Roll #{s.rollNumber}</span>
+              </span>
+              <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
