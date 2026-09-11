@@ -333,9 +333,10 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                     for pinState (whether the current PIN can even be
                     viewed vs. only reset). */}
                 <div className="mt-5">
-                  <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="mb-0.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     <KeyRound size={12} /> Login
                   </p>
+                  <p className="mb-2 text-xs text-muted-foreground">Signs in with this Login ID and PIN.</p>
                   <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
                     <div>
                       <p className="font-mono text-sm text-foreground">{s.systemId ?? 'Not generated yet'}</p>
@@ -511,8 +512,11 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                     password directly). Both go through the informed-confirm
                     dialog below rather than firing blind. */}
                 <div ref={guardianLoginRef} className="mt-5 scroll-mt-4">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Guardian login
+                  </p>
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    Signs in with their phone number or email — whichever&apos;s on file — plus this PIN. No password to remember.
                   </p>
                   {!contactStatus?.guardian ? (
                     <div className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-sm text-muted-foreground">
@@ -739,7 +743,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
             : 'default'
         }
         title={
-          pendingCredAction === 'resend' ? 'Email the parent login details?'
+          pendingCredAction === 'resend' ? 'Email the login details?'
           : pendingCredAction === 'pin' ? "Reset this student's PIN?"
           : "Reset this guardian's PIN?"
         }
@@ -747,8 +751,10 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
           pendingCredAction === 'resend' ? (
             <div className="space-y-3">
               <p>
-                This emails <strong>{contactStatus?.guardian?.name}</strong> their phone/email and current PIN, purely
-                as a convenience — nothing about logging in depends on this email arriving or being opened.
+                This emails <strong>{contactStatus?.guardian?.name}</strong> their login details: their phone or email
+                (whichever they sign in with) plus their current PIN — and {s?.name}&apos;s Login ID and PIN too, so
+                everything is in the one email. It&apos;s just a convenience copy for them to keep — nothing about
+                actually logging in depends on this email arriving or being opened.
               </p>
               <div>
                 <Label htmlFor="resend-guardian-email">Send to this email</Label>
@@ -766,25 +772,31 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
           ) : pendingCredAction === 'pin' ? (
             contactStatus?.pinState === 'student_set' ? (
               <>
-                <strong>{s?.name}</strong> already chose their own PIN. Resetting replaces it with a new one right
-                away — you&apos;ll need to hand it to them yourself, since their old PIN stops working immediately.
+                <strong>{s?.name}</strong> already chose their own PIN, so it can&apos;t be shown here — but resetting
+                it creates a fresh one you&apos;ll see right away. It replaces their current PIN immediately, so
+                you&apos;ll need to hand the new one to them or their guardian in person. You can look it up again
+                anytime afterward, right here in the Login section above, or from the Login IDs &amp; PINs page.
               </>
             ) : (
               <>
-                This creates a new PIN for <strong>{s?.name}</strong>. You&apos;ll see it once, on the next screen —
-                write it down or read it out to the student or their guardian in person.
+                This creates a new PIN for <strong>{s?.name}</strong>. You&apos;ll see it once, right after this — no
+                need to rush and write it down, since it stays viewable anytime from the Login section above, or from
+                the Login IDs &amp; PINs page.
               </>
             )
           ) : contactStatus?.guardian?.pinState === 'guardian_set' ? (
             <>
-              <strong>{contactStatus?.guardian?.name}</strong> already chose their own PIN. Resetting replaces it with
-              a new one right away — their old PIN stops working immediately, for every child linked to this guardian.
+              <strong>{contactStatus?.guardian?.name}</strong> already chose their own PIN, so it can&apos;t be shown
+              here — but resetting it creates a fresh one you&apos;ll see right away. Their old PIN stops working
+              immediately, and since this is the same login for every child linked to this guardian, it changes their
+              access for all of them, not just {s?.name}.
             </>
           ) : (
             <>
-              This creates a new PIN for <strong>{contactStatus?.guardian?.name}</strong>. You&apos;ll see it once, on
-              the next screen — write it down or read it out to them in person. This changes login for every child
-              linked to this same guardian, not just this one.
+              This creates a new PIN for <strong>{contactStatus?.guardian?.name}</strong>. You&apos;ll see it once,
+              right after this — no need to rush and write it down, since it stays viewable anytime from the Guardian
+              login section above, or from the Login IDs &amp; PINs page. Since a guardian&apos;s login is shared across
+              every child linked to them, this changes their access for all of those children, not just {s?.name}.
             </>
           )
         }
