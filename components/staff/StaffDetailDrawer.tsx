@@ -137,12 +137,15 @@ export function StaffDetailDrawer({ member, open, onClose, onEdit }: Props) {
 
                 <div className="mt-5 divide-y divide-border rounded-xl border border-border px-4">
                   <Row label="Role" value={roleLabel(m.role)} />
+                  <Row label="Designation" value={m.designation} />
+                  <Row label="Gender" value={m.gender ? m.gender[0].toUpperCase() + m.gender.slice(1) : null} />
                   <Row label="Phone" value={m.phone} />
                   <Row label="Email" value={m.email} />
                   <Row label="Address" value={m.address} />
                   <Row label="CNIC" value={m.nationalIdNumber} />
                   {m.cardIssueDate && <Row label="Card issued" value={formatDate(m.cardIssueDate)} />}
                   {m.cardExpiryDate && <Row label="Card expires" value={formatDate(m.cardExpiryDate)} />}
+                  <Row label="Joined" value={m.joiningDate ? formatDate(m.joiningDate) : null} />
                   <Row label="Last login" value={m.lastLoginAt ? formatDate(m.lastLoginAt) : 'Never'} />
                   <Row label="Created" value={formatDate(m.createdAt)} />
                 </div>

@@ -42,6 +42,15 @@ export interface ManagedUser {
   nationalIdNumber?: string | null;
   cardIssueDate?: string | null;
   cardExpiryDate?: string | null;
+  // Required for teacher/staff/accountant at creation (see
+  // user.validator.ts's createUserSchema) — nullable here since existing
+  // pre-field staff records may still have none.
+  gender?: 'male' | 'female' | 'other' | null;
+  designation?: string | null;
+  // ISO date string — when this person actually joined the institution, a
+  // real user-supplied value, never derived from createdAt (see
+  // user.model.ts's joiningDate comment).
+  joiningDate?: string | null;
   // Login ID shown alongside the PIN, same concept as a student's systemId.
   systemId: string | null;
   // Every staff-type account now logs in with a school-issued PIN, same
@@ -73,6 +82,12 @@ export interface CreateUserBody {
   // the admin confirms the address is correct anyway.
   confirmUnverifiedEmail?: boolean;
   nationalIdNumber?: string;
+  address?: string;
+  // Required — mirrors user.validator.ts's createUserSchema.
+  gender: 'male' | 'female' | 'other';
+  designation?: string;
+  // `type="date"` input value — YYYY-MM-DD.
+  joiningDate?: string;
 }
 
 export type StaffCardRole = 'teacher' | 'staff' | 'accountant' | 'admin';

@@ -31,7 +31,7 @@ import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { SearchInput } from '@/components/ui/search-input';
 import { useDebounce } from '@/hooks/useDebounce';
-import { getInitials, cn, formatNationalId } from '@/lib/utils';
+import { getInitials, cn, formatNationalId, formatDate } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { getErrorMessage, getErrorCode, getErrorDetails } from '@/lib/get-error-message';
 import {
@@ -315,11 +315,13 @@ export function StaffManagementView() {
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Name</TableHead>
+                    <TableHead>Login ID</TableHead>
                     {tab === 'all' && <TableHead>Role</TableHead>}
                     <TableHead>Phone</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>PIN</TableHead>
+                    <TableHead>Last login</TableHead>
                     <TableHead className="w-16" />
                   </TableRow>
                 </TableHeader>
@@ -344,6 +346,7 @@ export function StaffManagementView() {
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell><span className="font-mono text-xs text-foreground/80">{m.systemId ?? '—'}</span></TableCell>
                       {tab === 'all' && (
                         <TableCell><Badge variant="neutral">{roleLabel(m.role)}</Badge></TableCell>
                       )}
@@ -354,6 +357,7 @@ export function StaffManagementView() {
                       </TableCell>
                       <TableCell><Badge variant={m.isActive ? 'success' : 'neutral'}>{m.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}><PinCell member={m} /></TableCell>
+                      <TableCell className="text-muted-foreground">{m.lastLoginAt ? formatDate(m.lastLoginAt) : 'Never'}</TableCell>
                       <TableCell className="text-right">
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
                           View <ChevronRight size={14} />
@@ -385,6 +389,12 @@ export function StaffManagementView() {
                     <p className="truncate font-medium text-foreground">{m.name}</p>
                     <p className="text-xs text-foreground/70">
                       {m.phone}{m.email ? ` · ${m.email}` : ''}
+                    </p>
+                    {m.systemId && (
+                      <p className="mt-0.5 truncate font-mono text-[11px] text-foreground/60">Login: {m.systemId}</p>
+                    )}
+                    <p className="mt-0.5 text-[11px] text-foreground/60">
+                      Last login: {m.lastLoginAt ? formatDate(m.lastLoginAt) : 'Never'}
                     </p>
                     <StaffEmailBadge status={m.emailStatus} />
                     {missingStaffInfo(m).length > 0 && (
@@ -466,10 +476,10 @@ export function StaffManagementView() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         title={tab === 'all' ? 'Import Staff' : `Import ${roleLabel(tab)}s`}
-        columns={['firstName', 'lastName', 'phone', 'email']}
-        sample={['Bilal', 'Ahmed', '03007654321', 'bilal@example.com']}
+        columns={['firstName', 'lastName', 'phone', 'email', 'gender', 'designation', 'joiningDate']}
+        sample={['Bilal', 'Ahmed', '03007654321', 'bilal@example.com', 'male', 'Senior Math Teacher', '2024-06-01']}
         filename={`${tab === 'all' ? 'staff' : tab}-template.csv`}
-        helpText="Each row gets a Login ID and PIN emailed to it, same as adding one person at a time."
+        helpText='Each row gets a Login ID and PIN emailed to it, same as adding one person at a time. "gender" (male, female, or other) is required for every row. "designation" (job title) and "joiningDate" (format YYYY-MM-DD) are both optional.'
         onImport={async (csv) => (await bulkImport({ csv, role: tab === 'all' ? 'teacher' : tab }).unwrap()).data}
       />
     </div>
@@ -578,6 +588,13 @@ const schema = z.object({
     .refine((v) => isValidPhoneNumber(v), 'Enter a valid phone number'),
   email: z.string().email('Enter a valid email address'),
   role: z.enum(['teacher', 'staff', 'accountant']),
+  gender: z.enum(['male', 'female', 'other'], {
+    errorMap: () => ({ message: 'Select a gender' }),
+  }),
+  designation: z.string().trim().max(100).optional(),
+  // `type="date"` input value — YYYY-MM-DD string, kept simple rather than
+  // round-tripping through a Date object in form state.
+  joiningDate: z.string().optional(),
   address: z.string().optional(),
   // Staff are always adults regardless of institution type, so this is
   // always labeled "CNIC" (never "Form B") — same format as the student
@@ -600,7 +617,11 @@ function AddStaffDrawer({
   const [domainIssue, setDomainIssue] = useState<{ domain: string; email: string } | null>(null);
   const { register, control, handleSubmit, reset, getValues, formState: { errors } } = useForm<StaffForm>({
     resolver: zodResolver(schema),
-    defaultValues: { firstName: '', lastName: '', phone: '', email: '', role: defaultRole, address: '', nationalIdNumber: '' },
+    defaultValues: {
+      firstName: '', lastName: '', phone: '', email: '', role: defaultRole,
+      gender: 'male', designation: '', joiningDate: new Date().toISOString().slice(0, 10),
+      address: '', nationalIdNumber: '',
+    },
   });
 
   // Re-seed the form every time the drawer opens — either with the row
@@ -619,10 +640,17 @@ function AddStaffDrawer({
             phone: editing.phone,
             email: editing.email ?? '',
             role: editing.role,
+            gender: editing.gender ?? 'male',
+            designation: editing.designation ?? '',
+            joiningDate: editing.joiningDate ? editing.joiningDate.slice(0, 10) : '',
             address: editing.address ?? '',
             nationalIdNumber: editing.nationalIdNumber ?? '',
           }
-        : { firstName: '', lastName: '', phone: '', email: '', role: defaultRole, address: '', nationalIdNumber: '' }
+        : {
+            firstName: '', lastName: '', phone: '', email: '', role: defaultRole,
+            gender: 'male', designation: '', joiningDate: new Date().toISOString().slice(0, 10),
+            address: '', nationalIdNumber: '',
+          }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
@@ -720,12 +748,47 @@ function AddStaffDrawer({
               </div>
             </div>
 
-            {isEditing && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Gender</Label>
+                <Controller
+                  control={control}
+                  name="gender"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.gender && <p className="mt-1 text-xs text-danger">{errors.gender.message}</p>}
+              </div>
+              <div>
+                <Label htmlFor="designation">Designation</Label>
+                <Input id="designation" {...register('designation')} placeholder="e.g. Senior Math Teacher" />
+                {errors.designation && <p className="mt-1 text-xs text-danger">{errors.designation.message}</p>}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="joiningDate">Joining date</Label>
+              <Input id="joiningDate" type="date" {...register('joiningDate')} />
+            </div>
+
+            <div className="border-t border-border pt-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                ID card details (optional)
+              </p>
+              {/* Not required — but shown on the printable ID card (see
+                  StaffIdCardsView.tsx). Left optional so this person can
+                  also fill it in themselves via "My ID Card" instead of
+                  this being the only way. Now available at creation time
+                  too, not just when editing — matches the student form. */}
               <div className="grid grid-cols-2 gap-3">
-                {/* Not required — but shown on the printable ID card (see
-                    StaffIdCardsView.tsx). Left optional so this person can
-                    also fill it in themselves via "My ID Card" instead of
-                    this being the only way. */}
                 <div>
                   <Label htmlFor="address">Address</Label>
                   <Input id="address" {...register('address')} placeholder="House #, street, area" />
@@ -755,7 +818,7 @@ function AddStaffDrawer({
                   )}
                 </div>
               </div>
-            )}
+            </div>
             <div>
               <Label htmlFor="phone">Phone</Label>
               <Controller
