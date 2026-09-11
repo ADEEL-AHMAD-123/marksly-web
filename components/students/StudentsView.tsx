@@ -36,6 +36,7 @@ import { StudentDetailDrawer } from './StudentDetailDrawer';
 import { ClassRosterView } from './ClassRosterView';
 import { useTerminology } from '@/lib/terminology';
 import { InfoNote } from '@/components/ui/info-note';
+import { isInsideRadixPopper, POINTER_EVENTS_OVERRIDE } from '@/components/ui/sheet';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 
 interface ClassOption {
@@ -486,7 +487,14 @@ export function StudentsView() {
       <DialogPrimitive.Root open={rosterOpen} onOpenChange={setRosterOpen}>
         <DialogPrimitive.Portal>
           <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm" />
-          <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-[95vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none">
+          <DialogPrimitive.Content
+            className={cn(
+              'fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-[95vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none',
+              POINTER_EVENTS_OVERRIDE
+            )}
+            onPointerDownOutside={(e) => { if (isInsideRadixPopper(e.target)) e.preventDefault(); }}
+            onInteractOutside={(e) => { if (isInsideRadixPopper(e.target)) e.preventDefault(); }}
+          >
             <div className="flex items-center justify-between">
               <DialogPrimitive.Title className="text-base font-semibold">Class logins</DialogPrimitive.Title>
               <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Close">

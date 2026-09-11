@@ -5,6 +5,12 @@ import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// NOTE: this version of @radix-ui/react-select has no `modal` prop — while
+// open it unconditionally disables pointer events on <body> (and on every
+// other currently-open DismissableLayer, including a parent Sheet/Dialog's
+// own content) so only the select's own popup stays clickable. See
+// sheet.tsx's SheetContent comment for how that's worked around on the
+// dialog/drawer side (forcing pointer-events back on there).
 export const Select = SelectPrimitive.Root;
 export const SelectGroup = SelectPrimitive.Group;
 export const SelectValue = SelectPrimitive.Value;

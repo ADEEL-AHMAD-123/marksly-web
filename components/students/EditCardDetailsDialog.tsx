@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { isInsideRadixPopper, POINTER_EVENTS_OVERRIDE } from '@/components/ui/sheet';
 import { getErrorMessage } from '@/lib/get-error-message';
 import { formatNationalId } from '@/lib/utils';
 import { useUpdateStudentMutation } from '@/store/api/studentsApi';
@@ -112,7 +113,11 @@ export function EditCardDetailsDialog({ open, onClose, target }: Props) {
     <DialogPrimitive.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm" />
-        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none">
+        <DialogPrimitive.Content
+          className={`fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none ${POINTER_EVENTS_OVERRIDE}`}
+          onPointerDownOutside={(e) => { if (isInsideRadixPopper(e.target)) e.preventDefault(); }}
+          onInteractOutside={(e) => { if (isInsideRadixPopper(e.target)) e.preventDefault(); }}
+        >
           <div className="flex items-center justify-between">
             <DialogPrimitive.Title className="flex items-center gap-2 text-base font-semibold">
               <IdCardIcon size={16} className="text-primary" /> Edit card details — {target.name}

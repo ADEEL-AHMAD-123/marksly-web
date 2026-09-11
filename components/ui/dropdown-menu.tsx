@@ -5,7 +5,13 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export const DropdownMenu = DropdownMenuPrimitive.Root;
+// modal={false} by default — same reasoning as Select (see select.tsx):
+// Radix DropdownMenu is modal out of the box and, nested inside a
+// Sheet/Dialog drawer, its own body/pointer lock competes with the parent
+// drawer's and can take it down when the menu closes.
+export const DropdownMenu = (props: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Root>) => (
+  <DropdownMenuPrimitive.Root modal={false} {...props} />
+);
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 export const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 

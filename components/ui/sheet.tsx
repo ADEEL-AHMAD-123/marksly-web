@@ -42,8 +42,28 @@ interface SheetContentProps
 // ignoring outside-clicks that land there fixes the drawer-closing bug for
 // all of them at once, in this one shared place, rather than patching each
 // form separately.
-const isInsideRadixPopper = (target: EventTarget | null) =>
+// Exported so any other Radix Dialog.Content usage in the app (raw dialogs
+// that don't go through this Sheet wrapper, e.g. StudentsView.tsx's "Class
+// logins" dialog, EditCardDetailsDialog.tsx) can apply the same guard on
+// their own onPointerDownOutside/onInteractOutside handlers.
+export const isInsideRadixPopper = (target: EventTarget | null) =>
   target instanceof Element && !!target.closest('[data-radix-popper-content-wrapper]');
+
+// A SECOND, more severe issue than the click-detection one above: while a
+// Select's dropdown is open, Radix Select (this app's @radix-ui/react-select
+// version has no `modal={false}` escape hatch) unconditionally sets
+// `document.body.style.pointerEvents = 'none'` and, since that's inherited,
+// every other element on the page — including THIS drawer's own content and
+// every field inside it — silently stops receiving clicks at all. A click on
+// any other field in the form then falls through to whatever's behind it
+// (the dialog's own overlay), which reads as "clicked the overlay, close the
+// drawer" and discards whatever was typed. `!pointer-events-auto` below
+// forces this drawer's content back to clickable regardless of that
+// body-wide lockout, so the rest of the form keeps working normally while a
+// dropdown elsewhere in it is open.
+// Exported for the same reason as isInsideRadixPopper above — any other
+// raw Dialog.Content that has a Select inside it needs this too.
+export const POINTER_EVENTS_OVERRIDE = '!pointer-events-auto';
 
 export const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
@@ -57,6 +77,7 @@ export const SheetContent = React.forwardRef<
         'fixed z-50 flex h-full w-72 max-w-[85vw] flex-col shadow-lg transition-transform',
         side === 'left' ? 'left-0 top-0' : 'right-0 top-0',
         'data-[state=open]:animate-fade-in',
+        POINTER_EVENTS_OVERRIDE,
         className
       )}
       onPointerDownOutside={(e) => {
