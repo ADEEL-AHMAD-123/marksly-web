@@ -71,8 +71,13 @@ const ROLE_META: Record<ManageableRole, { label: string; icon: typeof Briefcase 
   accountant: { label: 'Accountant', icon: Landmark },
 };
 
+// Falls back rather than throwing if `role` is ever something other than
+// teacher/staff/accountant — the backend's list() now always scopes to
+// exactly those three, but this guards against any future caller (or a
+// stale cached response) passing something ROLE_META doesn't know about,
+// so one bad row can't crash the whole table/card list again.
 function roleLabel(role: ManageableRole) {
-  return ROLE_META[role].label;
+  return (ROLE_META[role] ?? ROLE_META.staff).label;
 }
 
 /** Small badge summarizing whether this account can actually be reached by
