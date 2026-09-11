@@ -196,9 +196,19 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <h2 className="text-lg font-semibold">Student details</h2>
-            <SheetClose className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
-              <X size={18} />
-            </SheetClose>
+            <div className="flex items-center gap-1.5">
+              {/* Duplicated in the footer too — surfaced here as well since
+                  admins reported not noticing the footer button without
+                  being told it was there. */}
+              {s && (
+                <Button size="sm" onClick={() => onEdit(s)}>
+                  <Pencil size={16} /> Edit
+                </Button>
+              )}
+              <SheetClose className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+                <X size={18} />
+              </SheetClose>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-5">
@@ -540,7 +550,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-end gap-2">
                   {s.status === 'active' ? (
                     <Button
                       variant="ghost"
@@ -560,9 +570,6 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props)
                       <UserCheck size={16} /> Reactivate
                     </Button>
                   )}
-                  <Button size="sm" onClick={() => onEdit(s)}>
-                    <Pencil size={16} /> Edit
-                  </Button>
                 </div>
               )}
             </div>

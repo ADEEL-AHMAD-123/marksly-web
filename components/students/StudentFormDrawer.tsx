@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { PhotoUpload } from '@/components/shared/PhotoUpload';
 import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
 import { formatNationalId } from '@/lib/utils';
@@ -25,6 +26,7 @@ import { useTerminology, getTerminologyForTermType, useNationalIdLabel } from '@
 import {
   useCreateStudentMutation,
   useUpdateStudentMutation,
+  useUpdateGuardianContactMutation,
   useResendStudentCredentialsMutation,
   useResetStudentPinMutation,
   type StudentListItem,
@@ -124,12 +126,21 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   const noActiveTerms = (activeTermsRes?.data?.length ?? 0) === 0;
   const [createStudent, { isLoading: creating }] = useCreateStudentMutation();
   const [updateStudent, { isLoading: updating }] = useUpdateStudentMutation();
+  const [updateGuardianContact, { isLoading: updatingGuardianContact }] = useUpdateGuardianContactMutation();
   const [resendCredentials, { isLoading: resending }] = useResendStudentCredentialsMutation();
   const [resetPin, { isLoading: resettingPin }] = useResetStudentPinMutation();
   const [resendingTarget, setResendingTarget] = useState<'student' | 'parent' | null>(null);
   // An existing guardian already satisfies "someone can be reached" even if
   // this edit leaves the guardian fields blank — see makeSchema.
   const activeSchema = useMemo(() => makeSchema(!!student?.guardianName), [student?.guardianName]);
+  // The guardian's contact values as prefilled from the server, captured at
+  // drawer-open time — used purely to detect "did the admin actually change
+  // this" on submit, since changing email/phone changes the guardian's login
+  // credential and (if shared across siblings) every linked child's login.
+  const [originalGuardian, setOriginalGuardian] = useState<{ id?: string; phone: string; email: string } | null>(null);
+  // Holds the submitted form values while we wait for the admin to confirm
+  // the guardian-contact-change warning; cleared once they confirm or cancel.
+  const [pendingGuardianChange, setPendingGuardianChange] = useState<Form | null>(null);
 
   const {
     register,
@@ -164,6 +175,16 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
     if (student) {
       const cls = classes.find((c) => c.name === student.className);
       const sec = cls?.sections.find((s) => s.name === student.section);
+      // Prefill the existing guardian's contact info too — previously this
+      // section was hidden entirely when a guardian already existed, which
+      // made it look like the data was missing. `guardians[0]` (added
+      // alongside guardianEmail on the list endpoint) carries the id needed
+      // to target updateGuardianContact; guardianPhone/guardianName are the
+      // long-standing fallback fields if `guardians` isn't present.
+      const existingGuardian = student.guardians?.[0];
+      const guardianPhone = existingGuardian?.phone ?? student.guardianPhone ?? '';
+      const guardianName = existingGuardian?.name ?? student.guardianName ?? '';
+      const guardianEmail = existingGuardian?.email ?? student.guardianEmail ?? '';
       reset({
         firstName: student.firstName,
         lastName: student.lastName,
@@ -176,7 +197,15 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         city: student.city ?? '',
         bloodGroup: student.bloodGroup ?? '',
         nationalIdNumber: student.nationalIdNumber ?? '',
+        parentPhone: guardianPhone,
+        parentName: guardianName,
+        parentEmail: guardianEmail,
       });
+      setOriginalGuardian(
+        student.guardianName || existingGuardian
+          ? { id: existingGuardian?.id, phone: guardianPhone, email: guardianEmail }
+          : null
+      );
     } else {
       // Auto-select when there's only one option — mainly for teachers, who
       // (via classesOverride) usually only have one class/section to add
@@ -190,7 +219,9 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         parentPhone: '', parentName: '', parentEmail: '',
         address: '', city: '', bloodGroup: '', nationalIdNumber: '',
       });
+      setOriginalGuardian(null);
     }
+    setPendingGuardianChange(null);
   }, [open, student, classes, reset]);
 
   const noClasses = classes.length === 0;
@@ -209,21 +240,55 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   const tempPasswordInfo = tempPasswordQueue[0] ?? null;
   const dismissTempPasswordInfo = () => setTempPasswordQueue((q) => q.slice(1));
 
+  // A guardian's email/phone doubles as their login identifier, so changing
+  // either isn't a quiet side-effect of a routine edit — it's caught here
+  // and routed through a confirm step (see pendingGuardianChange) before
+  // anything is actually sent.
+  const guardianContactChanged = (values: Form) =>
+    !!originalGuardian &&
+    ((values.parentPhone || '') !== originalGuardian.phone ||
+      (values.parentEmail || '') !== originalGuardian.email);
+
   const onSubmit = async (values: Form) => {
+    if (isEdit && student && guardianContactChanged(values) && !pendingGuardianChange) {
+      setPendingGuardianChange(values);
+      return;
+    }
+    await doSubmit(values);
+  };
+
+  const doSubmit = async (values: Form) => {
     const { parentPhone, parentName, parentEmail, ...core } = values;
     try {
       if (isEdit && student) {
-        const res = await updateStudent({
-          id: student.id,
-          body: {
-            ...core,
-            // Only actually sent when this student has no guardian yet (the
-            // form hides these fields entirely once one exists) — see the
-            // guardianSectionVisible check below.
-            ...(!student.guardianName && parentPhone ? { parentPhone, parentName: parentName || undefined, parentEmail: parentEmail || undefined } : {}),
-          },
-        }).unwrap();
+        const res = await updateStudent({ id: student.id, body: core }).unwrap();
+        // Guardian contact is a separate, dedicated endpoint from the rest of
+        // the edit — see student.service.ts's updateGuardianContact() for why
+        // (it's the one path that can change a guardian's login and, when
+        // shared, every linked sibling's login too).
+        if (originalGuardian) {
+          if (guardianContactChanged(values)) {
+            const gRes = await updateGuardianContact({
+              id: student.id,
+              guardianUserId: originalGuardian.id,
+              name: parentName || undefined,
+              phone: parentPhone || undefined,
+              email: parentEmail || undefined,
+            }).unwrap();
+            if (gRes.data.siblingCount > 0) {
+              toast.success(`Guardian contact updated — also affects ${gRes.data.siblingCount} other linked ${gRes.data.siblingCount === 1 ? 'child' : 'children'}`);
+            }
+          }
+        } else if (parentPhone) {
+          // No guardian existed yet — creating one is still handled inline
+          // via updateStudent, same as before.
+          await updateStudent({
+            id: student.id,
+            body: { parentPhone, parentName: parentName || undefined, parentEmail: parentEmail || undefined },
+          }).unwrap();
+        }
         toast.success('Student updated');
+        setPendingGuardianChange(null);
         onClose();
         if (res.data.guardianTempPassword) {
           setTempPasswordQueue([{
@@ -269,6 +334,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         if (queue.length) setTempPasswordQueue(queue);
       }
     } catch (e: any) {
+      setPendingGuardianChange(null);
       const message = getErrorMessage(e, 'Could not save student');
       toast.error(message);
       // Also highlight the specific field the backend flagged, so the user
@@ -539,15 +605,20 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               </div>
             </div>
 
-            {(!isEdit || !student?.guardianName) && (
+            {(
               <>
                 <div className="border-t border-border pt-4">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Parent / Guardian
                   </p>
-                  {isEdit && (
+                  {isEdit && !originalGuardian && (
                     <p className="-mt-1 mb-2 text-xs text-muted-foreground">
                       This student has no guardian on file yet — add one below.
+                    </p>
+                  )}
+                  {isEdit && originalGuardian && (
+                    <p className="-mt-1 mb-2 text-xs text-muted-foreground">
+                      Changing the phone or email below changes this guardian&apos;s login — you&apos;ll be asked to confirm.
                     </p>
                   )}
                   <div className="grid grid-cols-2 gap-3">
@@ -582,10 +653,12 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                       {errors.parentEmail && <p className="mt-1 text-xs text-danger">{errors.parentEmail.message}</p>}
                     </div>
                   </div>
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    If a parent with this phone already has an account here, this student is just added to it — one login, both kids show up in it.
-                    Otherwise a brand-new parent account is created and emailed its own login details — make sure this phone and email genuinely belong to the parent, since they&apos;ll use them to sign in.
-                  </p>
+                  {!originalGuardian && (
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      If a parent with this phone already has an account here, this student is just added to it — one login, both kids show up in it.
+                      Otherwise a brand-new parent account is created and emailed its own login details — make sure this phone and email genuinely belong to the parent, since they&apos;ll use them to sign in.
+                    </p>
+                  )}
                 </div>
                 {!isEdit && (
                   <p className="text-xs text-muted-foreground">
@@ -600,7 +673,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
             <SheetClose asChild>
               <Button type="button" variant="secondary">Cancel</Button>
             </SheetClose>
-            <Button type="submit" loading={creating || updating} disabled={noClasses}>
+            <Button type="submit" loading={creating || updating || updatingGuardianContact} disabled={noClasses}>
               {isEdit ? 'Save changes' : 'Add student'}
             </Button>
           </div>
@@ -613,6 +686,24 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         open={!!tempPasswordInfo}
         onClose={dismissTempPasswordInfo}
         {...tempPasswordInfo}
+      />
+    )}
+
+    {pendingGuardianChange && (
+      <ConfirmDialog
+        open={!!pendingGuardianChange}
+        onClose={() => setPendingGuardianChange(null)}
+        onConfirm={() => doSubmit(pendingGuardianChange)}
+        title="Change guardian login details?"
+        tone="warning"
+        confirmLabel="Save changes"
+        loading={updating || updatingGuardianContact}
+        description={
+          <>
+            This changes the phone or email this guardian uses to log in.
+            {' '}If this guardian is linked to other children, it changes their login too — everyone else stays as-is.
+          </>
+        }
       />
     )}
     </>

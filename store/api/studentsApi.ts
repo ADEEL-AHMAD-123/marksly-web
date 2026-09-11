@@ -42,6 +42,13 @@ export interface StudentListItem {
   admissionDate: string | null;
   guardianName: string | null;
   guardianPhone: string | null;
+  // Only present on getStudent (single-record fetch) — see student.service.ts's
+  // getById(). Lets the edit form prefill an existing guardian's email,
+  // which guardianName/guardianPhone alone never covered.
+  guardianEmail?: string | null;
+  // Only present on getStudent — the full guardian list (id/name/phone/
+  // email) rather than just the first one's flattened fields above.
+  guardians?: { id: string; name: string; phone: string | null; email: string | null }[];
   address: string | null;
   city: string | null;
   bloodGroup: string | null;
@@ -370,6 +377,22 @@ export const studentsApi = baseApi.injectEndpoints({
       }),
     }),
 
+    // Editing an EXISTING guardian's own name/phone/email from the Students
+    // edit form — see student.service.ts's updateGuardianContact(). Returns
+    // siblingCount so the UI can warn "this also changes login for N other
+    // children" before/after the change.
+    updateGuardianContact: builder.mutation<
+      ApiObject<{ guardianName: string; email: string | null; phone: string | null; siblingCount: number }>,
+      { id: string; guardianUserId?: string; name?: string; phone?: string; email?: string; confirmUnverifiedEmail?: boolean }
+    >({
+      query: ({ id, ...body }) => ({ url: `/students/${id}/guardian-contact`, method: 'PATCH', body }),
+      invalidatesTags: (_r, _e, { id }) => [
+        { type: 'Students', id },
+        { type: 'Students', id: 'LIST' },
+        'Students',
+      ],
+    }),
+
     // Admin or teacher (own sections only, enforced server-side) — mints a
     // brand-new PIN (random, or a custom one if `pin` is passed) and marks
     // pinState back to 'school_issued'. No list/detail invalidation needed,
@@ -493,6 +516,7 @@ export const {
   useBulkImportStudentsMutation,
   useResendStudentCredentialsMutation,
   useSetGuardianPasswordMutation,
+  useUpdateGuardianContactMutation,
   useResetStudentPinMutation,
   useChangeMyPinMutation,
   useGetStudentPinQuery,
