@@ -576,7 +576,7 @@ export function StudentsView() {
         sample={['Ali', 'Khan', 'STD-2001', 'ADM-2001', 'Grade 5', 'A', 'male', '03009998888', 'Imran Khan', 'imran@example.com', '42101-1234567-1']}
         filename="students-template.csv"
         onImport={async (csv) => (await bulkImport({ csv }).unwrap()).data}
-        helpText={'Students never have their own email/phone — only guardian contact (guardianPhone + guardianEmail) is collected, and is required for every row. "nationalIdNumber" (Form B/CNIC, format 42101-1234567-1) is optional. Running more than one active term at once (e.g. overlapping semesters)? Add an optional "term" column with the exact term name if any class name exists in more than one active term — otherwise it can be left out.'}
+        helpText={'Students never have their own email/phone — only guardian contact (guardianPhone + guardianEmail) is collected, and is required for every row. "nationalIdNumber" (Form B/CNIC, format 42101-1234567-1) and "dateOfBirth" (e.g. 2015-04-12) are both optional. Running more than one active term at once (e.g. overlapping semesters)? Add an optional "term" column with the exact term name if any class name exists in more than one active term — otherwise it can be left out.'}
         resultNote={
           <>
             Logins aren&apos;t emailed or shown per row here — each student got a Login ID and PIN automatically. Find them in the table above, or use the <strong>Login IDs &amp; PINs</strong> button for bulk lookup/export.
