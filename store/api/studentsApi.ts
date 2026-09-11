@@ -280,7 +280,7 @@ export const studentsApi = baseApi.injectEndpoints({
     // anywhere else. `pin` (not tempPassword) is set instead when the
     // student has no email/phone of their own — see student.service.ts's
     // create(), paired with `systemId` as the login identifier.
-    createStudent: builder.mutation<ApiObject<StudentListItem & { tempPassword?: string; guardianTempPassword?: string; pin?: string }>, CreateStudentBody>({
+    createStudent: builder.mutation<ApiObject<StudentListItem & { tempPassword?: string; guardianPin?: string; pin?: string }>, CreateStudentBody>({
       query: (body) => ({ url: '/students', method: 'POST', body }),
       // Creating a student also bumps Section.currentCount on the Class doc
       // (see adjustSectionCount in student.service.ts) — invalidate 'Classes'
@@ -296,10 +296,10 @@ export const studentsApi = baseApi.injectEndpoints({
     }),
 
     updateStudent: builder.mutation<
-      // guardianTempPassword is only present when this edit just linked a
-      // BRAND-NEW parent account (no guardian existed before) — same shape
-      // as createStudent's response, see student.service.ts's update().
-      ApiObject<StudentListItem & { guardianTempPassword?: string }>,
+      // guardianPin is only present when this edit just linked a BRAND-NEW
+      // parent account (no guardian existed before) — same shape as
+      // createStudent's response, see student.service.ts's update().
+      ApiObject<StudentListItem & { guardianPin?: string }>,
       {
         id: string;
         // `| null` on the three card-detail fields the quick card editor can
@@ -356,24 +356,48 @@ export const studentsApi = baseApi.injectEndpoints({
     // their welcome-credentials email — mints a brand-new temp password and
     // resends it, no invalidation needed since it doesn't change anything
     // shown in the students list/table itself.
-    resendStudentCredentials: builder.mutation<ApiObject<{ sentTo: string; tempPassword: string }>, { id: string; target: 'student' | 'parent' }>({
-      query: ({ id, target }) => ({ url: `/students/${id}/resend-credentials`, method: 'POST', body: { target } }),
+    // `email` lets the admin fix a typo'd/bounced address in the same step
+    // as resending, instead of a separate edit-then-resend round trip (same
+    // pattern as ResendInviteDialog's staff-invite resend). `confirmUnverifiedEmail`
+    // re-sends after the admin has clicked through the "this domain looks
+    // unusual" warning — see DomainConfirmDialog / assertEmailDomainLooksReal().
+    // `pin` is only present for target === 'parent' now (PIN-based guardian
+    // login, see student.service.ts's resendCredentials()); `tempPassword`
+    // remains for the legacy target === 'student' branch, which is still
+    // password-based (see that method's own comment on why it was left
+    // untouched by the PIN redesign).
+    resendStudentCredentials: builder.mutation<
+      ApiObject<{ sentTo: string; tempPassword?: string; pin?: string }>,
+      { id: string; target: 'student' | 'parent'; email?: string; confirmUnverifiedEmail?: boolean; guardianUserId?: string }
+    >({
+      query: ({ id, ...body }) => ({ url: `/students/${id}/resend-credentials`, method: 'POST', body }),
     }),
 
-    // Admin hands a guardian's password directly — no email sent, the
-    // password is returned once for the admin to reveal on-screen. See
-    // student.service.ts's setGuardianPassword(). Refreshes guardian email
-    // stats too since a guardian who previously had no way to log in now
-    // does (doesn't change guardianEmailStatus itself, but keeps behavior
-    // consistent with other credential actions).
-    setGuardianPassword: builder.mutation<
-      ApiObject<{ password: string; guardianName: string }>,
-      { id: string; guardianUserId?: string; password?: string }
+    // Admin resets (or hands over a custom) guardian PIN directly — no email
+    // sent, the PIN is returned once for the admin to reveal on-screen. See
+    // student.service.ts's resetGuardianPin(). siblingCount warns the UI this
+    // also affects every other child sharing this same guardian.
+    resetGuardianPin: builder.mutation<
+      ApiObject<{ pin: string; guardianName: string; siblingCount: number }>,
+      { id: string; guardianUserId?: string; customPin?: string }
     >({
-      query: ({ id, guardianUserId, password }) => ({
-        url: `/students/${id}/set-guardian-password`,
+      query: ({ id, guardianUserId, customPin }) => ({
+        url: `/students/${id}/reset-guardian-pin`,
         method: 'POST',
-        body: { guardianUserId, password },
+        body: { guardianUserId, customPin },
+      }),
+    }),
+
+    // Admin-only — decrypted guardian PIN lookup, only non-null while
+    // pinState is 'school_issued'. Mirrors getStudentPin() (lazy, explicit
+    // "Reveal" click, not auto-fetched).
+    getGuardianPin: builder.query<
+      ApiObject<{ pin: string | null; state: 'school_issued' | 'guardian_set' | null }>,
+      { id: string; guardianUserId?: string }
+    >({
+      query: ({ id, guardianUserId }) => ({
+        url: `/students/${id}/guardian-pin`,
+        params: guardianUserId ? { guardianUserId } : undefined,
       }),
     }),
 
@@ -424,9 +448,15 @@ export const studentsApi = baseApi.injectEndpoints({
     getStudentContactStatus: builder.query<
       ApiObject<{
         guardian: {
+          id: string;
           name: string;
           email: string | null;
+          phone: string | null;
           hasLoggedIn: boolean;
+          // Same meaning as the student's own pinState — 'school_issued'
+          // means the PIN is still admin-revealable, 'guardian_set' means
+          // the guardian changed it and only a reset (not a reveal) works.
+          pinState: 'school_issued' | 'guardian_set';
           // Full detail on the guardian's most recent welcome-credentials
           // email — null if none was ever sent (e.g. no email on file).
           emailLog: {
@@ -531,7 +561,8 @@ export const {
   useDeleteStudentMutation,
   useBulkImportStudentsMutation,
   useResendStudentCredentialsMutation,
-  useSetGuardianPasswordMutation,
+  useResetGuardianPinMutation,
+  useLazyGetGuardianPinQuery,
   useUpdateGuardianContactMutation,
   useResetStudentPinMutation,
   useChangeMyPinMutation,

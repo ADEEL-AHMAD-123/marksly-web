@@ -230,13 +230,17 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   // just reusing TempPasswordDialog's plain password shape) since it needs
   // to show the systemId alongside the PIN.
   type TempPasswordInfo =
-    // 'password' is the guardian in most cases here (the student normally
-    // gets the 'pin' kind below) — roleLabel makes that explicit in the
-    // dialog, since the name shown is the parent's, not the student's. Left
-    // optional/omitted for the one legacy resend-to-student-phone path below,
-    // where the name shown already unambiguously belongs to the student.
+    // Legacy resend-to-student-phone path only (target === 'student' in
+    // resendCredentials — still password-based, see that method's own
+    // comment on why the PIN redesign left it untouched).
     | { kind: 'password'; name: string; phone: string; tempPassword: string; emailed: boolean; roleLabel?: 'Parent' }
-    | { kind: 'pin'; name: string; systemId: string; pin: string };
+    // A student's own Login ID + PIN.
+    | { kind: 'pin'; name: string; systemId: string; pin: string }
+    // A guardian's PIN — same login mechanism as the student's, just no
+    // systemId (guardians log in with phone/email instead). roleLabel
+    // ('Parent') is always set here since the name shown is the parent's,
+    // not the student's.
+    | { kind: 'guardianPin'; name: string; pin: string; emailed: boolean; roleLabel: 'Parent' };
   // A queue, not a single value — creating a student can mint up to TWO new
   // logins at once (the student's own + a brand-new guardian's), each with
   // its own one-time-only credential. Shown one at a time so neither gets
@@ -295,12 +299,11 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         toast.success('Student updated');
         setPendingGuardianChange(null);
         onClose();
-        if (res.data.guardianTempPassword) {
+        if (res.data.guardianPin) {
           setTempPasswordQueue([{
-            kind: 'password',
+            kind: 'guardianPin',
             name: parentName || 'Parent',
-            phone: parentPhone || '',
-            tempPassword: res.data.guardianTempPassword,
+            pin: res.data.guardianPin,
             emailed: true,
             roleLabel: 'Parent',
           }]);
@@ -317,8 +320,9 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         // `pin` is now ALWAYS present on creation (paired with systemId as
         // the Login ID) — no more tempPassword/pin branching, since students
         // never have their own email/phone to send a temp password to.
-        // guardianTempPassword is separate: present only when a BRAND-NEW
-        // parent account was just created alongside this student.
+        // guardianPin is separate: present only when a BRAND-NEW parent
+        // account was just created alongside this student — same PIN-based
+        // login mechanism, just no systemId (guardians use phone/email).
         const queue: TempPasswordInfo[] = [];
         if (res.data.pin) {
           queue.push({
@@ -328,12 +332,11 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
             pin: res.data.pin,
           });
         }
-        if (res.data.guardianTempPassword) {
+        if (res.data.guardianPin) {
           queue.push({
-            kind: 'password',
+            kind: 'guardianPin',
             name: parentName || 'Parent',
-            phone: parentPhone || '',
-            tempPassword: res.data.guardianTempPassword,
+            pin: res.data.guardianPin,
             emailed: true,
             roleLabel: 'Parent',
           });
@@ -362,14 +365,21 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
     setResendingTarget(target);
     try {
       const res = await resendCredentials({ id: student.id, target }).unwrap();
-      setTempPasswordQueue((q) => [...q, {
-        kind: 'password',
-        name: target === 'student' ? `${student.firstName} ${student.lastName}` : (student.guardianName || 'Parent'),
-        phone: target === 'student' ? student.phone ?? '' : student.guardianPhone ?? '',
-        tempPassword: res.data.tempPassword,
-        emailed: true,
-        roleLabel: target === 'parent' ? 'Parent' : undefined,
-      }]);
+      setTempPasswordQueue((q) => [...q, target === 'parent'
+        ? {
+            kind: 'guardianPin',
+            name: student.guardianName || 'Parent',
+            pin: res.data.pin || '',
+            emailed: true,
+            roleLabel: 'Parent',
+          }
+        : {
+            kind: 'password',
+            name: `${student.firstName} ${student.lastName}`,
+            phone: student.phone ?? '',
+            tempPassword: res.data.tempPassword || '',
+            emailed: true,
+          }]);
       toast.success(`New login details sent to ${res.data.sentTo}`);
     } catch (e: any) {
       toast.error(getErrorMessage(e, 'Could not resend credentials'));

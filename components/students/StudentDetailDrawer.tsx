@@ -3,13 +3,15 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   X, Pencil, UserMinus, UserCheck, AlertCircle, Wallet, Printer, GraduationCap, ChevronDown,
-  KeyRound, Eye, EyeOff, Send, LockKeyhole, Mail, MailWarning, UserX,
+  KeyRound, Eye, EyeOff, Send, Mail, MailWarning, UserX,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
@@ -21,9 +23,10 @@ import {
   useGetStudentTermGpaQuery,
   useGetStudentContactStatusQuery,
   useLazyGetStudentPinQuery,
+  useLazyGetGuardianPinQuery,
   useResendStudentCredentialsMutation,
   useResetStudentPinMutation,
-  useSetGuardianPasswordMutation,
+  useResetGuardianPinMutation,
   type StudentListItem,
 } from '@/store/api/studentsApi';
 import { useGetFeeCardQuery } from '@/store/api/feesApi';
@@ -33,6 +36,7 @@ import { getInitials, formatCurrency, formatDate, cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { openAuthedPdf } from '@/lib/downloadFile';
 import { getErrorMessage } from '@/lib/get-error-message';
+import { friendlyEmailError } from '@/lib/friendly-email-error';
 import type { RootState } from '@/store';
 
 interface Props {
@@ -130,30 +134,67 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
     }
   };
 
+  // Same reveal-on-demand pattern, for the guardian's PIN — same login
+  // mechanism as the student's own, see resetGuardianPin()/getGuardianPin().
+  const [fetchGuardianPin] = useLazyGetGuardianPinQuery();
+  const [revealedGuardianPin, setRevealedGuardianPin] = useState<string | null | undefined>(undefined);
+  const [revealingGuardianPin, setRevealingGuardianPin] = useState(false);
+  const toggleGuardianPinReveal = async () => {
+    if (!studentId) return;
+    if (revealedGuardianPin !== undefined) { setRevealedGuardianPin(undefined); return; }
+    setRevealingGuardianPin(true);
+    try {
+      const res = await fetchGuardianPin({ id: studentId }).unwrap();
+      setRevealedGuardianPin(res.data.pin);
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Could not reveal PIN'));
+    } finally {
+      setRevealingGuardianPin(false);
+    }
+  };
+
   const [resendCredentials, { isLoading: resending }] = useResendStudentCredentialsMutation();
   const [resetPin, { isLoading: resettingPin }] = useResetStudentPinMutation();
-  const [setGuardianPassword, { isLoading: settingPassword }] = useSetGuardianPasswordMutation();
-  type CredentialAction = 'resend' | 'pin' | 'setpw';
+  const [resetGuardianPin, { isLoading: resettingGuardianPin }] = useResetGuardianPinMutation();
+  type CredentialAction = 'resend' | 'pin' | 'guardianPin';
   const [pendingCredAction, setPendingCredAction] = useState<CredentialAction | null>(null);
-  const [credReveal, setCredReveal] = useState<{ name: string; systemId?: string; pin?: string; password?: string; roleLabel?: string } | null>(null);
+  const [credReveal, setCredReveal] = useState<{ name: string; systemId?: string; pin?: string; roleLabel?: string } | null>(null);
+  // Editable in the resend confirm dialog — lets the admin fix a typo'd or
+  // bounced address in the same step as resending, instead of a separate
+  // edit-then-resend trip. Purely a convenience now (email no longer gates
+  // or verifies guardian login), so there's no domain-check/confirm step
+  // here anymore — a typo'd domain just means the email itself won't
+  // arrive, which the delivery-status block below already surfaces.
+  const [resendEmail, setResendEmail] = useState('');
 
-  const openResendConfirm = () => setPendingCredAction('resend');
+  const openResendConfirm = () => {
+    setResendEmail(contactStatus?.guardian?.email ?? '');
+    setPendingCredAction('resend');
+  };
   const openResetPinConfirm = () => setPendingCredAction('pin');
-  const openSetPasswordConfirm = () => setPendingCredAction('setpw');
+  const openResetGuardianPinConfirm = () => setPendingCredAction('guardianPin');
 
   const runCredAction = async () => {
     if (!studentId || !pendingCredAction || !s) return;
     try {
       if (pendingCredAction === 'resend') {
-        const res = await resendCredentials({ id: studentId, target: 'parent' }).unwrap();
+        const res = await resendCredentials({
+          id: studentId,
+          target: 'parent',
+          email: resendEmail.trim() || undefined,
+        }).unwrap();
         toast.success(`Sent to ${res.data.sentTo}`);
       } else if (pendingCredAction === 'pin') {
         const res = await resetPin({ id: studentId }).unwrap();
         setCredReveal({ name: s.name, systemId: s.systemId ?? '—', pin: res.data.pin });
         setRevealedPin(undefined);
       } else {
-        const res = await setGuardianPassword({ id: studentId }).unwrap();
-        setCredReveal({ name: res.data.guardianName, password: res.data.password, roleLabel: 'Parent' });
+        const res = await resetGuardianPin({ id: studentId }).unwrap();
+        setCredReveal({ name: res.data.guardianName, pin: res.data.pin, roleLabel: 'Parent' });
+        setRevealedGuardianPin(undefined);
+        if (res.data.siblingCount > 0) {
+          toast(`Also updates login for ${res.data.siblingCount} other linked ${res.data.siblingCount === 1 ? 'child' : 'children'}`, { icon: 'ℹ️' });
+        }
       }
       setPendingCredAction(null);
     } catch (e: any) {
@@ -490,16 +531,54 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                           </span>
                         )}
                       </div>
+                      {contactStatus.guardian.phone && (
+                        <p className="mt-0.5 text-xs text-muted-foreground" dir="ltr">{contactStatus.guardian.phone}</p>
+                      )}
                       <p className="mt-1 text-xs text-muted-foreground">
                         {contactStatus.guardian.hasLoggedIn ? 'Has signed in before.' : 'Has not signed in yet.'}
                       </p>
 
-                      {/* Delivery status of the most recent welcome-credentials
-                          email — this is the "why" behind the "Email delivery
-                          failed" badge on the Students table row: exactly
-                          when it was sent/attempted, to which address, and
-                          (when it failed) the actual error so the admin isn't
-                          left guessing before deciding to resend. */}
+                      {/* PIN — same reveal-on-demand pattern as the
+                          student's own Login section above, since it's now
+                          the exact same login mechanism (phone/email + PIN
+                          instead of a real password). */}
+                      <div className="mt-2.5 flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-muted-foreground">PIN</span>
+                          {contactStatus.guardian.pinState === 'guardian_set' ? (
+                            <span className="text-xs text-muted-foreground" title="This guardian changed their own PIN — only viewable by resetting it.">
+                              (self-set, not viewable)
+                            </span>
+                          ) : revealedGuardianPin !== undefined ? (
+                            <span className="font-mono text-sm font-medium text-foreground">{revealedGuardianPin}</span>
+                          ) : (
+                            <span className="font-mono text-sm text-muted-foreground">••••</span>
+                          )}
+                          {contactStatus.guardian.pinState !== 'guardian_set' && (
+                            <button
+                              type="button"
+                              disabled={revealingGuardianPin}
+                              onClick={toggleGuardianPinReveal}
+                              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                              aria-label={revealedGuardianPin !== undefined ? 'Hide PIN' : 'Reveal PIN'}
+                            >
+                              {revealedGuardianPin !== undefined ? <EyeOff size={13} /> : <Eye size={13} />}
+                            </button>
+                          )}
+                        </div>
+                        <Button variant="secondary" size="sm" onClick={openResetGuardianPinConfirm}>
+                          <KeyRound size={13} /> Reset
+                        </Button>
+                      </div>
+
+                      {/* Delivery status of the most recent login-details
+                          email — informational only now (doesn't gate or
+                          verify login, see the PIN redesign), but still the
+                          "why" behind the "Email delivery failed" badge on
+                          the Students table row: exactly when it was
+                          sent/attempted, to which address, and (when it
+                          failed) the actual error so the admin isn't left
+                          guessing before deciding to resend. */}
                       {contactStatus.guardian.emailLog && (
                         <div
                           className={cn(
@@ -524,17 +603,21 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                             To {contactStatus.guardian.emailLog.to} · {formatDate(contactStatus.guardian.emailLog.sentAt)}
                           </p>
                           {contactStatus.guardian.emailLog.error && (
-                            <p className="mt-1 break-words font-mono text-[11px] opacity-90">{contactStatus.guardian.emailLog.error}</p>
+                            // Plain-language explanation as the primary text
+                            // — the raw provider error (meant for a
+                            // developer, not an admin) is still available on
+                            // hover for anyone who needs it for real
+                            // troubleshooting. See lib/friendly-email-error.ts.
+                            <p className="mt-1" title={contactStatus.guardian.emailLog.error}>
+                              {friendlyEmailError(contactStatus.guardian.emailLog.error)}
+                            </p>
                           )}
                         </div>
                       )}
 
                       <div className="mt-2.5 flex items-center gap-2">
                         <Button variant="secondary" size="sm" onClick={openResendConfirm}>
-                          <Send size={13} /> Resend login
-                        </Button>
-                        <Button variant="secondary" size="sm" onClick={openSetPasswordConfirm}>
-                          <LockKeyhole size={13} /> Set password
+                          <Send size={13} /> Email login details
                         </Button>
                       </div>
                     </div>
@@ -641,71 +724,83 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
         </div>
       </SheetContent>
 
-      {/* Resend / reset / set-password confirm — same informed-confirm
-          pattern as StudentsView.tsx's row quick actions. */}
+      {/* Resend / reset-PIN confirm — same informed-confirm pattern as
+          StudentsView.tsx's row quick actions. */}
       <ConfirmDialog
         open={!!pendingCredAction}
         onClose={() => setPendingCredAction(null)}
-        onConfirm={runCredAction}
-        loading={pendingCredAction === 'resend' ? resending : pendingCredAction === 'pin' ? resettingPin : settingPassword}
-        tone={pendingCredAction === 'pin' && contactStatus?.pinState === 'student_set' ? 'warning' : 'default'}
+        onConfirm={() => runCredAction()}
+        loading={pendingCredAction === 'resend' ? resending : pendingCredAction === 'pin' ? resettingPin : resettingGuardianPin}
+        tone={
+          (pendingCredAction === 'pin' && contactStatus?.pinState === 'student_set') ||
+          (pendingCredAction === 'guardianPin' && contactStatus?.guardian?.pinState === 'guardian_set')
+            ? 'warning'
+            : 'default'
+        }
         title={
-          pendingCredAction === 'resend' ? 'Resend parent login?'
+          pendingCredAction === 'resend' ? 'Email the parent login details?'
           : pendingCredAction === 'pin' ? "Reset this student's PIN?"
-          : "Set this guardian's password?"
+          : "Reset this guardian's PIN?"
         }
         description={
           pendingCredAction === 'resend' ? (
-            <>
-              {contactStatus?.guardian?.hasLoggedIn ? (
-                <>
-                  <strong>{contactStatus.guardian.name}</strong> has already signed in before — sending this mints a brand-new
-                  temporary password and emails it to them, which will lock them out of whatever password they&apos;re
-                  currently using, and uses one of your email sends.
-                </>
-              ) : (
-                <>
-                  This resends a fresh temporary password to <strong>{contactStatus?.guardian?.name}</strong> at{' '}
-                  {contactStatus?.guardian?.email ?? 'their email on file'}.
-                </>
-              )}
-            </>
+            <div className="space-y-3">
+              <p>
+                This emails <strong>{contactStatus?.guardian?.name}</strong> their phone/email and current PIN, purely
+                as a convenience — nothing about logging in depends on this email arriving or being opened.
+              </p>
+              <div>
+                <Label htmlFor="resend-guardian-email">Send to this email</Label>
+                <Input
+                  id="resend-guardian-email"
+                  type="email"
+                  dir="ltr"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  placeholder="guardian@example.com"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">Fix a typo or bounced address here before sending — it'll be saved as their new email too.</p>
+              </div>
+            </div>
           ) : pendingCredAction === 'pin' ? (
             contactStatus?.pinState === 'student_set' ? (
               <>
-                <strong>{s?.name}</strong> has already set their own PIN. Resetting will overwrite it with a new one
-                you&apos;ll need to hand to them directly — their current PIN will stop working immediately.
+                <strong>{s?.name}</strong> already chose their own PIN. Resetting replaces it with a new one right
+                away — you&apos;ll need to hand it to them yourself, since their old PIN stops working immediately.
               </>
             ) : (
               <>
-                This mints a new PIN for <strong>{s?.name}</strong>. It&apos;s shown once right after — write it down
-                and hand it to the student or their guardian directly.
+                This creates a new PIN for <strong>{s?.name}</strong>. You&apos;ll see it once, on the next screen —
+                write it down or read it out to the student or their guardian in person.
               </>
             )
+          ) : contactStatus?.guardian?.pinState === 'guardian_set' ? (
+            <>
+              <strong>{contactStatus?.guardian?.name}</strong> already chose their own PIN. Resetting replaces it with
+              a new one right away — their old PIN stops working immediately, for every child linked to this guardian.
+            </>
           ) : (
             <>
-              This sets a new password for <strong>{contactStatus?.guardian?.name}</strong> directly — no email is sent.
-              It&apos;s shown once right after for you to hand over in person, and immediately replaces whatever password
-              they&apos;re currently using.
+              This creates a new PIN for <strong>{contactStatus?.guardian?.name}</strong>. You&apos;ll see it once, on
+              the next screen — write it down or read it out to them in person. This changes login for every child
+              linked to this same guardian, not just this one.
             </>
           )
         }
         confirmLabel={
-          pendingCredAction === 'resend' ? 'Send login email'
-          : pendingCredAction === 'pin' ? 'Reset PIN'
-          : 'Set password'
+          pendingCredAction === 'resend' ? 'Send email'
+          : 'Reset PIN'
         }
       />
 
-      {/* One-time reveal — reused for both a fresh PIN reset and a fresh
-          guardian password, same contract as StudentsView.tsx's pinReveal. */}
+      {/* One-time reveal — reused for a fresh student or guardian PIN reset,
+          same contract as StudentsView.tsx's pinReveal. */}
       <TempPasswordDialog
         open={!!credReveal}
         onClose={() => setCredReveal(null)}
         name={credReveal?.name ?? ''}
         systemId={credReveal?.systemId}
         pin={credReveal?.pin}
-        tempPassword={credReveal?.password}
         roleLabel={credReveal?.roleLabel}
       />
     </Sheet>

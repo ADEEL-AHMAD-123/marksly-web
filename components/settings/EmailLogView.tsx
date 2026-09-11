@@ -25,6 +25,7 @@ import { SearchInput } from '@/components/ui/search-input';
 import { cn, formatDateTime } from '@/lib/utils';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
+import { friendlyEmailError } from '@/lib/friendly-email-error';
 import {
   useGetEmailLogQuery, useGetEmailLogStatsQuery, useGetEmailLogMissingEmailQuery,
   useResendEmailLogMutation,
@@ -427,9 +428,10 @@ export function EmailLogView() {
                                   <button
                                     type="button"
                                     onClick={() => setErrorDialog(e.error)}
+                                    title={e.error}
                                     className="mt-1 block max-w-[220px] truncate text-left text-xs text-danger underline decoration-dotted underline-offset-2 hover:text-danger/80"
                                   >
-                                    {e.error}
+                                    {friendlyEmailError(e.error)}
                                   </button>
                                 )}
                               </TableCell>
@@ -493,9 +495,10 @@ export function EmailLogView() {
                         <button
                           type="button"
                           onClick={() => setErrorDialog(e.error)}
+                          title={e.error}
                           className="mt-1.5 block w-full truncate text-left text-xs text-danger underline decoration-dotted underline-offset-2"
                         >
-                          {e.error}
+                          {friendlyEmailError(e.error)}
                         </button>
                       )}
                       {isOpen && (
@@ -569,9 +572,10 @@ function AttemptHistoryList({
               <button
                 type="button"
                 onClick={() => onShowError(h.error!)}
+                title={h.error}
                 className="truncate text-danger underline decoration-dotted underline-offset-2 hover:text-danger/80"
               >
-                {h.error}
+                {friendlyEmailError(h.error)}
               </button>
             )}
           </li>
@@ -611,8 +615,11 @@ function ErrorMessageDialog({ error, onClose }: { error: string | null; onClose:
             </span>
             <DialogPrimitive.Title className="text-base font-semibold">Delivery error</DialogPrimitive.Title>
           </div>
-          <DialogPrimitive.Description className="sr-only">The full error message returned for this email attempt.</DialogPrimitive.Description>
-          <p className="mt-4 max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-muted/50 p-3 text-sm text-foreground" dir="ltr">
+          <DialogPrimitive.Description className="mt-2 text-sm text-muted-foreground">
+            {error && friendlyEmailError(error)}
+          </DialogPrimitive.Description>
+          <p className="mb-1 mt-4 text-xs font-medium text-muted-foreground">Technical detail (for support)</p>
+          <p className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-muted/50 p-3 text-sm text-foreground" dir="ltr">
             {error}
           </p>
           <div className="mt-5 flex items-center justify-end gap-2">
