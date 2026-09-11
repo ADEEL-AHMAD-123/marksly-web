@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, GraduationCap, BookOpen, CalendarCheck,
   DollarSign, FileText, Bell, BarChart2, Settings, School,
   Package, CalendarRange, CalendarClock, CreditCard, MessageSquare,
-  FlaskConical, Briefcase, HelpCircle, Mail, KeyRound,
+  FlaskConical, Briefcase, HelpCircle, KeyRound,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -23,17 +23,17 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     // (see StaffManagementView.tsx) — the old standalone "Teachers" nav
     // item is gone, its route now redirects to /admin/staff?tab=teacher.
     { label: 'Staff', href: '/admin/staff', icon: Briefcase },
-    // Sits right after the people-management group, not buried near
-    // Billing/Settings at the bottom — this is where an admin needs it: it
-    // flags wrong/missing emails entered while adding students, teachers,
-    // parents or staff, so it belongs next to where that data gets entered.
-    // See SidebarNav.tsx for the red issue-count badge that also makes this
-    // noticeable regardless of position.
-    { label: 'Email Delivery Status', href: '/admin/email-log', icon: Mail },
     { label: 'ID Cards', href: '/admin/id-cards', icon: CreditCard },
+    // Dedicated bulk Login ID/PIN lookup page, promoted from the old
+    // in-page "Login IDs & PINs" modal on the Students page (see
+    // LoginIdsView.tsx / StudentsView.tsx) — the old standalone "Email
+    // Delivery Status" nav item is gone too, folded per-row into the
+    // Students and Staff pages instead (see guardianEmailStatus/emailStatus
+    // badges in StudentsView.tsx / StaffManagementView.tsx).
+    { label: 'Login IDs & PINs', href: '/admin/login-ids', icon: KeyRound },
     // "Student Logins" removed as a standalone nav item — every Login
     // ID/PIN now lives right in the Students table, with bulk lookup/export
-    // via the "Class logins" button on that page (see StudentsView.tsx).
+    // via the Login IDs & PINs page above.
     // The route itself is kept as a redirect for old bookmarks — see
     // app/(dashboard)/admin/students/roster/page.tsx.
     // Academic structure — Academic Terms now comes first since it's the

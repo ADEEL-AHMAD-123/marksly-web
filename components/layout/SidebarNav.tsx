@@ -8,7 +8,6 @@ import { cn, getInitials } from '@/lib/utils';
 import { NAV_ITEMS } from './nav-items';
 import { LogoMark } from '@/components/brand/Logo';
 import { useGetMyInstitutionQuery } from '@/store/api/institutionApi';
-import { useGetEmailLogStatsQuery } from '@/store/api/emailLogApi';
 
 interface SidebarNavProps {
   collapsed?: boolean;
@@ -44,15 +43,6 @@ export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }:
   const isSuperadmin = role === 'superadmin';
   const { data: institutionRes } = useGetMyInstitutionQuery(undefined, { skip: isSuperadmin });
   const institution = institutionRes?.data;
-
-  // Badge for the "Login Emails" nav item — a count buried in a long sidebar
-  // is easy to miss entirely, so surface unresolved issues (sends that
-  // actually failed, plus accounts that never got an email because none was
-  // on file) as a red number right on the nav item itself, regardless of
-  // where it sits in the list. Only fetched for admins, since only admin's
-  // nav includes this item.
-  const { data: emailStatsRes } = useGetEmailLogStatsQuery(undefined, { skip: role !== 'admin' });
-  const emailIssueCount = (emailStatsRes?.data?.failed ?? 0) + (emailStatsRes?.data?.missingEmail ?? 0);
 
   return (
     <div className="flex h-full flex-col">
@@ -104,7 +94,7 @@ export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }:
 
           return items.map(({ label, href, icon: Icon }) => {
           const active = href === bestMatchHref;
-          const badgeCount = href === '/admin/email-log' ? emailIssueCount : 0;
+          const badgeCount = 0;
           return (
             <Link
               key={href}
