@@ -68,7 +68,9 @@ function Row({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="flex items-center justify-between gap-4 py-2.5">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium text-foreground text-right">{value || '—'}</span>
+      <span className={`text-sm text-right ${value ? 'font-medium text-foreground' : 'italic text-muted-foreground'}`}>
+        {value || 'Not set'}
+      </span>
     </div>
   );
 }
@@ -331,6 +333,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                       own contact info if ever populated by mistake. */}
                   <Row label="Gender" value={s.gender} />
                   <Row label="Blood group" value={s.bloodGroup} />
+                  <Row label="Address" value={s.address} />
                   <Row label="City" value={s.city} />
                   {s.status !== 'active' && s.leftAt && (
                     <Row label="Left on" value={formatDate(s.leftAt)} />
