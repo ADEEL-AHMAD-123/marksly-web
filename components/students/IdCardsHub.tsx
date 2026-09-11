@@ -43,31 +43,39 @@ export function IdCardsHub() {
       />
       <IdCardSettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      <InfoNote title="How this page works">
-        <p>
-          A card only appears once every required detail is on file — address and phone for staff, and address,
-          blood group and phone for students. If someone&apos;s missing from a list here, it just means nobody&apos;s
-          filled in their details yet. Use the <strong>Missing ID info</strong> filter on the Students or Staff page
-          to find everyone who still needs something, without opening each record one at a time.
-        </p>
-        <p>
-          Use <strong>Card settings</strong> above to choose what shows on every card (Form B/CNIC, blood group,
-          institute name) and how long a card stays valid before it needs reissuing.
-        </p>
-        <p>
-          Need to fix one person&apos;s card — their Form B/CNIC number, blood group, or issue/expiry dates? Select
-          them below and use <strong>Edit card details</strong>. To renew a whole class, section, or staff role at
-          once, use <strong>Re-issue cards</strong> instead of editing one by one.
-        </p>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
-          <Link href="/admin/students" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
-            Go to Students <ArrowRight size={12} />
-          </Link>
-          <Link href="/admin/staff" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
-            Go to Staff <ArrowRight size={12} />
-          </Link>
-        </div>
-      </InfoNote>
+      {/* Split into three focused questions instead of one long note — each
+          answers one thing an admin is likely looking for on its own. */}
+      <div className="space-y-2">
+        <InfoNote title="Someone missing from a list here?">
+          <p>
+            A card only appears once every required detail is on file — address and phone for staff, and address,
+            blood group and phone for students. If someone&apos;s missing from a list here, it just means nobody&apos;s
+            filled in their details yet. Use the <strong>Missing ID info</strong> filter on the Students or Staff page
+            to find everyone who still needs something, without opening each record one at a time.
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
+            <Link href="/admin/students" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+              Go to Students <ArrowRight size={12} />
+            </Link>
+            <Link href="/admin/staff" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+              Go to Staff <ArrowRight size={12} />
+            </Link>
+          </div>
+        </InfoNote>
+        <InfoNote title="How do I set what shows on every card?">
+          <p>
+            Use <strong>Card settings</strong> above to choose what shows on every card (Form B/CNIC, blood group,
+            institute name) and how long a card stays valid before it needs reissuing.
+          </p>
+        </InfoNote>
+        <InfoNote title="Need to fix or renew one or more cards?">
+          <p>
+            Need to fix one person&apos;s card — their Form B/CNIC number, blood group, or issue/expiry dates? Select
+            them below and use <strong>Edit card details</strong>. To renew a whole class, section, or staff role at
+            once, use <strong>Re-issue cards</strong> instead of editing one by one.
+          </p>
+        </InfoNote>
+      </div>
 
       <Tabs key={initialTab} defaultValue={initialTab}>
         <TabsList>

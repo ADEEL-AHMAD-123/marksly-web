@@ -2,31 +2,40 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 import {
-  Plus, Download, Filter, ChevronLeft, ChevronRight, AlertCircle,
+  Plus, Download, Filter, ChevronLeft, ChevronRight,
+  AlertCircle, MoreVertical, Send, KeyRound, Square, SquareCheck, X,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { SearchInput } from '@/components/ui/search-input';
+import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   useGetStudentsQuery,
   useBulkImportStudentsMutation,
+  useResendStudentCredentialsMutation,
+  useResetStudentPinMutation,
   type StudentListItem,
 } from '@/store/api/studentsApi';
 import { ImportCsvDrawer } from '@/components/ui/import-csv-drawer';
 import { Avatar } from '@/components/ui/avatar';
 import { getInitials, formatDate, cn } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/get-error-message';
 import { StudentFormDrawer } from './StudentFormDrawer';
 import { StudentDetailDrawer } from './StudentDetailDrawer';
 import { useTerminology } from '@/lib/terminology';
@@ -55,6 +64,7 @@ export function StudentsView() {
   const [incompleteOnly, setIncompleteOnly] = useState(false);
   const [page, setPage] = useState(1);
   const debouncedQuery = useDebounce(query, 350);
+  const filtersActive = !!debouncedQuery || status !== 'all' || incompleteOnly;
 
   // Drawer state
   const [formOpen, setFormOpen] = useState(false);
@@ -63,8 +73,42 @@ export function StudentsView() {
   const [importOpen, setImportOpen] = useState(false);
   const [bulkImport] = useBulkImportStudentsMutation();
 
+  // Row quick-actions — resend parent login / reset PIN, without opening the
+  // full detail drawer. Kept deliberately narrow (no "End enrollment" here):
+  // that's a destructive lifecycle change and stays behind the detail
+  // drawer's explicit reason-and-confirm step on purpose, so a fast row menu
+  // can't be used to accidentally end an enrollment in one misclick.
+  const [resendCredentials, { isLoading: resending }] = useResendStudentCredentialsMutation();
+  const [resetPin, { isLoading: resettingPin }] = useResetStudentPinMutation();
+  const [actioningId, setActioningId] = useState<string | null>(null);
+  const [pinReveal, setPinReveal] = useState<{ name: string; systemId: string; pin: string } | null>(null);
+
   const openAdd = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (s: StudentListItem) => { setDetailId(null); setEditing(s); setFormOpen(true); };
+
+  const handleResendParentLogin = async (s: StudentListItem) => {
+    setActioningId(s.id);
+    try {
+      const res = await resendCredentials({ id: s.id, target: 'parent' }).unwrap();
+      toast.success(`Sent to ${res.data.sentTo}`);
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Could not resend parent login'));
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  const handleResetPin = async (s: StudentListItem) => {
+    setActioningId(s.id);
+    try {
+      const res = await resetPin({ id: s.id }).unwrap();
+      setPinReveal({ name: s.name, systemId: s.systemId ?? '—', pin: res.data.pin });
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Could not reset PIN'));
+    } finally {
+      setActioningId(null);
+    }
+  };
 
   const { data, isLoading, isFetching, isError, refetch } = useGetStudentsQuery({
     page,
@@ -86,6 +130,8 @@ export function StudentsView() {
     setPage(1);
   };
 
+  const showResults = !isError && !isLoading && students.length > 0;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -95,7 +141,10 @@ export function StudentsView() {
         }
         actions={
           <>
-            <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
+            {/* Demoted below Add Student — used a handful of times per
+                admission cycle, not per visit, so it shouldn't compete
+                visually with the action almost every visit is here for. */}
+            <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)}>
               <Download size={16} /> Import CSV
             </Button>
             <Button variant="primary" size="sm" onClick={openAdd}>
@@ -105,16 +154,13 @@ export function StudentsView() {
         }
       />
 
-      <InfoNote title="How do they log in?" link={{ href: '/admin/students/roster', label: 'Go to Student Logins' }}>
-        <p>Students log in with a Login ID (e.g. MKS-XXXXXXXX) and a PIN — both generated automatically by the system the moment a student is added, no setup needed. Both are shown once right after adding the student, and printed on their ID card. Students can change their own PIN later from their account.</p>
-        <p>Guardians get a separate parent login — the phone/email entered as guardian for a student is automatically emailed its own temporary password. One guardian phone linked to more than one child means one shared login for all of them.</p>
-        <p>Lost the Login ID/PIN, or need to look one up or reset it later? Every student&apos;s Login ID and PIN can be viewed, edited, or reset — one at a time or in bulk by class/section — from the <strong>Student Logins</strong> page.</p>
-        <p>Missing or bounced guardian email? Open the student, use <strong>Resend parent login</strong> to send a fresh password.</p>
-      </InfoNote>
-
-      {/* Filters */}
-      <Card className="p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      {/* One merged panel: toolbar (search/filter) directly attached to the
+          list it controls, then pagination — a single visual unit instead
+          of a separate filter card floating above a separately-bordered
+          table. Reference/help content lives below, past the primary task
+          (see the InfoNotes block near the bottom of this file). */}
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center">
           <SearchInput
             value={query}
             onChange={(v) => { setQuery(v); setPage(1); }}
@@ -133,58 +179,63 @@ export function StudentsView() {
               <SelectItem value="transferred">Transferred</SelectItem>
             </SelectContent>
           </Select>
+          {/* Restyled onto the shared Button visual vocabulary (radius,
+              border, hover) instead of a bespoke one-off style, with a
+              checkbox-style icon so the ON/OFF state doesn't rely on color
+              alone (recognition over recall). */}
           <button
             type="button"
             onClick={() => { setIncompleteOnly((v) => !v); setPage(1); }}
             className={cn(
-              'flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
-              incompleteOnly
-                ? 'border-warning bg-warning-soft text-warning'
-                : 'border-border bg-card text-foreground hover:bg-muted'
+              buttonVariants({ variant: incompleteOnly ? 'soft' : 'secondary', size: 'sm' }),
+              'shrink-0'
             )}
             title="Show only students missing address or blood group"
           >
-            Missing ID info
+            {incompleteOnly ? <SquareCheck size={14} /> : <Square size={14} />} Missing ID info
           </button>
+          {filtersActive && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="flex shrink-0 items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              <X size={14} /> Clear filters
+            </button>
+          )}
         </div>
-      </Card>
 
-      {/* States */}
-      {isError ? (
-        <Card>
+        {/* States */}
+        {isError ? (
           <EmptyState
             icon={AlertCircle}
             title="Couldn't load students"
             description="There was a problem reaching the server. Check that the API is running and try again."
             action={<Button variant="secondary" size="sm" onClick={() => refetch()}>Retry</Button>}
           />
-        </Card>
-      ) : isLoading ? (
-        <LoadingState />
-      ) : students.length === 0 ? (
-        <Card>
+        ) : isLoading ? (
+          <LoadingState />
+        ) : students.length === 0 ? (
           <EmptyState
             icon={Filter}
-            title={debouncedQuery || status !== 'all' || incompleteOnly ? 'No students match your filters' : 'No students yet'}
+            title={filtersActive ? 'No students match your filters' : 'No students yet'}
             description={
-              debouncedQuery || status !== 'all' || incompleteOnly
+              filtersActive
                 ? 'Try adjusting your search or clearing the filters.'
                 : 'Add your first student to get started.'
             }
             action={
-              debouncedQuery || status !== 'all' || incompleteOnly ? (
+              filtersActive ? (
                 <Button variant="secondary" size="sm" onClick={resetFilters}>Clear filters</Button>
               ) : (
                 <Button variant="primary" size="sm" onClick={openAdd}><Plus size={16} /> Add Student</Button>
               )
             }
           />
-        </Card>
-      ) : (
-        <div className={isFetching ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
-          {/* Desktop table */}
-          <div className="hidden md:block">
-            <TableWrapper>
+        ) : (
+          <div className={isFetching ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
+            {/* Desktop table */}
+            <div className="hidden overflow-x-auto md:block">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -192,6 +243,7 @@ export function StudentsView() {
                     <TableHead>{terminology.classUnit}</TableHead>
                     <TableHead>Guardian</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="w-16" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -236,18 +288,33 @@ export function StudentsView() {
                           </p>
                         )}
                       </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          <StudentQuickActions
+                            student={s}
+                            busy={actioningId === s.id && (resending || resettingPin)}
+                            onResendParentLogin={handleResendParentLogin}
+                            onResetPin={handleResetPin}
+                          />
+                          <ChevronRight size={16} className="text-muted-foreground" />
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            </TableWrapper>
-          </div>
+            </div>
 
-          {/* Mobile cards */}
-          <div className="space-y-3 md:hidden">
-            {students.map((s) => (
-              <Card key={s.id} className="cursor-pointer p-4" onClick={() => setDetailId(s.id)}>
-                <div className="flex items-center gap-3">
+            {/* Mobile rows — divided list rows (matching the desktop table's
+                rhythm) instead of individually-boxed cards, so the panel
+                doesn't nest a border-within-a-border on small screens. */}
+            <div className="divide-y divide-border md:hidden">
+              {students.map((s) => (
+                <div
+                  key={s.id}
+                  className="flex cursor-pointer items-center gap-3 p-4 active:bg-muted/40"
+                  onClick={() => setDetailId(s.id)}
+                >
                   <Avatar
                     size="md"
                     photoUrl={s.profilePhoto}
@@ -261,28 +328,42 @@ export function StudentsView() {
                       {s.className ? ` · ${s.className}${s.section ? ` — ${s.section}` : ''}` : ''}
                     </p>
                     <MissingInfoChip missing={missingIdInfo(s)} />
+                    {s.status !== 'active' && s.leftReason && (
+                      <p className="mt-1 truncate text-xs text-muted-foreground">Left — {s.leftReason}</p>
+                    )}
+                    {(s.guardianName || s.guardianPhone) && (
+                      <p className="mt-1 truncate text-xs text-muted-foreground">
+                        {s.guardianName ?? '—'}{s.guardianPhone ? ` · ${s.guardianPhone}` : ''}
+                      </p>
+                    )}
                   </div>
-                  <Badge variant={statusBadge[s.status].variant}>
-                    {statusBadge[s.status].label}
-                  </Badge>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <Badge variant={statusBadge[s.status].variant}>
+                      {statusBadge[s.status].label}
+                    </Badge>
+                    <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                      <StudentQuickActions
+                        student={s}
+                        busy={actioningId === s.id && (resending || resettingPin)}
+                        onResendParentLogin={handleResendParentLogin}
+                        onResetPin={handleResetPin}
+                      />
+                    </div>
+                  </div>
                 </div>
-                {s.status !== 'active' && s.leftReason && (
-                  <p className="mt-1.5 truncate text-xs text-muted-foreground">Left — {s.leftReason}</p>
-                )}
-                {(s.guardianName || s.guardianPhone) && (
-                  <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
-                    <span className="text-muted-foreground">{s.guardianName ?? '—'}</span>
-                    <span className="text-foreground">{s.guardianPhone ?? ''}</span>
-                  </div>
-                )}
-              </Card>
-            ))}
+              ))}
+            </div>
           </div>
+        )}
 
-          {/* Pagination */}
-          <div className="mt-4 flex items-center justify-between">
+        {/* Pagination — total count shown right here too, not only in the
+            page header far above, since that's long scrolled out of view
+            by the time someone's paging through results. */}
+        {showResults && (
+          <div className="flex items-center justify-between border-t border-border px-4 py-3">
             <p className="text-sm text-muted-foreground">
               Page <span className="font-medium text-foreground">{page}</span> of {totalPages}
+              <span className="ml-1.5">· {total} student{total === 1 ? '' : 's'}</span>
             </p>
             <div className="flex items-center gap-1">
               <Button
@@ -305,8 +386,28 @@ export function StudentsView() {
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      {/* Help / reference — split into focused, independently-collapsible
+          questions rather than one long note, and placed below the primary
+          task (search/list) rather than above it: this is material an
+          admin consults occasionally, not on every visit, so it shouldn't
+          outrank the thing they came here to do. */}
+      <div className="space-y-2">
+        <InfoNote title="How do students log in?">
+          <p>With a Login ID (e.g. MKS-XXXXXXXX) and a PIN — both generated automatically by the system the moment a student is added, no setup needed. Both are shown once right after adding the student, and printed on their ID card. Students can change their own PIN later from their account.</p>
+        </InfoNote>
+        <InfoNote title="How do guardians log in?">
+          <p>Guardians get a separate parent login — the phone/email entered as guardian for a student is automatically emailed its own temporary password. One guardian phone linked to more than one child means one shared login for all of them.</p>
+        </InfoNote>
+        <InfoNote title="Lost a Login ID or PIN, or need to look one up later?" link={{ href: '/admin/students/roster', label: 'Go to Student Logins' }}>
+          <p>Every student&apos;s Login ID and PIN can be viewed, edited, or reset — one at a time or in bulk by class/section — from the <strong>Student Logins</strong> page. Or use <strong>Reset PIN</strong> right from a student&apos;s row here.</p>
+        </InfoNote>
+        <InfoNote title="Guardian email missing or bounced?">
+          <p>Use <strong>Resend parent login</strong> from a student&apos;s row here, or open the student for more detail.</p>
+        </InfoNote>
+      </div>
 
       {/* Add / Edit drawer */}
       <StudentFormDrawer
@@ -340,7 +441,59 @@ export function StudentsView() {
           </>
         }
       />
+
+      {/* Reset-PIN reveal — reuses the same one-time-reveal dialog pattern
+          as the creation flow, since a fresh reset genuinely mints a new
+          PIN the admin needs to hand to the guardian/student right now. */}
+      <TempPasswordDialog
+        open={!!pinReveal}
+        onClose={() => setPinReveal(null)}
+        name={pinReveal?.name ?? ''}
+        systemId={pinReveal?.systemId}
+        pin={pinReveal?.pin}
+      />
     </div>
+  );
+}
+
+/** Row-level quick actions — the two highest-frequency, lowest-risk tasks
+ *  (login help) pulled out of the full detail drawer so they're one click
+ *  instead of open-drawer-scroll-past-profile-click. Deliberately does NOT
+ *  include "End enrollment": that's a destructive status change and stays
+ *  gated behind the detail drawer's explicit reason/confirm step so a fast
+ *  row menu can't turn it into a one-misclick mistake. */
+function StudentQuickActions({
+  student, busy, onResendParentLogin, onResetPin,
+}: {
+  student: StudentListItem;
+  busy: boolean;
+  onResendParentLogin: (s: StudentListItem) => void;
+  onResetPin: (s: StudentListItem) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          disabled={busy}
+          aria-label={`More actions for ${student.name}`}
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+        >
+          <MoreVertical size={16} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          disabled={!student.guardianName}
+          onClick={() => onResendParentLogin(student)}
+        >
+          <Send size={14} /> Resend parent login
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onResetPin(student)}>
+          <KeyRound size={14} /> Reset PIN
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -372,22 +525,17 @@ function MissingInfoChip({ missing }: { missing: string[] }) {
 
 function LoadingState() {
   return (
-    <TableWrapper className="hidden md:block">
-      <div className="divide-y divide-border">
-        <div className="bg-muted/50 px-4 py-3">
-          <Skeleton className="h-4 w-24" />
-        </div>
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3 px-4 py-3.5">
-            <Skeleton className="h-9 w-9 rounded-full" />
-            <div className="flex-1 space-y-1.5">
-              <Skeleton className="h-3.5 w-40" />
-              <Skeleton className="h-3 w-24" />
-            </div>
-            <Skeleton className="h-6 w-16 rounded-full" />
+    <div className="divide-y divide-border">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 px-4 py-3.5">
+          <Skeleton className="h-9 w-9 rounded-full" />
+          <div className="flex-1 space-y-1.5">
+            <Skeleton className="h-3.5 w-40" />
+            <Skeleton className="h-3 w-24" />
           </div>
-        ))}
-      </div>
-    </TableWrapper>
+          <Skeleton className="h-6 w-16 rounded-full" />
+        </div>
+      ))}
+    </div>
   );
 }
