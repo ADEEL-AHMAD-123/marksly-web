@@ -315,12 +315,11 @@ export function StaffManagementView() {
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Name</TableHead>
-                    <TableHead>Login ID</TableHead>
                     {tab === 'all' && <TableHead>Role</TableHead>}
                     <TableHead>Phone</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>PIN</TableHead>
+                    <TableHead>Login ID / PIN</TableHead>
                     <TableHead>Last login</TableHead>
                     <TableHead className="w-16" />
                   </TableRow>
@@ -346,7 +345,6 @@ export function StaffManagementView() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell><span className="font-mono text-xs text-foreground/80">{m.systemId ?? '—'}</span></TableCell>
                       {tab === 'all' && (
                         <TableCell><Badge variant="neutral">{roleLabel(m.role)}</Badge></TableCell>
                       )}
@@ -356,7 +354,12 @@ export function StaffManagementView() {
                         <StaffEmailBadge status={m.emailStatus} />
                       </TableCell>
                       <TableCell><Badge variant={m.isActive ? 'success' : 'neutral'}>{m.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}><PinCell member={m} /></TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <div className="space-y-1">
+                          <span className="block font-mono text-xs text-foreground/80">{m.systemId ?? '—'}</span>
+                          <PinCell member={m} />
+                        </div>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{m.lastLoginAt ? formatDate(m.lastLoginAt) : 'Never'}</TableCell>
                       <TableCell className="text-right">
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
