@@ -506,16 +506,37 @@ export function StudentsView() {
           outrank the thing they came here to do. */}
       <div className="space-y-2">
         <InfoNote title="How do students log in?">
-          <p>With a Login ID (e.g. MKS-XXXXXXXX) and a PIN — both generated automatically by the system the moment a student is added, no setup needed. Both are shown once right after adding the student, and printed on their ID card. Students can change their own PIN later from their account.</p>
+          <p>
+            Each student gets a Login ID (e.g. MKS-XXXXXXXX) and a PIN, generated automatically the moment they&apos;re
+            added — there&apos;s nothing to set up. Both are shown once right after creation and printed on the ID
+            card, and can be looked up again anytime from this table or the student&apos;s details. A student can
+            change their own PIN afterward from their account.
+          </p>
         </InfoNote>
         <InfoNote title="How do guardians log in?">
-          <p>Guardians get a separate parent login — the phone/email entered as guardian for a student is automatically emailed its own temporary password. One guardian phone linked to more than one child means one shared login for all of them.</p>
+          <p>
+            A guardian signs in with their phone number or email — whichever is on file — plus a PIN, the same
+            mechanism as a student&apos;s login. There&apos;s no password to remember, and email is optional: it&apos;s
+            only a convenient way to hand over the PIN, never required for logging in. If the same phone or email is
+            linked as guardian for more than one child, that&apos;s one shared login covering all of them.
+          </p>
         </InfoNote>
-        <InfoNote title="Lost a Login ID or PIN, or need to look one up later?">
-          <p>Every student&apos;s Login ID and PIN is shown right here in the table — click the eye icon to reveal a PIN, or open a student to reset it from their details. For bulk lookup or CSV export by class/section, use the <strong>Login IDs &amp; PINs</strong> button above.</p>
+        <InfoNote title="Where do I look up or reset a Login ID or PIN?">
+          <p>
+            Every student&apos;s Login ID and PIN status are shown right here in the table — click the eye icon to
+            reveal a PIN, or open a student&apos;s details to reset either their own PIN or their guardian&apos;s.
+            Resetting a guardian&apos;s PIN changes login for every child linked to that guardian, not just this one.
+            For looking up or exporting PINs by class or section in bulk, use the <strong>Login IDs &amp; PINs</strong>{' '}
+            view above.
+          </p>
         </InfoNote>
-        <InfoNote title="Guardian email missing or bounced?">
-          <p>Open the student and use <strong>Resend login</strong> or <strong>Set password</strong> under Guardian login. It&apos;ll warn you first if that guardian has already signed in, since resending overwrites their current password.</p>
+        <InfoNote title="A guardian's login email never arrived?">
+          <p>
+            Email is only a convenience for handing someone their PIN — it never verifies or blocks a guardian&apos;s
+            login, so a missing or bounced email doesn&apos;t stop them from signing in with the PIN they already
+            have. Open the student and use <strong>Email login details</strong> to resend it, or{' '}
+            <strong>Reset guardian PIN</strong> to generate a new one and hand it over directly.
+          </p>
         </InfoNote>
       </div>
 
