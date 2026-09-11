@@ -69,8 +69,16 @@ export function IdCardsView() {
     <div className="space-y-6">
       <style dangerouslySetInnerHTML={{ __html: ID_CARD_PRINT_CSS }} />
 
-      <Card className="space-y-3 p-4 no-print">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {/* Toolbar — purely instrumental (find a person), kept visually
+          lighter than the card it leads to (no shadow, thinner border) so
+          it doesn't compete with the actual ID card below it. */}
+      <div className="rounded-xl border border-border/70 bg-muted/20 p-4 no-print">
+        {/* Class + Section stay side-by-side even on a phone (they're
+            short selects, not text-entry fields) so only the wider Name
+            search below needs its own full-width row — reaches the actual
+            point of this toolbar (typing a name) with one less scroll/tap
+            than three stacked full-width rows. */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div>
             <Label>{terminology.classUnit}</Label>
             <Select
@@ -92,7 +100,7 @@ export function IdCardsView() {
               <SelectContent>{sections.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="col-span-2 sm:col-span-1">
             <Label>Student name</Label>
             <StudentNamePicker
               options={roster}
@@ -103,18 +111,33 @@ export function IdCardsView() {
             />
           </div>
         </div>
-        <div className="flex justify-end">
+      </div>
+
+      {/* Bulk re-issue — deliberately its own separated, lower-emphasis
+          section rather than a button inline with the picker above. This is
+          a rare, dataset-wide, irreversible-feeling action; it shouldn't sit
+          at the same visual weight as routine search controls (Fitts's Law
+          cuts both ways — an accidental-tap-prone action next to frequently
+          used ones is a mis-click waiting to happen). Shows the exact,
+          already-fetched roster count up front so the admin can sanity-check
+          the number BEFORE even opening the confirm dialog. */}
+      {ready && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4 no-print">
+          <p className="text-xs text-muted-foreground">
+            {isFetching
+              ? 'Loading roster…'
+              : `${roster.length} active student${roster.length === 1 ? '' : 's'} in this ${sectionLabel.toLowerCase()}`}
+          </p>
           <Button
-            variant="secondary"
+            variant="ghost"
             size="sm"
-            disabled={!ready}
-            title={!ready ? `Select a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()} first` : undefined}
+            disabled={roster.length === 0}
             onClick={() => setReissueOpen(true)}
           >
             <RefreshCw size={14} /> Re-issue cards for this {sectionLabel.toLowerCase()}
           </Button>
         </div>
-      </Card>
+      )}
 
       <ReissueCardsConfirmDialog
         open={reissueOpen}
@@ -122,7 +145,7 @@ export function IdCardsView() {
         onConfirm={handleReissue}
         loading={reissuing}
         title={`Re-issue cards for this ${sectionLabel.toLowerCase()}?`}
-        description={`This resets the issue and expiry dates on every active student's card in this ${sectionLabel.toLowerCase()} to a fresh validity window. It cannot be undone.`}
+        description={`This resets the issue and expiry dates on ${roster.length} active student${roster.length === 1 ? '' : 's'} in this ${sectionLabel.toLowerCase()} to a fresh validity window. It cannot be undone.`}
         confirmLabel="Re-issue cards"
       />
 
@@ -195,8 +218,13 @@ function StudentIdCardPreview({
         <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print card</Button>
       </div>
       <IdCardMissingFieldsBanner items={missingItems} />
-      <div id="id-card-print" className="flex justify-center">
-        <div className="w-full max-w-sm space-y-4">
+      {/* This card IS the point of the page — given its own contrasting
+          backdrop and generous padding so it unmistakably reads as "the
+          product," not just another panel the same weight as the picker
+          toolbar above it. Backdrop/padding are no-print so the printed
+          output stays exactly the card, nothing extra. */}
+      <div id="id-card-print" className="flex justify-center rounded-2xl bg-muted/30 p-6 sm:p-10">
+        <div className="w-full max-w-md space-y-4">
           {/* On screen, only the flipped-to face shows; on print, both
               always render regardless of which one was showing. */}
           <div className={cn(showBack ? 'hidden print:block' : 'block')}>

@@ -23,7 +23,9 @@ export const ID_CARD_PRINT_CSS = `
     left: 0;
     top: 0;
     width: 100%;
-    padding: 0;
+    padding: 0 !important;
+    background: transparent !important;
+    border-radius: 0 !important;
     /* One card (front, then back) at a time — this app only ever shows a
        single person's card, never a bulk sheet — so faces stack vertically
        rather than sitting in a multi-column grid meant for many cards. */

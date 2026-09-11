@@ -43,15 +43,25 @@ export function IdCardsHub() {
       />
       <IdCardSettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      {/* Split into three focused questions instead of one long note — each
-          answers one thing an admin is likely looking for on its own. */}
+      <Tabs key={initialTab} defaultValue={initialTab}>
+        <TabsList>
+          <TabsTrigger value="students" className="gap-1.5"><GraduationCap size={15} /> Students</TabsTrigger>
+          <TabsTrigger value="staff" className="gap-1.5"><Users size={15} /> Staff</TabsTrigger>
+        </TabsList>
+        <TabsContent value="students"><IdCardsView /></TabsContent>
+        <TabsContent value="staff"><StaffIdCardsView /></TabsContent>
+      </Tabs>
+
+      {/* Help — placed after the actual tool, same pattern as Students/
+          Staff's own InfoNotes, not before it. Split into three focused
+          questions rather than one long note, each answering one thing an
+          admin is likely looking for on its own. */}
       <div className="space-y-2">
         <InfoNote title="Someone missing from a list here?">
           <p>
-            A card only appears once every required detail is on file — address and phone for staff, and address,
-            blood group and phone for students. If someone&apos;s missing from a list here, it just means nobody&apos;s
-            filled in their details yet. Use the <strong>Missing ID info</strong> filter on the Students or Staff page
-            to find everyone who still needs something, without opening each record one at a time.
+            A card only appears once every required detail is on file. If someone&apos;s missing from the name search
+            below, it just means nobody&apos;s filled in their details yet — search for them on the Students or Staff
+            page instead, where a warning badge shows exactly what&apos;s missing from their record.
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
             <Link href="/admin/students" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
@@ -76,15 +86,6 @@ export function IdCardsHub() {
           </p>
         </InfoNote>
       </div>
-
-      <Tabs key={initialTab} defaultValue={initialTab}>
-        <TabsList>
-          <TabsTrigger value="students" className="gap-1.5"><GraduationCap size={15} /> Students</TabsTrigger>
-          <TabsTrigger value="staff" className="gap-1.5"><Users size={15} /> Staff</TabsTrigger>
-        </TabsList>
-        <TabsContent value="students"><IdCardsView /></TabsContent>
-        <TabsContent value="staff"><StaffIdCardsView /></TabsContent>
-      </Tabs>
     </div>
   );
 }

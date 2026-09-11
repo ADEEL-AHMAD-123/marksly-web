@@ -63,6 +63,18 @@ export function StaffIdCardsView() {
   const sheet = data?.data;
   const roster = useMemo(() => sheet?.staff ?? [], [sheet]);
 
+  // "Re-issue all staff" always affects every role regardless of the
+  // current filter above — when a specific role is selected, `roster` is
+  // scoped to just that role, so it can't be reused as the "all staff"
+  // count. Fetches the unfiltered roster only when actually needed (i.e.
+  // skipped entirely while roleParam is already 'all', where `roster` above
+  // already IS that count) — same cached query the "All roles" filter
+  // itself uses, so this doesn't add a real extra round trip once someone's
+  // looked at "All roles" at all during this session.
+  const { data: allStaffData, isFetching: allStaffFetching } = useGetStaffIdCardsQuery(undefined, { skip: roleParam === 'all' });
+  const allStaffCount = roleParam === 'all' ? roster.length : allStaffData?.data?.staff.length ?? null;
+  const allStaffCountFetching = roleParam === 'all' ? isFetching : allStaffFetching;
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = useMemo(() => roster.find((s) => s.id === selectedId) ?? null, [roster, selectedId]);
 
@@ -102,11 +114,19 @@ export function StaffIdCardsView() {
     setSelectedId(null);
   };
 
+  // Live counts for the reissue actions below — same already-fetched roster
+  // that powers the name picker, so no extra request is needed just to show
+  // "this affects N people" before the admin commits to anything.
+  const roleCountLabel = roleParam === 'all' ? 'staff' : roleParam;
+
   return (
     <div className="space-y-6">
       <style dangerouslySetInnerHTML={{ __html: ID_CARD_PRINT_CSS }} />
 
-      <Card className="space-y-3 p-4 no-print">
+      {/* Toolbar — purely instrumental (find a person), kept visually
+          lighter than the card it leads to so it doesn't compete with the
+          actual ID card below it. */}
+      <div className="rounded-xl border border-border/70 bg-muted/20 p-4 no-print">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <Label>Role (optional filter)</Label>
@@ -127,25 +147,36 @@ export function StaffIdCardsView() {
             />
           </div>
         </div>
-        <div className="flex justify-end gap-2">
+      </div>
+
+      {/* Bulk re-issue — its own separated, lower-emphasis section rather
+          than buttons inline with the picker above; see IdCardsView.tsx's
+          matching comment for the full reasoning. Both actions show their
+          exact affected count up front. */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4 no-print">
+        <p className="text-xs text-muted-foreground">
+          {isFetching ? 'Loading roster…' : `${roster.length} active ${roleCountLabel} member${roster.length === 1 ? '' : 's'} found`}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
           <Button
-            variant="secondary"
+            variant="ghost"
             size="sm"
-            disabled={!canReissue}
+            disabled={!canReissue || roster.length === 0}
             title={!canReissue ? 'Pick a specific role (not "All roles") to re-issue cards' : undefined}
             onClick={() => setReissueOpen(true)}
           >
-            <RefreshCw size={14} /> Re-issue cards for this role
+            <RefreshCw size={14} /> Re-issue this role
           </Button>
           <Button
-            variant="secondary"
+            variant="ghost"
             size="sm"
+            disabled={allStaffCount === 0}
             onClick={() => setReissueAllOpen(true)}
           >
-            <RefreshCw size={14} /> Re-issue cards for all staff
+            <RefreshCw size={14} /> Re-issue all staff
           </Button>
         </div>
-      </Card>
+      </div>
 
       <ReissueCardsConfirmDialog
         open={reissueOpen}
@@ -153,7 +184,7 @@ export function StaffIdCardsView() {
         onConfirm={handleReissue}
         loading={reissuing}
         title="Re-issue cards for this role?"
-        description={`This resets the issue and expiry dates on every active ${roleParam === 'all' ? 'staff' : roleParam} member's card to a fresh validity window. It cannot be undone.`}
+        description={`This resets the issue and expiry dates on ${roster.length} active ${roleParam === 'all' ? 'staff' : roleParam} member${roster.length === 1 ? "'s" : "s'"} card to a fresh validity window. It cannot be undone.`}
         confirmLabel="Re-issue cards"
       />
 
@@ -163,7 +194,7 @@ export function StaffIdCardsView() {
         onConfirm={handleReissueAll}
         loading={reissuing}
         title="Re-issue cards for all staff?"
-        description="This resets the issue and expiry dates on every active staff member's card — teachers, staff, accountants, and admins — to a fresh validity window, in one go. It cannot be undone."
+        description={`This resets the issue and expiry dates on ${allStaffCountFetching || allStaffCount === null ? "every active staff member's" : allStaffCount === 1 ? "1 active staff member's" : `${allStaffCount} active staff members'`} card — teachers, staff, accountants, and admins — to a fresh validity window, in one go. It cannot be undone.`}
         confirmLabel="Re-issue cards for all staff"
       />
 
@@ -226,8 +257,10 @@ function StaffIdCardPreview({
         <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print card</Button>
       </div>
       <IdCardMissingFieldsBanner items={missingItems} />
-      <div id="id-card-print" className="flex justify-center">
-        <div className="w-full max-w-sm space-y-4">
+      {/* Same "this card IS the point of the page" treatment as
+          IdCardsView.tsx's student preview — see that file's comment. */}
+      <div id="id-card-print" className="flex justify-center rounded-2xl bg-muted/30 p-6 sm:p-10">
+        <div className="w-full max-w-md space-y-4">
           <div className={cn(showBack ? 'hidden print:block' : 'block')}>
             <StaffIdCardItem member={member} institution={institution} />
           </div>
