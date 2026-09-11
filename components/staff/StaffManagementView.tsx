@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
-  Plus, X, Users, BookOpen, Briefcase, Landmark, AlertCircle, ChevronLeft, ChevronRight,
+  Plus, Upload, X, Users, BookOpen, Briefcase, Landmark, AlertCircle, ChevronLeft, ChevronRight,
   Pencil, Eye, EyeOff, KeyRound, Loader2, Send, Mail, MailWarning,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -14,7 +14,6 @@ import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import en from 'react-phone-number-input/locale/en.json';
 import { PageHeader } from '@/components/ui/page-header';
 import { InfoNote } from '@/components/ui/info-note';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -26,7 +25,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
@@ -49,6 +48,7 @@ import {
 import { ImportCsvDrawer } from '@/components/ui/import-csv-drawer';
 import { DomainConfirmDialog } from '@/components/users/DomainConfirmDialog';
 import { PhotoUpload } from '@/components/shared/PhotoUpload';
+import { StaffDetailDrawer } from './StaffDetailDrawer';
 
 const PAGE_SIZE = 20;
 
@@ -58,14 +58,14 @@ type TabValue = 'all' | ManageableRole;
 // state copy — a future 5th manageable role (e.g. "librarian") is a
 // one-line addition here rather than a new hardcoded JSX branch anywhere
 // in this file.
-const ROLE_TABS: { value: TabValue; label: string; icon: typeof Briefcase }[] = [
+export const ROLE_TABS: { value: TabValue; label: string; icon: typeof Briefcase }[] = [
   { value: 'all', label: 'All', icon: Users },
   { value: 'teacher', label: 'Teacher', icon: BookOpen },
   { value: 'staff', label: 'Staff', icon: Briefcase },
   { value: 'accountant', label: 'Accountant', icon: Landmark },
 ];
 
-const ROLE_META: Record<ManageableRole, { label: string; icon: typeof Briefcase }> = {
+export const ROLE_META: Record<ManageableRole, { label: string; icon: typeof Briefcase }> = {
   teacher: { label: 'Teacher', icon: BookOpen },
   staff: { label: 'Staff member', icon: Briefcase },
   accountant: { label: 'Accountant', icon: Landmark },
@@ -76,7 +76,7 @@ const ROLE_META: Record<ManageableRole, { label: string; icon: typeof Briefcase 
 // exactly those three, but this guards against any future caller (or a
 // stale cached response) passing something ROLE_META doesn't know about,
 // so one bad row can't crash the whole table/card list again.
-function roleLabel(role: ManageableRole) {
+export function roleLabel(role: ManageableRole) {
   return (ROLE_META[role] ?? ROLE_META.staff).label;
 }
 
@@ -97,7 +97,7 @@ const staffEmailMeta: Record<
 
 /** Hidden for 'ok' to keep rows calm — only surfaces when there's something
  *  worth noticing, same threshold as StudentsView.tsx's GuardianEmailBadge. */
-function StaffEmailBadge({ status }: { status?: ManagedUser['emailStatus'] }) {
+export function StaffEmailBadge({ status }: { status?: ManagedUser['emailStatus'] }) {
   if (!status || status === 'ok') return null;
   const meta = staffEmailMeta[status];
   const Icon = meta.icon;
@@ -111,7 +111,7 @@ function StaffEmailBadge({ status }: { status?: ManagedUser['emailStatus'] }) {
 /** Mirrors StudentsView.tsx's missingIdInfo() — fields the ID card feature
  *  needs, surfaced inline per row instead of only via the "Missing ID info"
  *  filter. */
-function missingStaffInfo(m: ManagedUser): string[] {
+export function missingStaffInfo(m: ManagedUser): string[] {
   const missing: string[] = [];
   if (!m.address) missing.push('address');
   if (!m.profilePhoto) missing.push('photo');
@@ -121,7 +121,7 @@ function missingStaffInfo(m: ManagedUser): string[] {
 /** Reveal-on-demand state for a staff-type account's own PIN — same pattern
  *  as ClassRosterView.tsx's useStudentPinReveal, shared between the desktop
  *  row and the mobile card so the interaction stays identical in both. */
-function useStaffPinReveal(userId: string) {
+export function useStaffPinReveal(userId: string) {
   const [revealed, setRevealed] = useState<string | null | 'loading'>(null);
   const [triggerGetPin] = useLazyGetStaffPinQuery();
   const onReveal = async () => {
@@ -141,7 +141,7 @@ function useStaffPinReveal(userId: string) {
 /** Small inline reveal/hide control — a masked PIN plus a Reveal/Hide
  *  button, or "Not viewable" once the account holder has set their own
  *  PIN (pinState === 'staff_set', no longer decryptable server-side). */
-function PinCell({ member }: { member: ManagedUser }) {
+export function PinCell({ member }: { member: ManagedUser }) {
   const { revealed, onReveal } = useStaffPinReveal(member.id);
   if (member.pinState === 'staff_set') {
     return <span className="text-xs text-muted-foreground">Self-set (not viewable)</span>;
@@ -190,78 +190,57 @@ export function StaffManagementView() {
     limit: PAGE_SIZE,
     incomplete: incompleteOnly || undefined,
   });
-  const [updateUser, { isLoading: updating }] = useUpdateUserMutation();
-  const [confirmDeactivateId, setConfirmDeactivateId] = useState<string | null>(null);
-  const [resendTarget, setResendTarget] = useState<{ id: string; name: string; email: string } | null>(null);
-  const [resetTarget, setResetTarget] = useState<{ id: string; name: string; systemId: string | null } | null>(null);
+  const [detailMember, setDetailMember] = useState<ManagedUser | null>(null);
 
   const members = data?.data ?? [];
+  const total = data?.meta?.total ?? members.length;
   const totalPages = data?.meta?.totalPages ?? 1;
   const activeTab = ROLE_TABS.find((t) => t.value === tab) ?? ROLE_TABS[0];
   const listLabel = tab === 'all' ? 'staff' : `${roleLabel(tab).toLowerCase()}s`;
-
-  const toggleActive = async (m: ManagedUser) => {
-    try {
-      const res = await updateUser({ id: m.id, body: { isActive: !m.isActive } }).unwrap();
-      setConfirmDeactivateId(null);
-      if (m.isActive) {
-        // Teacher-specific: deactivating unassigns them from any subjects
-        // (and, historically, sections) they were teaching — carried over
-        // from the old TeachersView.tsx so this warning isn't lost for the
-        // one role it actually applies to.
-        if (m.role === 'teacher') {
-          const { unassignedSubjects, unassignedSections } = res.data;
-          const notes: string[] = [];
-          if (unassignedSubjects) notes.push(`${unassignedSubjects} subject(s)`);
-          if (unassignedSections) notes.push(`${unassignedSections} class section(s)`);
-          toast.success(notes.length ? `Teacher deactivated — unassigned from ${notes.join(' and ')}, reassign when ready` : 'Teacher deactivated');
-        } else {
-          toast.success(`${roleLabel(m.role)} deactivated`);
-        }
-      } else {
-        toast.success(`${roleLabel(m.role)} activated`);
-      }
-    } catch (e: any) {
-      toast.error(getErrorMessage(e, `Could not update ${roleLabel(m.role).toLowerCase()}`));
-    }
+  const filtersActive = !!debounced || tab !== 'all' || incompleteOnly;
+  const resetFilters = () => {
+    setQuery('');
+    setTab('all');
+    setIncompleteOnly(false);
+    setPage(1);
   };
+  const showResults = !isError && !isLoading && members.length > 0;
+  const openEdit = (m: ManagedUser) => { setDetailMember(null); setEditing(m); setOpen(true); };
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Staff"
-        description={isLoading ? 'Loading…' : `${data?.meta?.total ?? members.length} ${listLabel}`}
+        description={isLoading ? 'Loading…' : `${total} ${listLabel}`}
         actions={
-          <>
-            <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}><Plus size={16} /> Import CSV</Button>
-            <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus size={16} /> Add</Button>
-          </>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 sm:flex-none"
+                onClick={() => setImportOpen(true)}
+                title="Add many accounts at once by uploading a CSV spreadsheet"
+              >
+                <Upload size={16} /> Import from CSV
+              </Button>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={() => { setEditing(null); setOpen(true); }}
+            >
+              <Plus size={16} /> Add
+            </Button>
+          </div>
         }
       />
 
-      <InfoNote title="How do staff log in?">
-        <p>
-          Teachers, staff, and accountants all log in the same way — a Login ID and PIN, generated automatically
-          the moment their account is created. Both are shown once right after creation, and can be looked up
-          again anytime from this table.
-        </p>
-      </InfoNote>
-      <InfoNote title="Where do I look up or reset a login PIN?">
-        <p>
-          Every account&apos;s PIN status is shown right here in the table — click <strong>Reveal</strong> to see
-          it, or <strong>Reset PIN</strong> to generate a new one (or set a specific one) if it was lost or the
-          person set their own PIN and can no longer be told the current one.
-        </p>
-      </InfoNote>
-      <InfoNote title="A login email never arrived?">
-        <p>
-          The email is only a convenience for handing someone their PIN — it never blocks their login, so a
-          missing or bounced email doesn&apos;t stop them from signing in with their Login ID and PIN. Use{' '}
-          <strong>Resend login email</strong> on their row to try again, or reveal/reset the PIN and hand it over
-          directly.
-        </p>
-      </InfoNote>
-
+      {/* One merged panel, matching StudentsView.tsx exactly: role tabs
+          directly above, then search/filter row, table/list, pagination —
+          all inside a single bordered/shadowed container instead of a
+          separately-boxed Tabs bar, filter Card, and floating pagination. */}
       <Tabs value={tab} onValueChange={(v) => { setTab(v as TabValue); setPage(1); }}>
         <TabsList>
           {ROLE_TABS.map((t) => (
@@ -272,45 +251,67 @@ export function StaffManagementView() {
         </TabsList>
       </Tabs>
 
-      <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-        <SearchInput
-          value={query}
-          onChange={(v) => { setQuery(v); setPage(1); }}
-          placeholder="Search by name or phone…"
-          className="flex-1"
-        />
-        <button
-          type="button"
-          onClick={() => { setIncompleteOnly((v) => !v); setPage(1); }}
-          className={cn(
-            'flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
-            incompleteOnly
-              ? 'border-warning bg-warning-soft text-warning'
-              : 'border-border bg-card text-foreground hover:bg-muted'
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="min-w-[200px] flex-1">
+            <SearchInput
+              value={query}
+              onChange={(v) => { setQuery(v); setPage(1); }}
+              placeholder="Search by name or phone…"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => { setIncompleteOnly((v) => !v); setPage(1); }}
+            className={cn(
+              'flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+              incompleteOnly
+                ? 'border-warning bg-warning-soft text-warning'
+                : 'border-border bg-card text-foreground hover:bg-muted'
+            )}
+            title="Show only accounts missing an address"
+          >
+            Missing ID info
+          </button>
+          {filtersActive && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="flex shrink-0 items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              <X size={14} /> Clear filters
+            </button>
           )}
-          title="Show only accounts missing an address"
-        >
-          Missing ID info
-        </button>
-      </Card>
+        </div>
 
-      {isError ? (
-        <Card><EmptyState icon={AlertCircle} title={`Couldn't load ${listLabel}`} action={<Button variant="secondary" size="sm" onClick={() => refetch()}>Retry</Button>} /></Card>
-      ) : isLoading ? (
-        <Card className="p-5"><Skeleton className="h-56 w-full" /></Card>
-      ) : members.length === 0 ? (
-        <Card>
+        {isError ? (
+          <EmptyState
+            icon={AlertCircle}
+            title={`Couldn't load ${listLabel}`}
+            description="There was a problem reaching the server. Check that the API is running and try again."
+            action={<Button variant="secondary" size="sm" onClick={() => refetch()}>Retry</Button>}
+          />
+        ) : isLoading ? (
+          <LoadingState />
+        ) : members.length === 0 ? (
           <EmptyState
             icon={activeTab.icon}
-            title={debounced || incompleteOnly ? 'No matches' : `No ${listLabel} yet`}
-            description={debounced || incompleteOnly ? 'Try a different search or filter.' : 'Add your first account to get started.'}
-            action={!debounced && !incompleteOnly ? <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus size={16} /> Add</Button> : undefined}
+            title={filtersActive ? 'No matches' : `No ${listLabel} yet`}
+            description={filtersActive ? 'Try adjusting your search or clearing the filters.' : 'Add your first account to get started.'}
+            action={
+              filtersActive ? (
+                <Button variant="secondary" size="sm" onClick={resetFilters}>Clear filters</Button>
+              ) : (
+                <Button variant="primary" size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus size={16} /> Add</Button>
+              )
+            }
           />
-        </Card>
-      ) : (
-        <div className={isFetching ? 'opacity-60' : ''}>
-          <div className="hidden md:block">
-            <TableWrapper>
+        ) : (
+          <div className={isFetching ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
+            {/* Desktop table — bare Table wrapped in the scroll container,
+                matching StudentsView.tsx (no separately-bordered
+                TableWrapper nesting inside this panel's own border). */}
+            <div className="hidden overflow-x-auto md:block">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -320,12 +321,12 @@ export function StaffManagementView() {
                     <TableHead>Email</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>PIN</TableHead>
-                    <TableHead />
+                    <TableHead className="w-16" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {members.map((m) => (
-                    <TableRow key={m.id}>
+                    <TableRow key={m.id} className="cursor-pointer" onClick={() => setDetailMember(m)}>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar
@@ -353,70 +354,100 @@ export function StaffManagementView() {
                         <StaffEmailBadge status={m.emailStatus} />
                       </TableCell>
                       <TableCell><Badge variant={m.isActive ? 'success' : 'neutral'}>{m.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
-                      <TableCell><PinCell member={m} /></TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}><PinCell member={m} /></TableCell>
                       <TableCell className="text-right">
-                        {confirmDeactivateId === m.id ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => setConfirmDeactivateId(null)}>Cancel</Button>
-                            <Button variant="danger" size="sm" loading={updating} onClick={() => toggleActive(m)}>Confirm</Button>
-                          </span>
-                        ) : (
-                          <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => { setEditing(m); setOpen(true); }}>
-                              <Pencil size={14} /> Edit
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => setResetTarget({ id: m.id, name: m.name, systemId: m.systemId })}>
-                              <KeyRound size={14} /> Reset PIN
-                            </Button>
-                            {m.email && (
-                              <Button variant="ghost" size="sm" onClick={() => setResendTarget({ id: m.id, name: m.name, email: m.email! })}>
-                                <Send size={14} /> Resend
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => (m.isActive ? setConfirmDeactivateId(m.id) : toggleActive(m))}
-                            >
-                              {m.isActive ? 'Deactivate' : 'Activate'}
-                            </Button>
-                          </div>
-                        )}
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+                          View <ChevronRight size={14} />
+                        </span>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            </TableWrapper>
-          </div>
+            </div>
 
-          <div className="space-y-3 md:hidden">
-            {members.map((m) => (
-              <StaffCard
-                key={m.id}
-                member={m}
-                showRole={tab === 'all'}
-                confirmDeactivate={confirmDeactivateId === m.id}
-                updating={updating}
-                onEdit={() => { setEditing(m); setOpen(true); }}
-                onResetPin={() => setResetTarget({ id: m.id, name: m.name, systemId: m.systemId })}
-                onResend={m.email ? () => setResendTarget({ id: m.id, name: m.name, email: m.email! }) : undefined}
-                onToggleActive={() => (m.isActive ? setConfirmDeactivateId(m.id) : toggleActive(m))}
-                onCancelDeactivate={() => setConfirmDeactivateId(null)}
-                onConfirmDeactivate={() => toggleActive(m)}
-              />
-            ))}
-          </div>
-
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Page {page} of {totalPages}</p>
-            <div className="flex items-center gap-1">
-              <Button variant="secondary" size="icon" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label="Previous"><ChevronLeft size={16} /></Button>
-              <Button variant="secondary" size="icon" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} aria-label="Next"><ChevronRight size={16} /></Button>
+            {/* Mobile rows — divided clickable list rows, matching
+                StudentsView.tsx's mobile block instead of individually
+                boxed cards with their own inline action buttons. */}
+            <div className="divide-y divide-border md:hidden">
+              {members.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex cursor-pointer items-center gap-3 p-4 active:bg-muted/40"
+                  onClick={() => setDetailMember(m)}
+                >
+                  <Avatar
+                    size="md"
+                    photoUrl={m.profilePhoto}
+                    alt={m.name}
+                    initials={getInitials(m.firstName, m.lastName)}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-foreground">{m.name}</p>
+                    <p className="text-xs text-foreground/70">
+                      {m.phone}{m.email ? ` · ${m.email}` : ''}
+                    </p>
+                    <StaffEmailBadge status={m.emailStatus} />
+                    {missingStaffInfo(m).length > 0 && (
+                      <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning">
+                        <AlertCircle size={11} className="shrink-0" /> Missing {missingStaffInfo(m).join(', ')}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    {tab === 'all' && <Badge variant="neutral">{roleLabel(m.role)}</Badge>}
+                    <Badge variant={m.isActive ? 'success' : 'neutral'}>{m.isActive ? 'Active' : 'Inactive'}</Badge>
+                    <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary">
+                      View <ChevronRight size={12} />
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {showResults && (
+          <div className="flex items-center justify-between border-t border-border px-4 py-3">
+            <p className="text-sm text-muted-foreground">
+              Page <span className="font-medium text-foreground">{page}</span> of {totalPages}
+              <span className="ml-1.5">· {total} {listLabel}</span>
+            </p>
+            <div className="flex items-center gap-1">
+              <Button variant="secondary" size="icon" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label="Previous page"><ChevronLeft size={16} /></Button>
+              <Button variant="secondary" size="icon" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} aria-label="Next page"><ChevronRight size={16} /></Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Help / reference — placed below the primary task, matching
+          StudentsView.tsx's InfoNote placement (after the results panel,
+          before the drawers) rather than above the tabs/filters. */}
+      <div className="space-y-2">
+        <InfoNote title="How do staff log in?">
+          <p>
+            Teachers, staff, and accountants all log in the same way — a Login ID and PIN, generated automatically
+            the moment their account is created. Both are shown once right after creation, and can be looked up
+            again anytime from this table.
+          </p>
+        </InfoNote>
+        <InfoNote title="Where do I look up or reset a login PIN?">
+          <p>
+            Every account&apos;s PIN status is shown in the account&apos;s details — open a row and use{' '}
+            <strong>Reveal</strong> to see it, or <strong>Reset</strong> to generate a new one (or set a specific
+            one) if it was lost or the person set their own PIN and can no longer be told the current one.
+          </p>
+        </InfoNote>
+        <InfoNote title="A login email never arrived?">
+          <p>
+            The email is only a convenience for handing someone their PIN — it never blocks their login, so a
+            missing or bounced email doesn&apos;t stop them from signing in with their Login ID and PIN. Open the
+            account and use <strong>Resend login email</strong> to try again, or reveal/reset the PIN and hand it
+            over directly.
+          </p>
+        </InfoNote>
+      </div>
 
       <AddStaffDrawer
         open={open}
@@ -425,23 +456,12 @@ export function StaffManagementView() {
         editing={editing}
       />
 
-      {resendTarget && (
-        <ResendLoginEmailDialog
-          userId={resendTarget.id}
-          name={resendTarget.name}
-          currentEmail={resendTarget.email}
-          onClose={() => setResendTarget(null)}
-        />
-      )}
-
-      {resetTarget && (
-        <ResetPinDialog
-          userId={resetTarget.id}
-          name={resetTarget.name}
-          systemId={resetTarget.systemId}
-          onClose={() => setResetTarget(null)}
-        />
-      )}
+      <StaffDetailDrawer
+        member={detailMember}
+        open={!!detailMember}
+        onClose={() => setDetailMember(null)}
+        onEdit={openEdit}
+      />
 
       <ImportCsvDrawer
         open={importOpen}
@@ -457,79 +477,27 @@ export function StaffManagementView() {
   );
 }
 
-/** Mobile equivalent of the desktop table row — a self-contained card,
- *  mirroring ClassRosterView.tsx's RosterCard pattern (avatar/name header,
- *  a status section, then a row of actions along the bottom). */
-function StaffCard({
-  member, showRole, confirmDeactivate, updating,
-  onEdit, onResetPin, onResend, onToggleActive, onCancelDeactivate, onConfirmDeactivate,
-}: {
-  member: ManagedUser;
-  showRole: boolean;
-  confirmDeactivate: boolean;
-  updating: boolean;
-  onEdit: () => void;
-  onResetPin: () => void;
-  onResend?: () => void;
-  onToggleActive: () => void;
-  onCancelDeactivate: () => void;
-  onConfirmDeactivate: () => void;
-}) {
+function LoadingState() {
   return (
-    <Card className="p-3.5">
-      <div className="flex items-center gap-3">
-        <Avatar
-          size="md"
-          photoUrl={member.profilePhoto}
-          alt={member.name}
-          initials={getInitials(member.firstName, member.lastName)}
-        />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium text-foreground">{member.name}</p>
-          <p className="text-xs text-muted-foreground">{member.phone}{member.email ? ` · ${member.email}` : ''}</p>
-          <StaffEmailBadge status={member.emailStatus} />
-          {missingStaffInfo(member).length > 0 && (
-            <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning">
-              <AlertCircle size={11} className="shrink-0" /> Missing {missingStaffInfo(member).join(', ')}
-            </p>
-          )}
+    <div className="divide-y divide-border">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 px-4 py-3.5">
+          <Skeleton className="h-9 w-9 rounded-full" />
+          <div className="flex-1 space-y-1.5">
+            <Skeleton className="h-3.5 w-40" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+          <Skeleton className="h-6 w-16 rounded-full" />
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          {showRole && <Badge variant="neutral">{roleLabel(member.role)}</Badge>}
-          <Badge variant={member.isActive ? 'success' : 'neutral'}>{member.isActive ? 'Active' : 'Inactive'}</Badge>
-        </div>
-      </div>
-
-      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
-        <span className="text-xs text-muted-foreground">PIN</span>
-        <PinCell member={member} />
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center justify-end gap-1 border-t border-border pt-3">
-        {confirmDeactivate ? (
-          <>
-            <Button variant="ghost" size="sm" onClick={onCancelDeactivate}>Cancel</Button>
-            <Button variant="danger" size="sm" loading={updating} onClick={onConfirmDeactivate}>Confirm</Button>
-          </>
-        ) : (
-          <>
-            <Button variant="ghost" size="sm" onClick={onEdit}><Pencil size={14} /> Edit</Button>
-            <Button variant="ghost" size="sm" onClick={onResetPin}><KeyRound size={14} /> Reset PIN</Button>
-            {onResend && <Button variant="ghost" size="sm" onClick={onResend}><Send size={14} /> Resend</Button>}
-            <Button variant="ghost" size="sm" onClick={onToggleActive}>
-              {member.isActive ? 'Deactivate' : 'Activate'}
-            </Button>
-          </>
-        )}
-      </div>
-    </Card>
+      ))}
+    </div>
   );
 }
 
 /** Resets (or sets a custom) PIN for a staff-type account — same
  *  random/custom choice and reveal-once flow as ClassRosterView.tsx's
  *  ResetPinDialog for students. */
-function ResetPinDialog({ userId, name, systemId, onClose }: { userId: string; name: string; systemId?: string | null; onClose: () => void }) {
+export function ResetPinDialog({ userId, name, systemId, onClose }: { userId: string; name: string; systemId?: string | null; onClose: () => void }) {
   const [resetPin, { isLoading }] = useResetStaffPinMutation();
   const [mode, setMode] = useState<'random' | 'custom'>('random');
   const [customPin, setCustomPin] = useState('');
@@ -608,7 +576,7 @@ function ResetPinDialog({ userId, name, systemId, onClose }: { userId: string; n
 /** Re-sends the account's login PIN by email — informational only now (the
  *  account can already log in), not an activation step. Replaces the old
  *  ResendInviteDialog copy accordingly. */
-function ResendLoginEmailDialog({
+export function ResendLoginEmailDialog({
   userId, name, currentEmail, onClose,
 }: { userId: string; name: string; currentEmail: string; onClose: () => void }) {
   const [email, setEmail] = useState(currentEmail);
