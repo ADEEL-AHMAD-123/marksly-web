@@ -207,6 +207,7 @@ export interface MyStudentContactInfo {
   address: string | null;
   city: string | null;
   bloodGroup: string | null;
+  nationalIdNumber?: string | null;
   missing: string[];
 }
 
@@ -541,7 +542,7 @@ export const studentsApi = baseApi.injectEndpoints({
     }),
     updateMyStudentContact: builder.mutation<
       ApiObject<MyStudentContactInfo>,
-      { address?: string; city?: string; bloodGroup?: string; studentId?: string }
+      { address?: string; city?: string; bloodGroup?: string; nationalIdNumber?: string; studentId?: string }
     >({
       query: (body) => ({ url: '/students/me/contact', method: 'PATCH', body }),
       invalidatesTags: ['MyStudentContact'],

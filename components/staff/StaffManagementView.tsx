@@ -828,6 +828,9 @@ function AddStaffDrawer({
               {errors.nationalIdNumber && (
                 <p className="mt-1 text-xs text-danger">{errors.nationalIdNumber.message}</p>
               )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                Required to create the account — if it&apos;s wrong or changes later, {roleLabel(isEditing ? editing.role : defaultRole).toLowerCase()} can correct it themselves from their own My ID Card page.
+              </p>
             </div>
 
             {/* Optional section, deliberately last — nothing here blocks

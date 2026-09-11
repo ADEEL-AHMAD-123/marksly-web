@@ -671,13 +671,12 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
             )}
 
             {/* Optional section, deliberately last — none of this blocks
-                saving. Address and Blood Group can genuinely be filled in
-                later by the student/parent themselves (see MyIdCardView.tsx's
-                "Edit my details" card, backed by student.service.ts's
-                updateMyContact()) — City too, though there's currently no
-                dedicated input for it there. CNIC/Form-B stays admin-only by
-                design (updateMyContactSchema deliberately strips it — see
-                student.validator.test.ts), so it's NOT included in that promise. */}
+                saving. Every field here (address, city, blood group, and
+                now the {nationalIdLabel} number too) can genuinely be added
+                or corrected later by the student/parent themselves — see
+                MyIdCardView.tsx's "Edit my details" card, backed by
+                student.service.ts's updateMyContact()/
+                updateMyStudentContactSchema. */}
             <div className="border-t border-border pt-4">
               <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Optional details
@@ -685,9 +684,9 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               <p className="mb-2 flex items-start gap-1.5 text-xs text-muted-foreground">
                 <span aria-hidden>💡</span>
                 <span>
-                  Address and Blood Group don&apos;t need to be filled in now — the student or parent can add or
-                  update these anytime from their own dashboard&apos;s <span className="font-medium text-foreground">My ID Card</span> page.
-                  The {nationalIdLabel} number is managed here by the school only.
+                  None of these need to be filled in now — the student or parent can add or update any of them
+                  (including the {nationalIdLabel} number) anytime from their own dashboard&apos;s{' '}
+                  <span className="font-medium text-foreground">My ID Card</span> page.
                 </span>
               </p>
               <div className="grid grid-cols-2 gap-3">

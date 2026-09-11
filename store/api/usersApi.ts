@@ -110,6 +110,7 @@ export interface StaffIdCard {
 export interface MyContactInfo {
   phone: string;
   address: string | null;
+  nationalIdNumber?: string | null;
   missing: string[];
 }
 
@@ -216,7 +217,7 @@ export const usersApi = baseApi.injectEndpoints({
       query: () => '/users/me/contact',
       providesTags: ['MyContact'],
     }),
-    updateMyContact: builder.mutation<ApiObject<MyContactInfo>, { phone?: string; address?: string }>({
+    updateMyContact: builder.mutation<ApiObject<MyContactInfo>, { phone?: string; address?: string; nationalIdNumber?: string }>({
       query: (body) => ({ url: '/users/me/contact', method: 'PATCH', body }),
       invalidatesTags: ['MyContact'],
     }),

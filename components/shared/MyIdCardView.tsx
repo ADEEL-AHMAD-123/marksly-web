@@ -134,8 +134,8 @@ import { IdCardBack } from '@/components/shared/IdCardBack';
 import { PhotoCropModal } from '@/components/shared/PhotoCropModal';
 import { StaffIdCardItem, staffBackRows } from '@/components/staff/StaffIdCardsView';
 import { IdCardItem, studentBackRows } from '@/components/students/IdCardsView';
-import { cn } from '@/lib/utils';
-import { useTerminology } from '@/lib/terminology';
+import { cn, formatNationalId } from '@/lib/utils';
+import { useTerminology, nationalIdLabelForInstitutionType } from '@/lib/terminology';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -191,9 +191,11 @@ export function MyIdCardView() {
  * NOT editable here — those stay admin-managed (see user.validator.ts's
  * updateMyContactSchema, which only ever accepts phone/address).
  */
-function EditMyStaffDetailsCard({ currentAddress }: { currentAddress: string | null }) {
+function EditMyStaffDetailsCard({ currentAddress, currentNationalId }: { currentAddress: string | null; currentNationalId: string | null }) {
   const [open, setOpen] = useState(false);
   const [address, setAddress] = useState(currentAddress ?? '');
+  const [nationalId, setNationalId] = useState(currentNationalId ?? '');
+  const [nationalIdError, setNationalIdError] = useState<string | null>(null);
   const [updateContact, { isLoading: saving }] = useUpdateMyContactMutation();
 
   if (!open) {
@@ -205,10 +207,16 @@ function EditMyStaffDetailsCard({ currentAddress }: { currentAddress: string | n
           </span>
           <div>
             <p className="text-sm font-semibold text-foreground">My details</p>
-            <p className="text-xs text-muted-foreground">{currentAddress ? 'Update your address.' : 'Add your address.'}</p>
+            <p className="text-xs text-muted-foreground">Update your address or CNIC.</p>
           </div>
         </div>
-        <Button size="sm" variant="outline" onClick={() => { setAddress(currentAddress ?? ''); setOpen(true); }}>Edit</Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => { setAddress(currentAddress ?? ''); setNationalId(currentNationalId ?? ''); setNationalIdError(null); setOpen(true); }}
+        >
+          Edit
+        </Button>
       </Card>
     );
   }
@@ -220,16 +228,32 @@ function EditMyStaffDetailsCard({ currentAddress }: { currentAddress: string | n
         <Label htmlFor="edit-my-address">Address</Label>
         <Input id="edit-my-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House #, street, area" />
       </div>
+      <div>
+        <Label htmlFor="edit-my-nid">CNIC Number</Label>
+        <Input
+          id="edit-my-nid"
+          dir="ltr"
+          placeholder="42101-1234567-1"
+          inputMode="numeric"
+          value={nationalId}
+          onChange={(e) => { setNationalId(formatNationalId(e.target.value)); setNationalIdError(null); }}
+        />
+        {nationalIdError && <p className="mt-1 text-xs text-danger">{nationalIdError}</p>}
+      </div>
       <p className="text-xs text-muted-foreground">
-        Other details (designation, joining date, CNIC) are managed by your school — ask your admin to update those.
+        Designation and joining date are managed by your school — ask your admin to update those.
       </p>
       <div className="flex items-center gap-2">
         <Button
           size="sm"
           disabled={saving}
           onClick={async () => {
+            if (nationalId && !/^\d{5}-\d{7}-\d$/.test(nationalId)) {
+              setNationalIdError('Enter a valid CNIC in the format 42101-1234567-1');
+              return;
+            }
             try {
-              await updateContact({ address: address.trim() }).unwrap();
+              await updateContact({ address: address.trim(), nationalIdNumber: nationalId || undefined }).unwrap();
               toast.success('Details saved');
               setOpen(false);
             } catch (e) {
@@ -306,7 +330,7 @@ function StaffMyIdCard() {
         <>
           <AdminOnlyMissingNote keys={adminOnlyMissing} />
           <MyPhotoUploader hasPhoto={!card.photoMissing} />
-          <EditMyStaffDetailsCard currentAddress={card.address ?? null} />
+          <EditMyStaffDetailsCard currentAddress={card.address ?? null} currentNationalId={card.nationalIdNumber ?? null} />
           <div className="no-print flex items-center justify-end gap-2">
             <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
               <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
@@ -435,12 +459,17 @@ function ChangeMyPinCard() {
  * CNIC/Form-B is deliberately excluded — admin-only by design.
  */
 function EditMyStudentDetailsCard({
-  currentAddress, currentCity, currentBloodGroup,
-}: { currentAddress: string | null; currentCity: string | null; currentBloodGroup: string | null }) {
+  currentAddress, currentCity, currentBloodGroup, currentNationalId, nationalIdLabel,
+}: {
+  currentAddress: string | null; currentCity: string | null; currentBloodGroup: string | null;
+  currentNationalId: string | null; nationalIdLabel: string;
+}) {
   const [open, setOpen] = useState(false);
   const [address, setAddress] = useState(currentAddress ?? '');
   const [city, setCity] = useState(currentCity ?? '');
   const [bloodGroup, setBloodGroup] = useState(currentBloodGroup ?? '');
+  const [nationalId, setNationalId] = useState(currentNationalId ?? '');
+  const [nationalIdError, setNationalIdError] = useState<string | null>(null);
   const [updateContact, { isLoading: saving }] = useUpdateMyStudentContactMutation();
 
   if (!open) {
@@ -452,7 +481,7 @@ function EditMyStudentDetailsCard({
           </span>
           <div>
             <p className="text-sm font-semibold text-foreground">My details</p>
-            <p className="text-xs text-muted-foreground">Update address, city, or blood group.</p>
+            <p className="text-xs text-muted-foreground">Update address, city, blood group, or {nationalIdLabel}.</p>
           </div>
         </div>
         <Button
@@ -462,6 +491,8 @@ function EditMyStudentDetailsCard({
             setAddress(currentAddress ?? '');
             setCity(currentCity ?? '');
             setBloodGroup(currentBloodGroup ?? '');
+            setNationalId(currentNationalId ?? '');
+            setNationalIdError(null);
             setOpen(true);
           }}
         >
@@ -489,16 +520,37 @@ function EditMyStudentDetailsCard({
           <SelectContent>{BLOOD_GROUPS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
         </Select>
       </div>
+      <div>
+        <Label htmlFor="edit-my-student-nid">{nationalIdLabel} Number</Label>
+        <Input
+          id="edit-my-student-nid"
+          dir="ltr"
+          placeholder="42101-1234567-1"
+          inputMode="numeric"
+          value={nationalId}
+          onChange={(e) => { setNationalId(formatNationalId(e.target.value)); setNationalIdError(null); }}
+        />
+        {nationalIdError && <p className="mt-1 text-xs text-danger">{nationalIdError}</p>}
+      </div>
       <p className="text-xs text-muted-foreground">
-        Other details (CNIC/Form-B, class, roll number) are managed by the school — ask your admin to update those.
+        Class and roll number are managed by the school — ask your admin to update those.
       </p>
       <div className="flex items-center gap-2">
         <Button
           size="sm"
           disabled={saving}
           onClick={async () => {
+            if (nationalId && !/^\d{5}-\d{7}-\d$/.test(nationalId)) {
+              setNationalIdError(`Enter a valid ${nationalIdLabel} number in the format 42101-1234567-1`);
+              return;
+            }
             try {
-              await updateContact({ address: address.trim(), city: city.trim(), bloodGroup: bloodGroup || undefined }).unwrap();
+              await updateContact({
+                address: address.trim(),
+                city: city.trim(),
+                bloodGroup: bloodGroup || undefined,
+                nationalIdNumber: nationalId || undefined,
+              }).unwrap();
               toast.success('Details saved');
               setOpen(false);
             } catch (e) {
@@ -605,6 +657,8 @@ function StudentMyIdCard() {
             currentAddress={card.address ?? null}
             currentCity={card.city ?? null}
             currentBloodGroup={card.bloodGroup ?? null}
+            currentNationalId={card.nationalIdNumber ?? null}
+            nationalIdLabel={nationalIdLabelForInstitutionType(card.institution?.type)}
           />
           <ChangeMyPinCard />
           <div className="no-print flex items-center justify-end gap-2">
