@@ -2,12 +2,19 @@ import { baseApi } from './baseApi';
 
 export type NoticePriority = 'low' | 'normal' | 'high' | 'urgent';
 export type NoticeRole = 'teacher' | 'student' | 'parent' | 'accountant' | 'staff';
+// What a notice is ABOUT, separate from priority (how urgent it is) — a
+// notice can be a routine Event or an urgent Alert; the two are
+// independent. 'holiday' is never posted by hand — it's stamped only by
+// the backend's own holiday-broadcast call, so it's excluded from
+// CreateNoticeBody/the Post Notice form's own type picker below.
+export type NoticeType = 'announcement' | 'alert' | 'event' | 'academic' | 'holiday';
 
 export interface Notice {
   id: string;
   title: string;
   body: string;
   priority: NoticePriority;
+  type: NoticeType;
   targetRoles: NoticeRole[];
   publishedAt: string;
   expiresAt: string | null;
@@ -26,6 +33,7 @@ interface ApiObject<T> { success: boolean; data: T; message: string }
 export interface CreateNoticeBody {
   title: string;
   body: string;
+  type: Exclude<NoticeType, 'holiday'>;
   priority: NoticePriority;
   targetRoles: NoticeRole[];
   expiresAt?: string;
