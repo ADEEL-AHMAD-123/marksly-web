@@ -13,7 +13,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { useGetClassesQuery } from '@/store/api/classesApi';
-import { useGetTermsQuery } from '@/store/api/termsApi';
 import {
   useGetAttendanceReportQuery,
   type AttendanceStatus,
@@ -69,14 +68,8 @@ export function AttendanceReportView() {
   const [status, setStatus] = useState<AttendanceStatus | 'all'>('absent');
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
-  const [termId, setTermId] = useState('all');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
-
-  const { data: termsRes } = useGetTermsQuery();
-  // Show ALL terms (not just active) — same as ExamsView/ReportsView, so
-  // e.g. a recently-closed term's attendance can still be pulled up.
-  const terms = termsRes?.data ?? [];
 
   const { data: classesRes } = useGetClassesQuery(undefined, { skip: isTeacher });
   const classes = useMemo<{ id: string; name: string; termType: string | null; sections: { id: string; name: string }[] }[]>(() => {
@@ -106,7 +99,6 @@ export function AttendanceReportView() {
     classId: isTeacher ? undefined : classId || undefined,
     sectionId: isTeacher ? undefined : sectionId || undefined,
     status: status === 'all' ? undefined : status,
-    termId: termId === 'all' ? undefined : termId,
     page,
     limit: PAGE_SIZE,
   });
@@ -152,7 +144,7 @@ export function AttendanceReportView() {
         </Button>
       </div>
       <div className="rounded-xl border border-border/70 bg-muted/20 p-4 no-print">
-        <div className={cn('grid grid-cols-1 gap-3', isTeacher ? 'sm:grid-cols-4' : 'sm:grid-cols-6')}>
+        <div className={cn('grid grid-cols-1 gap-3', isTeacher ? 'sm:grid-cols-3' : 'sm:grid-cols-5')}>
           <div>
             <Label htmlFor="from">From</Label>
             <input
@@ -208,20 +200,6 @@ export function AttendanceReportView() {
               <SelectContent>
                 {STATUS_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Term</Label>
-            <Select value={termId} onValueChange={(v) => { setTermId(v); resetPage(); }}>
-              <SelectTrigger><SelectValue placeholder="All terms" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All terms</SelectItem>
-                {terms.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name}{t.status !== 'active' ? ` (${t.status})` : ''}
-                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>

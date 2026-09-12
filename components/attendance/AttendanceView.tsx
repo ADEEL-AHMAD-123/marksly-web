@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
-  CalendarCheck, CheckCheck, AlertCircle, Users, Info, Clock, Search, StickyNote, AlertTriangle,
+  CalendarCheck, CheckCheck, AlertCircle, Users, Clock, Search, StickyNote, AlertTriangle,
+  CheckCircle2, PencilLine, ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
@@ -31,7 +32,6 @@ import {
 import { useAppSelector } from '@/store/hooks';
 import { cn, getInitials } from '@/lib/utils';
 import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
-import { subjectColorClasses } from '@/lib/subject-color';
 import { AttendanceReportView } from './AttendanceReportView';
 
 const STATUSES: { key: AttendanceStatus; label: string; active: string }[] = [
@@ -116,6 +116,11 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
   // happen; null means no dialog is showing.
   const [confirmSave, setConfirmSave] = useState<{ changedCount: number } | null>(null);
   const [confirmAllPresent, setConfirmAllPresent] = useState(false);
+  // Filters the period picker once there are enough periods that scanning
+  // them stops working — a teacher with 8-10 classes a day was previously
+  // shown every period as an equally-weighted wrapped pill with no way to
+  // jump straight to one.
+  const [periodQuery, setPeriodQuery] = useState('');
 
   // ─── Teacher flow: pick from the periods on their own timetable today ────
   // `isLoading` (not `isFetching`) on purpose — now that the app refetches
@@ -244,6 +249,25 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
     if (!roster) return 0;
     return roster.students.filter((s) => touched.has(s.studentId) && statuses[s.studentId] !== 'present').length;
   }, [roster, touched, statuses]);
+
+  // Whether the current on-screen selections actually differ from what's
+  // saved server-side (roster.students' own status/note, exactly as
+  // getRoster() returned them). A brand-new, never-marked roster is always
+  // considered dirty — the "everyone defaults to Present" first submission
+  // is a real, intentional save, not a no-op. For an already-marked
+  // roster, this is what decides whether Save has anything to do at all —
+  // without it, re-clicking Save on an unchanged, already-submitted roster
+  // still fired a write and (if anything looked different due to stale
+  // local state) could trigger the "overwrite" confirmation for nothing.
+  const isDirty = useMemo(() => {
+    if (!roster) return false;
+    if (!roster.alreadyMarked) return true;
+    return roster.students.some((s) => {
+      const curStatus = statuses[s.studentId] ?? 'present';
+      const curNote = (notes[s.studentId] ?? '').trim();
+      return curStatus !== s.status || curNote !== (s.note ?? '').trim();
+    });
+  }, [roster, statuses, notes]);
 
   const applyAllPresent = () => {
     if (!roster) return;
@@ -380,46 +404,92 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
           </div>
         </div>
 
-        {/* Period picker — the actual class/period being taken, e.g. Maths, Class 5-B, 9:00–9:45 */}
+        {/* Period picker — rebuilt around class first, not subject: a
+            teacher scans this list looking for "which class am I taking
+            right now", not "which subject". The old version rendered every
+            period as an equally-weighted, subject-colored wrapped pill —
+            fine for 2-3 periods, unreadable for a teacher with 8-10 classes
+            a day, where the pills wrapped into a messy multi-color block
+            with no way to jump to one directly. This is a plain vertical
+            list (one row per period, class+section as the primary text)
+            with a search box once there are enough periods that scanning
+            stops working. */}
         {(isTeacher || (classId && sectionId)) && (
           <div className="mt-4">
-            <Label>Period</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Period</Label>
+              {periods.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {periods.filter((p) => 'marked' in p && p.marked).length} of {periods.length} marked
+                </span>
+              )}
+            </div>
             {loadingPeriods ? (
-              <Skeleton className="mt-1.5 h-10 w-full" />
+              <Skeleton className="mt-1.5 h-24 w-full" />
             ) : periods.length === 0 ? (
               <p className="mt-1.5 text-sm text-muted-foreground">
                 No periods scheduled {isTeacher ? 'for you' : `for this ${sectionLabel.toLowerCase()}`} on this day.
               </p>
             ) : (
-              <div className="mt-1.5 flex flex-wrap gap-2">
-                {periods.map((p) => {
-                  const color = subjectColorClasses(p.subject ?? p.periodId);
-                  const selected = periodId === p.periodId;
-                  return (
-                    <button
-                      key={p.periodId}
-                      type="button"
-                      onClick={() => setPeriodId(p.periodId)}
-                      className={cn(
-                        'flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors',
-                        selected
-                          ? 'border-primary bg-primary-soft text-primary-soft-foreground'
-                          : cn(color.border, color.bg, 'text-foreground hover:brightness-95')
-                      )}
-                    >
-                      <span className={cn('h-2 w-2 shrink-0 rounded-full', selected ? 'bg-primary' : color.dot)} />
-                      <span>
-                        <span className="font-medium">{p.subject ?? 'Period'}</span>
-                        {isTeacher && p.className && (
-                          <span className="text-muted-foreground"> · {p.className}{p.sectionName ? `-${p.sectionName}` : ''}</span>
-                        )}
-                        <span className="text-muted-foreground"> · {p.startTime}–{p.endTime}</span>
-                      </span>
-                      {'marked' in p && p.marked && <Badge variant="success" className="ml-1">Marked</Badge>}
-                    </button>
-                  );
-                })}
-              </div>
+              <>
+                {periods.length > 6 && (
+                  <div className="relative mt-1.5">
+                    <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={periodQuery}
+                      onChange={(e) => setPeriodQuery(e.target.value)}
+                      placeholder={isTeacher ? 'Find a class or subject…' : 'Find a subject…'}
+                      className="h-9 w-full rounded-lg border border-input bg-card pl-8 pr-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </div>
+                )}
+                <div className="mt-1.5 max-h-72 divide-y divide-border overflow-y-auto rounded-lg border border-border">
+                  {periods
+                    .filter((p) => {
+                      const q = periodQuery.trim().toLowerCase();
+                      if (!q) return true;
+                      const haystack = `${p.className ?? ''} ${p.sectionName ?? ''} ${p.subject ?? ''}`.toLowerCase();
+                      return haystack.includes(q);
+                    })
+                    .map((p) => {
+                      const selected = periodId === p.periodId;
+                      const marked = 'marked' in p && p.marked;
+                      return (
+                        <button
+                          key={p.periodId}
+                          type="button"
+                          onClick={() => setPeriodId(p.periodId)}
+                          className={cn(
+                            'flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors',
+                            selected ? 'bg-primary-soft' : 'hover:bg-muted/60'
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+                              marked ? 'bg-success-soft text-success' : 'bg-muted text-muted-foreground'
+                            )}
+                          >
+                            {marked ? <CheckCircle2 size={15} /> : <Clock size={15} />}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium text-foreground">
+                              {isTeacher && p.className
+                                ? `${p.className}${p.sectionName ? ` — ${p.sectionName}` : ''}`
+                                : p.subject ?? 'Period'}
+                            </span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {isTeacher && p.subject ? `${p.subject} · ` : ''}{p.startTime}–{p.endTime}
+                            </span>
+                          </span>
+                          {marked && <Badge variant="success" className="shrink-0">Marked</Badge>}
+                          <ChevronRight size={15} className={cn('shrink-0 text-muted-foreground', selected && 'text-primary')} />
+                        </button>
+                      );
+                    })}
+                </div>
+              </>
             )}
           </div>
         )}
@@ -467,27 +537,45 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
             </div>
           )}
 
+          {/* Already-marked banner — its own unmistakable, full-width line
+              instead of one small badge buried among four other colored
+              count badges (where it previously sat). This is the single
+              most important thing to notice before touching anything below:
+              you are not filling this in for the first time, you are
+              reviewing/correcting something already submitted. */}
+          {!attendanceLocked && roster.alreadyMarked && (
+            <div className="flex items-center gap-2.5 rounded-lg border border-primary/30 bg-primary-soft px-3.5 py-2.5 text-sm text-primary-soft-foreground">
+              <CheckCircle2 size={17} className="shrink-0 text-primary" />
+              <span>
+                Already saved{roster.submittedAt ? ` at ${new Date(roster.submittedAt).toLocaleTimeString('en-PK', { hour: 'numeric', minute: '2-digit' })}` : ''} — you&apos;re reviewing it now.
+                {isDirty && <strong className="ml-1">You have unsaved changes below.</strong>}
+              </span>
+            </div>
+          )}
+
           {/* Summary + quick actions — sticky so the running counts and
               Save stay visible while scrolling a long roster, instead of
-              scrolling away and forcing a trip back to the top. */}
+              scrolling away and forcing a trip back to the top. Counts are
+              deliberately styled as plain stat text (not colored pills) so
+              they read as information, not as a second set of clickable
+              status buttons duplicating the per-student ones below. */}
           <Card className="sticky top-2 z-10 flex flex-col gap-3 border-border bg-card/95 p-4 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
               {selectedPeriod && (
-                <Badge variant="neutral">
+                <span className="font-medium text-foreground">
                   {roster.subject ?? selectedPeriod.subject ?? 'Period'} · {roster.startTime}–{roster.endTime}
-                </Badge>
+                </span>
               )}
-              {roster.alreadyMarked && (
-                <Badge variant="primary" className="gap-1"><Info size={12} /> Already marked</Badge>
-              )}
-              <Badge variant="success">Present {counts.present}</Badge>
-              <Badge variant="danger">Absent {counts.absent}</Badge>
-              <Badge variant="warning">Late {counts.late}</Badge>
-              <Badge variant="neutral">Leave {counts.leave}</Badge>
+              <span className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span><strong className="text-success">{counts.present}</strong> present</span>
+                <span><strong className="text-danger">{counts.absent}</strong> absent</span>
+                <span><strong className="text-warning">{counts.late}</strong> late</span>
+                <span><strong className="text-foreground">{counts.leave}</strong> leave</span>
+              </span>
               {touched.size < roster.students.length && (
-                <Badge variant="neutral" className="gap-1">
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                   {roster.students.length - touched.size} not yet reviewed
-                </Badge>
+                </span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -502,12 +590,21 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
               </Button>
               <Button
                 size="sm"
+                variant={roster.alreadyMarked && !isDirty ? 'secondary' : 'primary'}
                 loading={saving}
-                disabled={attendanceLocked}
-                title={attendanceLocked ? 'Attendance older than 24 hours can only be changed by an admin' : undefined}
+                disabled={attendanceLocked || (roster.alreadyMarked && !isDirty)}
+                title={
+                  attendanceLocked
+                    ? 'Attendance older than 24 hours can only be changed by an admin'
+                    : roster.alreadyMarked && !isDirty
+                      ? 'Nothing has changed since this was last saved'
+                      : undefined
+                }
                 onClick={save}
               >
-                Save attendance
+                {roster.alreadyMarked
+                  ? isDirty ? <><PencilLine size={16} /> Save changes</> : <><CheckCircle2 size={16} /> Saved</>
+                  : 'Save attendance'}
               </Button>
             </div>
           </Card>
@@ -536,6 +633,12 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
               })
               .map((s) => {
               const isTouched = touched.has(s.studentId);
+              // Only meaningful once this period was already marked before
+              // — a per-student "this is different from what's saved"
+              // signal, so reviewing/correcting an already-submitted
+              // roster shows exactly what would change, not just an
+              // overall count in the confirm dialog after the fact.
+              const isEdited = roster.alreadyMarked && (statuses[s.studentId] ?? 'present') !== s.status;
               return (
               <div key={s.studentId} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
@@ -553,8 +656,13 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                           Not reviewed
                         </span>
                       )}
+                      {isEdited && (
+                        <span className="flex shrink-0 items-center gap-1 rounded-full bg-primary-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">
+                          <PencilLine size={9} /> Edited
+                        </span>
+                      )}
                     </div>
-                    <p className="text-xs text-muted-foreground">{s.rollNumber}</p>
+                    <p className="text-xs text-muted-foreground">Roll {s.rollNumber}</p>
                   </div>
                 </div>
 
@@ -617,16 +725,6 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
             })}
           </Card>
 
-          <div className="flex justify-end">
-            <Button
-              loading={saving}
-              disabled={attendanceLocked}
-              title={attendanceLocked ? 'Attendance older than 24 hours can only be changed by an admin' : undefined}
-              onClick={save}
-            >
-              Save attendance
-            </Button>
-          </div>
         </>
       )}
 
@@ -634,7 +732,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
           Students, ID Cards, Academic Terms & Grading, Timetable, Classes and
           Subjects, not before it. Only relevant to marking, not the report tab. */}
       {isTeacher ? (
-        <div className="space-y-2">
+        <div className="mt-2 space-y-2 border-t border-border pt-5">
           <InfoNote title="Why can't I edit attendance from a few days ago?">
             <p>
               Once you mark a day&apos;s attendance, you have until <strong>24 hours after that day&apos;s midnight
@@ -648,7 +746,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
           </InfoNote>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="mt-2 space-y-2 border-t border-border pt-5">
           <InfoNote title="How marking attendance works for admins/staff">
             <p>
               Picking a {terminology.classUnit.toLowerCase()}, {terminology.section.toLowerCase()} and date shows
