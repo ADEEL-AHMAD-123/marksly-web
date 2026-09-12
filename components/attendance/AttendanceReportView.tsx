@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertCircle, ChevronLeft, ChevronRight, MessageCircle, Phone, Users, Printer, Download } from 'lucide-react';
+import { AlertCircle, ChevronLeft, ChevronRight, MessageCircle, Phone, Users, Printer, Download, LayoutGrid, Clock, BookOpen, Hash, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,11 +34,11 @@ const KARACHI_OFFSET_MS = 5 * 60 * 60 * 1000;
 const todayStr = () => new Date(Date.now() + KARACHI_OFFSET_MS).toISOString().slice(0, 10);
 
 const STATUS_OPTIONS: { value: AttendanceStatus | 'all'; label: string }[] = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'present', label: 'Present' },
   { value: 'absent', label: 'Absent' },
   { value: 'late', label: 'Late' },
   { value: 'leave', label: 'Leave' },
-  { value: 'present', label: 'Present' },
-  { value: 'all', label: 'All statuses' },
 ];
 
 const statusBadge: Record<AttendanceStatus, 'success' | 'danger' | 'warning' | 'neutral'> = {
@@ -130,7 +130,7 @@ export function AttendanceReportView() {
 
   const [dateFrom, setDateFrom] = useState(todayStr());
   const [dateTo, setDateTo] = useState(todayStr());
-  const [status, setStatus] = useState<AttendanceStatus | 'all'>('absent');
+  const [status, setStatus] = useState<AttendanceStatus | 'all'>('all');
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
   const [page, setPage] = useState(1);
@@ -151,6 +151,13 @@ export function AttendanceReportView() {
   const sections = selectedClass?.sections ?? [];
   const sectionLabel = getTerminologyForTermType(selectedClass?.termType)?.section ?? terminology.section;
 
+  // Admin/staff must pick a specific class AND section before we run any
+  // query -- otherwise leaving these two untouched silently pulled every
+  // student in the institution into one report, which is almost never what
+  // was intended (unlike the date range, which is safely defaulted to today).
+  // Teachers are exempt: their own periods are already scoped server-side.
+  const needsSelection = !isTeacher && (!classId || !sectionId);
+
   // `isFetching` would also flip true on a background refocus-refetch (see
   // baseApi.ts's refetchOnFocus) with the exact same filters still applied,
   // flashing this table back to a skeleton for no visible reason. `isLoading`
@@ -158,15 +165,18 @@ export function AttendanceReportView() {
   // RTK Query treats a different filter combination as a different cache
   // entry, so isLoading goes true again whenever dateFrom/dateTo/classId/
   // sectionId/status actually change.
-  const { data, isLoading, isFetching, isError, refetch } = useGetAttendanceReportQuery({
-    dateFrom,
-    dateTo,
-    classId: isTeacher ? undefined : classId || undefined,
-    sectionId: isTeacher ? undefined : sectionId || undefined,
-    status: status === 'all' ? undefined : status,
-    page,
-    limit: PAGE_SIZE,
-  });
+  const { data, isLoading, isFetching, isError, refetch } = useGetAttendanceReportQuery(
+    {
+      dateFrom,
+      dateTo,
+      classId: isTeacher ? undefined : classId || undefined,
+      sectionId: isTeacher ? undefined : sectionId || undefined,
+      status: status === 'all' ? undefined : status,
+      page,
+      limit: PAGE_SIZE,
+    },
+    { skip: needsSelection }
+  );
   const rows = data?.data ?? [];
   const total = data?.meta?.total ?? 0;
   const totalPages = data?.meta?.totalPages ?? 1;
@@ -180,7 +190,7 @@ export function AttendanceReportView() {
   // it before paginating), so one extra request with that as the limit
   // gets everything in one go.
   const handleDownload = async () => {
-    if (total === 0) return;
+    if (needsSelection || total === 0) return;
     try {
       const result = await triggerReport({
         dateFrom,
@@ -231,22 +241,28 @@ export function AttendanceReportView() {
           dashboard's Classes/Subjects/ID Cards/Timetable pages. */}
       <div className="flex items-center justify-between gap-2 no-print">
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          Showing <Badge variant={statusBadge[status as AttendanceStatus] ?? 'neutral'} className="capitalize">
-            {status === 'all' ? 'all statuses' : status}
-          </Badge> only — change &quot;Status&quot; below to see everyone.
+          {needsSelection ? (
+            <>Pick a {terminology.classUnit.toLowerCase()} and {sectionLabel.toLowerCase()} below to see records.</>
+          ) : (
+            <>
+              Showing <Badge variant={statusBadge[status as AttendanceStatus] ?? 'neutral'} className="capitalize">
+                {status === 'all' ? 'all statuses' : status}
+              </Badge> only — change &quot;Status&quot; below to see everyone.
+            </>
+          )}
         </p>
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
             size="sm"
             loading={exporting}
-            disabled={total === 0}
+            disabled={needsSelection || total === 0}
             onClick={handleDownload}
             title="Download every matching record (not just this page) as a CSV file"
           >
             <Download size={16} /> Download CSV
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => window.print()} disabled={rows.length === 0}>
+          <Button variant="secondary" size="sm" onClick={() => window.print()} disabled={needsSelection || rows.length === 0}>
             <Printer size={16} /> Print
           </Button>
         </div>
@@ -315,7 +331,15 @@ export function AttendanceReportView() {
         </div>
       </div>
 
-      {isError ? (
+      {needsSelection ? (
+        <Card>
+          <EmptyState
+            icon={Filter}
+            title={`Select a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()}`}
+            description={`Choose which ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()} to report on above — attendance for the whole institution at once isn't shown here.`}
+          />
+        </Card>
+      ) : isError ? (
         <Card>
           <EmptyState
             icon={AlertCircle}
@@ -344,17 +368,37 @@ export function AttendanceReportView() {
               </div>
               {group.rows.map((r, i) => (
                 <div key={i} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-medium text-foreground">{r.studentName}</p>
                       <Badge variant={statusBadge[r.status]} className="capitalize">{r.status}</Badge>
                     </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {r.rollNumber} · {r.className}{r.sectionName ? `-${r.sectionName}` : ''}
-                      {r.subject ? ` · ${r.subject}` : ''}
-                      {r.startTime ? ` · ${r.startTime}${r.endTime ? `–${r.endTime}` : ''}` : ''}
-                    </p>
-                    {r.note && <p className="mt-1 text-xs text-muted-foreground">Note: {r.note}</p>}
+
+                    {/* Labeled fields, not a squashed muted-text line -- an
+                        admin scanning a printed or on-screen report needs
+                        "Class" and "Period" to jump out, not to be inferred
+                        from an unlabeled string of dots. */}
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+                      <span className="inline-flex items-center gap-1 text-muted-foreground">
+                        <Hash size={12} /> Roll {r.rollNumber}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-md bg-primary-soft px-1.5 py-0.5 text-primary-soft-foreground">
+                        <LayoutGrid size={12} />
+                        {r.className}{r.sectionName ? ` – ${r.sectionName}` : ''}
+                      </span>
+                      {r.subject && (
+                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                          <BookOpen size={12} /> {r.subject}
+                        </span>
+                      )}
+                      {r.startTime && (
+                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                          <Clock size={12} /> {r.startTime}{r.endTime ? `–${r.endTime}` : ''}
+                        </span>
+                      )}
+                    </div>
+
+                    {r.note && <p className="mt-1.5 text-xs text-muted-foreground">Note: {r.note}</p>}
                   </div>
 
                   {r.guardians.length > 0 && (
@@ -422,12 +466,9 @@ export function AttendanceReportView() {
       {!isTeacher && (
         <InfoNote title="What does this report actually show?">
           <p>
-            Only the status you&apos;ve picked above (default: Absent) shows — Present/Late/Leave records exist too,
-            switch &quot;Status&quot; to &quot;All statuses&quot; to see everything for the selected range.
-          </p>
-          <p>
-            The 24-hour edit lock only applies to <strong>teachers</strong> — as an admin you can still correct any
-            of these records regardless of how old they are, from the &quot;Mark attendance&quot; tab.
+            It only covers the {terminology.classUnit.toLowerCase()} and {sectionLabel.toLowerCase()} you&apos;ve
+            selected above — pick a different one to see another group, or change &quot;Status&quot; to narrow it
+            down to just one kind of record.
           </p>
         </InfoNote>
       )}
