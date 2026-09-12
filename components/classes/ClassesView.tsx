@@ -188,19 +188,13 @@ export function ClassesView() {
         actions={<Button size="sm" onClick={openAdd}><Plus size={16} /> Add {terminology.classUnit}</Button>}
       />
 
-      <InfoNote title="What order should I set things up in?">
-        <p>
-          Sections are created together with the {terminology.classUnit.toLowerCase()} itself, right here. Once
-          that&apos;s done, the natural next steps are: add <strong>Subjects</strong> for it, then build its{' '}
-          <strong>Timetable</strong> — each one depends on the last existing first.
-        </p>
-      </InfoNote>
-
-      {!isLoading && !isError && classes.length > 0 && (
-        <Card className="p-4">
-          <SearchInput value={query} onChange={(v) => { setQuery(v); setPage(1); }} placeholder={`Search by ${terminology.classUnit.toLowerCase()} name, year or ${terminology.section.toLowerCase()}…`} />
-        </Card>
-      )}
+      {/* Toolbar — purely instrumental (find a class), kept visually lighter
+          than the cards below it, same convention as the ID Cards/Timetable
+          pickers — and shown unconditionally (not gated on data having
+          loaded) so it doesn't pop in after the fact, same as Students. */}
+      <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+        <SearchInput value={query} onChange={(v) => { setQuery(v); setPage(1); }} placeholder={`Search by ${terminology.classUnit.toLowerCase()} name, year or ${terminology.section.toLowerCase()}…`} />
+      </div>
 
       {isError ? (
         <Card><EmptyState icon={AlertCircle} title={`Couldn't load ${terminology.classUnitPlural.toLowerCase()}`} description="Check that the API is running and try again." action={<Button variant="secondary" size="sm" onClick={() => refetch()}>Retry</Button>} /></Card>
@@ -211,7 +205,7 @@ export function ClassesView() {
       ) : classes.length === 0 ? (
         <Card><EmptyState icon={School} title={`No ${terminology.classUnitPlural.toLowerCase()} yet`} description={`Create your first ${terminology.classUnit.toLowerCase()} and ${terminology.sectionPlural.toLowerCase()} so you can start enrolling students.`} action={<Button size="sm" onClick={openAdd}><Plus size={16} /> Add {terminology.classUnit}</Button>} /></Card>
       ) : filtered.length === 0 ? (
-        <Card><EmptyState icon={Filter} title={`No ${terminology.classUnitPlural.toLowerCase()} match your search`} description="Try a different term." action={<Button variant="secondary" size="sm" onClick={() => setQuery('')}>Clear search</Button>} /></Card>
+        <Card><EmptyState icon={Filter} title={`No ${terminology.classUnitPlural.toLowerCase()} match your search`} description="Try a different search term." action={<Button variant="secondary" size="sm" onClick={() => setQuery('')}>Clear search</Button>} /></Card>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -250,7 +244,7 @@ export function ClassesView() {
           </div>
 
           <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Page {pageSafe} of {totalPages} · {filtered.length} classes</p>
+            <p className="text-sm text-muted-foreground">Page {pageSafe} of {totalPages} · {filtered.length} {terminology.classUnitPlural.toLowerCase()}</p>
             <div className="flex items-center gap-1">
               <Button variant="secondary" size="icon" disabled={pageSafe <= 1} onClick={() => setPage(pageSafe - 1)} aria-label="Previous"><ChevronLeft size={16} /></Button>
               <Button variant="secondary" size="icon" disabled={pageSafe >= totalPages} onClick={() => setPage(pageSafe + 1)} aria-label="Next"><ChevronRight size={16} /></Button>
@@ -258,6 +252,19 @@ export function ClassesView() {
           </div>
         </>
       )}
+
+      {/* Help — placed after the actual tool, same bottom-of-page pattern as
+          Students, ID Cards, Academic Terms & Grading, and Timetable, not
+          before it. */}
+      <div className="space-y-2">
+        <InfoNote title="What order should I set things up in?">
+          <p>
+            Sections are created together with the {terminology.classUnit.toLowerCase()} itself, right here. Once
+            that&apos;s done, the natural next steps are: add <strong>Subjects</strong> for it, then build its{' '}
+            <strong>Timetable</strong> — each one depends on the last existing first.
+          </p>
+        </InfoNote>
+      </div>
 
       {/* Add / Edit Class drawer */}
       <Sheet open={open} onOpenChange={setOpen}>
