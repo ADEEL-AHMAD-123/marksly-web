@@ -128,8 +128,12 @@ export function ClassRosterView({ mode, embedded }: Props) {
     <div className="space-y-6">
       {!embedded && (
         <PageHeader
-          title="Student Logins"
-          description="Look up or reset a student's Login ID and PIN by class and section."
+          title={isAdmin ? 'Student Logins' : 'Students'}
+          description={
+            isAdmin
+              ? "Look up or reset a student's Login ID and PIN by class and section."
+              : "Your students' details and guardian contact info, by class and section."
+          }
         />
       )}
 
@@ -176,11 +180,11 @@ export function ClassRosterView({ mode, embedded }: Props) {
       </div>
 
       {!ready ? (
-        <Card><EmptyState icon={Users2} title={`Select a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()}`} description="Then view every student's Login ID and PIN status." /></Card>
+        <Card><EmptyState icon={Users2} title={`Select a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()}`} description={isAdmin ? "Then view every student's Login ID and PIN status." : 'Then view your students and their guardian contact details.'} /></Card>
       ) : forbidden ? (
-        <Card><EmptyState icon={Users2} title="Not your section" description="You can only view student logins for a section you're the assigned teacher of." /></Card>
+        <Card><EmptyState icon={Users2} title="Not your section" description="You can only view a roster for a section you're the assigned teacher of." /></Card>
       ) : isError ? (
-        <Card><EmptyState icon={Users2} title="Couldn't load student logins" description="There was a problem reaching the server." action={<Button variant="secondary" size="sm" onClick={() => refetch()}>Retry</Button>} /></Card>
+        <Card><EmptyState icon={Users2} title="Couldn't load this roster" description="There was a problem reaching the server." action={<Button variant="secondary" size="sm" onClick={() => refetch()}>Retry</Button>} /></Card>
       ) : isFetching || !roster ? (
         <Card className="space-y-2 p-4">
           {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
@@ -196,13 +200,21 @@ export function ClassRosterView({ mode, embedded }: Props) {
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Name</TableHead>
-                    <TableHead>Login ID</TableHead>
-                    <TableHead>Student PIN</TableHead>
-                    {isAdmin && (
+                    {/* Teacher-facing roster leads with the everyday-useful
+                        info (who to contact about this student), not
+                        credential management — Login ID/PIN are still
+                        there, just folded into a compact secondary column
+                        and the Actions button, not given their own
+                        headline columns the way the admin view has them. */}
+                    <TableHead>Guardian</TableHead>
+                    {isAdmin ? (
                       <>
-                        <TableHead>Guardian</TableHead>
+                        <TableHead>Login ID</TableHead>
+                        <TableHead>Student PIN</TableHead>
                         <TableHead>Guardian PIN</TableHead>
                       </>
+                    ) : (
+                      <TableHead>Login ID</TableHead>
                     )}
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -379,40 +391,40 @@ function RosterRow({
           </div>
         </div>
       </TableCell>
-      <TableCell dir="ltr" className="font-mono text-sm">{student.systemId ?? '—'}</TableCell>
       <TableCell>
-        {student.pinState === 'student_set' ? (
-          <Badge variant="neutral">Student-set (not viewable)</Badge>
-        ) : canReveal ? (
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="ghost" onClick={onReveal}>
-              {revealed === 'loading' ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : revealed ? (
-                <EyeOff size={14} />
-              ) : (
-                <Eye size={14} />
-              )}
-              {revealed && revealed !== 'loading' ? 'Hide' : 'Reveal'}
-            </Button>
-            {revealed && revealed !== 'loading' && (
-              <span dir="ltr" className="font-mono font-semibold tracking-wide">{revealed}</span>
-            )}
-          </div>
+        {!student.guardianId ? (
+          <span className="text-sm text-muted-foreground">No guardian on file</span>
         ) : (
-          <span className="text-sm text-muted-foreground">Not viewable</span>
+          <div>
+            <p className="text-sm text-foreground">{student.guardianName || '—'}</p>
+            {student.guardianPhone && <p dir="ltr" className="text-xs text-muted-foreground">{student.guardianPhone}</p>}
+          </div>
         )}
       </TableCell>
-      {isAdmin && (
+      {isAdmin ? (
         <>
+          <TableCell dir="ltr" className="font-mono text-sm">{student.systemId ?? '—'}</TableCell>
           <TableCell>
-            {!student.guardianId ? (
-              <span className="text-sm text-muted-foreground">No guardian</span>
-            ) : (
-              <div>
-                <p className="text-sm text-foreground">{student.guardianName || '—'}</p>
-                {student.guardianPhone && <p dir="ltr" className="text-xs text-muted-foreground">{student.guardianPhone}</p>}
+            {student.pinState === 'student_set' ? (
+              <Badge variant="neutral">Student-set (not viewable)</Badge>
+            ) : canReveal ? (
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="ghost" onClick={onReveal}>
+                  {revealed === 'loading' ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : revealed ? (
+                    <EyeOff size={14} />
+                  ) : (
+                    <Eye size={14} />
+                  )}
+                  {revealed && revealed !== 'loading' ? 'Hide' : 'Reveal'}
+                </Button>
+                {revealed && revealed !== 'loading' && (
+                  <span dir="ltr" className="font-mono font-semibold tracking-wide">{revealed}</span>
+                )}
               </div>
+            ) : (
+              <span className="text-sm text-muted-foreground">Not viewable</span>
             )}
           </TableCell>
           <TableCell>
@@ -441,11 +453,13 @@ function RosterRow({
             )}
           </TableCell>
         </>
+      ) : (
+        <TableCell dir="ltr" className="font-mono text-xs text-muted-foreground">{student.systemId ?? '—'}</TableCell>
       )}
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">
-          <Button size="sm" variant="secondary" onClick={onResetPin}>
-            <KeyRound size={14} /> Reset student PIN
+          <Button size="sm" variant={isAdmin ? 'secondary' : 'ghost'} onClick={onResetPin}>
+            <KeyRound size={14} /> Reset PIN
           </Button>
           {onResetGuardianPin && (
             <Button size="sm" variant="secondary" onClick={onResetGuardianPin}>
@@ -493,72 +507,83 @@ function RosterCard({
       </div>
 
       <div className="mt-3 space-y-2 border-t border-border pt-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-muted-foreground">Student PIN</span>
-          {student.pinState === 'student_set' ? (
-            <Badge variant="neutral">Student-set</Badge>
-          ) : canReveal ? (
-            <div className="flex items-center gap-2">
-              {revealed && revealed !== 'loading' && (
-                <span dir="ltr" className="font-mono font-semibold tracking-wide">{revealed}</span>
-              )}
-              <Button size="sm" variant="ghost" onClick={onReveal}>
-                {revealed === 'loading' ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : revealed ? (
-                  <EyeOff size={14} />
-                ) : (
-                  <Eye size={14} />
+        {isAdmin && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground">Student PIN</span>
+            {student.pinState === 'student_set' ? (
+              <Badge variant="neutral">Student-set</Badge>
+            ) : canReveal ? (
+              <div className="flex items-center gap-2">
+                {revealed && revealed !== 'loading' && (
+                  <span dir="ltr" className="font-mono font-semibold tracking-wide">{revealed}</span>
                 )}
-                {revealed && revealed !== 'loading' ? 'Hide' : 'Reveal'}
-              </Button>
-            </div>
-          ) : (
-            <span className="text-sm text-muted-foreground">Not viewable</span>
+                <Button size="sm" variant="ghost" onClick={onReveal}>
+                  {revealed === 'loading' ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : revealed ? (
+                    <EyeOff size={14} />
+                  ) : (
+                    <Eye size={14} />
+                  )}
+                  {revealed && revealed !== 'loading' ? 'Hide' : 'Reveal'}
+                </Button>
+              </div>
+            ) : (
+              <span className="text-sm text-muted-foreground">Not viewable</span>
+            )}
+          </div>
+        )}
+
+        {/* Guardian contact info — shown for both roles now; a teacher
+         *  reaching for "students and their data" needs to know who to
+         *  call about a student just as much as an admin does. Only the
+         *  guardian PIN reveal stays admin-only. */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <span className="text-xs text-muted-foreground">Guardian</span>
+            {student.guardianId ? (
+              <>
+                <p className="truncate text-sm text-foreground">{student.guardianName || '—'}</p>
+                {student.guardianPhone && <p dir="ltr" className="text-xs text-muted-foreground">{student.guardianPhone}</p>}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">No guardian on file</p>
+            )}
+          </div>
+          {isAdmin && student.guardianId && (
+            student.guardianPinState === 'guardian_set' ? (
+              <Badge variant="neutral">Self-set</Badge>
+            ) : canRevealGuardian ? (
+              <div className="flex shrink-0 items-center gap-2">
+                {revealedGuardianPin && revealedGuardianPin !== 'loading' && (
+                  <span dir="ltr" className="font-mono text-sm font-semibold tracking-wide">{revealedGuardianPin}</span>
+                )}
+                <Button size="sm" variant="ghost" onClick={onRevealGuardian}>
+                  {revealedGuardianPin === 'loading' ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : revealedGuardianPin ? (
+                    <EyeOff size={14} />
+                  ) : (
+                    <Eye size={14} />
+                  )}
+                  {revealedGuardianPin && revealedGuardianPin !== 'loading' ? 'Hide' : 'Reveal'}
+                </Button>
+              </div>
+            ) : null
           )}
         </div>
 
-        {isAdmin && (
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <span className="text-xs text-muted-foreground">Guardian</span>
-              {student.guardianId ? (
-                <>
-                  <p className="truncate text-sm text-foreground">{student.guardianName || '—'}</p>
-                  {student.guardianPhone && <p dir="ltr" className="text-xs text-muted-foreground">{student.guardianPhone}</p>}
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">None</p>
-              )}
-            </div>
-            {student.guardianId && (
-              student.guardianPinState === 'guardian_set' ? (
-                <Badge variant="neutral">Self-set</Badge>
-              ) : canRevealGuardian ? (
-                <div className="flex shrink-0 items-center gap-2">
-                  {revealedGuardianPin && revealedGuardianPin !== 'loading' && (
-                    <span dir="ltr" className="font-mono text-sm font-semibold tracking-wide">{revealedGuardianPin}</span>
-                  )}
-                  <Button size="sm" variant="ghost" onClick={onRevealGuardian}>
-                    {revealedGuardianPin === 'loading' ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : revealedGuardianPin ? (
-                      <EyeOff size={14} />
-                    ) : (
-                      <Eye size={14} />
-                    )}
-                    {revealedGuardianPin && revealedGuardianPin !== 'loading' ? 'Hide' : 'Reveal'}
-                  </Button>
-                </div>
-              ) : null
-            )}
+        {!isAdmin && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground">Login ID</span>
+            <span dir="ltr" className="font-mono text-xs text-muted-foreground">{student.systemId ?? '—'}</span>
           </div>
         )}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-        <Button size="sm" variant="secondary" onClick={onResetPin}>
-          <KeyRound size={14} /> Reset student PIN
+        <Button size="sm" variant={isAdmin ? 'secondary' : 'ghost'} onClick={onResetPin}>
+          <KeyRound size={14} /> Reset PIN
         </Button>
         {onResetGuardianPin && (
           <Button size="sm" variant="secondary" onClick={onResetGuardianPin}>

@@ -79,7 +79,7 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
   teacher: [
     { label: 'Dashboard', href: '/teacher', icon: LayoutDashboard },
     { label: 'My Classes', href: '/teacher/classes', icon: School },
-    { label: 'Student Logins', href: '/teacher/roster', icon: KeyRound },
+    { label: 'Students', href: '/teacher/roster', icon: Users },
     { label: 'Timetable', href: '/teacher/timetable', icon: CalendarClock },
     { label: 'Attendance', href: '/teacher/attendance', icon: CalendarCheck },
     { label: 'Exams', href: '/teacher/exams', icon: FileText },

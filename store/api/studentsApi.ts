@@ -498,13 +498,16 @@ export const studentsApi = baseApi.injectEndpoints({
           systemId: string | null;
           pinState: 'school_issued' | 'student_set';
           pin?: string | null;
-          // Admin-only fields (see student.service.ts's getSectionRoster()) —
-          // a teacher-scoped call omits all of these, not just guardianPin.
-          admissionNumber?: string | null;
+          // Guardian contact info is present for admin AND teacher callers
+          // alike — knowing who to call about a student is ordinary
+          // roster data, not a privileged field. Only the PIN-related
+          // ones below (plus admissionNumber) stay admin-only — see
+          // student.service.ts's getSectionRoster().
           guardianId?: string | null;
           guardianName?: string | null;
           guardianPhone?: string | null;
           guardianEmail?: string | null;
+          admissionNumber?: string | null;
           guardianPinState?: 'school_issued' | 'guardian_set' | null;
           guardianPin?: string | null;
         }[];
