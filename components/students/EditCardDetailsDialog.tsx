@@ -13,6 +13,7 @@ import { getErrorMessage } from '@/lib/get-error-message';
 import { formatNationalId } from '@/lib/utils';
 import { useUpdateStudentMutation } from '@/store/api/studentsApi';
 import { useUpdateUserMutation } from '@/store/api/usersApi';
+import { PhotoUpload } from '@/components/shared/PhotoUpload';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -38,17 +39,37 @@ interface Props {
     cardIssueDate: string | null;
     cardExpiryDate: string | null;
     bloodGroup?: string | null;
+    address?: string | null;
+    // Student only — the ID card's "Parent/Guardian info" field. Plain
+    // text on the student record itself, distinct from a linked guardian
+    // account, so it's safe to edit here without touching guardian login.
+    parentName?: string | null;
+    parentPhone?: string | null;
+    parentEmail?: string | null;
+    // Photo lives on the underlying User document, not the student/staff
+    // record itself, so it needs that document's own id to call the
+    // photo endpoints (see PhotoUpload). For staff, `target.id` already
+    // IS that id. For a student, this is only available when the caller
+    // has the full student record (getStudent) — the plain list endpoint
+    // doesn't include it (same constraint StudentFormDrawer already has),
+    // so photo editing is simply omitted here when it's missing rather
+    // than sending a request that can't succeed.
+    userId?: string | null;
+    profilePhoto?: string | null;
   };
 }
 
 /**
- * Small, focused admin-only editor for the three-to-four fields that live
- * only on an ID card and nowhere else in the regular student/staff edit
- * forms: national ID number, issue/expiry dates, and (students only) blood
- * group. Deliberately not a reuse of StudentFormDrawer — that form covers
- * the entire student record and would be a lot of unrelated surface area
- * for what's meant to be a quick card-detail fix. Calls PATCH /students/:id
- * or PATCH /users/:id with just these fields.
+ * Admin-only editor for the fields an ID card needs that don't otherwise
+ * have a home outside the full student/staff edit form: national ID
+ * number, issue/expiry dates, blood group and parent/guardian info
+ * (students only), address, and photo. Deliberately still not a reuse of
+ * StudentFormDrawer — that form covers the entire record (class
+ * assignment, login contact info, enrollment status, etc.) and would be a
+ * lot of unrelated surface area for what's meant to be a quick, focused
+ * "fix what's missing from the card" flow. Calls PATCH /students/:id or
+ * PATCH /users/:id (plus the separate photo endpoints for photo) — the
+ * same record the full edit form writes to, not a duplicate copy of it.
  */
 export function EditCardDetailsDialog({ open, onClose, target }: Props) {
   // Original values as they arrived — used at submit time to tell "admin
@@ -62,11 +83,19 @@ export function EditCardDetailsDialog({ open, onClose, target }: Props) {
   const initialIssueDate = toDateInputValue(target.cardIssueDate);
   const initialExpiryDate = toDateInputValue(target.cardExpiryDate);
   const initialBloodGroup = target.bloodGroup ?? '';
+  const initialAddress = target.address ?? '';
+  const initialParentName = target.parentName ?? '';
+  const initialParentPhone = target.parentPhone ?? '';
+  const initialParentEmail = target.parentEmail ?? '';
 
   const [nationalIdNumber, setNationalIdNumber] = useState(initialNationalId);
   const [cardIssueDate, setCardIssueDate] = useState(initialIssueDate);
   const [cardExpiryDate, setCardExpiryDate] = useState(initialExpiryDate);
   const [bloodGroup, setBloodGroup] = useState(initialBloodGroup);
+  const [address, setAddress] = useState(initialAddress);
+  const [parentName, setParentName] = useState(initialParentName);
+  const [parentPhone, setParentPhone] = useState(initialParentPhone);
+  const [parentEmail, setParentEmail] = useState(initialParentEmail);
 
   const [updateStudent, { isLoading: savingStudent }] = useUpdateStudentMutation();
   const [updateUser, { isLoading: savingUser }] = useUpdateUserMutation();
@@ -78,6 +107,10 @@ export function EditCardDetailsDialog({ open, onClose, target }: Props) {
       cardIssueDate?: string | null;
       cardExpiryDate?: string | null;
       bloodGroup?: string | null;
+      address?: string | null;
+      parentName?: string | null;
+      parentPhone?: string | null;
+      parentEmail?: string | null;
     } = {};
 
     // Field left at its starting value (whether that's blank or something
@@ -92,6 +125,12 @@ export function EditCardDetailsDialog({ open, onClose, target }: Props) {
     };
 
     applyField('nationalIdNumber', initialNationalId, nationalIdNumber);
+    applyField('address', initialAddress, address);
+    if (target.kind === 'student') {
+      applyField('parentName', initialParentName, parentName);
+      applyField('parentPhone', initialParentPhone, parentPhone);
+      applyField('parentEmail', initialParentEmail, parentEmail);
+    }
     applyField('cardIssueDate', initialIssueDate, cardIssueDate);
     applyField('cardExpiryDate', initialExpiryDate, cardExpiryDate);
     if (target.kind === 'student') applyField('bloodGroup', initialBloodGroup, bloodGroup);
@@ -127,7 +166,23 @@ export function EditCardDetailsDialog({ open, onClose, target }: Props) {
             </DialogPrimitive.Close>
           </div>
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 max-h-[70vh] space-y-3 overflow-y-auto pr-1">
+            {target.userId && (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
+                <Label className="shrink-0">Photo</Label>
+                <PhotoUpload
+                  userId={target.userId}
+                  photoUrl={target.profilePhoto}
+                  initials={target.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}
+                  size="md"
+                  className="flex-row-reverse"
+                />
+              </div>
+            )}
+            <div>
+              <Label htmlFor="card-address">Address</Label>
+              <Input id="card-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House / street / area" />
+            </div>
             <div>
               <Label htmlFor="card-national-id">{target.nationalIdLabel} number</Label>
               <Input
@@ -139,6 +194,35 @@ export function EditCardDetailsDialog({ open, onClose, target }: Props) {
                 placeholder="42101-1234567-1"
               />
             </div>
+            {/* Only shown when there's genuinely no guardian on file yet —
+                student.service.ts's update() only resolves/creates a
+                guardian from parentName/parentPhone/parentEmail when the
+                student has zero guardianIds; once one exists, editing an
+                existing guardian's own details is a separate flow (their
+                own account), not something this quick dialog can silently
+                overwrite. */}
+            {target.kind === 'student' && !initialParentName && (
+              <div className="space-y-3 rounded-xl border border-border p-3">
+                <p className="text-xs font-medium text-muted-foreground">Parent / guardian</p>
+                <div>
+                  <Label htmlFor="card-parent-name">Name</Label>
+                  <Input id="card-parent-name" value={parentName} onChange={(e) => setParentName(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="card-parent-phone">Phone</Label>
+                    <Input id="card-parent-phone" dir="ltr" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} placeholder="03xxxxxxxxx" />
+                  </div>
+                  <div>
+                    <Label htmlFor="card-parent-email">Email</Label>
+                    <Input id="card-parent-email" dir="ltr" type="email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Filling this in links (or creates) a guardian account and emails them their login, same as adding one from the full student form.
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="card-issue-date">Issue date</Label>

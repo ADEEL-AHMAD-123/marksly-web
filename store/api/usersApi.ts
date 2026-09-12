@@ -184,12 +184,12 @@ export const usersApi = baseApi.injectEndpoints({
       ApiObject<ManagedUser>,
       {
         id: string;
-        body: Partial<Omit<CreateUserBody, 'nationalIdNumber'>> & {
+        body: Partial<Omit<CreateUserBody, 'nationalIdNumber' | 'address'>> & {
           isActive?: boolean;
-          address?: string;
           // `| null` — an admin can explicitly clear a previously-set value
           // from the quick card editor (EditCardDetailsDialog.tsx); omitting
           // the key entirely (not present in body) still means "untouched".
+          address?: string | null;
           nationalIdNumber?: string | null;
           // Card-specific fields, admin-only — see user.validator.ts. Never
           // accepted on the self-service updateMyContact endpoint, which

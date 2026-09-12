@@ -48,6 +48,7 @@ import { ImportCsvDrawer } from '@/components/ui/import-csv-drawer';
 import { DomainConfirmDialog } from '@/components/users/DomainConfirmDialog';
 import { PhotoUpload } from '@/components/shared/PhotoUpload';
 import { StaffDetailDrawer } from './StaffDetailDrawer';
+import { EditCardDetailsDialog } from '@/components/students/EditCardDetailsDialog';
 
 const PAGE_SIZE = 20;
 
@@ -215,6 +216,9 @@ export function StaffManagementView() {
   };
   const showResults = !isError && !isLoading && members.length > 0;
   const openEdit = (m: ManagedUser) => { setDetailMember(null); setEditing(m); setOpen(true); };
+  // "Missing X — fix" opens this instead of the full profile form — see
+  // StudentsView.tsx's identical cardEditTarget for the same reasoning.
+  const [cardEditTarget, setCardEditTarget] = useState<ManagedUser | null>(null);
 
   return (
     <div className="space-y-6">
@@ -360,7 +364,7 @@ export function StaffManagementView() {
                             {missingStaffInfo(m).length > 0 && (
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); openEdit(m); }}
+                                onClick={(e) => { e.stopPropagation(); setCardEditTarget(m); }}
                                 className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning underline decoration-dotted underline-offset-2 hover:text-warning/80"
                               >
                                 <AlertCircle size={11} className="shrink-0" /> Missing {missingStaffInfo(m).join(', ')} — fix
@@ -437,7 +441,7 @@ export function StaffManagementView() {
                     {missingStaffInfo(m).length > 0 && (
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); openEdit(m); }}
+                        onClick={(e) => { e.stopPropagation(); setCardEditTarget(m); }}
                         className="flex items-center gap-1 text-[11px] font-medium text-warning underline decoration-dotted underline-offset-2"
                       >
                         <AlertCircle size={11} className="shrink-0" /> Missing {missingStaffInfo(m).join(', ')} — fix
@@ -517,6 +521,29 @@ export function StaffManagementView() {
         onClose={() => setDetailMember(null)}
         onEdit={openEdit}
       />
+
+      {/* "Missing X — fix" quick editor — a ManagedUser row IS the User
+          document, so its own id doubles as the photo-upload userId
+          (unlike Students, no separate fetch is ever needed here). */}
+      {cardEditTarget && (
+        <EditCardDetailsDialog
+          key={cardEditTarget.id}
+          open
+          onClose={() => setCardEditTarget(null)}
+          target={{
+            id: cardEditTarget.id,
+            name: cardEditTarget.name,
+            kind: 'staff',
+            nationalIdLabel: 'CNIC',
+            nationalIdNumber: cardEditTarget.nationalIdNumber ?? null,
+            cardIssueDate: cardEditTarget.cardIssueDate ?? null,
+            cardExpiryDate: cardEditTarget.cardExpiryDate ?? null,
+            address: cardEditTarget.address,
+            userId: cardEditTarget.id,
+            profilePhoto: cardEditTarget.profilePhoto,
+          }}
+        />
+      )}
 
       <ImportCsvDrawer
         open={importOpen}

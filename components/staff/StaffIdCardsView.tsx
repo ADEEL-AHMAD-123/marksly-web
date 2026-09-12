@@ -309,23 +309,19 @@ function StaffIdCardPreview({
   const nationalIdLabel = 'CNIC';
   const settings = institution.settings?.idCard;
 
-  // What's missing FOR WHAT'S CURRENTLY CONFIGURED TO SHOW — photo excluded
-  // since the card face already has its own warning badge for that.
-  // Edit-form location depends on role: teachers have their own page, staff/
-  // accountant share one, and admin accounts have no dedicated edit UI here.
-  const profileHref = member.role === 'teacher' || member.role === 'staff' || member.role === 'accountant'
-    ? `/admin/staff?tab=${member.role}&q=${encodeURIComponent(member.systemId)}`
-    : null;
+  // Every item here fixes through the same "Edit card details" dialog now
+  // — no more routing address to the full staff profile page, since the
+  // dialog covers address (and photo) directly and PATCHes the same
+  // record either way (see EditCardDetailsDialog.tsx).
   const missingItems: IdCardMissingFieldItem[] = [];
   if (!member.address) {
-    missingItems.push({
-      key: 'address',
-      label: idCardFieldLabel('address'),
-      action: profileHref ? { type: 'profile', href: profileHref } : { type: 'none' },
-    });
+    missingItems.push({ key: 'address', label: idCardFieldLabel('address'), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
   }
   if ((settings?.showNationalId ?? true) && !member.nationalIdNumber) {
     missingItems.push({ key: 'nationalId', label: idCardFieldLabel('nationalId', nationalIdLabel), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
+  }
+  if (!member.profilePhoto) {
+    missingItems.push({ key: 'photo', label: idCardFieldLabel('photo'), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
   }
 
   return (
@@ -369,6 +365,9 @@ function StaffIdCardPreview({
             nationalIdNumber: member.nationalIdNumber ?? null,
             cardIssueDate: member.cardIssueDate ?? null,
             cardExpiryDate: member.cardExpiryDate ?? null,
+            address: member.address,
+            userId: member.id,
+            profilePhoto: member.profilePhoto,
           }}
         />
       )}

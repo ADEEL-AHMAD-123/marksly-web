@@ -1,21 +1,21 @@
 'use client';
 
-import Link from 'next/link';
 import { AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 export interface IdCardMissingFieldItem {
   key: string;
   label: string;
-  /** 'profile' → link to the person's full edit form (address/blood group/
-   *  parent info — anything not owned by the card-details editor).
-   *  'cardDetails' → open the EditCardDetailsDialog already on this page
-   *  (national ID / issue / expiry — the focused editor for exactly those
-   *  fields). */
+  /** Every missing field on this page now fixes through the same
+   *  EditCardDetailsDialog already open on it — the dialog was expanded to
+   *  cover address, parent/guardian info and photo alongside national ID/
+   *  issue/expiry/blood group, so there's no separate "go edit the full
+   *  profile" route anymore (that used to duplicate the record's own edit
+   *  form for no reason and left photo/address unreachable from here).
+   *  'none' is kept for the rare case a field genuinely has nowhere to be
+   *  fixed from this page. */
   action:
-    | { type: 'profile'; href: string }
     | { type: 'cardDetails'; onClick: () => void }
     | { type: 'none' };
 }
@@ -31,11 +31,9 @@ export interface IdCardMissingFieldItem {
 export function IdCardMissingFieldsBanner({ items }: { items: IdCardMissingFieldItem[] }) {
   if (items.length === 0) return null;
 
-  // Card-details fixes (national ID, etc.) all open the same dialog, so a
-  // single button covers every item of that kind rather than one button per
-  // field.
+  // All fixable items open the same dialog, so a single button covers every
+  // one of them rather than one button per field.
   const cardDetailsAction = items.find((i) => i.action.type === 'cardDetails')?.action;
-  const profileItems = items.filter((i) => i.action.type === 'profile');
 
   return (
     <Card className="flex flex-col gap-3 border-warning/40 bg-warning-soft p-4 no-print sm:flex-row sm:items-center sm:justify-between">
@@ -53,11 +51,6 @@ export function IdCardMissingFieldsBanner({ items }: { items: IdCardMissingField
         </div>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">
-        {profileItems.length > 0 && profileItems[0].action.type === 'profile' && (
-          <Link href={profileItems[0].action.href} className={cn(buttonVariants({ size: 'sm', variant: 'secondary' }))}>
-            Edit full profile
-          </Link>
-        )}
         {cardDetailsAction && cardDetailsAction.type === 'cardDetails' && (
           <Button size="sm" variant="outline" onClick={cardDetailsAction.onClick}>
             Edit card details

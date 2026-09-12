@@ -34,6 +34,7 @@ import { getInitials, formatDate, cn } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/get-error-message';
 import { StudentFormDrawer } from './StudentFormDrawer';
 import { StudentDetailDrawer } from './StudentDetailDrawer';
+import { EditCardDetailsDialog } from './EditCardDetailsDialog';
 import { useTerminology } from '@/lib/terminology';
 import { InfoNote } from '@/components/ui/info-note';
 
@@ -150,6 +151,13 @@ export function StudentsView() {
 
   const openAdd = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (s: StudentListItem) => { setDetailId(null); setEditing(s); setFormOpen(true); };
+  // "Missing X — fix" on a row opens this instead of the full profile
+  // form — EditCardDetailsDialog now covers every field that indicator can
+  // report (address, blood group, CNIC, photo), so there's no reason to
+  // send the admin into the full edit form (a different, heavier surface)
+  // just to fill in one card field. Same PATCH /students/:id underneath —
+  // one record, not a second copy of it.
+  const [cardEditTarget, setCardEditTarget] = useState<StudentListItem | null>(null);
 
   const { data, isLoading, isFetching, isError, refetch } = useGetStudentsQuery({
     page,
@@ -380,7 +388,7 @@ export function StudentsView() {
                             {missingIdInfo(s).length > 0 && (
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); openEdit(s); }}
+                                onClick={(e) => { e.stopPropagation(); setCardEditTarget(s); }}
                                 className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning underline decoration-dotted underline-offset-2 hover:text-warning/80"
                               >
                                 <AlertCircle size={11} className="shrink-0" /> Missing {missingIdInfo(s).join(', ')} — fix
@@ -489,7 +497,7 @@ export function StudentsView() {
                     {missingIdInfo(s).length > 0 && (
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); openEdit(s); }}
+                        onClick={(e) => { e.stopPropagation(); setCardEditTarget(s); }}
                         className="flex items-center gap-1 text-[11px] font-medium text-warning underline decoration-dotted underline-offset-2"
                       >
                         <AlertCircle size={11} className="shrink-0" /> Missing {missingIdInfo(s).join(', ')} — fix
@@ -590,6 +598,37 @@ export function StudentsView() {
         student={editing}
         onClose={() => { setFormOpen(false); setEditing(null); }}
       />
+
+      {/* "Missing X — fix" quick editor — key'd on the target's id so each
+          row gets its own fresh initial state instead of reusing whatever
+          was left in the dialog's inputs from the last row opened. */}
+      {cardEditTarget && (
+        <EditCardDetailsDialog
+          key={cardEditTarget.id}
+          open
+          onClose={() => setCardEditTarget(null)}
+          target={{
+            id: cardEditTarget.id,
+            name: cardEditTarget.name,
+            kind: 'student',
+            nationalIdLabel: 'Form B / CNIC',
+            nationalIdNumber: cardEditTarget.nationalIdNumber ?? null,
+            cardIssueDate: cardEditTarget.cardIssueDate ?? null,
+            cardExpiryDate: cardEditTarget.cardExpiryDate ?? null,
+            bloodGroup: cardEditTarget.bloodGroup,
+            address: cardEditTarget.address,
+            parentName: cardEditTarget.guardianName,
+            parentPhone: cardEditTarget.guardianPhone,
+            parentEmail: cardEditTarget.guardianEmail,
+            // Not present on the list endpoint (see StudentListItem's own
+            // comment on userId) — photo editing is simply omitted for
+            // this row until the dialog has it, same constraint the full
+            // edit form already has from this same list.
+            userId: cardEditTarget.userId ?? null,
+            profilePhoto: cardEditTarget.profilePhoto,
+          }}
+        />
+      )}
 
       {/* Detail drawer */}
       <StudentDetailDrawer

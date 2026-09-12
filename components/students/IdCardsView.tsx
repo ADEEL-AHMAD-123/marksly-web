@@ -284,18 +284,26 @@ function StudentIdCardPreview({
   // What's missing FOR WHAT'S CURRENTLY CONFIGURED TO SHOW on this card —
   // photo is deliberately excluded here since the card face already shows
   // its own small warning badge for that (see IdCardItem below).
+  // Every item here fixes through the same "Edit card details" dialog now
+  // (see EditCardDetailsDialog.tsx) — it was expanded to cover address,
+  // parent/guardian info and photo alongside national ID/dates/blood
+  // group, so there's no longer a separate "go edit the full profile"
+  // detour: one dialog, one PATCH, the same record either way.
   const missingItems: IdCardMissingFieldItem[] = [];
   if ((settings?.showBloodGroup ?? true) && !student.bloodGroup) {
-    missingItems.push({ key: 'bloodGroup', label: idCardFieldLabel('bloodGroup'), action: { type: 'profile', href: `/admin/students?q=${encodeURIComponent(student.systemId)}` } });
+    missingItems.push({ key: 'bloodGroup', label: idCardFieldLabel('bloodGroup'), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
   }
   if (!student.address && !student.city) {
-    missingItems.push({ key: 'address', label: idCardFieldLabel('address'), action: { type: 'profile', href: `/admin/students?q=${encodeURIComponent(student.systemId)}` } });
+    missingItems.push({ key: 'address', label: idCardFieldLabel('address'), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
   }
   if (!student.parentName) {
-    missingItems.push({ key: 'parentInfo', label: idCardFieldLabel('parentInfo'), action: { type: 'profile', href: `/admin/students?q=${encodeURIComponent(student.systemId)}` } });
+    missingItems.push({ key: 'parentInfo', label: idCardFieldLabel('parentInfo'), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
   }
   if ((settings?.showNationalId ?? true) && !student.nationalIdNumber) {
     missingItems.push({ key: 'nationalId', label: idCardFieldLabel('nationalId', nationalIdLabel), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
+  }
+  if (!student.profilePhoto) {
+    missingItems.push({ key: 'photo', label: idCardFieldLabel('photo'), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
   }
 
   return (
@@ -345,6 +353,11 @@ function StudentIdCardPreview({
             cardIssueDate: student.cardIssueDate ?? null,
             cardExpiryDate: student.cardExpiryDate ?? null,
             bloodGroup: student.bloodGroup,
+            address: student.address,
+            parentName: student.parentName,
+            parentPhone: student.parentPhone,
+            userId: student.userId,
+            profilePhoto: student.profilePhoto,
           }}
         />
       )}

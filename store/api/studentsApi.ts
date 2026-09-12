@@ -303,16 +303,20 @@ export const studentsApi = baseApi.injectEndpoints({
       ApiObject<StudentListItem & { guardianPin?: string }>,
       {
         id: string;
-        // `| null` on the three card-detail fields the quick card editor can
-        // clear (EditCardDetailsDialog.tsx) — omitting a key from body still
+        // `| null` on the card-detail fields the quick card editor can clear
+        // (EditCardDetailsDialog.tsx) — omitting a key from body still
         // means "untouched"; explicitly sending null means "admin cleared
         // this field". See updateStudentSchema's nullable field variants.
-        body: Partial<Omit<CreateStudentBody, 'bloodGroup' | 'nationalIdNumber' | 'cardIssueDate' | 'cardExpiryDate'>> & {
+        body: Partial<Omit<CreateStudentBody, 'bloodGroup' | 'nationalIdNumber' | 'cardIssueDate' | 'cardExpiryDate' | 'address' | 'parentName' | 'parentPhone' | 'parentEmail'>> & {
           status?: StudentListItem['status'];
           bloodGroup?: string | null;
           nationalIdNumber?: string | null;
           cardIssueDate?: string | null;
           cardExpiryDate?: string | null;
+          address?: string | null;
+          parentName?: string | null;
+          parentPhone?: string | null;
+          parentEmail?: string | null;
         };
       }
     >({
