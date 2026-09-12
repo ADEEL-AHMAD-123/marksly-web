@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -257,6 +257,22 @@ function PostNoticeDrawer({ open, onClose }: { open: boolean; onClose: () => voi
     resolver: zodResolver(schema),
     defaultValues: { title: '', body: '', priority: 'normal' },
   });
+
+  // Cancelling (or closing via the X) used to leave every field exactly as
+  // typed for next time the drawer opened -- fine for a single field, but
+  // with type/expiry/audience added there's now real state to carry
+  // around by accident (e.g. an Alert's 3-day expiry silently surviving
+  // into an unrelated Announcement posted five minutes later). Reset
+  // whenever the drawer opens, not just after a successful post.
+  useEffect(() => {
+    if (!open) return;
+    reset({ title: '', body: '', priority: 'normal' });
+    setRoles([]);
+    setType('announcement');
+    setExpiryPreset('none');
+    setExpiryTouched(false);
+    setCustomDate('');
+  }, [open, reset]);
 
   const toggleRole = (r: NoticeRole) =>
     setRoles((prev) => (prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]));

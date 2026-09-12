@@ -73,11 +73,15 @@ export const holidaysApi = baseApi.injectEndpoints({
     // fires as the admin fills it in, not data the page displays on its
     // own. Lazy so the caller decides exactly when to fire it (on
     // date/scope change), rather than on mount.
-    checkHolidayOverlap: builder.query<ApiObject<HolidayOverlap>, { date: string; classId?: string; sectionId?: string }>({
-      query: ({ date, classId, sectionId }) => {
+    checkHolidayOverlap: builder.query<ApiObject<HolidayOverlap>, { date: string; classId?: string; sectionId?: string; excludeId?: string }>({
+      query: ({ date, classId, sectionId, excludeId }) => {
         const params = new URLSearchParams({ date });
         if (classId) params.set('classId', classId);
         if (sectionId) params.set('sectionId', sectionId);
+        // Set when checking overlap for a holiday being edited, not newly
+        // created -- excludes its own row so editing it doesn't flag it as
+        // colliding with itself.
+        if (excludeId) params.set('excludeId', excludeId);
         return `/holidays/check-overlap?${params.toString()}`;
       },
     }),

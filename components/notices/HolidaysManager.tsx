@@ -235,12 +235,18 @@ function HolidayFormDialog({ open, onClose, editing }: { open: boolean; onClose:
   // non-blocking "are you sure" (a real duplicate closure is still hard-
   // blocked by the backend on submit). Only meaningful for the single-row
   // form; bulk-added rows are checked individually after they land instead
-  // (see submit()'s skipped-row reporting).
+  // (see submit()'s skipped-row reporting). Runs during an edit too, not
+  // just a fresh add -- excludeId (the holiday's own id) keeps it from
+  // flagging the holiday as colliding with its own, unedited self.
   useEffect(() => {
-    if (bulkMode || editing) return;
+    if (bulkMode) return;
     const date = rows[0]?.date;
     if (!date) { setOverlap(null); return; }
-    const args = scope === 'class' && classId && sectionId ? { date, classId, sectionId } : { date };
+    const args = {
+      date,
+      ...(scope === 'class' && classId && sectionId ? { classId, sectionId } : {}),
+      ...(editing ? { excludeId: editing.id } : {}),
+    };
     const t = setTimeout(async () => {
       try {
         const res = await checkOverlap(args).unwrap();
