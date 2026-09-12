@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Frontend for **Marksly** (rebranded from "Edvanta" — the parent folder name is stale, ignore it) — a multi-tenant SaaS school/campus management system for institutions in Pakistan. Next.js 15 (App Router) + TypeScript, Redux Toolkit + RTK Query, Tailwind (CSS-variable theming).
 
+## Git workflow
+
+After finishing a task in this repo, commit all changes locally (`git add -A && git commit`) with a descriptive message — do not leave finished work sitting uncommitted in the working tree. **Never `git push`** — pushing is left to the user's own judgment/review, every time, no exceptions.
+
 ## Commands
 
 ```bash
