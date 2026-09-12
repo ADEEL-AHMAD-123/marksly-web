@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
-  CalendarClock, Plus, Trash2, X, Clock, MapPin, AlertTriangle, Pencil, Printer, Copy, Check,
+  CalendarClock, Plus, Trash2, X, Clock, MapPin, AlertTriangle, Pencil, Printer, Copy, Check, MoreVertical, Info,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
@@ -85,6 +85,17 @@ const ROW_MERGE_THRESHOLD_MIN = 10;
 function toMinutes(t: string) {
   const [h, m] = t.split(':').map(Number);
   return h * 60 + m;
+}
+
+/** Inverse of toMinutes() — used to suggest a sensible start/end time for a
+ *  brand-new row added after the last one (see "Add a new row" below the
+ *  grid), clamped to a valid time-of-day so a very-late last period doesn't
+ *  suggest something past midnight. */
+function minutesToTime(total: number) {
+  const clamped = Math.max(0, Math.min(23 * 60 + 59, total));
+  const h = Math.floor(clamped / 60);
+  const m = clamped % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
 /** Build the row structure for a genuine grid: rows are formed by
@@ -194,7 +205,15 @@ export function TimetableView() {
   // opened any other way.
   const [addTimeRange, setAddTimeRange] = useState<{ startTime: string; endTime: string } | undefined>(undefined);
   const [copyDayIdx, setCopyDayIdx] = useState<number | null>(null);
-  const [deleteEntry] = useDeleteEntryMutation();
+  // Deleting a period used to happen the instant the trash icon was
+  // clicked — a single misclick permanently removed a real, possibly
+  // long-standing period with no chance to reconsider and no explanation
+  // of what that actually does (attendance-taking for that slot, in
+  // particular, since it depends on the period existing). Now the click
+  // only stages the entry here; DeletePeriodDialog below is what actually
+  // calls the mutation, after showing exactly what's about to happen.
+  const [pendingDelete, setPendingDelete] = useState<TimetableEntry | null>(null);
+  const [deleteEntry, { isLoading: deleting }] = useDeleteEntryMutation();
 
   const selectedClass = useMemo(() => classes.find((c) => c.id === classId), [classes, classId]);
   const sections = selectedClass?.sections ?? [];
@@ -221,9 +240,15 @@ export function TimetableView() {
   const cellFor = (dayIdx: number, row: { members: Set<string> }) =>
     (byDay[dayIdx] ?? []).find((e) => row.members.has(`${e.startTime}-${e.endTime}`)) ?? null;
 
-  const remove = async (id: string) => {
-    try { await deleteEntry(id).unwrap(); toast.success('Period removed'); }
-    catch { toast.error('Could not remove'); }
+  const confirmRemove = async () => {
+    if (!pendingDelete) return;
+    try {
+      await deleteEntry(pendingDelete.id).unwrap();
+      toast.success('Period removed');
+      setPendingDelete(null);
+    } catch (err: any) {
+      toast.error(err?.data?.error?.message || 'Could not remove period');
+    }
   };
 
   const openEdit = (entry: TimetableEntry) => setEditEntry(entry);
@@ -231,6 +256,20 @@ export function TimetableView() {
     setAddDay(day);
     setAddTimeRange(timeRange);
     setAddOpen(true);
+  };
+  // "Add a new row" below the grid — unlike clicking an empty cell (which
+  // only works for a time slot that already has a row from some other
+  // day's period), this is the only way to start a brand-new time slot
+  // that doesn't exist anywhere yet, e.g. an 8th period after a week that's
+  // only ever had 7. Suggests the next slot right after the last row ends
+  // (45 minutes, the same default period length used everywhere else in
+  // this drawer) rather than reusing the generic 09:00 default, which
+  // would almost always land on a time that's already taken.
+  const addNewRow = () => {
+    const lastRow = timeRows[timeRows.length - 1];
+    const startTime = lastRow.endTime;
+    const endTime = minutesToTime(toMinutes(lastRow.endTime) + 45);
+    openAdd(String(visibleDays[0]?.idx ?? 1), { startTime, endTime });
   };
 
   return (
@@ -309,30 +348,46 @@ export function TimetableView() {
                       <th className="w-28 border-r border-border px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground">Time</th>
                       {visibleDays.map(({ day, idx }) => (
                         <th key={day} className="border-r border-border px-3 py-2.5 text-left text-xs font-semibold text-foreground last:border-r-0">
-                          <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center justify-between gap-1">
                             <span>{day}</span>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button
-                                  type="button"
-                                  aria-label={`Actions for ${day}`}
-                                  className="no-print rounded-md p-1 font-normal text-muted-foreground hover:bg-muted hover:text-foreground"
-                                >
-                                  <Copy size={13} />
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => openAdd(String(idx))}>
-                                  <Plus size={14} /> Add period on {day}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  disabled={(byDay[idx] ?? []).length === 0}
-                                  onClick={() => setCopyDayIdx(idx)}
-                                >
-                                  <Copy size={14} /> Copy {day} to other days
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            {/* Previously a single unlabeled icon hiding
+                                both "add" and "copy" behind a menu — easy to
+                                never notice, and unclear what it even did
+                                once found. Now two separate, always-visible,
+                                titled buttons: a "+" that does the obvious
+                                thing directly, and a "⋮" for the one action
+                                that genuinely needs a menu. */}
+                            <div className="flex items-center gap-0.5">
+                              <button
+                                type="button"
+                                title={`Add a period on ${day}`}
+                                aria-label={`Add a period on ${day}`}
+                                onClick={() => openAdd(String(idx))}
+                                className="no-print rounded-md p-1 font-normal text-muted-foreground hover:bg-muted hover:text-foreground"
+                              >
+                                <Plus size={14} />
+                              </button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    title={`More actions for ${day}`}
+                                    aria-label={`More actions for ${day}`}
+                                    className="no-print rounded-md p-1 font-normal text-muted-foreground hover:bg-muted hover:text-foreground"
+                                  >
+                                    <MoreVertical size={13} />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    disabled={(byDay[idx] ?? []).length === 0}
+                                    onClick={() => setCopyDayIdx(idx)}
+                                  >
+                                    <Copy size={14} /> Copy {day} to other days
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           </div>
                         </th>
                       ))}
@@ -392,9 +447,15 @@ export function TimetableView() {
                                       </p>
                                     )}
                                   </button>
-                                  <div className="no-print absolute right-1 top-1 hidden gap-0.5 group-hover:flex">
+                                  {/* Previously hidden until hover (group-hover:flex) — invisible
+                                      by default on touch/tablet screens and easy for a first-time
+                                      admin to never discover at all on desktop either. Always visible
+                                      now, just subdued until hovered, so the controls are noticeable
+                                      without making every cell look busy. */}
+                                  <div className="no-print absolute right-1 top-1 flex gap-0.5 opacity-60 transition-opacity group-hover:opacity-100">
                                     <button
                                       type="button"
+                                      title="Edit period"
                                       aria-label="Edit period"
                                       onClick={() => openEdit(entry)}
                                       className="rounded-md bg-card p-1 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground"
@@ -403,8 +464,9 @@ export function TimetableView() {
                                     </button>
                                     <button
                                       type="button"
+                                      title="Remove period"
                                       aria-label="Remove period"
-                                      onClick={() => remove(entry.id)}
+                                      onClick={() => setPendingDelete(entry)}
                                       className="rounded-md bg-card p-1 text-muted-foreground shadow-sm hover:bg-danger-soft hover:text-danger"
                                     >
                                       <Trash2 size={11} />
@@ -425,6 +487,7 @@ export function TimetableView() {
                                 <button
                                   type="button"
                                   onClick={() => openAdd(String(idx), { startTime: row.startTime, endTime: row.endTime })}
+                                  title={`Add a period on ${day} at ${row.startTime}`}
                                   aria-label={`Add period on ${day} at ${row.startTime}`}
                                   className="no-print flex h-full min-h-[2.5rem] w-full items-center justify-center rounded-lg text-muted-foreground/0 transition-colors hover:bg-muted hover:text-muted-foreground"
                                 >
@@ -436,6 +499,26 @@ export function TimetableView() {
                         })}
                       </tr>
                     ))}
+                    {/* "Add a new row" — the row grid otherwise only ever
+                        has as many rows as there are distinct time slots
+                        already in use somewhere this week, so there was
+                        previously no way to start a brand-new slot (e.g. an
+                        8th period) except the header's generic "Add period"
+                        button, which defaults to Monday 09:00 regardless of
+                        what's already on the grid. This suggests the next
+                        slot right after the last row instead. */}
+                    <tr className="no-print border-t border-dashed border-border">
+                      <td colSpan={visibleDays.length + 1} className="p-0">
+                        <button
+                          type="button"
+                          onClick={addNewRow}
+                          title="Add a new time slot below the last row"
+                          className="flex w-full items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                          <Plus size={14} /> Add a new row
+                        </button>
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </Card>
@@ -455,6 +538,7 @@ export function TimetableView() {
                         <button
                           type="button"
                           onClick={() => openAdd(String(idx))}
+                          title={`Add a period on ${day}`}
                           aria-label={`Add period on ${day}`}
                           className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                         >
@@ -464,6 +548,7 @@ export function TimetableView() {
                           <button
                             type="button"
                             onClick={() => setCopyDayIdx(idx)}
+                            title={`Copy ${day} to other days`}
                             aria-label={`Copy ${day} to other days`}
                             className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                           >
@@ -508,8 +593,8 @@ export function TimetableView() {
                                   </p>
                                 ) : null}
                               </div>
-                              <button onClick={() => openEdit(e)} aria-label="Edit period" className="no-print rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"><Pencil size={14} /></button>
-                              <button onClick={() => remove(e.id)} aria-label="Remove period" className="no-print rounded-lg p-1.5 text-muted-foreground hover:bg-danger-soft hover:text-danger"><Trash2 size={15} /></button>
+                              <button onClick={() => openEdit(e)} title="Edit period" aria-label="Edit period" className="no-print rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"><Pencil size={14} /></button>
+                              <button onClick={() => setPendingDelete(e)} title="Remove period" aria-label="Remove period" className="no-print rounded-lg p-1.5 text-muted-foreground hover:bg-danger-soft hover:text-danger"><Trash2 size={15} /></button>
                             </li>
                           );
                         })}
@@ -548,6 +633,13 @@ export function TimetableView() {
             a solid slot with a yellow &quot;No teacher&quot; note is a real gap worth fixing — that subject has no
             teacher assigned yet on the Subjects page.
           </p>
+          <p>
+            Hover any period for its edit (pencil) and remove (trash) icons — removing one always asks you to
+            confirm first and explains what it affects, so it can&apos;t happen by accident. Each day&apos;s column
+            header has its own <strong>+</strong> (add a period there) and <strong>⋮</strong> (copy that day&apos;s
+            whole schedule onto other days) buttons. Run out of rows for a day that&apos;s already full? Use{' '}
+            <strong>Add a new row</strong> at the bottom of the grid to start a brand-new time slot.
+          </p>
         </InfoNote>
       </div>
 
@@ -578,7 +670,84 @@ export function TimetableView() {
           sectionId={sectionId}
         />
       )}
+      <DeletePeriodDialog
+        entry={pendingDelete}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={confirmRemove}
+        loading={deleting}
+      />
     </div>
+  );
+}
+
+/**
+ * Removing a period used to happen the instant the trash icon was clicked —
+ * no confirmation, and nothing telling the admin what it would actually do.
+ * This shows the exact period being removed plus the two real-world
+ * consequences that matter here: teachers immediately lose the ability to
+ * take attendance for that slot (attendance is always taken against a
+ * specific period, never just a date — see the InfoNote at the bottom of
+ * the page), while any attendance already recorded for it in the past stays
+ * exactly as it is, since it's stored independently and doesn't depend on
+ * the period still existing.
+ */
+function DeletePeriodDialog({
+  entry, onClose, onConfirm, loading,
+}: {
+  entry: TimetableEntry | null;
+  onClose: () => void;
+  onConfirm: () => void;
+  loading: boolean;
+}) {
+  return (
+    <DialogPrimitive.Root open={!!entry} onOpenChange={(o) => !o && !loading && onClose()}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm data-[state=open]:animate-fade-in" />
+        <DialogPrimitive.Content
+          className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none"
+          onEscapeKeyDown={(e) => loading && e.preventDefault()}
+          onPointerDownOutside={(e) => loading && e.preventDefault()}
+        >
+          {entry && (
+            <>
+              <div className="flex items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-danger-soft text-danger">
+                  <Trash2 size={16} />
+                </span>
+                <div className="min-w-0">
+                  <DialogPrimitive.Title className="text-base font-semibold">Remove this period?</DialogPrimitive.Title>
+                  <DialogPrimitive.Description asChild>
+                    <div className="mt-1.5 space-y-2.5 text-sm leading-relaxed text-muted-foreground">
+                      <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-foreground">
+                        <span className="font-medium">{DAYS[entry.dayOfWeek]}, {entry.startTime}–{entry.endTime}</span>
+                        {' — '}
+                        {entry.subject ?? 'Free period'}
+                        {entry.teacher ? ` · ${entry.teacher}` : ''}
+                        {entry.room ? ` · ${entry.room}` : ''}
+                      </p>
+                      <p>
+                        This slot disappears from the timetable immediately — teachers will no longer see it to{' '}
+                        <strong>take attendance</strong> against, starting right away. This can&apos;t be undone; if
+                        it was a mistake, you&apos;ll need to add the period back manually.
+                      </p>
+                      <p className="flex items-start gap-1.5">
+                        <Info size={13} className="mt-0.5 shrink-0" />
+                        Attendance already recorded for this period in the past is <strong>not affected</strong> — it
+                        stays exactly as it is either way.
+                      </p>
+                    </div>
+                  </DialogPrimitive.Description>
+                </div>
+              </div>
+              <div className="mt-5 flex items-center justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={onClose} disabled={loading}>Cancel</Button>
+                <Button variant="danger" size="sm" loading={loading} onClick={onConfirm}>Remove period</Button>
+              </div>
+            </>
+          )}
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 
