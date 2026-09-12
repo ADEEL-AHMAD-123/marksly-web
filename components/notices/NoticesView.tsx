@@ -19,6 +19,8 @@ import {
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { HolidaysManager } from '@/components/notices/HolidaysManager';
 import {
   useGetNoticesQuery,
   useCreateNoticeMutation,
@@ -44,6 +46,41 @@ const ROLES: { value: NoticeRole; label: string }[] = [
 ];
 
 export function NoticesView({ manage = false }: { manage?: boolean }) {
+  // Only an admin (manage=true) ever sees a second tab here -- everyone
+  // else's Notices page stays exactly the plain announcement feed it
+  // always was. Holidays used to live inside the Timetable page; they
+  // moved here because a holiday is fundamentally a calendar announcement
+  // (it auto-posts a Notice on creation), so it belongs next to every
+  // other announcement rather than behind a button on an unrelated grid.
+  if (manage) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Notices" description="Post announcements and manage holidays for your institution." />
+        <Tabs defaultValue="notices">
+          <TabsList>
+            <TabsTrigger value="notices">Notices</TabsTrigger>
+            <TabsTrigger value="holidays">Holidays</TabsTrigger>
+          </TabsList>
+          <TabsContent value="notices" className="mt-4">
+            <NoticesFeed manage />
+          </TabsContent>
+          <TabsContent value="holidays" className="mt-4">
+            <HolidaysManager />
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Notices" description="Announcements from your institution." />
+      <NoticesFeed manage={false} />
+    </div>
+  );
+}
+
+function NoticesFeed({ manage }: { manage: boolean }) {
   const { data, isLoading } = useGetNoticesQuery();
   const notices = data?.data ?? [];
   const [open, setOpen] = useState(false);
@@ -61,12 +98,12 @@ export function NoticesView({ manage = false }: { manage?: boolean }) {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Notices"
-        description={manage ? 'Post announcements to your institution.' : 'Announcements from your institution.'}
-        actions={manage ? <Button size="sm" onClick={() => setOpen(true)}><Plus size={16} /> Post notice</Button> : undefined}
-      />
+    <div className="space-y-4">
+      {manage && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setOpen(true)}><Plus size={16} /> Post notice</Button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Card key={i} className="p-5"><Skeleton className="h-20 w-full" /></Card>)}</div>

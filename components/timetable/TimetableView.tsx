@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
-  CalendarClock, Plus, Trash2, X, Clock, MapPin, AlertTriangle, Pencil, Printer, Copy, Check, Info, CalendarOff,
+  CalendarClock, Plus, Trash2, X, Clock, MapPin, AlertTriangle, Pencil, Printer, Copy, Check, Info,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
@@ -27,9 +27,6 @@ import {
   useGetTimetableQuery, useCreateEntryMutation, useUpdateEntryMutation, useDeleteEntryMutation,
   type TimetableEntry, type CreateEntryBody,
 } from '@/store/api/timetableApi';
-import {
-  useGetHolidaysQuery, useCreateHolidayMutation, useDeleteHolidayMutation, type Holiday,
-} from '@/store/api/holidaysApi';
 import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
 import { subjectColorClasses } from '@/lib/subject-color';
 
@@ -207,7 +204,6 @@ export function TimetableView() {
   // calls the mutation, after showing exactly what's about to happen.
   const [pendingDelete, setPendingDelete] = useState<TimetableEntry | null>(null);
   const [deleteEntry, { isLoading: deleting }] = useDeleteEntryMutation();
-  const [holidaysOpen, setHolidaysOpen] = useState(false);
 
   const selectedClass = useMemo(() => classes.find((c) => c.id === classId), [classes, classId]);
   const sections = selectedClass?.sections ?? [];
@@ -276,9 +272,6 @@ export function TimetableView() {
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" className="no-print" onClick={() => window.print()}>
               <Printer size={16} /> Print
-            </Button>
-            <Button variant="secondary" size="sm" className="no-print" onClick={() => setHolidaysOpen(true)}>
-              <CalendarOff size={16} /> Holidays
             </Button>
             <Button size="sm" className="no-print" onClick={() => openAdd('1')}>
               <Plus size={16} /> Add period
@@ -649,11 +642,11 @@ export function TimetableView() {
             see exactly which ones in the results afterward.
           </p>
           <p>
-            <strong>Marking a specific date off?</strong> Use the <strong>Holidays</strong> button above the grid —
-            it closes a real calendar date (a public holiday, a weather closure, a staff-training day), either for
-            the whole institution or just this {terminology.classUnit.toLowerCase()} and {sectionLabel.toLowerCase()}.
-            It doesn&apos;t touch the weekly schedule below at all — Monday&apos;s periods stay exactly as built —
-            it only stops attendance from being taken on that date until the holiday is removed again.
+            <strong>Marking a specific date off?</strong> That&apos;s now managed from <strong>Notices &rsaquo; Holidays</strong>,
+            not here — it closes a real calendar date (a public holiday, a weather closure, a staff-training day),
+            either for the whole institution or just one class. It doesn&apos;t touch the weekly schedule below at
+            all — Monday&apos;s periods stay exactly as built — it only stops attendance from being taken on that
+            date until the holiday is removed again.
           </p>
         </InfoNote>
       </div>
@@ -691,277 +684,7 @@ export function TimetableView() {
         onConfirm={confirmRemove}
         loading={deleting}
       />
-      {holidaysOpen && (
-        <HolidaysDialog
-          open={holidaysOpen}
-          onClose={() => setHolidaysOpen(false)}
-          classId={classId}
-          sectionId={sectionId}
-          className={selectedClass?.name ?? ''}
-          sectionName={sections.find((s) => s.id === sectionId)?.name ?? ''}
-        />
-      )}
     </div>
-  );
-}
-
-const AUDIENCE_LABEL: Record<Holiday['audience'], string> = {
-  everyone: 'Everyone (school closed)',
-  students: 'Students only (staff still in)',
-  staff: 'Staff only (students still in)',
-};
-
-/**
- * Marking a date off is deliberately separate from the grid above it — a
- * holiday doesn't touch the weekly schedule at all (Monday's periods stay
- * exactly as built), it's a date-level exception layered on top: any
- * period that would otherwise run on that date just can't have attendance
- * taken against it while the holiday exists (see marksly-api's
- * attendance.helpers.ts loadPeriod()). Removing the holiday later reopens
- * attendance for that date immediately, with nothing else to undo.
- */
-function HolidaysDialog({
-  open, onClose, classId, sectionId, className, sectionName,
-}: {
-  open: boolean;
-  onClose: () => void;
-  classId: string;
-  sectionId: string;
-  className: string;
-  sectionName: string;
-}) {
-  const { data, isFetching } = useGetHolidaysQuery({ classId, sectionId }, { skip: !open });
-  const holidays = data?.data ?? [];
-  const [createHoliday, { isLoading: creating }] = useCreateHolidayMutation();
-  const [deleteHoliday, { isLoading: removing }] = useDeleteHolidayMutation();
-
-  const [date, setDate] = useState('');
-  const [reason, setReason] = useState('');
-  const [scope, setScope] = useState<'institution' | 'class'>('institution');
-  const [audience, setAudience] = useState<Holiday['audience']>('everyone');
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  // Holidays accumulate forever (nothing ever prunes an old one) — without
-  // this, a school a few years in would have this list open on a wall of
-  // long-past dates, with this year's actually-relevant ones buried at the
-  // bottom of an ascending sort. Past dates are collapsed by default; nothing
-  // stops an admin from expanding them (e.g. to double-check something), it
-  // just isn't the first thing they see.
-  const [showPast, setShowPast] = useState(false);
-
-  useEffect(() => {
-    if (open) { setDate(''); setReason(''); setScope('institution'); setAudience('everyone'); setConfirmingId(null); setShowPast(false); }
-  }, [open]);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!date || !reason.trim()) { toast.error('Date and reason are both required'); return; }
-    try {
-      await createHoliday({
-        date, reason: reason.trim(), scope, audience,
-        ...(scope === 'class' ? { classId, sectionId } : {}),
-      }).unwrap();
-      toast.success('Holiday added');
-      setDate(''); setReason('');
-    } catch (err: any) {
-      toast.error(err?.data?.error?.message || 'Could not add holiday');
-    }
-  };
-
-  const remove = async (id: string) => {
-    try { await deleteHoliday(id).unwrap(); toast.success('Holiday removed'); setConfirmingId(null); }
-    catch (err: any) { toast.error(err?.data?.error?.message || 'Could not remove holiday'); }
-  };
-
-  const sorted = holidays.slice().sort((a, b) => a.date.localeCompare(b.date));
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const upcoming = sorted.filter((h) => h.date >= todayStr);
-  const past = sorted.filter((h) => h.date < todayStr);
-  const visible = showPast ? sorted : upcoming;
-
-  return (
-    <DialogPrimitive.Root open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm data-[state=open]:animate-fade-in" />
-        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary-soft-foreground">
-                <CalendarOff size={16} />
-              </span>
-              <DialogPrimitive.Title className="text-base font-semibold">Holidays &amp; days off</DialogPrimitive.Title>
-            </div>
-            <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></DialogPrimitive.Close>
-          </div>
-          <DialogPrimitive.Description className="mt-1.5 text-sm text-muted-foreground">
-            Marks a specific date closed. The weekly schedule below isn&apos;t touched — this only stops attendance
-            from being taken on that date until it&apos;s removed.
-          </DialogPrimitive.Description>
-
-          <form onSubmit={submit} className="mt-4 space-y-3 rounded-xl border border-border/70 bg-muted/20 p-3.5">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="holiday-date">Date</Label>
-                <Input id="holiday-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-              </div>
-              <div>
-                <Label htmlFor="holiday-reason">Reason</Label>
-                <Input
-                  id="holiday-reason"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="e.g. Public Holiday"
-                  maxLength={200}
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Applies to</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setScope('institution')}
-                  className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
-                    scope === 'institution' ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border hover:bg-muted'
-                  }`}
-                >
-                  Whole institution
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setScope('class')}
-                  className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
-                    scope === 'class' ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border hover:bg-muted'
-                  }`}
-                >
-                  Just {className || 'this class'}{sectionName ? ` — ${sectionName}` : ''}
-                </button>
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="holiday-audience">Who&apos;s off</Label>
-              <Select value={audience} onValueChange={(v) => setAudience(v as Holiday['audience'])}>
-                <SelectTrigger id="holiday-audience"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(AUDIENCE_LABEL) as Holiday['audience'][]).map((a) => (
-                    <SelectItem key={a} value={a}>{AUDIENCE_LABEL[a]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {audience === 'staff' && (
-                <p className="mt-1.5 flex items-start gap-1.5 text-xs text-muted-foreground">
-                  <Info size={12} className="mt-0.5 shrink-0" />
-                  There&apos;s no staff attendance tracking in Marksly yet, so this is for the record only — it
-                  won&apos;t change anything else automatically. &quot;Students only&quot; and &quot;Everyone&quot;
-                  do actively stop attendance being taken that day.
-                </p>
-              )}
-            </div>
-
-            {/* A live "what this will actually do" preview, in the same
-                spirit as DeletePeriodDialog above — an admin should know
-                exactly what happens BEFORE clicking Add, not discover it
-                afterward. Updates as scope/audience change since the two
-                genuinely different outcomes (a broadcast notice vs. a
-                purely internal record) aren't obvious just from the form's
-                own labels. */}
-            <div className="flex items-start gap-2 rounded-lg border border-primary/25 bg-primary-soft/25 px-3 py-2.5 text-xs text-primary-soft-foreground">
-              <Info size={13} className="mt-0.5 shrink-0" />
-              <div className="space-y-1">
-                <p>
-                  {audience === 'staff' ? (
-                    <>Attendance is <strong>not</strong> affected — students stay markable as normal.</>
-                  ) : (
-                    <>
-                      Teachers won&apos;t be able to take attendance for {scope === 'institution' ? 'any class' : `${className || 'this class'}${sectionName ? ` — ${sectionName}` : ''}`} on this date
-                      once it&apos;s added.
-                    </>
-                  )}
-                </p>
-                <p>
-                  {audience === 'staff' && scope === 'class' ? (
-                    <>No notice is sent — staff aren&apos;t tied to one specific class, so there&apos;s no one for a class-scoped notice to reach.</>
-                  ) : scope === 'institution' ? (
-                    <>
-                      A notice will be sent to {audience === 'everyone' ? 'everyone' : audience === 'students' ? 'students, parents, and teachers' : 'teachers, staff, and accountants'} —
-                      it&apos;ll show up right on their dashboard.
-                    </>
-                  ) : (
-                    <>
-                      A notice will be sent, but only to {className || 'this class'}{sectionName ? ` — ${sectionName}` : ''}&apos;s own students,
-                      their parents, and its teacher — no one outside this class sees it.
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Button type="submit" size="sm" loading={creating}>Add holiday</Button>
-            </div>
-          </form>
-
-          <div className="mt-4 max-h-64 space-y-1.5 overflow-y-auto">
-            {isFetching ? (
-              <p className="py-4 text-center text-xs text-muted-foreground">Loading…</p>
-            ) : sorted.length === 0 ? (
-              <p className="py-4 text-center text-xs text-muted-foreground">No holidays added yet.</p>
-            ) : visible.length === 0 ? (
-              <p className="py-4 text-center text-xs text-muted-foreground">No upcoming holidays. All {past.length} added so far are in the past.</p>
-            ) : (
-              visible.map((h) => (
-                <div key={h.id} className="flex items-center justify-between gap-2 rounded-lg border border-border p-2.5 text-sm">
-                  <div className="min-w-0">
-                    <p className="font-medium text-foreground">
-                      {h.date} — {h.reason}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {h.scope === 'institution' ? 'Whole institution' : `${h.className ?? 'This class'}${h.section ? ` — ${h.section}` : ''}`}
-                      {' · '}{AUDIENCE_LABEL[h.audience]}
-                    </p>
-                  </div>
-                  {confirmingId === h.id ? (
-                    <div className="flex shrink-0 items-center gap-1">
-                      <span className="text-xs text-muted-foreground">Remove?</span>
-                      <Button type="button" size="sm" variant="danger" loading={removing} onClick={() => remove(h.id)}>Yes</Button>
-                      <Button type="button" size="sm" variant="ghost" disabled={removing} onClick={() => setConfirmingId(null)}>Cancel</Button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      title="Remove this holiday"
-                      aria-label="Remove this holiday"
-                      onClick={() => setConfirmingId(h.id)}
-                      className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-danger-soft hover:text-danger"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-          {!showPast && past.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowPast(true)}
-              className="mt-2 w-full rounded-md py-1 text-center text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              Show {past.length} past holiday{past.length === 1 ? '' : 's'}
-            </button>
-          )}
-          {showPast && past.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowPast(false)}
-              className="mt-2 w-full rounded-md py-1 text-center text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              Hide past holidays
-            </button>
-          )}
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
   );
 }
 
