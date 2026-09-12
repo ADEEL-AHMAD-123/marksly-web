@@ -38,7 +38,6 @@ const STATUSES: { key: AttendanceStatus; label: string; active: string }[] = [
   { key: 'leave', label: 'Leave', active: 'bg-info text-info-foreground' },
 ];
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
 const dayOfWeekOf = (date: string) => new Date(`${date}T12:00:00.000Z`).getUTCDay();
 
 // Mirrors attendance-marking.service.ts's own 24h teacher lockout exactly
@@ -53,6 +52,17 @@ function isAttendanceLockedForTeacher(date: string): boolean {
   const lockoutDeadlineMs = karachiMidnightMs + 24 * 60 * 60 * 1000;
   return Date.now() > lockoutDeadlineMs;
 }
+
+// "Today" in institution-timezone (Asia/Karachi, UTC+5) terms, not the
+// browser's own UTC/local date — mirrors the backend's karachiTodayStr()
+// (attendance.helpers.ts), which is what actually decides FUTURE_DATE
+// server-side. A plain `new Date().toISOString()` would read as tomorrow's
+// date for part of the Karachi evening (UTC 19:00–23:59 = Karachi
+// 00:00–04:59 next day), which would wrongly cap this date picker's `max`
+// a day behind the real current day in Karachi during that window — a
+// teacher/admin marking attendance late at night could find "today" is
+// greyed out as unselectable even though the backend would accept it.
+const todayStr = () => new Date(Date.now() + KARACHI_OFFSET_MS).toISOString().slice(0, 10);
 
 interface PeriodOption {
   periodId: string;
