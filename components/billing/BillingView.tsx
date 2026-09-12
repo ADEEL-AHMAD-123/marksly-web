@@ -324,28 +324,6 @@ export function BillingView() {
     <div className="space-y-6">
       <PageHeader title="Billing & Subscription" description="Your Marksly plan and payments." />
 
-      <div className="space-y-2">
-        <InfoNote title="What's the difference between saving a card and turning on auto-renewal?">
-          <p>
-            Paying online once just settles that one invoice — nothing is saved. <strong>Turning on
-            auto-renewal</strong> saves your card securely with our payment provider (Safepay) so future renewals are
-            charged automatically, with no action needed from you each time.
-          </p>
-          <p>
-            Right after a successful one-off payment, we&apos;ll offer to save your card for you automatically — you
-            can always say no and do it later, or turn it off anytime from this page. Turning auto-renewal off removes
-            the saved card and switches you back to paying manually.
-          </p>
-        </InfoNote>
-        <InfoNote title="When does a plan change actually take effect?">
-          <p>
-            Changing plans doesn&apos;t always take effect immediately: if you still owe a payment, the new plan
-            activates as soon as you pay. Otherwise, it&apos;s scheduled to take effect at your <strong>next
-            renewal</strong> — you keep your current plan until then, no charge happens now.
-          </p>
-        </InfoNote>
-      </div>
-
       <Stepper step={step} />
 
       {step === 'summary' && (
@@ -393,6 +371,31 @@ export function BillingView() {
           onCopy={copy}
         />
       )}
+
+      {/* Help — placed after the actual tool, same bottom-of-page pattern as
+          Students, ID Cards, Academic Terms & Grading, Timetable, Classes,
+          Subjects, Attendance, Fees, Exams and Reports, not before it. */}
+      <div className="space-y-2">
+        <InfoNote title="What's the difference between saving a card and turning on auto-renewal?">
+          <p>
+            Paying online once just settles that one invoice — nothing is saved. <strong>Turning on
+            auto-renewal</strong> saves your card securely with our payment provider (Safepay) so future renewals are
+            charged automatically, with no action needed from you each time.
+          </p>
+          <p>
+            Right after a successful one-off payment, we&apos;ll offer to save your card for you automatically — you
+            can always say no and do it later, or turn it off anytime from this page. Turning auto-renewal off removes
+            the saved card and switches you back to paying manually.
+          </p>
+        </InfoNote>
+        <InfoNote title="When does a plan change actually take effect?">
+          <p>
+            Changing plans doesn&apos;t always take effect immediately: if you still owe a payment, the new plan
+            activates as soon as you pay. Otherwise, it&apos;s scheduled to take effect at your <strong>next
+            renewal</strong> — you keep your current plan until then, no charge happens now.
+          </p>
+        </InfoNote>
+      </div>
 
       <DisableAutoRenewDialog
         open={confirmingDisableAutoRenew}

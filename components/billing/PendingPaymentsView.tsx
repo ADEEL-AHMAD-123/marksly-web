@@ -99,27 +99,6 @@ export function PendingPaymentsView() {
         description="Bank transfers awaiting confirmation, disputed charges, and duplicate-charge reviews. Successful and online payments appear in Revenue and each institution's own page."
       />
 
-      <div className="space-y-2">
-        <InfoNote title="Why do only some payments show up here?">
-          <p>
-            Online payments (card, JazzCash, EasyPaisa, Safepay) and auto-renewal charges confirm themselves
-            automatically — the gateway&apos;s webhook or our nightly renewal job settles them without anyone needing
-            to click anything. They never land on this page; they go straight to Revenue.
-          </p>
-          <p>
-            Only <strong>bank transfers</strong> need a manual look here, since there&apos;s no automatic way for us to
-            know the money actually arrived — you&apos;re confirming that you personally checked the bank statement.
-          </p>
-        </InfoNote>
-        <InfoNote title="What happens if you suspend an institution from here?">
-          <p>
-            Suspending an institution from here (or from their profile page) puts their whole account into
-            <strong> read-only mode immediately</strong> — every user there can still view things, but can&apos;t save,
-            add, or change anything, until you reactivate them.
-          </p>
-        </InfoNote>
-      </div>
-
       {disputed.length > 0 && (
         <Card className="border-danger/30">
           <CardHeader>
@@ -253,6 +232,30 @@ export function PendingPaymentsView() {
           </TableWrapper>
         </Card>
       )}
+
+      {/* Help — placed after the actual tool, same bottom-of-page pattern as
+          Students, ID Cards, Academic Terms & Grading, Timetable, Classes,
+          Subjects, Attendance, Fees, Exams, Reports and Billing, not before it. */}
+      <div className="space-y-2">
+        <InfoNote title="Why do only some payments show up here?">
+          <p>
+            Online payments (card, JazzCash, EasyPaisa, Safepay) and auto-renewal charges confirm themselves
+            automatically — the gateway&apos;s webhook or our nightly renewal job settles them without anyone needing
+            to click anything. They never land on this page; they go straight to Revenue.
+          </p>
+          <p>
+            Only <strong>bank transfers</strong> need a manual look here, since there&apos;s no automatic way for us to
+            know the money actually arrived — you&apos;re confirming that you personally checked the bank statement.
+          </p>
+        </InfoNote>
+        <InfoNote title="What happens if you suspend an institution from here?">
+          <p>
+            Suspending an institution from here (or from their profile page) puts their whole account into
+            <strong> read-only mode immediately</strong> — every user there can still view things, but can&apos;t save,
+            add, or change anything, until you reactivate them.
+          </p>
+        </InfoNote>
+      </div>
 
       <SuspendInstitutionDialog
         open={!!suspendTarget}

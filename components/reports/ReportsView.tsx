@@ -82,15 +82,6 @@ export function ReportsView({ title = 'Reports' }: { title?: string }) {
     <div className="space-y-6">
       <PageHeader title={title} description="Insights across your institution." actions={termFilter} />
 
-      <InfoNote title="Why don't these numbers match what students see?">
-        <p>
-          <strong>Pass Rate</strong> and <strong>Grade Distribution</strong> here include every result that's been
-          entered — including drafts and results a teacher is still withholding or hasn't published yet. Students
-          and parents only ever see <strong>published</strong> results, so it's normal for this page to reflect a
-          few more results than what shows up on their end, especially right after grading a fresh batch of exams.
-        </p>
-      </InfoNote>
-
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard label="Active Students" value={overview.activeStudents.toLocaleString('en-PK')} icon={GraduationCap} tone="primary" />
         <StatCard label="Classes" value={overview.classes} icon={School} tone="info" />
@@ -188,6 +179,20 @@ export function ReportsView({ title = 'Reports' }: { title?: string }) {
             </CardContent>
           </Card>
         )}
+      </div>
+
+      {/* Help — placed after the actual content, same bottom-of-page pattern
+          as Students, ID Cards, Academic Terms & Grading, Timetable, Classes,
+          Subjects, Attendance, Fees and Exams, not before it. */}
+      <div className="space-y-2">
+        <InfoNote title="Why don't these numbers match what students see?">
+          <p>
+            <strong>Pass Rate</strong> and <strong>Grade Distribution</strong> here include every result that's been
+            entered — including drafts and results a teacher is still withholding or hasn't published yet. Students
+            and parents only ever see <strong>published</strong> results, so it's normal for this page to reflect a
+            few more results than what shows up on their end, especially right after grading a fresh batch of exams.
+          </p>
+        </InfoNote>
       </div>
     </div>
   );
