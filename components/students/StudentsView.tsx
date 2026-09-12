@@ -70,15 +70,19 @@ const statusBadge: Record<
 
 const PAGE_SIZE = 20;
 
-/** Mirrors StaffManagementView.tsx's missingStaffInfo() — the fields the ID
- *  card feature needs, surfaced inline per row here too. This existed on
- *  the Staff page (whose own comment referenced this function as if it
- *  already existed here) but was never actually added to the Students
- *  page, so a student missing their photo or address showed no indicator
- *  at all here while the equivalent staff member did. */
+/** Every field the ID card feature can actually need from a student —
+ *  same set the admin's ID Cards preview / self-service "My ID Card" page
+ *  already check for (see IdCardsView.tsx's missingItems and
+ *  student.service.ts's getMyCard()), surfaced here too so an admin
+ *  scanning this list sees the exact same picture, not a narrower one.
+ *  Originally just address+photo (mirroring an older, narrower
+ *  missingStaffInfo()) — expanded to also cover city, blood group, and
+ *  CNIC/Form-B, all real ID-card fields a student can be missing. */
 export function missingIdInfo(s: StudentListItem): string[] {
   const missing: string[] = [];
-  if (!s.address) missing.push('address');
+  if (!s.address && !s.city) missing.push('address');
+  if (!s.bloodGroup) missing.push('blood group');
+  if (!s.nationalIdNumber) missing.push('CNIC/Form-B');
   if (!s.profilePhoto) missing.push('photo');
   return missing;
 }
@@ -374,9 +378,13 @@ export function StudentsView() {
                               Roll: <span className="font-medium">{s.rollNumber}</span>
                             </p>
                             {missingIdInfo(s).length > 0 && (
-                              <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning">
-                                <AlertCircle size={11} className="shrink-0" /> Missing {missingIdInfo(s).join(', ')}
-                              </p>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); openEdit(s); }}
+                                className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning underline decoration-dotted underline-offset-2 hover:text-warning/80"
+                              >
+                                <AlertCircle size={11} className="shrink-0" /> Missing {missingIdInfo(s).join(', ')} — fix
+                              </button>
                             )}
                           </div>
                         </div>
@@ -479,9 +487,13 @@ export function StudentsView() {
                       </p>
                     )}
                     {missingIdInfo(s).length > 0 && (
-                      <p className="flex items-center gap-1 text-[11px] font-medium text-warning">
-                        <AlertCircle size={11} className="shrink-0" /> Missing {missingIdInfo(s).join(', ')}
-                      </p>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); openEdit(s); }}
+                        className="flex items-center gap-1 text-[11px] font-medium text-warning underline decoration-dotted underline-offset-2"
+                      >
+                        <AlertCircle size={11} className="shrink-0" /> Missing {missingIdInfo(s).join(', ')} — fix
+                      </button>
                     )}
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       {s.systemId && (

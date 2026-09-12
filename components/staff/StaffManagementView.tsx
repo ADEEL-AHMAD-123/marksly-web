@@ -107,12 +107,14 @@ export function StaffEmailBadge({ status }: { status?: ManagedUser['emailStatus'
   );
 }
 
-/** Mirrors StudentsView.tsx's missingIdInfo() — fields the ID card feature
- *  needs, surfaced inline per row instead of only via the "Missing ID info"
- *  filter. */
+/** Mirrors StudentsView.tsx's missingIdInfo() — every field the ID card
+ *  feature needs, surfaced inline per row instead of only via the self-
+ *  service "My ID Card" gate. Staff has no city/blood group fields, so this
+ *  is just address, CNIC, and photo. */
 export function missingStaffInfo(m: ManagedUser): string[] {
   const missing: string[] = [];
   if (!m.address) missing.push('address');
+  if (!m.nationalIdNumber) missing.push('CNIC');
   if (!m.profilePhoto) missing.push('photo');
   return missing;
 }
@@ -355,10 +357,14 @@ export function StaffManagementView() {
                           />
                           <div>
                             <span className="font-medium text-foreground">{m.name}</span>
-                            {!m.address && (
-                              <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning">
-                                <AlertCircle size={11} className="shrink-0" /> Missing address
-                              </p>
+                            {missingStaffInfo(m).length > 0 && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); openEdit(m); }}
+                                className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning underline decoration-dotted underline-offset-2 hover:text-warning/80"
+                              >
+                                <AlertCircle size={11} className="shrink-0" /> Missing {missingStaffInfo(m).join(', ')} — fix
+                              </button>
                             )}
                           </div>
                         </div>
@@ -429,9 +435,13 @@ export function StaffManagementView() {
                       <p className="truncate text-xs text-foreground/70">{m.email}</p>
                     )}
                     {missingStaffInfo(m).length > 0 && (
-                      <p className="flex items-center gap-1 text-[11px] font-medium text-warning">
-                        <AlertCircle size={11} className="shrink-0" /> Missing {missingStaffInfo(m).join(', ')}
-                      </p>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); openEdit(m); }}
+                        className="flex items-center gap-1 text-[11px] font-medium text-warning underline decoration-dotted underline-offset-2"
+                      >
+                        <AlertCircle size={11} className="shrink-0" /> Missing {missingStaffInfo(m).join(', ')} — fix
+                      </button>
                     )}
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       {m.systemId && (
