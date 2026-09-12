@@ -108,15 +108,19 @@ export function TodaysAttendanceCard({
               </div>
             )}
 
-            {/* Unmarked sections sorted first, both within each class and
-                across classes — the whole point of this widget is showing
-                what still needs chasing, so burying that behind a wall of
-                already-marked green pills (in whatever order the API
-                happened to return) defeated its own purpose. */}
+            {/* Unmarked sections sort first WITHIN each class — the whole
+                point of this widget is showing what still needs chasing, so
+                burying that behind a wall of already-marked green pills (in
+                whatever order the API happened to return) defeated its own
+                purpose. Classes themselves keep the API's own order rather
+                than also being re-sorted by completion — reordering the
+                whole list as sections get marked throughout the day would
+                make classes visibly jump around while an admin is mid-scan,
+                which is worse than just scanning past a few marked pills
+                within a class that's mostly done. */}
             <div className="max-h-72 space-y-4 overflow-y-auto">
               {coverage!.classes
                 .map((c) => ({ ...c, sections: [...c.sections].sort((a, b) => Number(a.marked) - Number(b.marked)) }))
-                .sort((a, b) => a.sections.filter((s) => s.marked).length / (a.sections.length || 1) - b.sections.filter((s) => s.marked).length / (b.sections.length || 1))
                 .map((c) => (
                 <div key={c.classId}>
                   <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{c.className}</p>
