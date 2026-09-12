@@ -640,6 +640,35 @@ export function TimetableView() {
             whole schedule onto other days) buttons. Run out of rows for a day that&apos;s already full? Use{' '}
             <strong>Add a new row</strong> at the bottom of the grid to start a brand-new time slot.
           </p>
+          <p>
+            <strong>Why is there no teacher field to fill in?</strong> A period&apos;s teacher is never set here —
+            it&apos;s always resolved automatically from whichever teacher the Subject is assigned to for that{' '}
+            {terminology.classUnit.toLowerCase()} and {sectionLabel.toLowerCase()}, shown read-only when you add or
+            edit a period. To change who teaches a period, update the teacher assignment on the{' '}
+            <strong>Subjects</strong> page instead — every period using that subject picks up the change
+            automatically, nothing needs to be re-saved here.
+          </p>
+          <p>
+            <strong>Why did adding or editing a period get rejected?</strong> Two periods can&apos;t overlap for the
+            same {sectionLabel.toLowerCase()} — you&apos;ll be told to pick a different time or day. A period can
+            also be rejected if its teacher is already teaching a different {sectionLabel.toLowerCase()} at an
+            overlapping time, even on a different {terminology.classUnit.toLowerCase()} — one teacher can&apos;t be
+            in two places at once, so the earlier assignment needs to move first.
+          </p>
+          <p>
+            <strong>Why does {DAYS[6]} always show, but not {DAYS[0]}?</strong> Monday through {DAYS[6]} are always
+            shown as columns — even with nothing in them yet — since most schools here run a six-day week and need
+            somewhere to add that first period. {DAYS[0]} only appears once at least one period is actually added to
+            it, so an institution that&apos;s always closed on {DAYS[0]} doesn&apos;t get a permanently empty column.
+          </p>
+          <p>
+            <strong>What actually happens when you copy a day to others?</strong> Every period from that day is
+            recreated on each day you pick, at the same time and with the same subject — the teacher isn&apos;t
+            copied over directly, it&apos;s re-resolved from the Subject&apos;s assignment the same way a brand-new
+            period would be, so it can never end up stale even if the assignment changes later. Any period that
+            would conflict with something already on a target day is skipped (never overwritten), and you&apos;ll
+            see exactly which ones in the results afterward.
+          </p>
         </InfoNote>
       </div>
 
