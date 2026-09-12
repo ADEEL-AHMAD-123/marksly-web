@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
-  CalendarClock, Plus, Trash2, X, Clock, MapPin, AlertTriangle, Pencil, Printer, Copy, Check, MoreVertical, Info,
+  CalendarClock, Plus, Trash2, X, Clock, MapPin, AlertTriangle, Pencil, Printer, Copy, Check, Info,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
@@ -230,6 +230,22 @@ export function TimetableView() {
   // Fall back to one synthetic starter row so the grid itself is what an
   // empty timetable looks like — see STARTER_ROW's own comment.
   const timeRows = realTimeRows.length > 0 ? realTimeRows : [STARTER_ROW];
+  // One extra blank row always rendered right after the last real one —
+  // same look as any other row, with the same empty-cell "+" buttons in
+  // every day's column — so starting a genuinely new time slot (an 8th
+  // period after a week that's only ever had 7, say) is just clicking a
+  // cell like anywhere else in the grid, not a separate link or button
+  // that looks different from the rest of the table. Its suggested time is
+  // the last row's end time plus a standard 45-minute period, purely as a
+  // starting point — every cell in it still opens the drawer with that
+  // day's own time editable, same as clicking any other empty cell.
+  const nextBlankRow = useMemo(() => {
+    const last = timeRows[timeRows.length - 1];
+    const startTime = last.endTime;
+    const endTime = minutesToTime(toMinutes(last.endTime) + 45);
+    return { members: new Set([`${startTime}-${endTime}`]), startTime, endTime };
+  }, [timeRows]);
+  const displayRows = useMemo(() => [...timeRows, nextBlankRow], [timeRows, nextBlankRow]);
 
   const byDay = useMemo(() => {
     const m: Record<number, TimetableEntry[]> = {};
@@ -257,21 +273,6 @@ export function TimetableView() {
     setAddTimeRange(timeRange);
     setAddOpen(true);
   };
-  // "Add a new row" below the grid — unlike clicking an empty cell (which
-  // only works for a time slot that already has a row from some other
-  // day's period), this is the only way to start a brand-new time slot
-  // that doesn't exist anywhere yet, e.g. an 8th period after a week that's
-  // only ever had 7. Suggests the next slot right after the last row ends
-  // (45 minutes, the same default period length used everywhere else in
-  // this drawer) rather than reusing the generic 09:00 default, which
-  // would almost always land on a time that's already taken.
-  const addNewRow = () => {
-    const lastRow = timeRows[timeRows.length - 1];
-    const startTime = lastRow.endTime;
-    const endTime = minutesToTime(toMinutes(lastRow.endTime) + 45);
-    openAdd(String(visibleDays[0]?.idx ?? 1), { startTime, endTime });
-  };
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -371,11 +372,11 @@ export function TimetableView() {
                                 <DropdownMenuTrigger asChild>
                                   <button
                                     type="button"
-                                    title={`More actions for ${day}`}
+                                    title={`Copy ${day} to other days`}
                                     aria-label={`More actions for ${day}`}
                                     className="no-print rounded-md p-1 font-normal text-muted-foreground hover:bg-muted hover:text-foreground"
                                   >
-                                    <MoreVertical size={13} />
+                                    <Copy size={13} />
                                   </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
@@ -394,7 +395,7 @@ export function TimetableView() {
                     </tr>
                   </thead>
                   <tbody>
-                    {timeRows.map((row) => (
+                    {displayRows.map((row) => (
                       <tr key={Array.from(row.members).sort().join('|')} className="border-b border-border last:border-b-0">
                         <td className="border-r border-border px-3 py-2 align-top text-xs font-medium text-foreground">
                           {row.startTime}–{row.endTime}
@@ -499,26 +500,6 @@ export function TimetableView() {
                         })}
                       </tr>
                     ))}
-                    {/* "Add a new row" — the row grid otherwise only ever
-                        has as many rows as there are distinct time slots
-                        already in use somewhere this week, so there was
-                        previously no way to start a brand-new slot (e.g. an
-                        8th period) except the header's generic "Add period"
-                        button, which defaults to Monday 09:00 regardless of
-                        what's already on the grid. This suggests the next
-                        slot right after the last row instead. */}
-                    <tr className="no-print border-t border-dashed border-border">
-                      <td colSpan={visibleDays.length + 1} className="p-0">
-                        <button
-                          type="button"
-                          onClick={addNewRow}
-                          title="Add a new time slot below the last row"
-                          className="flex w-full items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        >
-                          <Plus size={14} /> Add a new row
-                        </button>
-                      </td>
-                    </tr>
                   </tbody>
                 </table>
               </Card>
@@ -636,9 +617,10 @@ export function TimetableView() {
           <p>
             Hover any period for its edit (pencil) and remove (trash) icons — removing one always asks you to
             confirm first and explains what it affects, so it can&apos;t happen by accident. Each day&apos;s column
-            header has its own <strong>+</strong> (add a period there) and <strong>⋮</strong> (copy that day&apos;s
-            whole schedule onto other days) buttons. Run out of rows for a day that&apos;s already full? Use{' '}
-            <strong>Add a new row</strong> at the bottom of the grid to start a brand-new time slot.
+            header has its own <strong>+</strong> (add a period there) and copy icon (copy that day&apos;s whole
+            schedule onto other days) buttons. There&apos;s always one extra blank row waiting right after the last
+            one — every cell in it works exactly like any other empty cell, so starting a brand-new time slot (an
+            8th period after a week that&apos;s only ever had 7, say) never needs a different button to find.
           </p>
           <p>
             <strong>Why is there no teacher field to fill in?</strong> A period&apos;s teacher is never set here —
