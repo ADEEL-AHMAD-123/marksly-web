@@ -856,6 +856,40 @@ function HolidaysDialog({
                 </p>
               )}
             </div>
+
+            {/* A live "what this will actually do" preview, in the same
+                spirit as DeletePeriodDialog above — an admin should know
+                exactly what happens BEFORE clicking Add, not discover it
+                afterward. Updates as scope/audience change since the two
+                genuinely different outcomes (a broadcast notice vs. a
+                purely internal record) aren't obvious just from the form's
+                own labels. */}
+            <div className="flex items-start gap-2 rounded-lg border border-primary/25 bg-primary-soft/25 px-3 py-2.5 text-xs text-primary-soft-foreground">
+              <Info size={13} className="mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p>
+                  {audience === 'staff' ? (
+                    <>Attendance is <strong>not</strong> affected — students stay markable as normal.</>
+                  ) : (
+                    <>
+                      Teachers won&apos;t be able to take attendance for {scope === 'institution' ? 'any class' : `${className || 'this class'}${sectionName ? ` — ${sectionName}` : ''}`} on this date
+                      once it&apos;s added.
+                    </>
+                  )}
+                </p>
+                <p>
+                  {scope === 'institution' ? (
+                    <>
+                      A notice will be sent to {audience === 'everyone' ? 'everyone' : audience === 'students' ? 'students, parents, and teachers' : 'teachers, staff, and accountants'} —
+                      it&apos;ll show up right on their dashboard.
+                    </>
+                  ) : (
+                    <>No notice is sent for a class-specific closure — it only shows up here, on this class&apos;s own Timetable page.</>
+                  )}
+                </p>
+              </div>
+            </div>
+
             <div className="flex justify-end">
               <Button type="submit" size="sm" loading={creating}>Add holiday</Button>
             </div>
