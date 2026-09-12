@@ -200,6 +200,7 @@ export function IdCardsView() {
           className={sheet!.className}
           section={sheet!.section}
           termName={sheet!.termName}
+          printSuppressed={printAllOpen}
         />
       )}
     </div>
@@ -267,13 +268,24 @@ function StudentRosterList({
 }
 
 function StudentIdCardPreview({
-  student, institution, className, section, termName,
+  student, institution, className, section, termName, printSuppressed,
 }: {
   student: IdCard;
   institution: IdCardInstitution;
   className: string | null;
   section: string | null;
   termName: string | null;
+  // True while PrintAllCardsDialog is open. That dialog has its own
+  // #id-card-print-sheet, made visible at print time via the exact same
+  // "hide everything except this id" mechanism this single preview uses
+  // (see idCardPrint.ts). Both ids existing in the DOM at once — this
+  // preview is never unmounted just because a modal is open over it —
+  // meant BOTH got revealed and printed on top of each other (the bulk
+  // grid plus this student's single card/back bleeding through it).
+  // Dropping the id while the bulk dialog is open keeps this element
+  // hidden along with everything else, so exactly one #id-card-print* ever
+  // prints at a time.
+  printSuppressed?: boolean;
 }) {
   const [showBack, setShowBack] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -323,7 +335,7 @@ function StudentIdCardPreview({
           product," not just another panel the same weight as the picker
           toolbar above it. Backdrop/padding are no-print so the printed
           output stays exactly the card, nothing extra. */}
-      <div id="id-card-print" className="flex justify-center rounded-2xl bg-muted/30 p-6 sm:p-10">
+      <div id={printSuppressed ? undefined : 'id-card-print'} className="flex justify-center rounded-2xl bg-muted/30 p-6 sm:p-10">
         <div className="w-full max-w-md space-y-4">
           {/* On screen, only the flipped-to face shows; on print, both
               always render regardless of which one was showing. */}

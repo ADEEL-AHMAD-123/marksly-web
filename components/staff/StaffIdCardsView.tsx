@@ -237,7 +237,7 @@ export function StaffIdCardsView() {
       ) : !selected ? (
         <Card className="p-5 no-print"><Skeleton className="h-64 w-full" /></Card>
       ) : (
-        <StaffIdCardPreview member={selected} institution={sheet!.institution} />
+        <StaffIdCardPreview member={selected} institution={sheet!.institution} printSuppressed={printAllOpen} />
       )}
     </div>
   );
@@ -299,10 +299,16 @@ function StaffRosterList({
 }
 
 function StaffIdCardPreview({
-  member, institution,
+  member, institution, printSuppressed,
 }: {
   member: StaffIdCard;
   institution: StaffIdCardInstitution;
+  // See IdCardsView.tsx's StudentIdCardPreview — same fix for the same
+  // reason: without this, printing "all cards" while a staff member is
+  // also selected printed the bulk grid and this single card/back on top
+  // of each other, since both #id-card-print and #id-card-print-sheet
+  // stay in the DOM and both get revealed at print time.
+  printSuppressed?: boolean;
 }) {
   const [showBack, setShowBack] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -338,7 +344,7 @@ function StaffIdCardPreview({
       <IdCardMissingFieldsBanner items={missingItems} />
       {/* Same "this card IS the point of the page" treatment as
           IdCardsView.tsx's student preview — see that file's comment. */}
-      <div id="id-card-print" className="flex justify-center rounded-2xl bg-muted/30 p-6 sm:p-10">
+      <div id={printSuppressed ? undefined : 'id-card-print'} className="flex justify-center rounded-2xl bg-muted/30 p-6 sm:p-10">
         <div className="w-full max-w-md space-y-4">
           <div className={cn(showBack ? 'hidden print:block' : 'block')}>
             <StaffIdCardItem member={member} institution={institution} />
