@@ -40,8 +40,17 @@ export const ID_CARD_PRINT_CSS = `
      single-card flow above is still how anyone prints a back face) so a
      school issuing many cards at once doesn't have to repeat the
      single-card flow once per person. Two columns fit comfortably on A4
-     with the CR80 physical width; break-inside:avoid on each card keeps
-     one person's card from splitting across a page boundary. */
+     with the CR80 physical width.
+
+     Deliberately flexbox + wrap, NOT CSS grid — grid's row/track-based
+     layout is known to paginate unreliably across multiple printed pages
+     in several browsers (rows can get clipped or duplicated at a page
+     break once there are more items than fit on one page), which this
+     sheet needs to handle correctly for a school printing 50-60+ cards
+     at once, not just the handful used while building/testing this. A
+     flex-wrap row is plain block-level flow underneath, which print
+     engines paginate the same reliable way they've always paginated
+     ordinary wrapped content. */
   #id-card-print-sheet {
     position: absolute;
     left: 0;
@@ -49,14 +58,19 @@ export const ID_CARD_PRINT_CSS = `
     width: 100%;
     padding: 0 !important;
     background: transparent !important;
-    display: grid;
-    grid-template-columns: repeat(2, ${CARD_WIDTH_MM}mm);
+    display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     gap: 6mm 8mm;
   }
   .no-print { display: none !important; }
   .id-card {
+    /* Both properties — break-inside is the modern name, page-break-inside
+       the legacy alias some print engines still key off — kept one person's
+       card from splitting across a page boundary regardless of which the
+       browser actually implements. */
     break-inside: avoid;
+    page-break-inside: avoid;
     width: ${CARD_WIDTH_MM}mm !important;
     height: ${CARD_HEIGHT_MM}mm !important;
     box-shadow: none !important;
