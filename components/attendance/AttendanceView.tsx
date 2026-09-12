@@ -381,11 +381,6 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
           </span>
           <div className="min-w-0 text-sm text-muted-foreground">
             <p>
-              <strong className="text-foreground">Teachers mark their own classes&apos; attendance</strong>, period by
-              period, and can now correct their own past records at any time — there&apos;s no 24-hour cutoff for them
-              anymore.
-            </p>
-            <p className="mt-1">
               You shouldn&apos;t need to touch a record directly except in a real exception — a teacher who&apos;s left the
               school, or a period nobody covered.{' '}
               <button
