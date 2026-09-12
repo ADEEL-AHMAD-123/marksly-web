@@ -95,54 +95,39 @@ export function SubjectsView() {
         actions={<Button size="sm" onClick={() => setOpen(true)}><Plus size={16} /> Add subject</Button>}
       />
 
-      <InfoNote
-        title="What happens if you delete a subject that's already in use?"
-        link={{ href: '/admin/timetable', label: 'Go to Timetable' }}
-      >
-        <p>
-          Deleting a subject just <strong>hides it from your active list</strong> — it doesn&apos;t erase anything.
-          Past exams, results, attendance and timetable entries that reference it stay exactly as they are, so
-          historical records and report cards are never affected.
-        </p>
-        <p>
-          Any students with a pending or approved elective request for that subject are automatically dropped. If
-          the subject was still sitting on a timetable, remove or replace that period there too — the deleted
-          subject won&apos;t show up in new selections, but an old period pointing at it can look stuck until you
-          update it.
-        </p>
-      </InfoNote>
-
       <EnrollmentRequests />
 
-      {subjects.length > 0 && (
-        <Card className="space-y-3 p-4">
-          <SearchInput
-            value={query}
-            onChange={(v) => { setQuery(v); setPage(1); }}
-            placeholder={`Search by name, code, ${terminology.classUnit.toLowerCase()} or teacher…`}
-          />
-          {unassignedCount > 0 && (
-            <button
-              type="button"
-              onClick={() => { setUnassignedOnly((v) => !v); setPage(1); }}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                unassignedOnly
-                  ? 'border-warning bg-warning-soft text-warning'
-                  : 'border-border text-muted-foreground hover:bg-muted'
-              }`}
-            >
-              <AlertTriangle size={12} /> {unassignedCount} unassigned {unassignedOnly ? '· showing only these' : ''}
-            </button>
-          )}
-        </Card>
-      )}
+      {/* Toolbar — purely instrumental (find a subject), kept visually lighter
+          than the cards below it, same convention as Classes/ID Cards/Timetable
+          — and shown unconditionally (not gated on data having loaded) so it
+          doesn't pop in after the fact, same as Students. */}
+      <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
+        <SearchInput
+          value={query}
+          onChange={(v) => { setQuery(v); setPage(1); }}
+          placeholder={`Search by name, code, ${terminology.classUnit.toLowerCase()} or teacher…`}
+        />
+        {unassignedCount > 0 && (
+          <button
+            type="button"
+            onClick={() => { setUnassignedOnly((v) => !v); setPage(1); }}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              unassignedOnly
+                ? 'border-warning bg-warning-soft text-warning'
+                : 'border-border text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            <AlertTriangle size={12} /> {unassignedCount} unassigned {unassignedOnly ? '· showing only these' : ''}
+          </button>
+        )}
+      </div>
 
       {isLoading ? (
         <Card className="p-5"><Skeleton className="h-56 w-full" /></Card>
       ) : subjects.length === 0 ? (
         <Card><EmptyState icon={BookOpen} title="No subjects yet" description="Build your subject catalog — assign classes and teachers." action={<Button size="sm" onClick={() => setOpen(true)}><Plus size={16} /> Add subject</Button>} /></Card>
       ) : filtered.length === 0 ? (
-        <Card><EmptyState icon={Filter} title="No subjects match your search" description="Try a different term." action={<Button variant="secondary" size="sm" onClick={() => setQuery('')}>Clear search</Button>} /></Card>
+        <Card><EmptyState icon={Filter} title="No subjects match your search" description="Try a different search term." action={<Button variant="secondary" size="sm" onClick={() => setQuery('')}>Clear search</Button>} /></Card>
       ) : (
         <>
           <div className="hidden md:block">
@@ -231,7 +216,7 @@ export function SubjectsView() {
           </div>
 
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Page {pageSafe} of {totalPages} · {filtered.length} subjects</p>
+            <p className="text-sm text-muted-foreground">Page {pageSafe} of {totalPages} · {filtered.length} subject{filtered.length === 1 ? '' : 's'}</p>
             <div className="flex items-center gap-1">
               <Button variant="secondary" size="icon" disabled={pageSafe <= 1} onClick={() => setPage(pageSafe - 1)} aria-label="Previous"><ChevronLeft size={16} /></Button>
               <Button variant="secondary" size="icon" disabled={pageSafe >= totalPages} onClick={() => setPage(pageSafe + 1)} aria-label="Next"><ChevronRight size={16} /></Button>
@@ -239,6 +224,28 @@ export function SubjectsView() {
           </div>
         </>
       )}
+
+      {/* Help — placed after the actual tool, same bottom-of-page pattern as
+          Students, ID Cards, Academic Terms & Grading, Timetable, and Classes,
+          not before it. */}
+      <div className="space-y-2">
+        <InfoNote
+          title="What happens if you delete a subject that's already in use?"
+          link={{ href: '/admin/timetable', label: 'Go to Timetable' }}
+        >
+          <p>
+            Deleting a subject just <strong>hides it from your active list</strong> — it doesn&apos;t erase anything.
+            Past exams, results, attendance and timetable entries that reference it stay exactly as they are, so
+            historical records and report cards are never affected.
+          </p>
+          <p>
+            Any students with a pending or approved elective request for that subject are automatically dropped. If
+            the subject was still sitting on a timetable, remove or replace that period there too — the deleted
+            subject won&apos;t show up in new selections, but an old period pointing at it can look stuck until you
+            update it.
+          </p>
+        </InfoNote>
+      </div>
 
       <SubjectDrawer open={open} subject={null} onClose={() => setOpen(false)} />
       <SubjectDrawer open={!!editing} subject={editing} onClose={() => setEditing(null)} />
