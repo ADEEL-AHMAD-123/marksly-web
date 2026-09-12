@@ -5,7 +5,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import {
   Plus, Upload, Filter, ChevronLeft, ChevronRight,
-  AlertCircle, Eye, EyeOff, Users2, Mail, MailWarning, UserX, X,
+  AlertCircle, Eye, EyeOff, Users2, Mail, MailWarning, X,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -47,14 +47,17 @@ interface ClassOption {
 /** Small badge summarizing whether a guardian can actually be reached by
  *  email — folded in from the old Email Delivery Status page so this is
  *  visible right in the row instead of on a separate page. */
+// 'no_guardian' is deliberately excluded here — GuardianEmailBadge below
+// hides that case (the row's Guardian column already reads '—', so a
+// second badge saying the same thing would be redundant), so there's no
+// entry to keep in sync with a state the badge never renders.
 const guardianEmailMeta: Record<
-  NonNullable<StudentListItem['guardianEmailStatus']>,
+  Exclude<NonNullable<StudentListItem['guardianEmailStatus']>, 'no_guardian'>,
   { icon: typeof Mail; label: string; className: string; title: string }
 > = {
   ok: { icon: Mail, label: 'Email OK', className: 'text-success', title: 'Guardian welcome email was delivered fine' },
   problem: { icon: MailWarning, label: 'Email delivery failed', className: 'text-danger', title: 'Guardian’s latest welcome email failed or bounced' },
   no_email: { icon: MailWarning, label: 'No email', className: 'text-warning', title: 'Guardian has no email on file — nothing was ever sent' },
-  no_guardian: { icon: UserX, label: 'No guardian', className: 'text-muted-foreground', title: 'No guardian linked to this student' },
 };
 
 const statusBadge: Record<

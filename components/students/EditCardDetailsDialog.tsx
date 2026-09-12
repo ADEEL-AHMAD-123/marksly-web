@@ -161,7 +161,7 @@ export function EditCardDetailsDialog({ open, onClose, target }: Props) {
             <DialogPrimitive.Title className="flex items-center gap-2 text-base font-semibold">
               <IdCardIcon size={16} className="text-primary" /> Edit card details — {target.name}
             </DialogPrimitive.Title>
-            <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+            <DialogPrimitive.Close aria-label="Close" className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
               <X size={16} />
             </DialogPrimitive.Close>
           </div>

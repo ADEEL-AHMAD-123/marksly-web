@@ -85,7 +85,7 @@ export function RequestCustomPlanDialog({ trigger }: { trigger: React.ReactNode 
                     </DialogPrimitive.Description>
                   </div>
                 </div>
-                <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={16} /></DialogPrimitive.Close>
+                <DialogPrimitive.Close aria-label="Close" className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={16} /></DialogPrimitive.Close>
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-3.5">

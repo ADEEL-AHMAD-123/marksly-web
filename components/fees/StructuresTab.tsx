@@ -178,12 +178,21 @@ function AddStructureDrawer({ open, onClose }: { open: boolean; onClose: () => v
                   <div key={f.id} className="flex items-center gap-2">
                     <Input placeholder="Name" className="flex-1" {...register(`components.${i}.name` as const)} />
                     <Input type="number" placeholder="Amount" className="w-28" {...register(`components.${i}.amount` as const)} />
-                    <select {...register(`components.${i}.frequency` as const)} className="h-10 w-28 rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                      <option value="monthly">Monthly</option>
-                      <option value="quarterly">Quarterly</option>
-                      <option value="annually">Annually</option>
-                      <option value="once">One-time</option>
-                    </select>
+                    <Controller
+                      control={control}
+                      name={`components.${i}.frequency` as const}
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="quarterly">Quarterly</SelectItem>
+                            <SelectItem value="annually">Annually</SelectItem>
+                            <SelectItem value="once">One-time</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
                     <button type="button" onClick={() => fields.length > 1 && remove(i)} disabled={fields.length <= 1} aria-label="Remove" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-danger-soft hover:text-danger disabled:opacity-40">
                       <Trash2 size={16} />
                     </button>
@@ -231,7 +240,7 @@ function GenerateDrawer({ structure, onClose }: { structure: FeeStructure | null
   const open = !!structure;
   const now = new Date();
 
-  const { register, handleSubmit } = useForm<GenForm>({
+  const { register, handleSubmit, control } = useForm<GenForm>({
     resolver: zodResolver(genSchema),
     values: {
       month: now.getMonth() + 1,
@@ -267,10 +276,19 @@ function GenerateDrawer({ structure, onClose }: { structure: FeeStructure | null
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Month</Label>
-                  <select {...register('month')} className="h-10 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                    {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-                  </select>
+                  <Label htmlFor="month">Month</Label>
+                  <Controller
+                    control={control}
+                    name="month"
+                    render={({ field }) => (
+                      <Select value={String(field.value)} onValueChange={field.onChange}>
+                        <SelectTrigger id="month"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {MONTHS.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="year">Year</Label>

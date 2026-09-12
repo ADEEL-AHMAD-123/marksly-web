@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -238,7 +238,7 @@ function CollectPaymentDrawer({ invoice, onClose }: { invoice: Invoice | null; o
   const [recordPayment, { isLoading }] = useRecordPaymentMutation();
   const open = !!invoice;
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<PaymentForm>({
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<PaymentForm>({
     resolver: zodResolver(paymentSchema),
   });
 
@@ -292,13 +292,19 @@ function CollectPaymentDrawer({ invoice, onClose }: { invoice: Invoice | null; o
               </div>
 
               <div>
-                <Label>Method</Label>
-                <select
-                  {...register('paymentMethod')}
-                  className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
+                <Label htmlFor="paymentMethod">Method</Label>
+                <Controller
+                  control={control}
+                  name="paymentMethod"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="paymentMethod"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {METHODS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
 
               <div>

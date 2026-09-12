@@ -20,6 +20,7 @@ import { Stepper } from './BillingStepper';
 import { SummaryStep } from './BillingSummaryStep';
 import { PlansStep } from './BillingPlansStep';
 import { PaymentStep } from './BillingPaymentStep';
+import { DisableAutoRenewDialog } from './DisableAutoRenewDialog';
 
 export function BillingView() {
   const router = useRouter();
@@ -40,6 +41,7 @@ export function BillingView() {
   const [step, setStep] = useState<Step>('summary');
   const [reconciling, setReconciling] = useState(false);
   const verifiedRef = useRef(false);
+  const [confirmingDisableAutoRenew, setConfirmingDisableAutoRenew] = useState(false);
 
   // "Load more" payment history — page 1 already came inline with
   // getMyBilling; this appends subsequent pages at the same page size.
@@ -306,11 +308,13 @@ export function BillingView() {
     }
   };
 
-  const onDisableAutoRenew = async () => {
-    if (!window.confirm('Turn off auto-renewal? Your saved card will be removed and you\'ll need to pay manually going forward.')) return;
+  const onDisableAutoRenew = () => setConfirmingDisableAutoRenew(true);
+
+  const confirmDisableAutoRenew = async () => {
     try {
       await disableAutoRenew().unwrap();
       toast.success('Auto-renewal turned off');
+      setConfirmingDisableAutoRenew(false);
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not turn off auto-renewal');
     }
@@ -389,6 +393,13 @@ export function BillingView() {
           onCopy={copy}
         />
       )}
+
+      <DisableAutoRenewDialog
+        open={confirmingDisableAutoRenew}
+        onClose={() => setConfirmingDisableAutoRenew(false)}
+        onConfirm={confirmDisableAutoRenew}
+        loading={disablingAutoRenew}
+      />
     </div>
   );
 }

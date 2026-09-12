@@ -16,6 +16,9 @@ import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
   useGetStudentQuery,
   useDeleteStudentMutation,
   useUpdateStudentMutation,
@@ -660,15 +663,14 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                       This student owes {formatCurrency(card.totals.balance)} — it carries forward, this action does not clear it.
                     </p>
                   )}
-                  <select
-                    value={endStatus}
-                    onChange={(e) => setEndStatus(e.target.value as typeof endStatus)}
-                    className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
-                  >
-                    {END_ENROLLMENT_REASONS.map((r) => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
-                    ))}
-                  </select>
+                  <Select value={endStatus} onValueChange={(v) => setEndStatus(v as typeof endStatus)}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {END_ENROLLMENT_REASONS.map((r) => (
+                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <input
                     type="text"
                     value={endReason}
@@ -691,23 +693,25 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                     <span className="text-sm font-medium text-foreground">Reactivate — assign a current class</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <select
-                      value={reactivateClassId}
-                      onChange={(e) => { setReactivateClassId(e.target.value); setReactivateSectionId(''); }}
-                      className="rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
+                    <Select
+                      value={reactivateClassId || undefined}
+                      onValueChange={(v) => { setReactivateClassId(v); setReactivateSectionId(''); }}
                     >
-                      <option value="">{terminology.classUnit}</option>
-                      {classes.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.termName ?? '—'}</option>)}
-                    </select>
-                    <select
-                      value={reactivateSectionId}
-                      onChange={(e) => setReactivateSectionId(e.target.value)}
+                      <SelectTrigger><SelectValue placeholder={terminology.classUnit} /></SelectTrigger>
+                      <SelectContent>
+                        {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} · {c.termName ?? '—'}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={reactivateSectionId || undefined}
+                      onValueChange={setReactivateSectionId}
                       disabled={!reactivateClassId}
-                      className="rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
                     >
-                      <option value="">{terminology.section}</option>
-                      {reactivateSections.map((sec) => <option key={sec.id} value={sec.id}>{sec.name}</option>)}
-                    </select>
+                      <SelectTrigger><SelectValue placeholder={terminology.section} /></SelectTrigger>
+                      <SelectContent>
+                        {reactivateSections.map((sec) => <SelectItem key={sec.id} value={sec.id}>{sec.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex items-center justify-end gap-2">
                     <Button variant="ghost" size="sm" onClick={() => setShowReactivate(false)}>Cancel</Button>

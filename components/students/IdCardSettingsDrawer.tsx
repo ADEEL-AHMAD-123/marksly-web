@@ -166,7 +166,7 @@ export function IdCardSettingsDrawer({ open, onClose }: { open: boolean; onClose
             <DialogPrimitive.Title className="flex items-center gap-2 text-base font-semibold">
               <Settings2 size={17} className="text-primary" /> Card settings
             </DialogPrimitive.Title>
-            <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+            <DialogPrimitive.Close aria-label="Close" className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
               <X size={16} />
             </DialogPrimitive.Close>
           </div>

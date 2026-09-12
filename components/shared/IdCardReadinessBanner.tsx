@@ -105,7 +105,7 @@ function MissingPhotosDialog({
               </DialogPrimitive.Description>
             </div>
             <DialogPrimitive.Close asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Close">
                 <X size={16} />
               </Button>
             </DialogPrimitive.Close>

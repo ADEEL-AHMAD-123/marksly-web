@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft, GraduationCap, Users, School, BookOpen, Ban, CheckCircle2,
@@ -23,6 +24,7 @@ import { InstitutionOverviewTab } from './InstitutionOverviewTab';
 import { InstitutionClassesTab } from './InstitutionClassesTab';
 import { InstitutionStudentsTab } from './InstitutionStudentsTab';
 import { InstitutionBillingTab } from './InstitutionBillingTab';
+import { ChangePlanOverrideDialog } from './ChangePlanOverrideDialog';
 
 export function InstitutionDetailView({ id }: { id: string }) {
   // Activity/health monitoring view — freshness of lastActivityAt and
@@ -34,24 +36,25 @@ export function InstitutionDetailView({ id }: { id: string }) {
   const { data: planHistoryRes } = useGetPlanHistoryQuery(id);
   const planHistory = planHistoryRes?.data ?? [];
   const d = data?.data as InstitutionDetail | undefined;
+  const [planOverrideTarget, setPlanOverrideTarget] = useState<string | null>(null);
 
   const setStatus = async (status: string) => {
     try { await update({ id, body: { status } }).unwrap(); toast.success('Status updated'); }
     catch { toast.error('Could not update status'); }
   };
-  const setPlan = async (planType: string) => {
-    // This is a direct administrative override, not a payment — no charge
-    // is recorded (a fake "successful payment" used to appear in the
-    // institution's own payment history from this exact action, which was
-    // misleading). Worth a real confirmation rather than a one-click
-    // dropdown change, since it immediately grants entitlements and
-    // changes what the institution is billed for going forward.
-    if (!window.confirm(
-      `Change this institution to the "${planType}" plan?\n\nThis is an administrative override — it takes effect immediately and does NOT record a payment. Use this for comp accounts or deals handled outside Marksly, not as a substitute for the institution actually paying.`
-    )) return;
+  // setPlan is called directly from InstitutionBillingTab's plan Select —
+  // this just opens the confirm dialog with the chosen plan; the actual
+  // override happens in confirmPlanOverride below once the superadmin
+  // confirms it there.
+  const setPlan = (planType: string) => setPlanOverrideTarget(planType);
+
+  const confirmPlanOverride = async () => {
+    const planType = planOverrideTarget;
+    if (!planType) return;
     try {
       const res = await update({ id, body: { planType } }).unwrap();
       toast.success('Plan updated — no payment was recorded');
+      setPlanOverrideTarget(null);
       // Heads-up only (mirrors the self-serve downgrade warning in
       // BillingView.tsx) — the override already applied immediately above,
       // this can't block it, it just tells the superadmin the institution
@@ -177,6 +180,14 @@ export function InstitutionDetailView({ id }: { id: string }) {
           />
         </TabsContent>
       </Tabs>
+
+      <ChangePlanOverrideDialog
+        open={!!planOverrideTarget}
+        planType={planOverrideTarget ?? ''}
+        onClose={() => setPlanOverrideTarget(null)}
+        onConfirm={confirmPlanOverride}
+        loading={saving}
+      />
     </div>
   );
 }

@@ -578,10 +578,19 @@ function CreateExamWizard({ open, onClose }: { open: boolean; onClose: () => voi
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>Type</Label>
-                    <select {...register('type')} className="h-10 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                      {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                    </select>
+                    <Label htmlFor="type">Type</Label>
+                    <Controller
+                      control={control}
+                      name="type"
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger id="type"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
                   </div>
                   <div>
                     <Label>{terminology.classUnit}</Label>
@@ -706,9 +715,18 @@ function CreateExamWizard({ open, onClose }: { open: boolean; onClose: () => voi
 
                 <div>
                   <Label htmlFor="integrityMode">Integrity mode</Label>
-                  <select id="integrityMode" {...register('integrityMode')} className="h-10 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                    {INTEGRITY_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                  </select>
+                  <Controller
+                    control={control}
+                    name="integrityMode"
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger id="integrityMode"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {INTEGRITY_MODES.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </div>
 
                 <div className="space-y-2 rounded-lg border border-border p-3">
@@ -915,10 +933,10 @@ function QuestionBuilder({ control, totalMarks }: { control: any; totalMarks: nu
             )}
           </div>
 
-          <select
+          <Select
             value={draft.type}
-            onChange={(e) => {
-              const type = e.target.value as QuestionType;
+            onValueChange={(value) => {
+              const type = value as QuestionType;
               const isMcqLike = type === 'mcq_single' || type === 'mcq_multi' || type === 'true_false';
               setDraft((d) => ({
                 ...d,
@@ -931,10 +949,12 @@ function QuestionBuilder({ control, totalMarks }: { control: any; totalMarks: nu
                 correctAnswer: isMcqLike ? undefined : d.correctAnswer,
               }));
             }}
-            className="h-10 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {QUESTION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {QUESTION_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
 
           <textarea
             value={draft.text}

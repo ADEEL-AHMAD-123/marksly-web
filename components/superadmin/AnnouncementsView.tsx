@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
@@ -13,6 +13,9 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn, formatDate } from '@/lib/utils';
@@ -80,7 +83,7 @@ export function AnnouncementsView() {
 
   const [createAnnouncement, { isLoading: sending }] = useCreateAnnouncementMutation();
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<AnnouncementForm>({
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<AnnouncementForm>({
     resolver: zodResolver(schema),
     defaultValues: { title: '', body: '', priority: 'normal', expiresAt: '' },
   });
@@ -171,13 +174,22 @@ export function AnnouncementsView() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Priority</Label>
-                <select {...register('priority')} className="h-10 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
+                <Label htmlFor="priority">Priority</Label>
+                <Controller
+                  control={control}
+                  name="priority"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="priority"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="urgent">Urgent</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
               <div>
                 <Label htmlFor="expiresAt">Expires (optional)</Label>

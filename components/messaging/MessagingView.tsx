@@ -17,6 +17,9 @@ import { InfoNote } from '@/components/ui/info-note';
 import {
   Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { formatDateTime } from '@/lib/utils';
 import { getErrorCode, getErrorMessage } from '@/lib/get-error-message';
 import {
@@ -54,7 +57,6 @@ export function MessagingView() {
   const [message, setMessage] = useState('');
 
   const isMock = status ? status[channel] === 'mock' : false;
-  const inputCls = 'h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
   const parseRecipients = () =>
     recipientsRaw.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
@@ -194,11 +196,14 @@ export function MessagingView() {
         <Card className="p-5 lg:col-span-2">
           <form onSubmit={submit} className="space-y-4">
             <div>
-              <Label>Channel</Label>
-              <select className={inputCls} value={channel} onChange={(e) => setChannel(e.target.value as Channel)}>
-                <option value="sms">SMS</option>
-                <option value="whatsapp">WhatsApp</option>
-              </select>
+              <Label htmlFor="channel">Channel</Label>
+              <Select value={channel} onValueChange={(v) => setChannel(v as Channel)}>
+                <SelectTrigger id="channel"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sms">SMS</SelectItem>
+                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {channel === 'whatsapp' && (

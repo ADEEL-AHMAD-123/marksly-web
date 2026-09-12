@@ -85,7 +85,7 @@ export function PrintAllCardsDialog<T>({
               <Button size="sm" onClick={() => window.print()}>
                 <Printer size={15} /> Print {items.length} card{items.length === 1 ? '' : 's'}
               </Button>
-              <DialogPrimitive.Close className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
+              <DialogPrimitive.Close aria-label="Close" className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
                 <X size={18} />
               </DialogPrimitive.Close>
             </div>

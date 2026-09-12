@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useEffect, useMemo, useState } from 'react';
@@ -16,6 +16,9 @@ import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { SearchInput } from '@/components/ui/search-input';
 import { InfoNote } from '@/components/ui/info-note';
 import {
@@ -293,38 +296,48 @@ export function ClassesView() {
                 </div>
                 <div>
                   <Label htmlFor="termId">Term</Label>
-                  <select
-                    id="termId"
-                    {...register('termId')}
-                    className="h-10 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <option value="">Select a term</option>
-                    {termOptions.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}{t.status !== 'active' ? ` (${t.status})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <Controller
+                    control={control}
+                    name="termId"
+                    render={({ field }) => (
+                      <Select value={field.value || undefined} onValueChange={field.onChange}>
+                        <SelectTrigger id="termId"><SelectValue placeholder="Select a term" /></SelectTrigger>
+                        <SelectContent>
+                          {termOptions.map((t) => (
+                            <SelectItem key={t.id} value={t.id}>
+                              {t.name}{t.status !== 'active' ? ` (${t.status})` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                   {errors.termId && <p className="mt-1 text-xs text-danger">{errors.termId.message}</p>}
                 </div>
               </div>
 
               <div>
                 <Label htmlFor="gradingSchemeId">Grading scheme</Label>
-                <select
-                  id="gradingSchemeId"
-                  {...register('gradingSchemeId')}
-                  className="h-10 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="">
-                    Use institution default{defaultGradingScheme ? ` (${defaultGradingScheme.name})` : ''}
-                  </option>
-                  {gradingSchemes.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                <Controller
+                  control={control}
+                  name="gradingSchemeId"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || 'none'}
+                      onValueChange={(v) => field.onChange(v === 'none' ? '' : v)}
+                    >
+                      <SelectTrigger id="gradingSchemeId"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          Use institution default{defaultGradingScheme ? ` (${defaultGradingScheme.name})` : ''}
+                        </SelectItem>
+                        {gradingSchemes.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 <p className="mt-1 text-xs text-muted-foreground">
                   Determines how marks are graded for this class — percentage/letter, GPA, Cambridge, or pass/fail.
                 </p>

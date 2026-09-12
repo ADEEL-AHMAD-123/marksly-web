@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { CheckCircle2, XCircle, Inbox, AlertTriangle, ShieldOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
@@ -20,6 +21,7 @@ import {
   type NeedsReviewSource,
 } from '@/store/api/billingApi';
 import { useUpdateInstitutionMutation } from '@/store/api/superadminApi';
+import { SuspendInstitutionDialog } from './SuspendInstitutionDialog';
 
 // Plain-English label for where a "needs review" flag came from — shown as a
 // badge so a row that appears with no obvious trigger (e.g. a superadmin
@@ -46,6 +48,7 @@ export function PendingPaymentsView() {
   const [resolveDispute, { isLoading: resolving }] = useResolveDisputeMutation();
   const [resolveReview, { isLoading: resolvingReview }] = useResolveNeedsReviewMutation();
   const [updateInstitution, { isLoading: suspending }] = useUpdateInstitutionMutation();
+  const [suspendTarget, setSuspendTarget] = useState<{ id: string; name: string } | null>(null);
   const busy = confirming || rejecting;
 
   const onConfirm = async (institutionId: string, paymentId: string) => {
@@ -78,10 +81,15 @@ export function PendingPaymentsView() {
     try { await resolveReview({ institutionId, paymentId }).unwrap(); toast.success('Marked as reviewed'); }
     catch (e: any) { toast.error(e?.data?.error?.message || 'Could not mark as reviewed'); }
   };
-  const onSuspend = async (institutionId: string, institutionName: string) => {
-    if (!window.confirm(`Suspend ${institutionName}? They'll lose access until reactivated.`)) return;
-    try { await updateInstitution({ id: institutionId, body: { status: 'suspended' } }).unwrap(); toast.success('Institution suspended'); }
-    catch (e: any) { toast.error(e?.data?.error?.message || 'Could not suspend'); }
+  const onSuspend = (institutionId: string, institutionName: string) => setSuspendTarget({ id: institutionId, name: institutionName });
+
+  const confirmSuspend = async () => {
+    if (!suspendTarget) return;
+    try {
+      await updateInstitution({ id: suspendTarget.id, body: { status: 'suspended' } }).unwrap();
+      toast.success('Institution suspended');
+      setSuspendTarget(null);
+    } catch (e: any) { toast.error(e?.data?.error?.message || 'Could not suspend'); }
   };
 
   return (
@@ -245,6 +253,14 @@ export function PendingPaymentsView() {
           </TableWrapper>
         </Card>
       )}
+
+      <SuspendInstitutionDialog
+        open={!!suspendTarget}
+        institutionName={suspendTarget?.name ?? ''}
+        onClose={() => setSuspendTarget(null)}
+        onConfirm={confirmSuspend}
+        loading={suspending}
+      />
     </div>
   );
 }

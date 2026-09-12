@@ -342,7 +342,7 @@ function ResetStaffPinDialog({ userId, name, systemId, onClose }: { userId: stri
         <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none">
           <div className="flex items-center justify-between">
             <DialogPrimitive.Title className="text-base font-semibold">Reset PIN — {name}</DialogPrimitive.Title>
-            <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+            <DialogPrimitive.Close aria-label="Close" className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
               <X size={16} />
             </DialogPrimitive.Close>
           </div>
