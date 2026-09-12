@@ -127,17 +127,52 @@ function useTimeRows(entries: TimetableEntry[]) {
   }, [entries]);
 }
 
-/** Which days to actually render as columns/sections: Mon–Fri always;
- *  Sunday/Saturday only if they actually have at least one period, so an
- *  institution running a 5-day week doesn't get two permanently-empty
- *  weekend columns cluttering the grid. */
+/** Which days to actually render as columns/sections: Monday through
+ *  Saturday always — most schools here run a 6-day week, and a day with no
+ *  periods yet still needs to be visible so there's somewhere to add its
+ *  first one directly in the grid. Sunday only if it actually has at least
+ *  one period, so an institution that's always closed Sunday doesn't get a
+ *  permanently-empty extra column. */
 function useVisibleDays(entries: TimetableEntry[]) {
   return useMemo(() => {
     const hasEntries = new Set(entries.map((e) => e.dayOfWeek));
     return DAYS.map((day, idx) => ({ day, idx }))
-      .filter(({ idx }) => (idx >= 1 && idx <= 5) || hasEntries.has(idx));
+      .filter(({ idx }) => (idx >= 1 && idx <= 6) || hasEntries.has(idx));
   }, [entries]);
 }
+
+/** One color per subject, cycling through the theme's 5-color chart
+ *  palette (already used for grade-distribution/analytics charts — see
+ *  charts.tsx) so a section's grid reads at a glance instead of every
+ *  period looking like the same plain card. Deterministic by subjectId (or
+ *  subject name, for legacy periods with no subjectId) so the same subject
+ *  always lands on the same color across the whole grid and across
+ *  reloads, without needing to persist a color choice anywhere. Written as
+ *  a fixed array of complete literal class names — not a template string
+ *  built from the hashed index — because Tailwind only generates the
+ *  utility classes it can find as complete strings in the source. */
+const SUBJECT_PALETTE = [
+  { bg: 'bg-chart-1/10', border: 'border-chart-1/40', text: 'text-chart-1', dot: 'bg-chart-1' },
+  { bg: 'bg-chart-2/10', border: 'border-chart-2/40', text: 'text-chart-2', dot: 'bg-chart-2' },
+  { bg: 'bg-chart-3/10', border: 'border-chart-3/40', text: 'text-chart-3', dot: 'bg-chart-3' },
+  { bg: 'bg-chart-4/10', border: 'border-chart-4/40', text: 'text-chart-4', dot: 'bg-chart-4' },
+  { bg: 'bg-chart-5/10', border: 'border-chart-5/40', text: 'text-chart-5', dot: 'bg-chart-5' },
+];
+
+function subjectColorClasses(key: string) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  return SUBJECT_PALETTE[hash % SUBJECT_PALETTE.length];
+}
+
+// A default first row shown when a section has no periods at all yet, so
+// the grid itself — days across, an empty slot under each — is what a
+// blank timetable looks like, not a plain "click the button above" empty
+// state with no grid in sight. Every cell in this synthetic row opens the
+// add-period drawer prefilled with this same starting time, same as a real
+// row's empty cells; once any period is actually added, this row is
+// replaced by whatever real time rows come out of useTimeRows().
+const STARTER_ROW: TimeRow = { members: new Set(['09:00-09:45']), startTime: '09:00', endTime: '09:45' };
 
 export function TimetableView() {
   const terminology = useTerminology();
@@ -172,7 +207,10 @@ export function TimetableView() {
   const entries = useMemo(() => data?.data ?? [], [data]);
 
   const visibleDays = useVisibleDays(entries);
-  const timeRows = useTimeRows(entries);
+  const realTimeRows = useTimeRows(entries);
+  // Fall back to one synthetic starter row so the grid itself is what an
+  // empty timetable looks like — see STARTER_ROW's own comment.
+  const timeRows = realTimeRows.length > 0 ? realTimeRows : [STARTER_ROW];
 
   const byDay = useMemo(() => {
     const m: Record<number, TimetableEntry[]> = {};
@@ -243,11 +281,23 @@ export function TimetableView() {
         <Card><EmptyState icon={CalendarClock} title={`Select a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()}`} description={`Choose a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()} to view or build its timetable.`} /></Card>
       ) : isFetching && entries.length === 0 ? (
         <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>
-      ) : entries.length === 0 ? (
-        <Card><EmptyState icon={CalendarClock} title="No periods yet" description="Add the first period above to start building this section's timetable." /></Card>
       ) : (
         <>
           <style dangerouslySetInnerHTML={{ __html: TIMETABLE_PRINT_CSS }} />
+
+          {/* Shown only until the very first period exists — the grid
+              itself (below, with every day already a column and every
+              cell already clickable) is the actual "getting started"
+              experience, not a separate empty-state card standing in for
+              it. */}
+          {entries.length === 0 && (
+            <div className="no-print flex items-center gap-2.5 rounded-lg border border-dashed border-primary/30 bg-primary-soft/30 px-3.5 py-3 text-sm text-primary-soft-foreground">
+              <CalendarClock size={16} className="shrink-0" />
+              This section&apos;s timetable is empty — click any slot below (any day, including {DAYS[6]}) to add its
+              first period right there.
+            </div>
+          )}
+
           <div id="timetable-print">
             {/* Desktop / print: real grid — days as columns, one row per
                 distinct time range used anywhere this week. */}
@@ -298,10 +348,25 @@ export function TimetableView() {
                           const entry = cellFor(idx, row);
                           const entryTimeDiffers = entry
                             && (entry.startTime !== row.startTime || entry.endTime !== row.endTime);
+                          // A period with no subject attached is a genuine
+                          // "free period" (a study hall, break, or gap left
+                          // on purpose) — styled as its own dashed/muted
+                          // look rather than a color from the subject
+                          // palette, so it reads as deliberately empty
+                          // rather than as just another subject or as a
+                          // problem needing attention (unlike "No teacher"
+                          // below, which is a real gap worth flagging).
+                          const color = entry?.subjectId ? subjectColorClasses(entry.subjectId) : null;
                           return (
                             <td key={day} className="border-r border-border px-2 py-1.5 align-top last:border-r-0">
                               {entry ? (
-                                <div className="group relative rounded-lg border border-border bg-card p-2 transition-colors hover:border-primary/50">
+                                <div
+                                  className={
+                                    color
+                                      ? `group relative rounded-lg border ${color.border} ${color.bg} p-2 transition-colors hover:brightness-95`
+                                      : 'group relative rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-2 transition-colors hover:border-muted-foreground/50'
+                                  }
+                                >
                                   <button
                                     type="button"
                                     onClick={() => openEdit(entry)}
@@ -310,14 +375,17 @@ export function TimetableView() {
                                     {entryTimeDiffers && (
                                       <p className="truncate text-[10px] font-medium text-muted-foreground">{entry.startTime}–{entry.endTime}</p>
                                     )}
-                                    <p className="truncate text-xs font-semibold text-foreground">{entry.subject ?? 'No subject'}</p>
+                                    <p className={`flex items-center gap-1.5 truncate text-xs font-semibold ${color ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                      {color && <span className={`h-2 w-2 shrink-0 rounded-full ${color.dot}`} />}
+                                      {entry.subject ?? 'Free period'}
+                                    </p>
                                     {entry.teacher ? (
                                       <p className="truncate text-[11px] text-muted-foreground">{entry.teacher}</p>
-                                    ) : (
+                                    ) : entry.subjectId ? (
                                       <p className="flex items-center gap-1 truncate text-[11px] text-warning">
                                         <AlertTriangle size={10} className="shrink-0" /> No teacher
                                       </p>
-                                    )}
+                                    ) : null}
                                     {entry.room && (
                                       <p className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
                                         <MapPin size={9} className="shrink-0" /> {entry.room}
@@ -408,26 +476,43 @@ export function TimetableView() {
                       <p className="py-4 text-center text-xs text-muted-foreground">No periods</p>
                     ) : (
                       <ul className="space-y-2">
-                        {periods.map((e) => (
-                          <li key={e.id} className="flex items-center gap-3 rounded-lg border border-border p-2.5">
-                            <span className="flex items-center gap-1 text-xs font-medium text-foreground"><Clock size={12} /> {e.startTime}–{e.endTime}</span>
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium text-foreground">{e.subject ?? 'No subject'}</p>
-                              {e.teacher ? (
-                                <p className="truncate text-xs text-muted-foreground">
-                                  {e.teacher}{e.room ? <> · <MapPin size={10} className="inline" /> {e.room}</> : null}
+                        {periods.map((e) => {
+                          const color = e.subjectId ? subjectColorClasses(e.subjectId) : null;
+                          return (
+                            <li
+                              key={e.id}
+                              className={
+                                color
+                                  ? `flex items-center gap-3 rounded-lg border ${color.border} ${color.bg} p-2.5`
+                                  : 'flex items-center gap-3 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-2.5'
+                              }
+                            >
+                              <span className="flex items-center gap-1 text-xs font-medium text-foreground"><Clock size={12} /> {e.startTime}–{e.endTime}</span>
+                              <div className="min-w-0 flex-1">
+                                <p className={`flex items-center gap-1.5 truncate text-sm font-medium ${color ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                  {color && <span className={`h-2 w-2 shrink-0 rounded-full ${color.dot}`} />}
+                                  {e.subject ?? 'Free period'}
                                 </p>
-                              ) : (
-                                <p className="flex items-center gap-1 truncate text-xs text-warning">
-                                  <AlertTriangle size={11} className="shrink-0" /> No teacher assigned
-                                  {e.room ? <> · <MapPin size={10} className="inline" /> {e.room}</> : null}
-                                </p>
-                              )}
-                            </div>
-                            <button onClick={() => openEdit(e)} aria-label="Edit period" className="no-print rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"><Pencil size={14} /></button>
-                            <button onClick={() => remove(e.id)} aria-label="Remove period" className="no-print rounded-lg p-1.5 text-muted-foreground hover:bg-danger-soft hover:text-danger"><Trash2 size={15} /></button>
-                          </li>
-                        ))}
+                                {e.teacher ? (
+                                  <p className="truncate text-xs text-muted-foreground">
+                                    {e.teacher}{e.room ? <> · <MapPin size={10} className="inline" /> {e.room}</> : null}
+                                  </p>
+                                ) : e.subjectId ? (
+                                  <p className="flex items-center gap-1 truncate text-xs text-warning">
+                                    <AlertTriangle size={11} className="shrink-0" /> No teacher assigned
+                                    {e.room ? <> · <MapPin size={10} className="inline" /> {e.room}</> : null}
+                                  </p>
+                                ) : e.room ? (
+                                  <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                                    <MapPin size={10} className="shrink-0" /> {e.room}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <button onClick={() => openEdit(e)} aria-label="Edit period" className="no-print rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"><Pencil size={14} /></button>
+                              <button onClick={() => remove(e.id)} aria-label="Remove period" className="no-print rounded-lg p-1.5 text-muted-foreground hover:bg-danger-soft hover:text-danger"><Trash2 size={15} /></button>
+                            </li>
+                          );
+                        })}
                       </ul>
                     )}
                   </Card>
@@ -455,6 +540,13 @@ export function TimetableView() {
             <strong>no period scheduled for today</strong>, teachers won&apos;t see anything to mark attendance for
             on that day — attendance is always taken against a specific period, not just a date. Add the missing
             period here to fix it.
+          </p>
+          <p>
+            Each subject gets its own color in the grid above, so a busy week reads at a glance — the same subject
+            always shows the same color everywhere it appears. A dashed, uncolored slot is a deliberate{' '}
+            <strong>free period</strong> (no subject picked when it was added) rather than a subject with a color;
+            a solid slot with a yellow &quot;No teacher&quot; note is a real gap worth fixing — that subject has no
+            teacher assigned yet on the Subjects page.
           </p>
         </InfoNote>
       </div>
