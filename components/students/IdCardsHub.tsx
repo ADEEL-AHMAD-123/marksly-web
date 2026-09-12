@@ -59,7 +59,7 @@ export function IdCardsHub() {
       <div className="space-y-2">
         <InfoNote title="Someone missing from a list here?">
           <p>
-            Everyone active shows up in the list below, even with incomplete info — a small warning dot on their
+            Everyone active shows up in the list above, even with incomplete info — a small warning dot on their
             avatar means something&apos;s still missing. Look them up on the Students or Staff page instead for the
             full list of what&apos;s missing and to fix it directly.
           </p>
