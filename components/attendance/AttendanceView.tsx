@@ -43,18 +43,11 @@ const STATUSES: { key: AttendanceStatus; label: string; active: string }[] = [
 
 const dayOfWeekOf = (date: string) => new Date(`${date}T12:00:00.000Z`).getUTCDay();
 
-// Mirrors attendance-marking.service.ts's own 24h teacher lockout exactly
-// (down to the same Karachi-offset math), so a teacher sees the roster
-// disabled with a clear reason instead of filling it out and hitting
-// ATTENDANCE_LOCKED only after clicking Save. Admins are never subject to
-// this lock (checked separately by the caller via `isTeacher`).
+// A teacher may now correct their own attendance with no time limit --
+// see attendance-marking.service.ts's mark(), which removed the 24-hour
+// lockout this used to mirror. Kept only for the Karachi-offset math
+// todayStr() below still needs.
 const KARACHI_OFFSET_MS = 5 * 60 * 60 * 1000;
-function isAttendanceLockedForTeacher(date: string): boolean {
-  const utcMidnightMs = new Date(`${date}T00:00:00.000Z`).getTime();
-  const karachiMidnightMs = utcMidnightMs - KARACHI_OFFSET_MS;
-  const lockoutDeadlineMs = karachiMidnightMs + 24 * 60 * 60 * 1000;
-  return Date.now() > lockoutDeadlineMs;
-}
 
 // "Today" in institution-timezone (Asia/Karachi, UTC+5) terms, not the
 // browser's own UTC/local date — mirrors the backend's karachiTodayStr()
@@ -286,8 +279,6 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
     }
   };
 
-  const attendanceLocked = isTeacher && isAttendanceLockedForTeacher(date);
-
   const buildRecords = () => {
     if (!roster) return [];
     return roster.students.map((s) => ({
@@ -298,7 +289,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
   };
 
   const doSave = async () => {
-    if (!roster || attendanceLocked) return;
+    if (!roster) return;
     try {
       await markAttendance({ periodId, date, records: buildRecords() }).unwrap();
       toast.success('Attendance saved');
@@ -314,7 +305,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
   // destructive actions already use. A first-ever submission (nothing to
   // lose yet) saves straight away.
   const save = async () => {
-    if (!roster || attendanceLocked) return;
+    if (!roster) return;
     if (roster.alreadyMarked) {
       const changedCount = roster.students.filter((s) => s.status !== (statuses[s.studentId] ?? 'present')).length;
       if (changedCount > 0) {
@@ -326,39 +317,76 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
   };
 
   const selectedPeriod = periods.find((p) => p.periodId === periodId);
-  const [tab, setTab] = useState<'mark' | 'report'>('mark');
+  // Marking attendance is a teacher's everyday job; for admin/staff it's an
+  // exception (a correction beyond what the owning teacher can still fix
+  // themselves, or a period no teacher has covered), not a routine tab —
+  // so admin/staff land on Report by default and reach Mark Attendance
+  // through a deliberate, low-visibility override rather than an
+  // always-there second tab. Every mark() call this override makes is
+  // logged server-side (see attendance-marking.service.ts) precisely
+  // because it's meant to be rare.
+  const [tab, setTab] = useState<'mark' | 'report'>(isTeacher ? 'mark' : 'report');
+  const [adminOverride, setAdminOverride] = useState(false);
 
   return (
     <div className="space-y-6">
       <PageHeader title={title} description={tab === 'mark' ? 'Mark attendance for a specific period.' : 'Attendance by date, class and period, with guardian contact details.'} />
 
-      <div className="flex gap-2">
+      {isTeacher ? (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setTab('mark')}
+            className={cn(
+              'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+              tab === 'mark' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary'
+            )}
+          >
+            Mark attendance
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('report')}
+            className={cn(
+              'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+              tab === 'report' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary'
+            )}
+          >
+            Attendance report
+          </button>
+        </div>
+      ) : tab === 'mark' ? (
         <button
           type="button"
-          onClick={() => setTab('mark')}
-          className={cn(
-            'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-            tab === 'mark' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary'
-          )}
+          onClick={() => { setTab('report'); setAdminOverride(false); }}
+          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
-          Mark attendance
+          ← Back to Attendance report
         </button>
+      ) : (
         <button
           type="button"
-          onClick={() => setTab('report')}
-          className={cn(
-            'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-            tab === 'report' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary'
-          )}
+          onClick={() => { setTab('mark'); setAdminOverride(true); }}
+          className="text-xs font-medium text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground"
         >
-          Attendance report
+          Need to mark or correct attendance directly? Admin override
         </button>
-      </div>
+      )}
 
       {tab === 'report' ? (
         <AttendanceReportView />
       ) : (
         <>
+        {!isTeacher && adminOverride && (
+          <div className="flex items-start gap-2.5 rounded-lg border border-warning/40 bg-warning-soft px-3.5 py-3 text-sm text-warning-foreground">
+            <AlertTriangle size={17} className="mt-0.5 shrink-0" />
+            <span>
+              You&apos;re marking/correcting attendance directly as an admin, bypassing the class&apos;s own teacher — this
+              is meant for exceptions (a teacher no longer has access, or a period nobody has covered) and is recorded
+              in the server log with your name and what changed.
+            </span>
+          </div>
+        )}
       {/* Toolbar — purely instrumental (pick the class/section/date/period to
           mark), kept visually lighter than the cards below it, same
           convention as the admin dashboard's Classes/Subjects/ID Cards/
@@ -530,20 +558,13 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
         </Card>
       ) : (
         <>
-          {attendanceLocked && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-warning/40 bg-warning/10 px-3.5 py-3 text-sm text-warning-foreground">
-              <Clock size={17} className="mt-0.5 shrink-0" />
-              <span>Attendance older than 24 hours can only be changed by an admin — this roster is read-only for you now.</span>
-            </div>
-          )}
-
           {/* Already-marked banner — its own unmistakable, full-width line
               instead of one small badge buried among four other colored
               count badges (where it previously sat). This is the single
               most important thing to notice before touching anything below:
               you are not filling this in for the first time, you are
               reviewing/correcting something already submitted. */}
-          {!attendanceLocked && roster.alreadyMarked && (
+          {roster.alreadyMarked && (
             <div className="flex items-center gap-2.5 rounded-lg border border-primary/30 bg-primary-soft px-3.5 py-2.5 text-sm text-primary-soft-foreground">
               <CheckCircle2 size={17} className="shrink-0 text-primary" />
               <span>
@@ -582,8 +603,6 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
               <Button
                 variant="secondary"
                 size="sm"
-                disabled={attendanceLocked}
-                title={attendanceLocked ? 'Attendance older than 24 hours can only be changed by an admin' : undefined}
                 onClick={handleAllPresentClick}
               >
                 <CheckCheck size={16} /> All present
@@ -592,14 +611,8 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                 size="sm"
                 variant={roster.alreadyMarked && !isDirty ? 'secondary' : 'primary'}
                 loading={saving}
-                disabled={attendanceLocked || (roster.alreadyMarked && !isDirty)}
-                title={
-                  attendanceLocked
-                    ? 'Attendance older than 24 hours can only be changed by an admin'
-                    : roster.alreadyMarked && !isDirty
-                      ? 'Nothing has changed since this was last saved'
-                      : undefined
-                }
+                disabled={roster.alreadyMarked && !isDirty}
+                title={roster.alreadyMarked && !isDirty ? 'Nothing has changed since this was last saved' : undefined}
                 onClick={save}
               >
                 {roster.alreadyMarked
@@ -624,7 +637,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
           )}
 
           {/* Roster */}
-          <Card className={cn('divide-y divide-border', attendanceLocked && 'opacity-60')}>
+          <Card className="divide-y divide-border">
             {roster.students
               .filter((s) => {
                 const q = query.trim().toLowerCase();
@@ -651,7 +664,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="truncate text-sm font-medium text-foreground">{s.name}</p>
-                      {!isTouched && !attendanceLocked && (
+                      {!isTouched && (
                         <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                           Not reviewed
                         </span>
@@ -673,7 +686,6 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                       <button
                         key={st.key}
                         type="button"
-                        disabled={attendanceLocked}
                         title={!isTouched ? `Defaults to Present if left unreviewed` : undefined}
                         onClick={() => {
                           setStatuses((prev) => ({ ...prev, [s.studentId]: st.key }));
@@ -681,7 +693,6 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                         }}
                         className={cn(
                           'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-                          attendanceLocked && 'pointer-events-none cursor-not-allowed',
                           active
                             ? st.active
                             : 'bg-muted text-muted-foreground hover:bg-secondary'
@@ -693,7 +704,6 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                   })}
                   <button
                     type="button"
-                    disabled={attendanceLocked}
                     title={notes[s.studentId] ? `Note: ${notes[s.studentId]}` : 'Add a note'}
                     onClick={() => setNoteOpenFor((cur) => (cur === s.studentId ? null : s.studentId))}
                     className={cn(
@@ -730,37 +740,39 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
 
       {/* Help — placed after the actual tool, same bottom-of-page pattern as
           Students, ID Cards, Academic Terms & Grading, Timetable, Classes and
-          Subjects, not before it. Only relevant to marking, not the report tab. */}
-      {isTeacher ? (
+          Subjects, not before it. Only relevant to marking, so it's gated to
+          the Mark tab itself rather than always showing (which would put an
+          admin-only note in front of a teacher, or vice versa, while just
+          reading the Report). */}
+      {tab === 'mark' && (isTeacher ? (
         <div className="mt-2 space-y-2 border-t border-border pt-5">
-          <InfoNote title="Why can't I edit attendance from a few days ago?">
+          <InfoNote title="Can I fix a mistake from a while ago?">
             <p>
-              Once you mark a day&apos;s attendance, you have until <strong>24 hours after that day&apos;s midnight
-              (Pakistan time)</strong> to go back and fix any mistakes yourself.
+              Yes — you can correct attendance for any of your own periods, on any past date, whenever you notice a
+              mistake. There&apos;s no 24-hour cutoff; it&apos;s always yours to fix.
             </p>
             <p>
-              After that window closes, the roster locks and only an admin can make changes — this keeps attendance
-              records reliable once they&apos;ve been used for reports, so nobody can quietly change an old record
-              weeks later.
+              This only covers periods you actually teach. If you need to change attendance for a class that isn&apos;t
+              yours, ask an admin.
             </p>
           </InfoNote>
         </div>
       ) : (
         <div className="mt-2 space-y-2 border-t border-border pt-5">
-          <InfoNote title="How marking attendance works for admins/staff">
+          <InfoNote title="What is admin override, and when should I use it?">
             <p>
-              Picking a {terminology.classUnit.toLowerCase()}, {terminology.section.toLowerCase()} and date shows
-              only the periods actually scheduled that day — a &quot;Marked&quot; badge means attendance was already
-              submitted for that period.
+              Every teacher can now correct their own attendance any time, with no 24-hour cutoff — so this shouldn&apos;t
+              come up often. Use it only when the teacher who owns a period genuinely can&apos;t fix it themselves (they&apos;ve
+              left the school, lost access, or a period was never covered by anyone).
             </p>
             <p>
-              Unlike teachers, an admin can correct attendance for <strong>any date</strong>, including ones older
-              than 24 hours — teachers lose that ability after the first day passes, which is why a teacher might
-              ask you to fix something they can no longer touch themselves.
+              Picking a {terminology.classUnit.toLowerCase()}, {terminology.section.toLowerCase()} and date shows only
+              the periods scheduled that day — a &quot;Marked&quot; badge means attendance was already submitted.
+              Every override you make here is written to the server log with your name, so use it deliberately.
             </p>
           </InfoNote>
         </div>
-      )}
+      ))}
         </>
       )}
 
