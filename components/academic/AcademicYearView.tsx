@@ -243,23 +243,6 @@ function TermsTab({
         </div>
       )}
 
-      <InfoNote
-        title="Before you promote students, check the target class has subjects"
-        link={{ href: '/admin/subjects', label: 'Go to Subjects' }}
-      >
-        <p>
-          When you promote students, we automatically move their subjects along too — <strong>if the class they&apos;re
-          moving to has no subjects of its own yet, we copy over the ones from their old class</strong> so nothing
-          is missing.
-        </p>
-        <p>
-          But if <strong>neither the old nor the new class has any subjects set up</strong>, there&apos;s nothing to
-          copy — students land in the new class with no subjects at all, which means you won&apos;t be able to mark
-          their attendance or record exam results there until you add subjects yourself. The promotion screen
-          warns you about this before you confirm, so check that warning carefully.
-        </p>
-      </InfoNote>
-
       {lastBatch && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary-soft px-4 py-3 text-sm text-primary-soft-foreground">
           <span>
@@ -311,6 +294,48 @@ function TermsTab({
           <TermGroup label="Closed" terms={groups.closed} allTerms={terms} onEdit={setEditTerm} />
         </div>
       )}
+
+      {/* Help — placed after the actual tool, same pattern as the ID Cards
+          page's own bottom InfoNotes, not before it. Answers the three
+          things worth knowing before touching this tab: what a term
+          actually is, what closing one does (and how fast), and the one
+          promotion gotcha that's easy to miss until it's already happened. */}
+      <div className="space-y-2">
+        <InfoNote title="What counts as a term?">
+          <p>
+            A term is the time window everything else hangs off of — every {terminology.classUnit.toLowerCase()}, every
+            enrollment, and every recorded result belongs to exactly one. <strong>Academic Year</strong>,{' '}
+            <strong>Semester</strong>, <strong>Trimester</strong> and <strong>Short Session</strong> are just different
+            shapes of the same thing — you can mix them freely (say, a yearly track alongside one short course), and
+            group semesters under a shared academic year purely for reporting, without changing anything about how
+            they behave.
+          </p>
+        </InfoNote>
+        <InfoNote title="What happens when I close a term, and how fast?">
+          <p>
+            Closing takes effect immediately: you can no longer create a new {terminology.classUnit.toLowerCase()} under
+            a closed term, or reactivate one that was marked inactive under it. Nothing already recorded — attendance,
+            results, enrollment history — is touched, hidden, or recalculated; closing only stops new activity from
+            being added under it going forward.
+          </p>
+        </InfoNote>
+        <InfoNote
+          title="Before you promote students, check the target class has subjects"
+          link={{ href: '/admin/subjects', label: 'Go to Subjects' }}
+        >
+          <p>
+            When you promote students, we automatically move their subjects along too — <strong>if the class they&apos;re
+            moving to has no subjects of its own yet, we copy over the ones from their old class</strong> so nothing
+            is missing.
+          </p>
+          <p>
+            But if <strong>neither the old nor the new class has any subjects set up</strong>, there&apos;s nothing to
+            copy — students land in the new class with no subjects at all, which means you won&apos;t be able to mark
+            their attendance or record exam results there until you add subjects yourself. The promotion screen
+            warns you about this before you confirm, so check that warning carefully.
+          </p>
+        </InfoNote>
+      </div>
 
       <TermFormSheet mode="create" open={createOpen} onClose={onCreateClose} />
       <TermFormSheet mode="edit" term={editTerm} open={!!editTerm} onClose={() => setEditTerm(null)} />
@@ -1155,6 +1180,38 @@ function GradingSchemesTab({
           ))}
         </div>
       )}
+
+      {/* Help — same bottom placement as the Terms tab and the ID Cards
+          page: what a scheme actually is, which one applies where, and —
+          the thing that trips people up most — whether editing one
+          reaches back and changes grades that are already out. */}
+      <div className="space-y-2">
+        <InfoNote title="What is a grading scheme?">
+          <p>
+            A grading scheme is the rule that turns a raw percentage score into what actually shows up on a report
+            card or result — a letter (A/B/C…), a GPA grade point, a Cambridge predicted band, or a plain pass/fail.
+            Every class uses one: either a scheme assigned to it directly, or your institution&apos;s{' '}
+            <strong>default</strong> scheme if none is assigned.
+          </p>
+        </InfoNote>
+        <InfoNote title="If I edit a scheme's bands, does it change grades that are already recorded?">
+          <p>
+            No — a grade is calculated and stored the moment a result is entered, using whichever scheme applied to
+            that class at that time. Editing a scheme&apos;s bands afterward only affects results entered or
+            re-saved <strong>from that point on</strong>; anything already recorded (and any report card already
+            issued) keeps the grade it was given, even after the bands change. This is deliberate — changing a
+            cutoff after report cards are out won&apos;t silently rewrite history.
+          </p>
+        </InfoNote>
+        <InfoNote title="Can I change a scheme's type later?">
+          <p>
+            No — a scheme&apos;s type (percentage/letter, GPA, Cambridge, pass/fail) is locked in at creation, so
+            create a new scheme instead if you need a different one. The same lock applies per class: one that
+            already has recorded results can&apos;t be switched to a scheme of a different type — assign the new
+            scheme to a fresh class/term instead if the assessment structure itself needs to change.
+          </p>
+        </InfoNote>
+      </div>
 
       <GradingSchemeCreateSheet open={createOpen} onClose={onCreateClose} />
       <GradingSchemeEditSheet scheme={editScheme} open={!!editScheme} onClose={() => setEditScheme(null)} />
