@@ -41,6 +41,13 @@ interface ApiObject<T> {
   message: string;
 }
 
+interface ApiArray<T> {
+  success: boolean;
+  data: T[];
+  message: string;
+  meta?: { page?: number; limit?: number; total?: number; totalPages?: number };
+}
+
 export interface AttendanceCoverageSection {
   sectionId: string;
   sectionName: string;
@@ -107,11 +114,6 @@ export interface AttendanceReportRow {
   guardians: { name: string; phone: string | null }[];
 }
 
-export interface AttendanceReport {
-  total: number;
-  rows: AttendanceReportRow[];
-}
-
 export interface AttendanceReportParams {
   dateFrom?: string;
   dateTo?: string;
@@ -119,6 +121,12 @@ export interface AttendanceReportParams {
   sectionId?: string;
   status?: AttendanceStatus;
   termId?: string;
+  // Server-paginated (see attendance.validator.ts's attendanceReportQuerySchema)
+  // — a wide date range across a whole institution can return thousands of
+  // period-marks, so this is no longer returned as one unbounded array.
+  // Defaults match the backend's own (page 1, limit 50) when omitted.
+  page?: number;
+  limit?: number;
 }
 
 export interface MarkBody {
@@ -159,7 +167,7 @@ export const attendanceApi = baseApi.injectEndpoints({
       providesTags: [{ type: 'Attendance', id: 'COVERAGE' }],
     }),
 
-    getAttendanceReport: builder.query<ApiObject<AttendanceReport>, AttendanceReportParams | void>({
+    getAttendanceReport: builder.query<ApiArray<AttendanceReportRow>, AttendanceReportParams | void>({
       query: (params) =>
         `/attendance/report${qs({
           dateFrom: params?.dateFrom,
@@ -168,6 +176,8 @@ export const attendanceApi = baseApi.injectEndpoints({
           sectionId: params?.sectionId,
           status: params?.status,
           termId: params?.termId,
+          page: params?.page != null ? String(params.page) : undefined,
+          limit: params?.limit != null ? String(params.limit) : undefined,
         })}`,
       providesTags: [{ type: 'Attendance', id: 'REPORT' }],
     }),

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertCircle, MessageCircle, Phone, Users } from 'lucide-react';
+import { AlertCircle, ChevronLeft, ChevronRight, MessageCircle, Phone, Users } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -69,6 +69,8 @@ export function AttendanceReportView() {
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
   const [termId, setTermId] = useState('all');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
 
   const { data: termsRes } = useGetTermsQuery();
   // Show ALL terms (not just active) — same as ExamsView/ReportsView, so
@@ -97,15 +99,24 @@ export function AttendanceReportView() {
   // RTK Query treats a different filter combination as a different cache
   // entry, so isLoading goes true again whenever dateFrom/dateTo/classId/
   // sectionId/status actually change.
-  const { data, isLoading, isError, refetch } = useGetAttendanceReportQuery({
+  const { data, isLoading, isFetching, isError, refetch } = useGetAttendanceReportQuery({
     dateFrom,
     dateTo,
     classId: isTeacher ? undefined : classId || undefined,
     sectionId: isTeacher ? undefined : sectionId || undefined,
     status: status === 'all' ? undefined : status,
     termId: termId === 'all' ? undefined : termId,
+    page,
+    limit: PAGE_SIZE,
   });
-  const rows = data?.data.rows ?? [];
+  const rows = data?.data ?? [];
+  const total = data?.meta?.total ?? 0;
+  const totalPages = data?.meta?.totalPages ?? 1;
+
+  // Any filter change should land back on page 1 — otherwise narrowing
+  // e.g. from "All statuses" to "Absent" while sitting on page 4 of the
+  // wider result set could land on an empty or out-of-range page.
+  const resetPage = () => setPage(1);
 
   return (
     <div className="space-y-6">
@@ -121,7 +132,7 @@ export function AttendanceReportView() {
               type="date"
               value={dateFrom}
               max={todayStr()}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={(e) => { setDateFrom(e.target.value); resetPage(); }}
               className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
@@ -132,7 +143,7 @@ export function AttendanceReportView() {
               type="date"
               value={dateTo}
               max={todayStr()}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={(e) => { setDateTo(e.target.value); resetPage(); }}
               className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
@@ -140,7 +151,7 @@ export function AttendanceReportView() {
             <>
               <div>
                 <Label>{terminology.classUnit}</Label>
-                <Select value={classId} onValueChange={(v) => { setClassId(v); setSectionId(''); }}>
+                <Select value={classId} onValueChange={(v) => { setClassId(v); setSectionId(''); resetPage(); }}>
                   <SelectTrigger><SelectValue placeholder={`All ${terminology.classUnitPlural.toLowerCase()}`} /></SelectTrigger>
                   <SelectContent>
                     {classes.map((c) => (
@@ -151,7 +162,7 @@ export function AttendanceReportView() {
               </div>
               <div>
                 <Label>{sectionLabel}</Label>
-                <Select value={sectionId} onValueChange={setSectionId} disabled={!classId}>
+                <Select value={sectionId} onValueChange={(v) => { setSectionId(v); resetPage(); }} disabled={!classId}>
                   <SelectTrigger><SelectValue placeholder={`All ${sectionLabel.toLowerCase()}${sectionLabel.toLowerCase().endsWith('s') ? '' : 's'}`} /></SelectTrigger>
                   <SelectContent>
                     {sections.map((s) => (
@@ -164,7 +175,7 @@ export function AttendanceReportView() {
           )}
           <div>
             <Label>Status</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v as AttendanceStatus | 'all')}>
+            <Select value={status} onValueChange={(v) => { setStatus(v as AttendanceStatus | 'all'); resetPage(); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {STATUS_OPTIONS.map((o) => (
@@ -175,7 +186,7 @@ export function AttendanceReportView() {
           </div>
           <div>
             <Label>Term</Label>
-            <Select value={termId} onValueChange={setTermId}>
+            <Select value={termId} onValueChange={(v) => { setTermId(v); resetPage(); }}>
               <SelectTrigger><SelectValue placeholder="All terms" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All terms</SelectItem>
@@ -210,6 +221,7 @@ export function AttendanceReportView() {
           />
         </Card>
       ) : (
+        <div className={cn(isFetching && 'opacity-60')}>
         <Card className="divide-y divide-border">
           {rows.map((r, i) => (
             <div key={i} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
@@ -257,6 +269,33 @@ export function AttendanceReportView() {
             </div>
           ))}
         </Card>
+
+        {totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Page {page} of {totalPages} · {total} record{total === 1 ? '' : 's'}</p>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="secondary"
+                size="icon"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                aria-label="Previous"
+              >
+                <ChevronLeft size={16} />
+              </Button>
+              <Button
+                variant="secondary"
+                size="icon"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                aria-label="Next"
+              >
+                <ChevronRight size={16} />
+              </Button>
+            </div>
+          </div>
+        )}
+        </div>
       )}
     </div>
   );
