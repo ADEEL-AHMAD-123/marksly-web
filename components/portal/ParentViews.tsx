@@ -112,42 +112,16 @@ export function ParentScopedView({ kind }: { kind: Kind }) {
     <div className="space-y-6">
       <PageHeader title={meta.title} description={meta.desc} />
 
-      {kind === 'attendance' && (
-        <InfoNote title="Why does 'Late' lower the percentage?">
-          <p>
-            The attendance rate only counts periods marked <strong>Present</strong>. A <strong>Late</strong> or{' '}
-            <strong>Leave</strong> mark is recorded separately from an absence, but neither counts toward the
-            percentage the way Present does — so a term with several late marks can show a lower rate than expected.
-          </p>
-        </InfoNote>
-      )}
-      {kind === 'results' && (
-        <InfoNote title="Why can't I see a result yet?">
-          <p>
-            A result only appears here once the exam is <strong>published</strong> — and your school can also hold
-            back a single student's result individually (for example, while waiting on an external grade), so it
-            can stay hidden a little longer than the rest of the class. If you expected a result and don't see it,
-            check with the school rather than assuming something's wrong.
-          </p>
-        </InfoNote>
-      )}
-      {kind === 'fees' && (
-        <InfoNote title="Paid online but it still shows as due?">
-          <p>
-            After paying online, this page confirms the payment the moment you're brought back to it. If the
-            payment gateway is slow to respond, the invoice may briefly still show as <strong>Pending</strong> — it
-            updates on its own within a few minutes, no need to pay again.
-          </p>
-        </InfoNote>
-      )}
-
       {childrenLoading ? (
         <Card className="p-5"><Skeleton className="h-10 w-64" /></Card>
       ) : children.length === 0 ? (
         <Card><EmptyState icon={GraduationCap} title="No children linked" /></Card>
       ) : (
         <>
-          <Card className="p-4">
+          {/* Toolbar — purely instrumental (pick a child, and a term for
+              attendance), kept visually lighter than the cards below it,
+              same convention as the admin dashboard's redesigned pages. */}
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
             <div className={cn('grid grid-cols-1 gap-3', kind === 'attendance' ? 'sm:grid-cols-2' : '')}>
               <div className={kind === 'attendance' ? '' : 'max-w-xs'}>
                 <Select value={sel} onValueChange={setSel}>
@@ -173,7 +147,7 @@ export function ParentScopedView({ kind }: { kind: Kind }) {
                 </div>
               )}
             </div>
-          </Card>
+          </div>
 
           {/* `isLoading`, not `isFetching` — with refetchOnFocus now on
               (see baseApi.ts), `isFetching` would flip true every time this
@@ -201,6 +175,41 @@ export function ParentScopedView({ kind }: { kind: Kind }) {
               variant="viewer"
               emptyDescription="Your child's timetable will appear here once the school has set it up."
             />
+          )}
+
+          {/* Help — placed after the actual content, same bottom-of-page
+              pattern as the admin dashboard's redesigned pages, not before it. */}
+          {(kind === 'attendance' || kind === 'results' || kind === 'fees') && (
+            <div className="space-y-2">
+              {kind === 'attendance' && (
+                <InfoNote title="Why does 'Late' lower the percentage?">
+                  <p>
+                    The attendance rate only counts periods marked <strong>Present</strong>. A <strong>Late</strong> or{' '}
+                    <strong>Leave</strong> mark is recorded separately from an absence, but neither counts toward the
+                    percentage the way Present does — so a term with several late marks can show a lower rate than expected.
+                  </p>
+                </InfoNote>
+              )}
+              {kind === 'results' && (
+                <InfoNote title="Why can't I see a result yet?">
+                  <p>
+                    A result only appears here once the exam is <strong>published</strong> — and your school can also hold
+                    back a single student's result individually (for example, while waiting on an external grade), so it
+                    can stay hidden a little longer than the rest of the class. If you expected a result and don't see it,
+                    check with the school rather than assuming something's wrong.
+                  </p>
+                </InfoNote>
+              )}
+              {kind === 'fees' && (
+                <InfoNote title="Paid online but it still shows as due?">
+                  <p>
+                    After paying online, this page confirms the payment the moment you're brought back to it. If the
+                    payment gateway is slow to respond, the invoice may briefly still show as <strong>Pending</strong> — it
+                    updates on its own within a few minutes, no need to pay again.
+                  </p>
+                </InfoNote>
+              )}
+            </div>
           )}
         </>
       )}

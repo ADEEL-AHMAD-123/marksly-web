@@ -164,14 +164,6 @@ export function MessagingView() {
     <div className="space-y-6">
       <PageHeader title="Messaging" description="Send SMS and WhatsApp messages to parents and staff." />
 
-      <InfoNote title="Who actually gets this?">
-        <p>
-          This doesn't pull from your student or staff lists — whoever's phone number you type into{' '}
-          <strong>Recipients</strong> gets the message, and nobody else. There's no class or role picker here, so
-          double-check the numbers before sending, especially for anything urgent.
-        </p>
-      </InfoNote>
-
       {reconcilingCredits && (
         <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary-soft/40 px-4 py-3 text-sm text-primary">
           <RefreshCw size={16} className="animate-spin" /> Confirming your credits payment with the gateway…
@@ -300,6 +292,18 @@ export function MessagingView() {
             </TableWrapper>
           )}
         </Card>
+      </div>
+
+      {/* Help — placed after the actual tool, same bottom-of-page pattern as
+          the admin dashboard's redesigned pages, not before it. */}
+      <div className="space-y-2">
+        <InfoNote title="Who actually gets this?">
+          <p>
+            This doesn't pull from your student or staff lists — whoever's phone number you type into{' '}
+            <strong>Recipients</strong> gets the message, and nobody else. There's no class or role picker here, so
+            double-check the numbers before sending, especially for anything urgent.
+          </p>
+        </InfoNote>
       </div>
     </div>
   );

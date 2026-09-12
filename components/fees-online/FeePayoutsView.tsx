@@ -120,29 +120,6 @@ export function FeePayoutsView() {
         }
       />
 
-      <div className="space-y-2">
-        <InfoNote title="Why doesn't a parent's online payment show as received right away?">
-          <p>
-            When a parent pays online, the money goes to the gateway (JazzCash/EasyPaisa/Safepay) first, not directly
-            to the institution. It shows up here under <strong>Institutions owed</strong> once we&apos;ve confirmed it
-            settled — this is a separate step from the parent&apos;s payment succeeding.
-          </p>
-        </InfoNote>
-        <InfoNote title="What does “Run reconciliation now” actually do?">
-          <p>
-            It actively checks any payments we&apos;re unsure about with the gateway, in case a confirmation was
-            missed or delayed — it doesn&apos;t create payouts by itself.
-          </p>
-        </InfoNote>
-        <InfoNote title="How does a confirmed payment become a payout?">
-          <p>
-            Once a payment is confirmed and settled, it sits in <strong>Institutions owed</strong> until you click
-            <strong> Generate payout</strong> to batch it up, and then <strong>Mark as paid</strong> once you&apos;ve
-            actually sent the institution their money.
-          </p>
-        </InfoNote>
-      </div>
-
       {needsRefund.length > 0 && (
         <Card className="border-danger/40 p-5">
           <div className="mb-3 flex items-center gap-2">
@@ -298,6 +275,31 @@ export function FeePayoutsView() {
           </TableWrapper>
         )}
       </Card>
+
+      {/* Help — placed after the actual tool, same bottom-of-page pattern as
+          the admin dashboard's redesigned pages, not before it. */}
+      <div className="space-y-2">
+        <InfoNote title="Why doesn't a parent's online payment show as received right away?">
+          <p>
+            When a parent pays online, the money goes to the gateway (JazzCash/EasyPaisa/Safepay) first, not directly
+            to the institution. It shows up here under <strong>Institutions owed</strong> once we&apos;ve confirmed it
+            settled — this is a separate step from the parent&apos;s payment succeeding.
+          </p>
+        </InfoNote>
+        <InfoNote title="What does “Run reconciliation now” actually do?">
+          <p>
+            It actively checks any payments we&apos;re unsure about with the gateway, in case a confirmation was
+            missed or delayed — it doesn&apos;t create payouts by itself.
+          </p>
+        </InfoNote>
+        <InfoNote title="How does a confirmed payment become a payout?">
+          <p>
+            Once a payment is confirmed and settled, it sits in <strong>Institutions owed</strong> until you click
+            <strong> Generate payout</strong> to batch it up, and then <strong>Mark as paid</strong> once you&apos;ve
+            actually sent the institution their money.
+          </p>
+        </InfoNote>
+      </div>
     </div>
   );
 }

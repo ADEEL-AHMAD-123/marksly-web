@@ -74,7 +74,10 @@ export function InstitutionsView() {
     <div className="space-y-6">
       <PageHeader title="Institutions" description={isLoading ? 'Loading…' : `${data?.meta?.total ?? rows.length} institutions`} />
 
-      <Card className="p-4">
+      {/* Toolbar — purely instrumental (find/filter institutions), kept
+          visually lighter than the cards below it, same convention as the
+          admin dashboard's Classes/Subjects/ID Cards/Timetable pages. */}
+      <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <SearchInput
             value={query}
@@ -93,7 +96,7 @@ export function InstitutionsView() {
             </SelectContent>
           </Select>
         </div>
-      </Card>
+      </div>
 
       {isError ? (
         <Card><EmptyState icon={AlertCircle} title="Couldn't load institutions" action={<Button variant="secondary" size="sm" onClick={() => refetch()}>Retry</Button>} /></Card>
