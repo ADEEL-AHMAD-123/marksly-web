@@ -878,13 +878,18 @@ function HolidaysDialog({
                   )}
                 </p>
                 <p>
-                  {scope === 'institution' ? (
+                  {audience === 'staff' && scope === 'class' ? (
+                    <>No notice is sent — staff aren&apos;t tied to one specific class, so there&apos;s no one for a class-scoped notice to reach.</>
+                  ) : scope === 'institution' ? (
                     <>
                       A notice will be sent to {audience === 'everyone' ? 'everyone' : audience === 'students' ? 'students, parents, and teachers' : 'teachers, staff, and accountants'} —
                       it&apos;ll show up right on their dashboard.
                     </>
                   ) : (
-                    <>No notice is sent for a class-specific closure — it only shows up here, on this class&apos;s own Timetable page.</>
+                    <>
+                      A notice will be sent, but only to {className || 'this class'}{sectionName ? ` — ${sectionName}` : ''}&apos;s own students,
+                      their parents, and its teacher — no one outside this class sees it.
+                    </>
                   )}
                 </p>
               </div>
