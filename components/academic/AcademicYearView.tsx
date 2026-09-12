@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   CalendarRange, Plus, ArrowRight, X, GraduationCap, AlertTriangle, Undo2, ChevronLeft,
-  Pencil, Lock, Star, Info, Trash2, Award,
+  Pencil, Lock, Star, Info, Trash2, Award, LogOut,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
@@ -693,6 +693,13 @@ function PromoteDrawer({
   const [leavers, setLeavers] = useState<LeaverRow[]>([]);
   const [leaverSearch, setLeaverSearch] = useState('');
   const [preview, setPreview] = useState<PromotionPreview | null>(null);
+  const [activeTab, setActiveTab] = useState<'promote' | 'graduate' | 'leave'>('promote');
+
+  // Classes at the highest active grade level are almost always the ones
+  // that actually graduate — flag them so the "Graduating classes" picker
+  // isn't just an undifferentiated list of every class in the school.
+  const activeClasses = classes.filter((c) => c.isActive);
+  const maxLevel = activeClasses.length ? Math.max(...activeClasses.map((c) => c.level)) : null;
 
   const debouncedLeaverSearch = useDebounce(leaverSearch, 350);
   const { data: searchResults } = useGetStudentsQuery(
@@ -882,136 +889,169 @@ function PromoteDrawer({
             </>
           ) : (
             <>
-              <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
-                <div>
-                  <h3 className="mb-2 text-sm font-semibold text-foreground">Move students between sections</h3>
-                  <p className="mb-3 text-xs text-muted-foreground">Active students move from a section into the target term's section. Past attendance and results stay under the old class.</p>
-                </div>
-
-                <div className="space-y-3">
-                  {rows.map((row, i) => (
-                    <div key={i} className="rounded-lg border border-border p-3">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-xs">From class</Label>
-                          <Select value={row.fromClassId} onValueChange={(v) => setRow(i, { fromClassId: v, fromSectionId: '', excludeStudentIds: [] })}>
-                            <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
-                            <SelectContent>
-                              {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} · {c.termName ?? '—'}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-xs">From section</Label>
-                          <Select value={row.fromSectionId} disabled={!row.fromClassId} onValueChange={(v) => setRow(i, { fromSectionId: v, excludeStudentIds: [] })}>
-                            <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
-                            <SelectContent>
-                              {sectionsOf(row.fromClassId).map((s) => <SelectItem key={s.id} value={s.id}>{s.name} ({s.currentCount} student{s.currentCount === 1 ? '' : 's'})</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="my-1.5 flex items-center justify-center text-muted-foreground"><ArrowRight size={14} /></div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-xs">To class</Label>
-                          <Select value={row.toClassId} onValueChange={(v) => setRow(i, { toClassId: v, toSectionId: '' })}>
-                            <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
-                            <SelectContent>
-                              {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} · {c.termName ?? '—'}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-xs">To section</Label>
-                          <Select value={row.toSectionId} disabled={!row.toClassId} onValueChange={(v) => setRow(i, { toSectionId: v })}>
-                            <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
-                            <SelectContent>
-                              {sectionsOf(row.toClassId).map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <HoldBackPicker
-                        classId={row.fromClassId}
-                        sectionId={row.fromSectionId}
-                        excluded={row.excludeStudentIds}
-                        onToggle={(id) => toggleExclude(i, id)}
-                      />
-                      {rows.length > 1 && (
-                        <div className="mt-2 flex justify-end">
-                          <Button type="button" variant="ghost" size="sm" onClick={() => setRows((r) => r.filter((_, idx) => idx !== i))}>Remove</Button>
-                        </div>
+              <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="promote" className="gap-1.5">
+                      <ArrowRight size={14} /> Promote
+                      {rows.some((r) => r.fromClassId && r.toClassId) && (
+                        <Badge variant="neutral" className="ml-1 px-1.5">{rows.filter((r) => r.fromClassId && r.fromSectionId && r.toClassId && r.toSectionId).length}</Badge>
                       )}
-                    </div>
-                  ))}
-                  <button type="button" onClick={() => setRows((r) => [...r, { fromClassId: '', fromSectionId: '', toClassId: '', toSectionId: '', excludeStudentIds: [] }])} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                    <Plus size={13} /> Add another promotion
-                  </button>
-                </div>
+                    </TabsTrigger>
+                    <TabsTrigger value="graduate" className="gap-1.5">
+                      <GraduationCap size={14} /> Graduate
+                      {graduate.length > 0 && <Badge variant="neutral" className="ml-1 px-1.5">{graduate.length}</Badge>}
+                    </TabsTrigger>
+                    <TabsTrigger value="leave" className="gap-1.5">
+                      <LogOut size={14} /> Leaving
+                      {leavers.length > 0 && <Badge variant="neutral" className="ml-1 px-1.5">{leavers.length}</Badge>}
+                    </TabsTrigger>
+                  </TabsList>
 
-                <div className="border-t border-border pt-5">
-                  <h3 className="mb-2 text-sm font-semibold text-foreground">Graduating classes (final year)</h3>
-                  <div className="space-y-1.5 rounded-lg border border-border p-3">
-                    {classes.map((c: ClassItem) => (
-                      <label key={c.id} className="flex items-center gap-2 text-sm text-foreground">
-                        <input type="checkbox" checked={graduate.includes(c.id)} onChange={() => toggleGrad(c.id)} className="h-4 w-4 rounded border-input accent-[hsl(var(--primary))]" />
-                        {c.name} <span className="text-muted-foreground">· {c.termName ?? '—'}</span>
-                      </label>
-                    ))}
-                  </div>
-                  <p className="mt-1.5 text-xs text-muted-foreground">Active students in these classes will be marked Graduated.</p>
-                </div>
+                  <TabsContent value="promote" className="mt-4 space-y-3">
+                    <p className="text-xs text-muted-foreground">Move active students up into next year's class/section. "Repeating" students (checked below, per row) stay behind in the same grade instead of moving up. Past attendance and results stay under the old class.</p>
 
-                <div className="border-t border-border pt-5">
-                  <h3 className="mb-2 text-sm font-semibold text-foreground">Students leaving (transferred / withdrawn / expelled)</h3>
-                  <Input
-                    value={leaverSearch}
-                    onChange={(e) => setLeaverSearch(e.target.value)}
-                    placeholder="Search by name or roll number..."
-                  />
-                  {debouncedLeaverSearch.trim().length >= 2 && searchMatches.length > 0 && (
-                    <div className="mt-1 max-h-32 space-y-1 overflow-y-auto rounded-md border border-border p-1.5">
-                      {searchMatches.map((s) => (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => addLeaver(s)}
-                          className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm text-foreground hover:bg-muted"
-                        >
-                          <span>{s.name} <span className="text-xs text-muted-foreground">· {s.rollNumber} · {s.className}{s.section ? ` ${s.section}` : ''}</span></span>
-                          <Plus size={13} className="text-muted-foreground" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {leavers.length > 0 && (
-                    <div className="mt-2 space-y-2">
-                      {leavers.map((l) => (
-                        <div key={l.studentId} className="rounded-lg border border-border p-2.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-medium text-foreground">{l.name} <span className="text-xs font-normal text-muted-foreground">· {l.rollNumber}</span></p>
-                            <button type="button" onClick={() => removeLeaver(l.studentId)} className="text-muted-foreground hover:text-danger"><X size={14} /></button>
+                    <div className="space-y-3">
+                      {rows.map((row, i) => (
+                        <div key={i} className="rounded-lg border border-border p-3">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs">From class</Label>
+                              <Select value={row.fromClassId} onValueChange={(v) => setRow(i, { fromClassId: v, fromSectionId: '', excludeStudentIds: [] })}>
+                                <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent>
+                                  {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} · {c.termName ?? '—'}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs">From section</Label>
+                              <Select value={row.fromSectionId} disabled={!row.fromClassId} onValueChange={(v) => setRow(i, { fromSectionId: v, excludeStudentIds: [] })}>
+                                <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent>
+                                  {sectionsOf(row.fromClassId).map((s) => <SelectItem key={s.id} value={s.id}>{s.name} ({s.currentCount} student{s.currentCount === 1 ? '' : 's'})</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
-                          <div className="mt-1.5 grid grid-cols-2 gap-2">
-                            <Select value={l.status} onValueChange={(v) => updateLeaver(l.studentId, { status: v as LeaverRow['status'] })}>
-                              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {LEAVER_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                            <Input
-                              value={l.reason}
-                              onChange={(e) => updateLeaver(l.studentId, { reason: e.target.value })}
-                              placeholder="Reason (optional)"
-                            />
+                          <div className="my-1.5 flex items-center justify-center text-muted-foreground"><ArrowRight size={14} /></div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs">To class</Label>
+                              <Select value={row.toClassId} onValueChange={(v) => setRow(i, { toClassId: v, toSectionId: '' })}>
+                                <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent>
+                                  {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} · {c.termName ?? '—'}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs">To section</Label>
+                              <Select value={row.toSectionId} disabled={!row.toClassId} onValueChange={(v) => setRow(i, { toSectionId: v })}>
+                                <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent>
+                                  {sectionsOf(row.toClassId).map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
+                          <HoldBackPicker
+                            classId={row.fromClassId}
+                            sectionId={row.fromSectionId}
+                            excluded={row.excludeStudentIds}
+                            onToggle={(id) => toggleExclude(i, id)}
+                          />
+                          {rows.length > 1 && (
+                            <div className="mt-2 flex justify-end">
+                              <Button type="button" variant="ghost" size="sm" onClick={() => setRows((r) => r.filter((_, idx) => idx !== i))}>Remove</Button>
+                            </div>
+                          )}
                         </div>
                       ))}
+                      <button type="button" onClick={() => setRows((r) => [...r, { fromClassId: '', fromSectionId: '', toClassId: '', toSectionId: '', excludeStudentIds: [] }])} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                        <Plus size={13} /> Add another promotion
+                      </button>
                     </div>
-                  )}
-                  <p className="mt-1 text-xs text-muted-foreground">These students are excluded from any move above and marked as having left, with the date and reason recorded.</p>
-                </div>
+                  </TabsContent>
+
+                  <TabsContent value="graduate" className="mt-4 space-y-3">
+                    <InfoNote title="Graduating revokes login access">
+                      Graduating a student ends their enrollment for good: their portal login is revoked and they're recorded as an alumnus. This batch (like the rest of this form) can be undone within 48 hours if something's wrong.
+                    </InfoNote>
+                    <div className="space-y-1.5 rounded-lg border border-border p-3">
+                      {[...classes].sort((a, b) => b.level - a.level).map((c: ClassItem) => (
+                        <label key={c.id} className="flex items-center gap-2 text-sm text-foreground">
+                          <input type="checkbox" checked={graduate.includes(c.id)} onChange={() => toggleGrad(c.id)} className="h-4 w-4 rounded border-input accent-[hsl(var(--primary))]" />
+                          {c.name} <span className="text-muted-foreground">· {c.termName ?? '—'}</span>
+                          {maxLevel !== null && c.level === maxLevel && <Badge variant="neutral" className="px-1.5 text-[10px]">Final year</Badge>}
+                          {!c.isActive && <Badge variant="neutral" className="px-1.5 text-[10px]">Inactive term</Badge>}
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Active students in the checked classes will be marked Graduated. "Final year" marks classes at the highest grade level — double-check before graduating anything else.</p>
+                  </TabsContent>
+
+                  <TabsContent value="leave" className="mt-4 space-y-3">
+                    <InfoNote title="Leaving revokes login access">
+                      Marking a student as transferred, withdrawn, or expelled revokes their portal login immediately. They're excluded from any promotion above and recorded with today's date and the reason you enter.
+                    </InfoNote>
+                    <Input
+                      value={leaverSearch}
+                      onChange={(e) => setLeaverSearch(e.target.value)}
+                      placeholder="Search by name or roll number..."
+                    />
+                    {debouncedLeaverSearch.trim().length >= 2 && searchMatches.length > 0 && (
+                      <div className="mt-1 max-h-32 space-y-1 overflow-y-auto rounded-md border border-border p-1.5">
+                        {searchMatches.map((s) => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => addLeaver(s)}
+                            className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm text-foreground hover:bg-muted"
+                          >
+                            <span>{s.name} <span className="text-xs text-muted-foreground">· {s.rollNumber} · {s.className}{s.section ? ` ${s.section}` : ''}</span></span>
+                            <Plus size={13} className="text-muted-foreground" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {leavers.length > 0 && (
+                      <div className="mt-2 space-y-2">
+                        {leavers.map((l) => (
+                          <div key={l.studentId} className="rounded-lg border border-border p-2.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-medium text-foreground">{l.name} <span className="text-xs font-normal text-muted-foreground">· {l.rollNumber}</span></p>
+                              <button type="button" onClick={() => removeLeaver(l.studentId)} className="text-muted-foreground hover:text-danger"><X size={14} /></button>
+                            </div>
+                            <div className="mt-1.5 grid grid-cols-2 gap-2">
+                              <Select value={l.status} onValueChange={(v) => updateLeaver(l.studentId, { status: v as LeaverRow['status'] })}>
+                                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {LEAVER_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                value={l.reason}
+                                onChange={(e) => updateLeaver(l.studentId, { reason: e.target.value })}
+                                placeholder="Reason (optional)"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
+
+                {(rows.some((r) => r.fromClassId && r.toClassId) || graduate.length > 0 || leavers.length > 0) && (
+                  <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    This batch will {[
+                      rows.filter((r) => r.fromClassId && r.fromSectionId && r.toClassId && r.toSectionId).length > 0 && `promote from ${rows.filter((r) => r.fromClassId && r.fromSectionId && r.toClassId && r.toSectionId).length} section(s)`,
+                      graduate.length > 0 && `graduate ${graduate.length} class(es)`,
+                      leavers.length > 0 && `mark ${leavers.length} student(s) as leaving`,
+                    ].filter(Boolean).join(', ')} — nothing happens until you review and confirm.
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
