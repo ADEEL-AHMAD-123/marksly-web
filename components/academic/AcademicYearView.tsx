@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { InfoNote } from '@/components/ui/info-note';
 import { cn } from '@/lib/utils';
 import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
@@ -75,11 +76,24 @@ export function AcademicYearView() {
   // grading scheme" link when no scheme is configured) — read via
   // window.location.search instead of useSearchParams to avoid that hook's
   // Suspense-boundary requirement, same pattern as SettingsView's tab param.
-  const [initialTab, setInitialTab] = useState('terms');
+  const [tab, setTab] = useState('terms');
   useEffect(() => {
-    const tab = new URLSearchParams(window.location.search).get('tab');
-    if (tab === 'grading') setInitialTab('grading');
+    const t = new URLSearchParams(window.location.search).get('tab');
+    if (t === 'grading') setTab('grading');
   }, []);
+
+  // Primary actions live in the header's actions slot, same as Students/
+  // Staff (Add Student, Bulk import, etc. all sit in PageHeader there) —
+  // this used to be a floating button row inside each tab's own content,
+  // which looked like a different page's conventions from the rest of the
+  // admin. Lifted up here (rather than left inside TermsTab/
+  // GradingSchemesTab) so the header can show the right buttons for
+  // whichever tab is active; the sheets/drawers themselves still render
+  // inside each tab, just driven by state passed down instead of owned
+  // there.
+  const [termCreateOpen, setTermCreateOpen] = useState(false);
+  const [promoteOpen, setPromoteOpen] = useState(false);
+  const [schemeCreateOpen, setSchemeCreateOpen] = useState(false);
 
   // Deliberately NOT terminology.termPlural here (which would say e.g.
   // "Academic Years" for a yearly-structured institution) — that label only
@@ -97,8 +111,24 @@ export function AcademicYearView() {
       <PageHeader
         title="Academic Terms & Grading"
         description="Manage academic years, semesters and sessions, promote students, and configure grading schemes."
+        actions={
+          tab === 'terms' ? (
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <Button variant="secondary" size="sm" onClick={() => setPromoteOpen(true)}>
+                <GraduationCap size={16} /> Promote students
+              </Button>
+              <Button size="sm" onClick={() => setTermCreateOpen(true)}>
+                <Plus size={16} /> Add term
+              </Button>
+            </div>
+          ) : (
+            <Button size="sm" onClick={() => setSchemeCreateOpen(true)}>
+              <Plus size={16} /> Create scheme
+            </Button>
+          )
+        }
       />
-      <Tabs key={initialTab} defaultValue={initialTab}>
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="h-auto gap-1.5 bg-transparent p-0">
           <TabsTrigger
             value="terms"
@@ -113,8 +143,22 @@ export function AcademicYearView() {
             <Award size={16} /> Grading Schemes
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="terms"><TermsTab /></TabsContent>
-        <TabsContent value="grading"><GradingSchemesTab /></TabsContent>
+        <TabsContent value="terms">
+          <TermsTab
+            createOpen={termCreateOpen}
+            onCreateClose={() => setTermCreateOpen(false)}
+            onOpenCreate={() => setTermCreateOpen(true)}
+            promoteOpen={promoteOpen}
+            onPromoteClose={() => setPromoteOpen(false)}
+          />
+        </TabsContent>
+        <TabsContent value="grading">
+          <GradingSchemesTab
+            createOpen={schemeCreateOpen}
+            onCreateClose={() => setSchemeCreateOpen(false)}
+            onOpenCreate={() => setSchemeCreateOpen(true)}
+          />
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -139,13 +183,19 @@ const STATUS_PILL: Record<TermStatus, { label: string; variant: 'success' | 'neu
   closed: { label: 'Closed', variant: 'neutral' },
 };
 
-function TermsTab() {
+function TermsTab({
+  createOpen, onCreateClose, onOpenCreate, promoteOpen, onPromoteClose,
+}: {
+  createOpen: boolean;
+  onCreateClose: () => void;
+  onOpenCreate: () => void;
+  promoteOpen: boolean;
+  onPromoteClose: () => void;
+}) {
   const terminology = useTerminology();
   const { data, isLoading } = useGetTermsQuery();
   const terms = data?.data ?? [];
-  const [createOpen, setCreateOpen] = useState(false);
   const [editTerm, setEditTerm] = useState<Term | null>(null);
-  const [promoteOpen, setPromoteOpen] = useState(false);
   // Kept at this level (not inside PromoteDrawer) so the Undo option
   // survives the drawer closing.
   const [lastBatch, setLastBatch] = useState<{ batchId: string; moved: number; graduated: number; left: number } | null>(null);
@@ -210,15 +260,6 @@ function TermsTab() {
         </p>
       </InfoNote>
 
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button variant="secondary" size="sm" onClick={() => setPromoteOpen(true)}>
-          <GraduationCap size={16} /> Promote students
-        </Button>
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus size={16} /> Add {terminology.term.toLowerCase()}
-        </Button>
-      </div>
-
       {lastBatch && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary-soft px-4 py-3 text-sm text-primary-soft-foreground">
           <span>
@@ -260,7 +301,7 @@ function TermsTab() {
             icon={CalendarRange}
             title={`No ${terminology.termPlural.toLowerCase()} yet`}
             description={`Create your first ${terminology.term.toLowerCase()} to start building ${terminology.classUnitPlural.toLowerCase()} and enrolling students.`}
-            action={<Button size="sm" onClick={() => setCreateOpen(true)}><Plus size={16} /> Add {terminology.term.toLowerCase()}</Button>}
+            action={<Button size="sm" onClick={onOpenCreate}><Plus size={16} /> Add {terminology.term.toLowerCase()}</Button>}
           />
         </Card>
       ) : (
@@ -271,11 +312,11 @@ function TermsTab() {
         </div>
       )}
 
-      <TermFormSheet mode="create" open={createOpen} onClose={() => setCreateOpen(false)} />
+      <TermFormSheet mode="create" open={createOpen} onClose={onCreateClose} />
       <TermFormSheet mode="edit" term={editTerm} open={!!editTerm} onClose={() => setEditTerm(null)} />
       <PromoteDrawer
         open={promoteOpen}
-        onClose={() => setPromoteOpen(false)}
+        onClose={onPromoteClose}
         onPromoted={(res) => setLastBatch(res)}
       />
     </div>
@@ -480,16 +521,14 @@ function TermFormSheet({
             </div>
             <div>
               <Label htmlFor="term-type">Type</Label>
-              <select
-                id="term-type"
-                value={type}
-                onChange={(e) => setType(e.target.value as TermType)}
-                className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {(Object.keys(TERM_TYPE_LABEL) as TermType[]).map((t) => (
-                  <option key={t} value={t}>{TERM_TYPE_LABEL[t]}</option>
-                ))}
-              </select>
+              <Select value={type} onValueChange={(v) => setType(v as TermType)}>
+                <SelectTrigger id="term-type"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(TERM_TYPE_LABEL) as TermType[]).map((t) => (
+                    <SelectItem key={t} value={t}>{TERM_TYPE_LABEL[t]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="mt-1 text-xs text-muted-foreground">
                 Individual terms can deviate from your institution's usual structure if needed (e.g. one short session inside an otherwise yearly setup).
               </p>
@@ -509,17 +548,23 @@ function TermFormSheet({
               <div>
                 <Label htmlFor="term-parent-year">Part of academic year (optional)</Label>
                 {eligibleParentYears.length > 0 ? (
-                  <select
-                    id="term-parent-year"
-                    value={parentAcademicYearId}
-                    onChange={(e) => setParentAcademicYearId(e.target.value)}
-                    className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  // Radix Select can't have an item with an empty-string
+                  // value, so "no parent" uses a 'none' sentinel translated
+                  // back to '' at the state boundary right below — the rest
+                  // of the component still just deals in the plain empty
+                  // string it always did.
+                  <Select
+                    value={parentAcademicYearId || 'none'}
+                    onValueChange={(v) => setParentAcademicYearId(v === 'none' ? '' : v)}
                   >
-                    <option value="">No parent academic year</option>
-                    {eligibleParentYears.map((y) => (
-                      <option key={y.id} value={y.id}>{y.name}</option>
-                    ))}
-                  </select>
+                    <SelectTrigger id="term-parent-year"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No parent academic year</SelectItem>
+                      {eligibleParentYears.map((y) => (
+                        <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <p className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                     No academic-year terms exist yet to group this under — create one first if you want reports to roll this term up under a shared year.
@@ -542,16 +587,14 @@ function TermFormSheet({
             </div>
             <div>
               <Label htmlFor="term-status">Status</Label>
-              <select
-                id="term-status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as TermStatus)}
-                className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="upcoming">Upcoming</option>
-                <option value="active">Active</option>
-                <option value="closed">Closed</option>
-              </select>
+              <Select value={status} onValueChange={(v) => setStatus(v as TermStatus)}>
+                <SelectTrigger id="term-status"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="upcoming">Upcoming</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
               <p className="mt-1 text-xs text-muted-foreground">Multiple terms can be active at the same time.</p>
             </div>
           </div>
@@ -704,7 +747,6 @@ function PromoteDrawer({
     }
   };
 
-  const selectCls = 'h-9 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) { onClose(); reset(); } }}>
@@ -815,8 +857,11 @@ function PromoteDrawer({
             </>
           ) : (
             <>
-              <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
-                <p className="text-sm text-muted-foreground">Move active students from a section into the target term's section. Past attendance and results stay under the old class.</p>
+              <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+                <div>
+                  <h3 className="mb-2 text-sm font-semibold text-foreground">Move students between sections</h3>
+                  <p className="mb-3 text-xs text-muted-foreground">Active students move from a section into the target term's section. Past attendance and results stay under the old class.</p>
+                </div>
 
                 <div className="space-y-3">
                   {rows.map((row, i) => (
@@ -824,34 +869,42 @@ function PromoteDrawer({
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <Label className="text-xs">From class</Label>
-                          <select className={selectCls} value={row.fromClassId} onChange={(e) => setRow(i, { fromClassId: e.target.value, fromSectionId: '', excludeStudentIds: [] })}>
-                            <option value="">Select</option>
-                            {classes.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.termName ?? '—'}</option>)}
-                          </select>
+                          <Select value={row.fromClassId} onValueChange={(v) => setRow(i, { fromClassId: v, fromSectionId: '', excludeStudentIds: [] })}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+                            <SelectContent>
+                              {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} · {c.termName ?? '—'}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div>
                           <Label className="text-xs">From section</Label>
-                          <select className={selectCls} value={row.fromSectionId} disabled={!row.fromClassId} onChange={(e) => setRow(i, { fromSectionId: e.target.value, excludeStudentIds: [] })}>
-                            <option value="">Select</option>
-                            {sectionsOf(row.fromClassId).map((s) => <option key={s.id} value={s.id}>{s.name} ({s.currentCount} student{s.currentCount === 1 ? '' : 's'})</option>)}
-                          </select>
+                          <Select value={row.fromSectionId} disabled={!row.fromClassId} onValueChange={(v) => setRow(i, { fromSectionId: v, excludeStudentIds: [] })}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+                            <SelectContent>
+                              {sectionsOf(row.fromClassId).map((s) => <SelectItem key={s.id} value={s.id}>{s.name} ({s.currentCount} student{s.currentCount === 1 ? '' : 's'})</SelectItem>)}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                       <div className="my-1.5 flex items-center justify-center text-muted-foreground"><ArrowRight size={14} /></div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <Label className="text-xs">To class</Label>
-                          <select className={selectCls} value={row.toClassId} onChange={(e) => setRow(i, { toClassId: e.target.value, toSectionId: '' })}>
-                            <option value="">Select</option>
-                            {classes.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.termName ?? '—'}</option>)}
-                          </select>
+                          <Select value={row.toClassId} onValueChange={(v) => setRow(i, { toClassId: v, toSectionId: '' })}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+                            <SelectContent>
+                              {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} · {c.termName ?? '—'}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div>
                           <Label className="text-xs">To section</Label>
-                          <select className={selectCls} value={row.toSectionId} disabled={!row.toClassId} onChange={(e) => setRow(i, { toSectionId: e.target.value })}>
-                            <option value="">Select</option>
-                            {sectionsOf(row.toClassId).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                          </select>
+                          <Select value={row.toSectionId} disabled={!row.toClassId} onValueChange={(v) => setRow(i, { toSectionId: v })}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+                            <SelectContent>
+                              {sectionsOf(row.toClassId).map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                       <HoldBackPicker
@@ -872,9 +925,9 @@ function PromoteDrawer({
                   </button>
                 </div>
 
-                <div>
-                  <Label>Graduating classes (final year)</Label>
-                  <div className="space-y-1.5">
+                <div className="border-t border-border pt-5">
+                  <h3 className="mb-2 text-sm font-semibold text-foreground">Graduating classes (final year)</h3>
+                  <div className="space-y-1.5 rounded-lg border border-border p-3">
                     {classes.map((c: ClassItem) => (
                       <label key={c.id} className="flex items-center gap-2 text-sm text-foreground">
                         <input type="checkbox" checked={graduate.includes(c.id)} onChange={() => toggleGrad(c.id)} className="h-4 w-4 rounded border-input accent-[hsl(var(--primary))]" />
@@ -882,16 +935,15 @@ function PromoteDrawer({
                       </label>
                     ))}
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">Active students in these classes will be marked Graduated.</p>
+                  <p className="mt-1.5 text-xs text-muted-foreground">Active students in these classes will be marked Graduated.</p>
                 </div>
 
-                <div>
-                  <Label>Students leaving (transferred / withdrawn / expelled)</Label>
+                <div className="border-t border-border pt-5">
+                  <h3 className="mb-2 text-sm font-semibold text-foreground">Students leaving (transferred / withdrawn / expelled)</h3>
                   <Input
                     value={leaverSearch}
                     onChange={(e) => setLeaverSearch(e.target.value)}
                     placeholder="Search by name or roll number..."
-                    className="mt-1"
                   />
                   {debouncedLeaverSearch.trim().length >= 2 && searchMatches.length > 0 && (
                     <div className="mt-1 max-h-32 space-y-1 overflow-y-auto rounded-md border border-border p-1.5">
@@ -917,13 +969,12 @@ function PromoteDrawer({
                             <button type="button" onClick={() => removeLeaver(l.studentId)} className="text-muted-foreground hover:text-danger"><X size={14} /></button>
                           </div>
                           <div className="mt-1.5 grid grid-cols-2 gap-2">
-                            <select
-                              className={selectCls}
-                              value={l.status}
-                              onChange={(e) => updateLeaver(l.studentId, { status: e.target.value as LeaverRow['status'] })}
-                            >
-                              {LEAVER_STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                            </select>
+                            <Select value={l.status} onValueChange={(v) => updateLeaver(l.studentId, { status: v as LeaverRow['status'] })}>
+                              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {LEAVER_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
                             <Input
                               value={l.reason}
                               onChange={(e) => updateLeaver(l.studentId, { reason: e.target.value })}
@@ -989,10 +1040,15 @@ const DEFAULT_CAMBRIDGE_BANDS: CambridgePredictedBand[] = [
   { grade: 'U', minPercent: 0 },
 ];
 
-function GradingSchemesTab() {
+function GradingSchemesTab({
+  createOpen, onCreateClose, onOpenCreate,
+}: {
+  createOpen: boolean;
+  onCreateClose: () => void;
+  onOpenCreate: () => void;
+}) {
   const { data, isLoading } = useGetGradingSchemesQuery();
   const schemes = data?.data ?? [];
-  const [createOpen, setCreateOpen] = useState(false);
   const [editScheme, setEditScheme] = useState<GradingScheme | null>(null);
   const [setDefault, { isLoading: settingDefault }] = useSetDefaultGradingSchemeMutation();
   const [defaultingId, setDefaultingId] = useState<string | null>(null);
@@ -1011,10 +1067,6 @@ function GradingSchemesTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button size="sm" onClick={() => setCreateOpen(true)}><Plus size={16} /> Create scheme</Button>
-      </div>
-
       {isLoading ? (
         // Mirrors the real scheme card's shape (title bar, type badge, repeat
         // policy line) for the same reason as the Terms skeleton above.
@@ -1032,6 +1084,15 @@ function GradingSchemesTab() {
             </Card>
           ))}
         </div>
+      ) : schemes.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={Award}
+            title="No grading schemes yet"
+            description="Create one to define how raw scores turn into grades on report cards and results."
+            action={<Button size="sm" onClick={onOpenCreate}><Plus size={16} /> Create scheme</Button>}
+          />
+        </Card>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {schemes.map((s) => (
@@ -1081,9 +1142,9 @@ function GradingSchemesTab() {
               )}
               {!s.isDefault && (
                 <Button
-                  variant="secondary"
+                  variant="ghost"
                   size="sm"
-                  className="mt-3 w-full"
+                  className="mt-3 -ml-2 text-muted-foreground hover:text-foreground"
                   loading={settingDefault && defaultingId === s.id}
                   onClick={() => handleSetDefault(s.id)}
                 >
@@ -1095,7 +1156,7 @@ function GradingSchemesTab() {
         </div>
       )}
 
-      <GradingSchemeCreateSheet open={createOpen} onClose={() => setCreateOpen(false)} />
+      <GradingSchemeCreateSheet open={createOpen} onClose={onCreateClose} />
       <GradingSchemeEditSheet scheme={editScheme} open={!!editScheme} onClose={() => setEditScheme(null)} />
     </div>
   );
