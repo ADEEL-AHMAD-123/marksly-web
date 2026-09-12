@@ -27,11 +27,19 @@ function greeting(): string {
  * actually opens this page to find out:
  *  1. Attention layer — urgent/high notices banner, above everything else,
  *     because it's externally pushed and time-sensitive.
- *  2. Task layer (left/wide column on desktop, top of stack on mobile) —
+ *  2. Orientation layer — a single full-width "what I'm teaching" stat
+ *     strip (classes/sections/students + a link to the full list). Full
+ *     width deliberately, not tucked into a sidebar: a 3-stat row plus a
+ *     link needs real width to lay out horizontally, and a narrow sidebar
+ *     column is exactly what caused it to overflow its card before (see
+ *     TeacherDashboardClassesSummary's comment).
+ *  3. Task layer (left/wide column on desktop, top of stack on mobile) —
  *     today's schedule + quick actions: what to DO right now.
- *  3. Context layer (right/narrow column, lower on mobile) — classes
- *     summary, school info, notices: reference material, glanced at rather
- *     than acted on.
+ *  4. Context layer (right/narrow column, lower on mobile) — school info,
+ *     notices: reference material, glanced at rather than acted on. Kept
+ *     deliberately light now that the stats strip moved out — this column
+ *     never needs to lay out more than one thing per row, so it can't run
+ *     into the same width problem again.
  * The two-column split isn't just visual — it's action items vs. reference
  * data, so the wider column always carries more visual weight.
  *
@@ -63,6 +71,7 @@ export function TeacherDashboard() {
         <TeacherDashboardEmptyState />
       ) : (
         <>
+          <TeacherDashboardClassesSummary />
           <TeacherDashboardQuickActions />
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <div className="space-y-6">
@@ -71,7 +80,6 @@ export function TeacherDashboard() {
               <TeacherDashboardExamsQueue />
             </div>
             <div className="space-y-6">
-              <TeacherDashboardClassesSummary />
               <DashboardSchoolCard />
               <DashboardNotices noticesHref="/teacher/notices" />
             </div>

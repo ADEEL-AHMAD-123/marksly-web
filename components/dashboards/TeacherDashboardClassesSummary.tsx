@@ -7,15 +7,29 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useMyClassesQuery } from '@/store/api/portalApi';
 import { useTerminology } from '@/lib/terminology';
 
-/** Small stat row — "what am I actually teaching" at a glance, with a
- *  straight line to My Classes rather than making the teacher click through
- *  to find out how many sections/students they have. */
+/**
+ * Full-width stat strip — "what am I actually teaching" at a glance, with a
+ * straight line to My Classes rather than making the teacher click through
+ * to find out how many sections/students they have.
+ *
+ * Deliberately full-width, not a sidebar card: this used to live in the
+ * dashboard's narrow right-hand column and switched to a horizontal
+ * stats-row layout at the `sm` VIEWPORT breakpoint (640px) — but the
+ * column it rendered in is only ~1/3 of the page on desktop, well under
+ * 640px of actual rendered width. Past that viewport width the row went
+ * horizontal regardless, cramming 3 stat blocks and a link into a column
+ * they couldn't fit in, so "View my classes" spilled outside the card.
+ * Moving this to the top of the page (always full width) fixes the root
+ * cause instead of re-tuning breakpoints for a container size that could
+ * just as easily change again later; `flex-wrap` below is defense in
+ * depth so it degrades gracefully even if that ever changes.
+ */
 export function TeacherDashboardClassesSummary() {
   const terminology = useTerminology();
   const { data, isLoading } = useMyClassesQuery();
   const classes = data?.data ?? [];
 
-  if (isLoading) return <Card className="p-5"><Skeleton className="h-16 w-full" /></Card>;
+  if (isLoading) return <Card className="p-4"><Skeleton className="h-12 w-full" /></Card>;
   if (classes.length === 0) return null;
 
   const sectionCount = classes.reduce((s, c) => s + c.sections.length, 0);
@@ -28,8 +42,8 @@ export function TeacherDashboardClassesSummary() {
   ];
 
   return (
-    <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-      <div className="grid grid-cols-3 gap-4 sm:flex sm:gap-8">
+    <Card className="flex flex-wrap items-center justify-between gap-4 p-4">
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3">
         {stats.map(({ icon: Icon, label, value }) => (
           <div key={label} className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary-soft-foreground">
