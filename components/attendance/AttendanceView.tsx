@@ -317,22 +317,34 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
   };
 
   const selectedPeriod = periods.find((p) => p.periodId === periodId);
-  // Marking attendance is a teacher's everyday job; for admin/staff it's an
-  // exception (a correction beyond what the owning teacher can still fix
-  // themselves, or a period no teacher has covered), not a routine tab —
-  // so admin/staff land on Report by default and reach Mark Attendance
-  // through a deliberate, low-visibility override rather than an
-  // always-there second tab. Every mark() call this override makes is
-  // logged server-side (see attendance-marking.service.ts) precisely
-  // because it's meant to be rare.
+  // Marking attendance is a teacher's everyday job, not an admin one — an
+  // admin's whole reason to be on this page is to review/export what
+  // teachers have already recorded. So for admin/staff this page IS the
+  // Attendance Report: no tab bar, no "Mark attendance" landing view, just
+  // the report with a plain explanation of who actually does the marking.
+  // Correcting a record directly is kept, but only as a clearly secondary,
+  // named "admin override" — for the genuine exception (a teacher who's
+  // left, or a period nobody covered), not a routine second half of this
+  // page. Every mark() call it makes is logged server-side (see
+  // attendance-marking.service.ts) precisely because it's meant to be
+  // rare. Teachers still get the familiar two-tab layout, unchanged.
   const [tab, setTab] = useState<'mark' | 'report'>(isTeacher ? 'mark' : 'report');
   const [adminOverride, setAdminOverride] = useState(false);
 
   return (
     <div className="space-y-6">
-      <PageHeader title={title} description={tab === 'mark' ? 'Mark attendance for a specific period.' : 'Attendance by date, class and period, with guardian contact details.'} />
+      <PageHeader
+        title={title}
+        description={
+          isTeacher
+            ? tab === 'mark' ? 'Mark attendance for a specific period.' : 'Attendance by date, class and period, with guardian contact details.'
+            : adminOverride
+              ? 'Admin override — marking or correcting a period directly.'
+              : 'Attendance is marked by teachers, period by period. Review it here across your institution, and export it whenever you need to.'
+        }
+      />
 
-      {isTeacher ? (
+      {isTeacher && (
         <div className="flex gap-2">
           <button
             type="button"
@@ -355,21 +367,46 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
             Attendance report
           </button>
         </div>
-      ) : tab === 'mark' ? (
+      )}
+
+      {/* Admin/staff, everyday case: this IS the Attendance Report page —
+          a plain explanation of who marks attendance and why this page is
+          a report, not a marking tool, with the rare correction path
+          folded into that same explanation instead of floating as its own
+          top-of-page control. */}
+      {!isTeacher && tab === 'report' && (
+        <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-muted/20 p-4">
+          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-card text-muted-foreground">
+            <Users size={16} />
+          </span>
+          <div className="min-w-0 text-sm text-muted-foreground">
+            <p>
+              <strong className="text-foreground">Teachers mark their own classes&apos; attendance</strong>, period by
+              period, and can now correct their own past records at any time — there&apos;s no 24-hour cutoff for them
+              anymore.
+            </p>
+            <p className="mt-1">
+              You shouldn&apos;t need to touch a record directly except in a real exception — a teacher who&apos;s left the
+              school, or a period nobody covered.{' '}
+              <button
+                type="button"
+                onClick={() => { setTab('mark'); setAdminOverride(true); }}
+                className="font-medium text-primary underline decoration-dotted underline-offset-4 hover:no-underline"
+              >
+                Correct a record directly (admin override)
+              </button>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!isTeacher && tab === 'mark' && (
         <button
           type="button"
           onClick={() => { setTab('report'); setAdminOverride(false); }}
           className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
-          ← Back to Attendance report
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => { setTab('mark'); setAdminOverride(true); }}
-          className="text-xs font-medium text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground"
-        >
-          Need to mark or correct attendance directly? Admin override
+          ← Done, back to Attendance Report
         </button>
       )}
 
