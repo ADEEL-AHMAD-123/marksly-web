@@ -101,8 +101,10 @@ export function InvoicesTab() {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <Card className="p-4">
+      {/* Toolbar — purely instrumental (find/filter invoices), kept visually
+          lighter than the cards below it, same convention as Classes/Subjects/
+          ID Cards/Timetable. */}
+      <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <SearchInput
             value={query}
@@ -124,7 +126,7 @@ export function InvoicesTab() {
             <RefreshCw size={16} /> Run monthly billing
           </Button>
         </div>
-      </Card>
+      </div>
 
       {isError ? (
         <Card><EmptyState icon={AlertCircle} title="Couldn't load invoices" action={<Button variant="secondary" size="sm" onClick={() => refetch()}>Retry</Button>} /></Card>

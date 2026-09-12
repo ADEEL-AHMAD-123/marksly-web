@@ -21,20 +21,6 @@ export function FeesView() {
     <div className="space-y-6">
       <PageHeader title="Fees" description="Collect fees, manage structures and track dues." />
 
-      <InfoNote title="Where does online fee money actually go?">
-        <p>
-          Card, JazzCash and EasyPaisa payments made by parents and students don't land in your bank account
-          instantly — they collect here first, then get paid out to the bank account you set under{' '}
-          <strong>Payout Account</strong>. A new or changed payout account has to be verified before the next
-          payout goes out, so update it a few days before you're expecting a payout, not the day of.
-        </p>
-        <p>
-          <strong>Online Payouts</strong> shows what's been paid out so far and any refunds that need your review —
-          it's separate from <strong>Invoices</strong>, which is where you record fees collected manually (cash,
-          bank transfer, etc.).
-        </p>
-      </InfoNote>
-
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           label="Collected this month"
@@ -79,6 +65,25 @@ export function FeesView() {
           <PayoutAccountTab />
         </TabsContent>
       </Tabs>
+
+      {/* Help — placed after the actual tool, same bottom-of-page pattern as
+          Students, ID Cards, Academic Terms & Grading, Timetable, Classes,
+          Subjects and Attendance, not before it. */}
+      <div className="space-y-2">
+        <InfoNote title="Where does online fee money actually go?">
+          <p>
+            Card, JazzCash and EasyPaisa payments made by parents and students don't land in your bank account
+            instantly — they collect here first, then get paid out to the bank account you set under{' '}
+            <strong>Payout Account</strong>. A new or changed payout account has to be verified before the next
+            payout goes out, so update it a few days before you're expecting a payout, not the day of.
+          </p>
+          <p>
+            <strong>Online Payouts</strong> shows what's been paid out so far and any refunds that need your review —
+            it's separate from <strong>Invoices</strong>, which is where you record fees collected manually (cash,
+            bank transfer, etc.).
+          </p>
+        </InfoNote>
+      </div>
     </div>
   );
 }
