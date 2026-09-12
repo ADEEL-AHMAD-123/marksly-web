@@ -23,9 +23,25 @@ const PRIORITY_VARIANT: Record<NoticePriority, 'danger' | 'warning' | 'primary' 
  * than claiming an "unread count" that doesn't exist. Shared across any
  * non-admin dashboard — only the "View all" link target differs per role.
  */
-export function DashboardNotices({ noticesHref }: { noticesHref: string }) {
-  const { data, isLoading } = useGetNoticesQuery({ limit: 3 });
-  const notices = data?.data ?? [];
+export function DashboardNotices({
+  noticesHref,
+  // Notice ids already surfaced in the urgent/high banner higher up the
+  // page (DashboardNoticeBanner) — excluded here so the same notice never
+  // renders twice on one page. Not tied to that banner's session-dismiss
+  // state: once dismissed there, a notice is no longer "already shown" and
+  // is fine to reappear here.
+  excludeIds = [],
+}: {
+  noticesHref: string;
+  excludeIds?: string[];
+}) {
+  // Fetches a few extra beyond the 3 actually shown, since some of the
+  // most recent ones may get filtered out by excludeIds above — without
+  // this, a single urgent notice sitting in the top banner would shrink
+  // this card down to 1-2 items for no reason a viewer could tell.
+  const { data, isLoading } = useGetNoticesQuery({ limit: 6 });
+  const excludeSet = new Set(excludeIds);
+  const notices = (data?.data ?? []).filter((n) => !excludeSet.has(n.id)).slice(0, 3);
 
   if (isLoading) return <Card className="p-5"><Skeleton className="h-24 w-full" /></Card>;
   if (notices.length === 0) return null;

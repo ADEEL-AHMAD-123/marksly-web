@@ -12,6 +12,7 @@ import { useGetStudentStatsQuery } from '@/store/api/studentsApi';
 import { useGetAttendanceCoverageTodayQuery } from '@/store/api/attendanceApi';
 import { useGetFeesSummaryQuery, useGetFeeStructuresQuery } from '@/store/api/feesApi';
 import { useGetReportsQuery } from '@/store/api/reportsApi';
+import { useGetNoticesQuery } from '@/store/api/noticesApi';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetUsersQuery } from '@/store/api/usersApi';
 import { useGetSubjectsQuery } from '@/store/api/subjectsApi';
@@ -47,6 +48,15 @@ export function AdminDashboard() {
 
   const { data: reportsRes } = useGetReportsQuery();
   const reports = reportsRes?.data;
+
+  // Same query DashboardNoticeBanner runs (identical args -> same RTK
+  // Query cache entry, no extra request) -- used only to know which
+  // notice ids are already shown up in that banner, so DashboardNotices
+  // further down never repeats one of them.
+  const { data: bannerNoticesRes } = useGetNoticesQuery({ limit: 5, priority: ['urgent', 'high'] });
+  const bannerNoticeIds = (bannerNoticesRes?.data ?? [])
+    .filter((n) => !n.expiresAt || new Date(n.expiresAt).getTime() > Date.now())
+    .map((n) => n.id);
 
   const overLimit = (stats?.overLimitBy ?? 0) > 0;
 
@@ -300,17 +310,16 @@ export function AdminDashboard() {
             )}
           />
 
-          {/* Upcoming — next 7 days of exams + holidays merged into one
-              list, so planning the week ahead doesn't mean checking two
-              separate pages. */}
-          <UpcomingCard />
-
-          {/* Recent notices — moved up from the very bottom: notices are
-              routine daily-relevant reading, not something that belongs
-              below a monthly finance chart. Same shared widget every other
-              role's dashboard shows, including platform-wide announcements
-              from Marksly itself alongside this institution's own. */}
-          <DashboardNotices noticesHref="/admin/notices" />
+          {/* Upcoming + Notices side by side on wider screens -- both are
+              compact list-style widgets, so stacking them full-width each
+              cost roughly double the vertical space either needs. Stacks
+              back to one column on narrow/mobile viewports. Notices here
+              excludes anything already surfaced in the urgent/high banner
+              above, so the same notice is never shown twice on one page. */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <UpcomingCard />
+            <DashboardNotices noticesHref="/admin/notices" excludeIds={bannerNoticeIds} />
+          </div>
 
           {/* Fee Collection — moved to last: a monthly trend chart is the
               least daily-urgent thing on this page, so it's the thing
