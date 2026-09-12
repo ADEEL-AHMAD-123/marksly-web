@@ -268,7 +268,13 @@ export function AdminDashboard() {
           {/* Today's attendance — per-class/section coverage, not just a
               single blended percentage. See TodaysAttendanceCard's own
               comment for why this replaced the old donut chart. */}
-          <TodaysAttendanceCard coverage={coverage} loading={coverageLoading} onMarkAttendance={() => router.push('/admin/attendance')} />
+          <TodaysAttendanceCard
+            coverage={coverage}
+            loading={coverageLoading}
+            onMarkAttendance={(target) => router.push(
+              target ? `/admin/attendance?classId=${target.classId}&sectionId=${target.sectionId}` : '/admin/attendance'
+            )}
+          />
 
           {/* Fee Collection — real data from the reports API */}
           <FeeCollectionCard reports={reports} />

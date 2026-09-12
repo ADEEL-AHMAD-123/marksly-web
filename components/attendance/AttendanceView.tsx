@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
-  CalendarCheck, CheckCheck, AlertCircle, Users, Info, Clock,
+  CalendarCheck, CheckCheck, AlertCircle, Users, Info, Clock, Search, StickyNote, AlertTriangle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
@@ -11,6 +12,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Avatar } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,6 +31,7 @@ import {
 import { useAppSelector } from '@/store/hooks';
 import { cn, getInitials } from '@/lib/utils';
 import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
+import { subjectColorClasses } from '@/lib/subject-color';
 import { AttendanceReportView } from './AttendanceReportView';
 
 const STATUSES: { key: AttendanceStatus; label: string; active: string }[] = [
@@ -82,10 +85,37 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
   const isTeacher = role === 'teacher';
   const searchParams = useSearchParams();
   const linkedPeriodId = searchParams.get('period') ?? '';
+  // Deep link from TodaysAttendanceCard's dashboard widget — clicking a
+  // specific section's pill lands here with that section pre-selected
+  // instead of forcing a manual class → section re-drill-down for the
+  // exact thing that was just clicked on. Teacher-only flow never uses
+  // this (teachers don't pick a class/section at all).
+  const linkedClassId = searchParams.get('classId') ?? '';
+  const linkedSectionId = searchParams.get('sectionId') ?? '';
 
   const [date, setDate] = useState(todayStr());
   const [periodId, setPeriodId] = useState(linkedPeriodId);
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
+  // Which students the teacher/admin has actually looked at and confirmed
+  // this session — distinct from `statuses`, which every student has an
+  // entry in from the moment the roster loads (unmarked students default
+  // to 'present' server-side, per getRoster()). Without this, every row
+  // renders as if Present had already been deliberately chosen, so a
+  // teacher scanning a large class can't tell "I checked this student" from
+  // "this is just the untouched default" — defeating the point of a review
+  // step. A student already marked in a PRIOR submission (roster.alreadyMarked)
+  // is seeded as touched, since that status is a real recorded value, not a
+  // placeholder.
+  const [touched, setTouched] = useState<Set<string>>(new Set());
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [noteOpenFor, setNoteOpenFor] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  // Confirmation before an overwrite that would actually discard something
+  // — re-saving an already-marked roster, or "All present" clobbering marks
+  // someone already set this session. Set to a summary of what's about to
+  // happen; null means no dialog is showing.
+  const [confirmSave, setConfirmSave] = useState<{ changedCount: number } | null>(null);
+  const [confirmAllPresent, setConfirmAllPresent] = useState(false);
 
   // ─── Teacher flow: pick from the periods on their own timetable today ────
   // `isLoading` (not `isFetching`) on purpose — now that the app refetches
@@ -115,8 +145,8 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
     }));
   }, [allClassesRes]);
 
-  const [classId, setClassId] = useState('');
-  const [sectionId, setSectionId] = useState('');
+  const [classId, setClassId] = useState(linkedClassId);
+  const [sectionId, setSectionId] = useState(linkedSectionId);
   const selectedClass = useMemo(() => classes.find((c) => c.id === classId), [classes, classId]);
   const sections = selectedClass?.sections ?? [];
   const sectionLabel = getTerminologyForTermType(selectedClass?.termType)?.section ?? terminology.section;
@@ -188,8 +218,16 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
   useEffect(() => {
     if (roster) {
       const next: Record<string, AttendanceStatus> = {};
-      roster.students.forEach((s) => { next[s.studentId] = s.status; });
+      const nextNotes: Record<string, string> = {};
+      roster.students.forEach((s) => { next[s.studentId] = s.status; nextNotes[s.studentId] = s.note ?? ''; });
       setStatuses(next);
+      setNotes(nextNotes);
+      // Already-marked = these are real recorded statuses, not placeholder
+      // defaults — show them as reviewed from the start. A fresh roster
+      // starts with nothing touched, so the review step actually means
+      // something.
+      setTouched(roster.alreadyMarked ? new Set(roster.students.map((s) => s.studentId)) : new Set());
+      setQuery('');
     }
   }, [roster]);
 
@@ -199,27 +237,68 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
     return c;
   }, [statuses]);
 
-  const setAll = (status: AttendanceStatus) => {
+  // How many students would actually change value if "All present" ran
+  // right now — the count the confirm dialog shows, and what decides
+  // whether a confirmation is even needed (nothing to lose = no dialog).
+  const wouldChangeOnAllPresent = useMemo(() => {
+    if (!roster) return 0;
+    return roster.students.filter((s) => touched.has(s.studentId) && statuses[s.studentId] !== 'present').length;
+  }, [roster, touched, statuses]);
+
+  const applyAllPresent = () => {
     if (!roster) return;
     const next: Record<string, AttendanceStatus> = {};
-    roster.students.forEach((s) => { next[s.studentId] = status; });
+    roster.students.forEach((s) => { next[s.studentId] = 'present'; });
     setStatuses(next);
+    setTouched(new Set(roster.students.map((s) => s.studentId)));
+    setConfirmAllPresent(false);
+  };
+
+  const handleAllPresentClick = () => {
+    if (wouldChangeOnAllPresent > 0) {
+      setConfirmAllPresent(true);
+    } else {
+      applyAllPresent();
+    }
   };
 
   const attendanceLocked = isTeacher && isAttendanceLockedForTeacher(date);
 
-  const save = async () => {
-    if (!roster || attendanceLocked) return;
-    const records = roster.students.map((s) => ({
+  const buildRecords = () => {
+    if (!roster) return [];
+    return roster.students.map((s) => ({
       studentId: s.studentId,
       status: statuses[s.studentId] ?? 'present',
+      note: notes[s.studentId]?.trim() || undefined,
     }));
+  };
+
+  const doSave = async () => {
+    if (!roster || attendanceLocked) return;
     try {
-      await markAttendance({ periodId, date, records }).unwrap();
+      await markAttendance({ periodId, date, records: buildRecords() }).unwrap();
       toast.success('Attendance saved');
+      setConfirmSave(null);
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not save attendance');
     }
+  };
+
+  // Re-saving an already-marked roster silently overwrites every prior
+  // status with zero review — show exactly how many records would change
+  // before committing, same "what will happen" preview Timetable's own
+  // destructive actions already use. A first-ever submission (nothing to
+  // lose yet) saves straight away.
+  const save = async () => {
+    if (!roster || attendanceLocked) return;
+    if (roster.alreadyMarked) {
+      const changedCount = roster.students.filter((s) => s.status !== (statuses[s.studentId] ?? 'present')).length;
+      if (changedCount > 0) {
+        setConfirmSave({ changedCount });
+        return;
+      }
+    }
+    await doSave();
   };
 
   const selectedPeriod = periods.find((p) => p.periodId === periodId);
@@ -313,29 +392,33 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
               </p>
             ) : (
               <div className="mt-1.5 flex flex-wrap gap-2">
-                {periods.map((p) => (
-                  <button
-                    key={p.periodId}
-                    type="button"
-                    onClick={() => setPeriodId(p.periodId)}
-                    className={cn(
-                      'flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors',
-                      periodId === p.periodId
-                        ? 'border-primary bg-primary-soft text-primary-soft-foreground'
-                        : 'border-input bg-card text-foreground hover:bg-secondary'
-                    )}
-                  >
-                    <Clock size={14} className="shrink-0 opacity-70" />
-                    <span>
-                      <span className="font-medium">{p.subject ?? 'Period'}</span>
-                      {isTeacher && p.className && (
-                        <span className="text-muted-foreground"> · {p.className}{p.sectionName ? `-${p.sectionName}` : ''}</span>
+                {periods.map((p) => {
+                  const color = subjectColorClasses(p.subject ?? p.periodId);
+                  const selected = periodId === p.periodId;
+                  return (
+                    <button
+                      key={p.periodId}
+                      type="button"
+                      onClick={() => setPeriodId(p.periodId)}
+                      className={cn(
+                        'flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors',
+                        selected
+                          ? 'border-primary bg-primary-soft text-primary-soft-foreground'
+                          : cn(color.border, color.bg, 'text-foreground hover:brightness-95')
                       )}
-                      <span className="text-muted-foreground"> · {p.startTime}–{p.endTime}</span>
-                    </span>
-                    {'marked' in p && p.marked && <Badge variant="success" className="ml-1">Marked</Badge>}
-                  </button>
-                ))}
+                    >
+                      <span className={cn('h-2 w-2 shrink-0 rounded-full', selected ? 'bg-primary' : color.dot)} />
+                      <span>
+                        <span className="font-medium">{p.subject ?? 'Period'}</span>
+                        {isTeacher && p.className && (
+                          <span className="text-muted-foreground"> · {p.className}{p.sectionName ? `-${p.sectionName}` : ''}</span>
+                        )}
+                        <span className="text-muted-foreground"> · {p.startTime}–{p.endTime}</span>
+                      </span>
+                      {'marked' in p && p.marked && <Badge variant="success" className="ml-1">Marked</Badge>}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -384,8 +467,10 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
             </div>
           )}
 
-          {/* Summary + quick actions */}
-          <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* Summary + quick actions — sticky so the running counts and
+              Save stay visible while scrolling a long roster, instead of
+              scrolling away and forcing a trip back to the top. */}
+          <Card className="sticky top-2 z-10 flex flex-col gap-3 border-border bg-card/95 p-4 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-2">
               {selectedPeriod && (
                 <Badge variant="neutral">
@@ -399,6 +484,11 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
               <Badge variant="danger">Absent {counts.absent}</Badge>
               <Badge variant="warning">Late {counts.late}</Badge>
               <Badge variant="neutral">Leave {counts.leave}</Badge>
+              {touched.size < roster.students.length && (
+                <Badge variant="neutral" className="gap-1">
+                  {roster.students.length - touched.size} not yet reviewed
+                </Badge>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -406,7 +496,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                 size="sm"
                 disabled={attendanceLocked}
                 title={attendanceLocked ? 'Attendance older than 24 hours can only be changed by an admin' : undefined}
-                onClick={() => setAll('present')}
+                onClick={handleAllPresentClick}
               >
                 <CheckCheck size={16} /> All present
               </Button>
@@ -422,9 +512,31 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
             </div>
           </Card>
 
+          {/* Search — for a large section, jump straight to a student by
+              name or roll number instead of scrolling a long flat list. */}
+          {roster.students.length > 8 && (
+            <div className="relative">
+              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by name or roll number…"
+                className="pl-9"
+              />
+            </div>
+          )}
+
           {/* Roster */}
           <Card className={cn('divide-y divide-border', attendanceLocked && 'opacity-60')}>
-            {roster.students.map((s) => (
+            {roster.students
+              .filter((s) => {
+                const q = query.trim().toLowerCase();
+                if (!q) return true;
+                return s.name.toLowerCase().includes(q) || s.rollNumber.toLowerCase().includes(q);
+              })
+              .map((s) => {
+              const isTouched = touched.has(s.studentId);
+              return (
               <div key={s.studentId} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   <Avatar
@@ -434,20 +546,31 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                     size="sm"
                   />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">{s.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-sm font-medium text-foreground">{s.name}</p>
+                      {!isTouched && !attendanceLocked && (
+                        <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Not reviewed
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">{s.rollNumber}</p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {STATUSES.map((st) => {
-                    const active = statuses[s.studentId] === st.key;
+                    const active = isTouched && statuses[s.studentId] === st.key;
                     return (
                       <button
                         key={st.key}
                         type="button"
                         disabled={attendanceLocked}
-                        onClick={() => setStatuses((prev) => ({ ...prev, [s.studentId]: st.key }))}
+                        title={!isTouched ? `Defaults to Present if left unreviewed` : undefined}
+                        onClick={() => {
+                          setStatuses((prev) => ({ ...prev, [s.studentId]: st.key }));
+                          setTouched((prev) => new Set(prev).add(s.studentId));
+                        }}
                         className={cn(
                           'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
                           attendanceLocked && 'pointer-events-none cursor-not-allowed',
@@ -460,9 +583,38 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                       </button>
                     );
                   })}
+                  <button
+                    type="button"
+                    disabled={attendanceLocked}
+                    title={notes[s.studentId] ? `Note: ${notes[s.studentId]}` : 'Add a note'}
+                    onClick={() => setNoteOpenFor((cur) => (cur === s.studentId ? null : s.studentId))}
+                    className={cn(
+                      'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors',
+                      notes[s.studentId]
+                        ? 'bg-primary-soft text-primary-soft-foreground'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    <StickyNote size={14} />
+                  </button>
                 </div>
+
+                {noteOpenFor === s.studentId && (
+                  <div className="sm:ml-2 sm:w-56">
+                    <Input
+                      autoFocus
+                      value={notes[s.studentId] ?? ''}
+                      onChange={(e) => setNotes((prev) => ({ ...prev, [s.studentId]: e.target.value }))}
+                      onBlur={() => setNoteOpenFor(null)}
+                      onKeyDown={(e) => e.key === 'Enter' && setNoteOpenFor(null)}
+                      placeholder="e.g. Called in sick"
+                      maxLength={200}
+                    />
+                  </div>
+                )}
               </div>
-            ))}
+              );
+            })}
           </Card>
 
           <div className="flex justify-end">
@@ -481,7 +633,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
       {/* Help — placed after the actual tool, same bottom-of-page pattern as
           Students, ID Cards, Academic Terms & Grading, Timetable, Classes and
           Subjects, not before it. Only relevant to marking, not the report tab. */}
-      {isTeacher && (
+      {isTeacher ? (
         <div className="space-y-2">
           <InfoNote title="Why can't I edit attendance from a few days ago?">
             <p>
@@ -495,9 +647,126 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
             </p>
           </InfoNote>
         </div>
+      ) : (
+        <div className="space-y-2">
+          <InfoNote title="How marking attendance works for admins/staff">
+            <p>
+              Picking a {terminology.classUnit.toLowerCase()}, {terminology.section.toLowerCase()} and date shows
+              only the periods actually scheduled that day — a &quot;Marked&quot; badge means attendance was already
+              submitted for that period.
+            </p>
+            <p>
+              Unlike teachers, an admin can correct attendance for <strong>any date</strong>, including ones older
+              than 24 hours — teachers lose that ability after the first day passes, which is why a teacher might
+              ask you to fix something they can no longer touch themselves.
+            </p>
+          </InfoNote>
+        </div>
       )}
         </>
       )}
+
+      <ConfirmAllPresentDialog
+        open={confirmAllPresent}
+        changedCount={wouldChangeOnAllPresent}
+        onClose={() => setConfirmAllPresent(false)}
+        onConfirm={applyAllPresent}
+      />
+      <ConfirmSaveDialog
+        info={confirmSave}
+        loading={saving}
+        onClose={() => setConfirmSave(null)}
+        onConfirm={doSave}
+      />
     </div>
+  );
+}
+
+function ConfirmAllPresentDialog({
+  open, changedCount, onClose, onConfirm,
+}: {
+  open: boolean;
+  changedCount: number;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm data-[state=open]:animate-fade-in" />
+        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning-soft text-warning">
+              <AlertTriangle size={16} />
+            </span>
+            <div className="min-w-0">
+              <DialogPrimitive.Title className="text-base font-semibold">Mark everyone present?</DialogPrimitive.Title>
+              <DialogPrimitive.Description asChild>
+                <div className="mt-1.5 space-y-2 text-sm leading-relaxed text-muted-foreground">
+                  <p>
+                    <strong>{changedCount}</strong> student{changedCount === 1 ? '' : 's'} already {changedCount === 1 ? 'has' : 'have'} a
+                    different status set — this will overwrite {changedCount === 1 ? 'it' : 'them all'} back to Present.
+                    This isn&apos;t saved yet, so nothing is final until you click Save attendance afterward.
+                  </p>
+                </div>
+              </DialogPrimitive.Description>
+            </div>
+          </div>
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+            <Button variant="secondary" size="sm" onClick={onConfirm}>Yes, mark all present</Button>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  );
+}
+
+function ConfirmSaveDialog({
+  info, loading, onClose, onConfirm,
+}: {
+  info: { changedCount: number } | null;
+  loading: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <DialogPrimitive.Root open={!!info} onOpenChange={(o) => !o && !loading && onClose()}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm data-[state=open]:animate-fade-in" />
+        <DialogPrimitive.Content
+          className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none"
+          onEscapeKeyDown={(e) => loading && e.preventDefault()}
+          onPointerDownOutside={(e) => loading && e.preventDefault()}
+        >
+          {info && (
+            <>
+              <div className="flex items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning-soft text-warning">
+                  <AlertTriangle size={16} />
+                </span>
+                <div className="min-w-0">
+                  <DialogPrimitive.Title className="text-base font-semibold">Overwrite the saved attendance?</DialogPrimitive.Title>
+                  <DialogPrimitive.Description asChild>
+                    <div className="mt-1.5 space-y-2 text-sm leading-relaxed text-muted-foreground">
+                      <p>
+                        This period was already marked. Saving now will replace <strong>{info.changedCount}</strong>{' '}
+                        student{info.changedCount === 1 ? "'s" : "s'"} status with what&apos;s currently shown here —
+                        including sending any new guardian alerts for a newly-absent/late/leave student, or a
+                        correction notice for anyone reverted back to present.
+                      </p>
+                    </div>
+                  </DialogPrimitive.Description>
+                </div>
+              </div>
+              <div className="mt-5 flex items-center justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={onClose} disabled={loading}>Cancel</Button>
+                <Button size="sm" loading={loading} onClick={onConfirm}>Yes, save changes</Button>
+              </div>
+            </>
+          )}
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

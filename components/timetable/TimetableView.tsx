@@ -31,6 +31,7 @@ import {
   useGetHolidaysQuery, useCreateHolidayMutation, useDeleteHolidayMutation, type Holiday,
 } from '@/store/api/holidaysApi';
 import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
+import { subjectColorClasses } from '@/lib/subject-color';
 
 export const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -165,19 +166,8 @@ function useVisibleDays(entries: TimetableEntry[]) {
  *  a fixed array of complete literal class names — not a template string
  *  built from the hashed index — because Tailwind only generates the
  *  utility classes it can find as complete strings in the source. */
-const SUBJECT_PALETTE = [
-  { bg: 'bg-chart-1/10', border: 'border-chart-1/40', text: 'text-chart-1', dot: 'bg-chart-1' },
-  { bg: 'bg-chart-2/10', border: 'border-chart-2/40', text: 'text-chart-2', dot: 'bg-chart-2' },
-  { bg: 'bg-chart-3/10', border: 'border-chart-3/40', text: 'text-chart-3', dot: 'bg-chart-3' },
-  { bg: 'bg-chart-4/10', border: 'border-chart-4/40', text: 'text-chart-4', dot: 'bg-chart-4' },
-  { bg: 'bg-chart-5/10', border: 'border-chart-5/40', text: 'text-chart-5', dot: 'bg-chart-5' },
-];
-
-function subjectColorClasses(key: string) {
-  let hash = 0;
-  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
-  return SUBJECT_PALETTE[hash % SUBJECT_PALETTE.length];
-}
+// subjectColorClasses moved to lib/subject-color.ts so Attendance's
+// period picker/roster can share the exact same subject → color mapping.
 
 // A default first row shown when a section has no periods at all yet, so
 // the grid itself — days across, an empty slot under each — is what a

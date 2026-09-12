@@ -1,13 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertCircle, ChevronLeft, ChevronRight, MessageCircle, Phone, Users } from 'lucide-react';
+import { AlertCircle, ChevronLeft, ChevronRight, MessageCircle, Phone, Users, Printer } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { InfoNote } from '@/components/ui/info-note';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -118,12 +119,39 @@ export function AttendanceReportView() {
   // wider result set could land on an empty or out-of-range page.
   const resetPage = () => setPage(1);
 
+  // Grouped by date (within the current page only — pagination stays
+  // server-side) so a multi-day range reads as scannable per-day sections
+  // instead of one flat list repeating the same date string on every row.
+  // Preserves the server's own ordering within each date.
+  const groupedByDate = useMemo(() => {
+    const groups: { date: string; rows: typeof rows }[] = [];
+    const byDate = new Map<string, typeof rows>();
+    for (const r of rows) {
+      if (!byDate.has(r.date)) {
+        byDate.set(r.date, []);
+        groups.push({ date: r.date, rows: byDate.get(r.date)! });
+      }
+      byDate.get(r.date)!.push(r);
+    }
+    return groups;
+  }, [rows]);
+
   return (
     <div className="space-y-6">
       {/* Toolbar — purely instrumental (filter the report), kept visually
           lighter than the cards below it, same convention as the admin
           dashboard's Classes/Subjects/ID Cards/Timetable pages. */}
-      <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+      <div className="flex items-center justify-between gap-2 no-print">
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          Showing <Badge variant={statusBadge[status as AttendanceStatus] ?? 'neutral'} className="capitalize">
+            {status === 'all' ? 'all statuses' : status}
+          </Badge> only — change &quot;Status&quot; below to see everyone.
+        </p>
+        <Button variant="secondary" size="sm" onClick={() => window.print()} disabled={rows.length === 0}>
+          <Printer size={16} /> Print
+        </Button>
+      </div>
+      <div className="rounded-xl border border-border/70 bg-muted/20 p-4 no-print">
         <div className={cn('grid grid-cols-1 gap-3', isTeacher ? 'sm:grid-cols-4' : 'sm:grid-cols-6')}>
           <div>
             <Label htmlFor="from">From</Label>
@@ -222,56 +250,63 @@ export function AttendanceReportView() {
         </Card>
       ) : (
         <div className={cn(isFetching && 'opacity-60')}>
-        <Card className="divide-y divide-border">
-          {rows.map((r, i) => (
-            <div key={i} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-medium text-foreground">{r.studentName}</p>
-                  <Badge variant={statusBadge[r.status]} className="capitalize">{r.status}</Badge>
-                </div>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {r.rollNumber} · {r.className}{r.sectionName ? `-${r.sectionName}` : ''}
-                  {r.subject ? ` · ${r.subject}` : ''}
-                  {r.startTime ? ` · ${r.startTime}${r.endTime ? `–${r.endTime}` : ''}` : ''} · {r.date}
-                </p>
-                {r.note && <p className="mt-1 text-xs text-muted-foreground">Note: {r.note}</p>}
+        <div className="space-y-4">
+          {groupedByDate.map((group) => (
+            <Card key={group.date} className="divide-y divide-border overflow-hidden p-0">
+              <div className="bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {group.date} <span className="font-normal normal-case">· {group.rows.length} record{group.rows.length === 1 ? '' : 's'}</span>
               </div>
-
-              {r.guardians.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {r.guardians.map((g, gi) => (
-                    <div key={gi} className="flex items-center gap-2 rounded-lg border border-border bg-muted px-2.5 py-1.5 text-xs">
-                      <span className="text-foreground">{g.name || 'Guardian'}</span>
-                      {g.phone && (
-                        <>
-                          <span className="text-muted-foreground">{g.phone}</span>
-                          <a
-                            href={waLink(g.phone)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 rounded-md bg-success-soft px-2 py-1 text-success-soft-foreground hover:opacity-90"
-                          >
-                            <MessageCircle size={12} /> WhatsApp
-                          </a>
-                          <a
-                            href={`tel:${g.phone}`}
-                            className="flex items-center gap-1 rounded-md bg-primary-soft px-2 py-1 text-primary-soft-foreground hover:opacity-90"
-                          >
-                            <Phone size={12} /> Call
-                          </a>
-                        </>
-                      )}
+              {group.rows.map((r, i) => (
+                <div key={i} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium text-foreground">{r.studentName}</p>
+                      <Badge variant={statusBadge[r.status]} className="capitalize">{r.status}</Badge>
                     </div>
-                  ))}
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {r.rollNumber} · {r.className}{r.sectionName ? `-${r.sectionName}` : ''}
+                      {r.subject ? ` · ${r.subject}` : ''}
+                      {r.startTime ? ` · ${r.startTime}${r.endTime ? `–${r.endTime}` : ''}` : ''}
+                    </p>
+                    {r.note && <p className="mt-1 text-xs text-muted-foreground">Note: {r.note}</p>}
+                  </div>
+
+                  {r.guardians.length > 0 && (
+                    <div className="flex flex-wrap gap-2 no-print">
+                      {r.guardians.map((g, gi) => (
+                        <div key={gi} className="flex items-center gap-2 rounded-lg border border-border bg-muted px-2.5 py-1.5 text-xs">
+                          <span className="text-foreground">{g.name || 'Guardian'}</span>
+                          {g.phone && (
+                            <>
+                              <span className="text-muted-foreground">{g.phone}</span>
+                              <a
+                                href={waLink(g.phone)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 rounded-md bg-success-soft px-2 py-1 text-success-soft-foreground hover:opacity-90"
+                              >
+                                <MessageCircle size={12} /> WhatsApp
+                              </a>
+                              <a
+                                href={`tel:${g.phone}`}
+                                className="flex items-center gap-1 rounded-md bg-primary-soft px-2 py-1 text-primary-soft-foreground hover:opacity-90"
+                              >
+                                <Phone size={12} /> Call
+                              </a>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              ))}
+            </Card>
           ))}
-        </Card>
+        </div>
 
         {totalPages > 1 && (
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex items-center justify-between no-print">
             <p className="text-sm text-muted-foreground">Page {page} of {totalPages} · {total} record{total === 1 ? '' : 's'}</p>
             <div className="flex items-center gap-1">
               <Button
@@ -296,6 +331,19 @@ export function AttendanceReportView() {
           </div>
         )}
         </div>
+      )}
+
+      {!isTeacher && (
+        <InfoNote title="What does this report actually show?">
+          <p>
+            Only the status you&apos;ve picked above (default: Absent) shows — Present/Late/Leave records exist too,
+            switch &quot;Status&quot; to &quot;All statuses&quot; to see everything for the selected range.
+          </p>
+          <p>
+            The 24-hour edit lock only applies to <strong>teachers</strong> — as an admin you can still correct any
+            of these records regardless of how old they are, from the &quot;Mark attendance&quot; tab.
+          </p>
+        </InfoNote>
       )}
     </div>
   );

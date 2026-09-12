@@ -41,7 +41,11 @@ export function TodaysAttendanceCard({
 }: {
   coverage: AttendanceCoverage | undefined;
   loading: boolean;
-  onMarkAttendance: () => void;
+  // Optional target lets a specific section's pill jump straight into
+  // marking THAT section, rather than always landing on the generic
+  // attendance page and forcing a manual re-drill-down through class →
+  // section → period for the exact thing the admin just clicked on.
+  onMarkAttendance: (target?: { classId: string; sectionId: string }) => void;
   readOnly?: boolean;
 }) {
   const terminology = useTerminology();
@@ -65,12 +69,12 @@ export function TodaysAttendanceCard({
             </CardDescription>
           </div>
           {!loading && totalSections > 0 && readOnly && (
-            <Button variant="secondary" size="sm" onClick={onMarkAttendance}>
+            <Button variant="secondary" size="sm" onClick={() => onMarkAttendance()}>
               <CalendarCheck size={15} /> View attendance
             </Button>
           )}
           {!loading && totalSections > 0 && !readOnly && coverage!.unmarkedSections > 0 && (
-            <Button variant="secondary" size="sm" onClick={onMarkAttendance}>
+            <Button variant="secondary" size="sm" onClick={() => onMarkAttendance()}>
               <CalendarCheck size={15} /> Mark attendance
             </Button>
           )}
@@ -104,17 +108,30 @@ export function TodaysAttendanceCard({
               </div>
             )}
 
+            {/* Unmarked sections sorted first, both within each class and
+                across classes — the whole point of this widget is showing
+                what still needs chasing, so burying that behind a wall of
+                already-marked green pills (in whatever order the API
+                happened to return) defeated its own purpose. */}
             <div className="max-h-72 space-y-4 overflow-y-auto">
-              {coverage!.classes.map((c) => (
+              {coverage!.classes
+                .map((c) => ({ ...c, sections: [...c.sections].sort((a, b) => Number(a.marked) - Number(b.marked)) }))
+                .sort((a, b) => a.sections.filter((s) => s.marked).length / (a.sections.length || 1) - b.sections.filter((s) => s.marked).length / (b.sections.length || 1))
+                .map((c) => (
                 <div key={c.classId}>
                   <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{c.className}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {c.sections.map((s) => (
-                      <span
+                      <button
                         key={s.sectionId}
+                        type="button"
+                        disabled={readOnly}
+                        title={readOnly ? undefined : s.marked ? `Review ${c.className} — ${s.sectionName}` : `Mark ${c.className} — ${s.sectionName}`}
+                        onClick={() => onMarkAttendance({ classId: c.classId, sectionId: s.sectionId })}
                         className={cn(
-                          'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
-                          s.marked ? 'border-success/30 bg-success-soft text-success' : 'border-warning/30 bg-warning-soft text-warning'
+                          'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                          s.marked ? 'border-success/30 bg-success-soft text-success' : 'border-warning/30 bg-warning-soft text-warning',
+                          !readOnly && 'hover:brightness-95'
                         )}
                       >
                         {s.marked ? <CheckCircle2 size={12} /> : <Clock size={12} />}
@@ -126,7 +143,7 @@ export function TodaysAttendanceCard({
                         ) : (
                           <span>· not marked</span>
                         )}
-                      </span>
+                      </button>
                     ))}
                   </div>
                 </div>
