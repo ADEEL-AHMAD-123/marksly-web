@@ -418,7 +418,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
       ) : (
         <>
         {!isTeacher && adminOverride && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-warning/40 bg-warning-soft px-3.5 py-3 text-sm text-warning-foreground">
+          <div className="flex items-start gap-2.5 rounded-lg border border-warning/40 bg-warning-soft px-3.5 py-3 text-sm text-warning">
             <AlertTriangle size={17} className="mt-0.5 shrink-0" />
             <span>
               You&apos;re marking/correcting attendance directly as an admin, bypassing the class&apos;s own teacher — this
