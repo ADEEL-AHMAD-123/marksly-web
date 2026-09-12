@@ -750,9 +750,16 @@ function HolidaysDialog({
   const [scope, setScope] = useState<'institution' | 'class'>('institution');
   const [audience, setAudience] = useState<Holiday['audience']>('everyone');
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  // Holidays accumulate forever (nothing ever prunes an old one) — without
+  // this, a school a few years in would have this list open on a wall of
+  // long-past dates, with this year's actually-relevant ones buried at the
+  // bottom of an ascending sort. Past dates are collapsed by default; nothing
+  // stops an admin from expanding them (e.g. to double-check something), it
+  // just isn't the first thing they see.
+  const [showPast, setShowPast] = useState(false);
 
   useEffect(() => {
-    if (open) { setDate(''); setReason(''); setScope('institution'); setAudience('everyone'); setConfirmingId(null); }
+    if (open) { setDate(''); setReason(''); setScope('institution'); setAudience('everyone'); setConfirmingId(null); setShowPast(false); }
   }, [open]);
 
   const submit = async (e: React.FormEvent) => {
@@ -776,6 +783,10 @@ function HolidaysDialog({
   };
 
   const sorted = holidays.slice().sort((a, b) => a.date.localeCompare(b.date));
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const upcoming = sorted.filter((h) => h.date >= todayStr);
+  const past = sorted.filter((h) => h.date < todayStr);
+  const visible = showPast ? sorted : upcoming;
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(o) => !o && onClose()}>
@@ -905,8 +916,10 @@ function HolidaysDialog({
               <p className="py-4 text-center text-xs text-muted-foreground">Loading…</p>
             ) : sorted.length === 0 ? (
               <p className="py-4 text-center text-xs text-muted-foreground">No holidays added yet.</p>
+            ) : visible.length === 0 ? (
+              <p className="py-4 text-center text-xs text-muted-foreground">No upcoming holidays. All {past.length} added so far are in the past.</p>
             ) : (
-              sorted.map((h) => (
+              visible.map((h) => (
                 <div key={h.id} className="flex items-center justify-between gap-2 rounded-lg border border-border p-2.5 text-sm">
                   <div className="min-w-0">
                     <p className="font-medium text-foreground">
@@ -938,6 +951,24 @@ function HolidaysDialog({
               ))
             )}
           </div>
+          {!showPast && past.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowPast(true)}
+              className="mt-2 w-full rounded-md py-1 text-center text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              Show {past.length} past holiday{past.length === 1 ? '' : 's'}
+            </button>
+          )}
+          {showPast && past.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowPast(false)}
+              className="mt-2 w-full rounded-md py-1 text-center text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              Hide past holidays
+            </button>
+          )}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
