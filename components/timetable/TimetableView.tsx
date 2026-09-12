@@ -151,6 +151,13 @@ export function TimetableView() {
   // day preselected instead of always defaulting to Monday — filling out a
   // whole week one period at a time was needlessly fiddly otherwise.
   const [addDay, setAddDay] = useState('1');
+  // Set when an empty CELL in the grid is clicked (as opposed to the
+  // header "+"/"Add period" button) — prefills both the day AND that row's
+  // time range, since the whole point of clicking a specific empty cell is
+  // "add a period right here," not just "add a period on this day
+  // somewhere." Undefined (→ PeriodDrawer's own 09:00/09:45 default) when
+  // opened any other way.
+  const [addTimeRange, setAddTimeRange] = useState<{ startTime: string; endTime: string } | undefined>(undefined);
   const [copyDayIdx, setCopyDayIdx] = useState<number | null>(null);
   const [deleteEntry] = useDeleteEntryMutation();
 
@@ -182,6 +189,11 @@ export function TimetableView() {
   };
 
   const openEdit = (entry: TimetableEntry) => setEditEntry(entry);
+  const openAdd = (day: string, timeRange?: { startTime: string; endTime: string }) => {
+    setAddDay(day);
+    setAddTimeRange(timeRange);
+    setAddOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -193,7 +205,7 @@ export function TimetableView() {
             <Button variant="secondary" size="sm" className="no-print" onClick={() => window.print()}>
               <Printer size={16} /> Print
             </Button>
-            <Button size="sm" className="no-print" onClick={() => { setAddDay('1'); setAddOpen(true); }}>
+            <Button size="sm" className="no-print" onClick={() => openAdd('1')}>
               <Plus size={16} /> Add period
             </Button>
           </div>
@@ -260,7 +272,7 @@ export function TimetableView() {
                                 </button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => { setAddDay(String(idx)); setAddOpen(true); }}>
+                                <DropdownMenuItem onClick={() => openAdd(String(idx))}>
                                   <Plus size={14} /> Add period on {day}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
@@ -332,7 +344,24 @@ export function TimetableView() {
                                   </div>
                                 </div>
                               ) : (
-                                <div className="h-full min-h-[2.5rem]" />
+                                // Previously just an empty <div> with no way
+                                // to add a period at this exact day/time —
+                                // the only options were the header's generic
+                                // "Add period" (always defaults to Monday)
+                                // or a day's own "Add period on {day}" menu
+                                // item (defaults to 09:00), neither of which
+                                // prefill the row's actual time. Clicking an
+                                // empty cell now opens the drawer with both
+                                // this day AND this row's time range already
+                                // filled in.
+                                <button
+                                  type="button"
+                                  onClick={() => openAdd(String(idx), { startTime: row.startTime, endTime: row.endTime })}
+                                  aria-label={`Add period on ${day} at ${row.startTime}`}
+                                  className="no-print flex h-full min-h-[2.5rem] w-full items-center justify-center rounded-lg text-muted-foreground/0 transition-colors hover:bg-muted hover:text-muted-foreground"
+                                >
+                                  <Plus size={14} />
+                                </button>
                               )}
                             </td>
                           );
@@ -357,7 +386,7 @@ export function TimetableView() {
                       <div className="no-print flex items-center gap-1">
                         <button
                           type="button"
-                          onClick={() => { setAddDay(String(idx)); setAddOpen(true); }}
+                          onClick={() => openAdd(String(idx))}
                           aria-label={`Add period on ${day}`}
                           className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                         >
@@ -436,6 +465,8 @@ export function TimetableView() {
         classId={classId}
         sectionId={sectionId}
         initialDay={addDay}
+        initialStartTime={addTimeRange?.startTime}
+        initialEndTime={addTimeRange?.endTime}
       />
       <PeriodDrawer
         open={!!editEntry}
@@ -460,13 +491,19 @@ export function TimetableView() {
 }
 
 function PeriodDrawer({
-  open, onClose, classId, sectionId, initialDay, editingEntry,
+  open, onClose, classId, sectionId, initialDay, initialStartTime, initialEndTime, editingEntry,
 }: {
   open: boolean;
   onClose: () => void;
   classId: string;
   sectionId: string;
   initialDay: string;
+  // Set when opened by clicking an empty grid cell (as opposed to the
+  // header/day-menu "Add period", which has no specific time in mind) —
+  // prefills the row's own time range instead of the generic 09:00-09:45
+  // default.
+  initialStartTime?: string;
+  initialEndTime?: string;
   editingEntry?: TimetableEntry | null;
 }) {
   const { data: subjectsRes } = useGetSubjectsQuery();
@@ -504,12 +541,12 @@ function PeriodDrawer({
       setRoom(editingEntry.room ?? '');
     } else {
       setDayOfWeek(initialDay);
-      setStartTime('09:00');
-      setEndTime('09:45');
+      setStartTime(initialStartTime ?? '09:00');
+      setEndTime(initialEndTime ?? '09:45');
       setSubjectId('');
       setRoom('');
     }
-  }, [open, initialDay, editingEntry]);
+  }, [open, initialDay, initialStartTime, initialEndTime, editingEntry]);
 
   // Resolved teacher shown read-only — comes straight from the Subject's
   // own section-coverage/fallback assignment, matching exactly what the
