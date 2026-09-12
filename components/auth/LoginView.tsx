@@ -75,12 +75,17 @@ const loginSchema = z.discriminatedUnion('mode', [
       .string()
       .min(1, 'Enter a valid phone number')
       .refine((v) => isValidPhoneNumber(v), 'Enter a valid phone number'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    // A school-issued PIN (4-6 digits — see student.service.ts's/
+    // user.service.ts's generatePin()) is hashed into the same column a
+    // real password is, so it works through phone/email login too, not
+    // just the Login ID path below — this can't require more characters
+    // than the shortest PIN the backend actually issues.
+    password: z.string().min(4, 'Enter your password or PIN'),
   }),
   z.object({
     mode: z.literal('email'),
     email: z.string().min(1, 'Enter your email address').email('Enter a valid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    password: z.string().min(4, 'Enter your password or PIN'),
   }),
   studentIdSchema,
 ]);
