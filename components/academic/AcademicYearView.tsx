@@ -909,7 +909,14 @@ function PromoteDrawer({
                   </TabsList>
 
                   <TabsContent value="promote" className="mt-4 space-y-3">
-                    <p className="text-xs text-muted-foreground">Move active students up into next year's class/section. "Repeating" students (checked below, per row) stay behind in the same grade instead of moving up. Past attendance and results stay under the old class.</p>
+                    <div className="flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary-soft px-3.5 py-3">
+                      <ArrowRight size={16} className="mt-0.5 shrink-0 text-primary" />
+                      <p className="text-sm text-foreground">
+                        Moves students up into their next class for the new term. Add a row below for each group, then
+                        check off anyone who needs to <strong>repeat this grade</strong> instead — everyone else moves
+                        up automatically.
+                      </p>
+                    </div>
 
                     <div className="space-y-3">
                       {rows.map((row, i) => (
@@ -972,12 +979,22 @@ function PromoteDrawer({
                         <Plus size={13} /> Add another promotion
                       </button>
                     </div>
+
+                    <InfoNote title="What happens to their past records?">
+                      Nothing about the class they're leaving changes — their attendance, grades and results all stay exactly where they are. This only changes where each student is enrolled going forward.
+                    </InfoNote>
                   </TabsContent>
 
                   <TabsContent value="graduate" className="mt-4 space-y-3">
-                    <InfoNote title="Graduating revokes login access">
-                      Graduating a student ends their enrollment for good: their portal login is revoked and they're recorded as an alumnus. This batch (like the rest of this form) can be undone within 48 hours if something's wrong.
-                    </InfoNote>
+                    <div className="flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary-soft px-3.5 py-3">
+                      <GraduationCap size={16} className="mt-0.5 shrink-0 text-primary" />
+                      <p className="text-sm text-foreground">
+                        Marks students as graduated and ends their time at this school for good — this is for your
+                        <strong> final-year students only</strong>. The moment you confirm, their portal login stops
+                        working.
+                      </p>
+                    </div>
+
                     <div className="space-y-1.5 rounded-lg border border-border p-3">
                       {[...classes].sort((a, b) => b.level - a.level).map((c: ClassItem) => (
                         <label key={c.id} className="flex items-center gap-2 text-sm text-foreground">
@@ -988,13 +1005,22 @@ function PromoteDrawer({
                         </label>
                       ))}
                     </div>
-                    <p className="text-xs text-muted-foreground">Active students in the checked classes will be marked Graduated. "Final year" marks classes at the highest grade level — double-check before graduating anything else.</p>
+
+                    <InfoNote title="Mistake? You have 48 hours to undo it">
+                      Undo this within 48 hours of confirming and everything reverts. "Final year" above flags classes
+                      at the highest grade level in your school — double-check before graduating anything else.
+                    </InfoNote>
                   </TabsContent>
 
                   <TabsContent value="leave" className="mt-4 space-y-3">
-                    <InfoNote title="Leaving revokes login access">
-                      Marking a student as transferred, withdrawn, or expelled revokes their portal login immediately. They're excluded from any promotion above and recorded with today's date and the reason you enter.
-                    </InfoNote>
+                    <div className="flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary-soft px-3.5 py-3">
+                      <LogOut size={16} className="mt-0.5 shrink-0 text-primary" />
+                      <p className="text-sm text-foreground">
+                        Marks a student as transferred, withdrawn, or expelled, and removes them from their class. Use
+                        this for anyone leaving the school for reasons <strong>other than graduating</strong>.
+                      </p>
+                    </div>
+
                     <Input
                       value={leaverSearch}
                       onChange={(e) => setLeaverSearch(e.target.value)}
@@ -1040,6 +1066,11 @@ function PromoteDrawer({
                         ))}
                       </div>
                     )}
+
+                    <InfoNote title="What happens automatically">
+                      Their portal login is revoked right away, they're excluded from any promotion above, and
+                      today's date plus the reason you enter are recorded against their name.
+                    </InfoNote>
                   </TabsContent>
                 </Tabs>
 
