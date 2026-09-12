@@ -200,23 +200,10 @@ export function TimetableView() {
         ) : undefined}
       />
 
-      <InfoNote
-        title="Set these up first, or the timetable will have gaps"
-        link={{ href: '/admin/subjects', label: 'Go to Subjects' }}
-      >
-        <p>
-          A timetable is built per class and section, so both need to exist before you can add a single period —
-          and each period needs a subject to pick from, so <strong>add your subjects first</strong> or the subject
-          dropdown here will be empty.
-        </p>
-        <p>
-          If a class or section has <strong>no period scheduled for today</strong>, teachers won&apos;t see anything
-          to mark attendance for on that day — attendance is always taken against a specific period, not just a
-          date. Add the missing period here to fix it.
-        </p>
-      </InfoNote>
-
-      <Card className="p-4 no-print">
+      {/* Toolbar — same lighter "picker" treatment as IdCardsView.tsx's
+          class/section picker (rounded-xl, muted/20, no own shadow) rather
+          than a full Card, since this is a filter control, not content. */}
+      <div className="rounded-xl border border-border/70 bg-muted/20 p-4 no-print">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <Label>{terminology.classUnit}</Label>
@@ -233,7 +220,7 @@ export function TimetableView() {
             </Select>
           </div>
         </div>
-      </Card>
+      </div>
 
       {classes.length === 0 ? (
         // Distinct from the "pick one" empty state below — an empty class
@@ -422,6 +409,27 @@ export function TimetableView() {
         </>
       )}
 
+      {/* Help — placed after the actual tool, same bottom-of-page pattern as
+          ID Cards and Academic Terms & Grading, not before it. */}
+      <div className="space-y-2 no-print">
+        <InfoNote
+          title="Set these up first, or the timetable will have gaps"
+          link={{ href: '/admin/subjects', label: 'Go to Subjects' }}
+        >
+          <p>
+            A timetable is built per {terminology.classUnit.toLowerCase()} and {sectionLabel.toLowerCase()}, so both
+            need to exist before you can add a single period — and each period needs a subject to pick from, so{' '}
+            <strong>add your subjects first</strong> or the subject dropdown here will be empty.
+          </p>
+          <p>
+            If a {terminology.classUnit.toLowerCase()} or {sectionLabel.toLowerCase()} has{' '}
+            <strong>no period scheduled for today</strong>, teachers won&apos;t see anything to mark attendance for
+            on that day — attendance is always taken against a specific period, not just a date. Add the missing
+            period here to fix it.
+          </p>
+        </InfoNote>
+      </div>
+
       <PeriodDrawer
         open={addOpen}
         onClose={() => setAddOpen(false)}
@@ -503,8 +511,6 @@ function PeriodDrawer({
     }
   }, [open, initialDay, editingEntry]);
 
-  const selectCls = 'h-10 w-full rounded-lg border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
-
   // Resolved teacher shown read-only — comes straight from the Subject's
   // own section-coverage/fallback assignment, matching exactly what the
   // backend will derive server-side (resolveTeacherId in
@@ -552,31 +558,37 @@ function PeriodDrawer({
           </div>
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
             <div>
-              <Label>Day</Label>
-              <select className={selectCls} value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value)}>
-                {DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}
-              </select>
+              <Label htmlFor="period-day">Day</Label>
+              <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
+                <SelectTrigger id="period-day"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {DAYS.map((d, i) => <SelectItem key={d} value={String(i)}>{d}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="start">Start</Label>
-                <input id="start" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={selectCls} />
+                <Input id="start" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
               </div>
               <div>
                 <Label htmlFor="end">End</Label>
-                <input id="end" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={selectCls} />
+                <Input id="end" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
               </div>
             </div>
             <div>
-              <Label>Subject</Label>
-              <select
-                className={selectCls}
-                value={subjectId}
-                onChange={(e) => setSubjectId(e.target.value)}
-              >
-                <option value="">No subject (free period / break)</option>
-                {subjects.map((s) => <option key={s.id} value={s.id}>{s.code ? `${s.code} — ${s.name}` : s.name}</option>)}
-              </select>
+              <Label htmlFor="period-subject">Subject</Label>
+              {/* Radix Select can't have an item with an empty-string value,
+                  so "no subject" uses a 'none' sentinel translated back to
+                  '' at the state boundary — same pattern as Academic Terms &
+                  Grading's "no parent academic year" option. */}
+              <Select value={subjectId || 'none'} onValueChange={(v) => setSubjectId(v === 'none' ? '' : v)}>
+                <SelectTrigger id="period-subject"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No subject (free period / break)</SelectItem>
+                  {subjects.map((s) => <SelectItem key={s.id} value={s.id}>{s.code ? `${s.code} — ${s.name}` : s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
               {subjects.length === 0 && (
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   No subjects are set up for this class yet — add some from the Subjects page first.
