@@ -29,13 +29,24 @@ const SEVERITY_STYLE = {
  * Dismiss is session-only (same pattern as DashboardAlertBanner/
  * TeacherDashboardIdCardNudge) — reappears on next visit since the notice
  * itself is still live, this only clears it for the rest of this visit.
+ *
+ * Also filters out anything past its own expiresAt, client-side, even
+ * though the backend already excludes expired notices for every
+ * non-admin role. An admin's list() call is deliberately NOT filtered by
+ * expiry server-side (so the admin's Notices management page can still
+ * show — and let them delete — a notice after it's expired), but this
+ * banner is rendered on the admin dashboard too via the exact same
+ * endpoint; without this guard an expired urgent/high notice would keep
+ * nagging the admin indefinitely after it had already gone quiet for
+ * everyone else.
  */
 export function DashboardNoticeBanner({ noticesHref }: { noticesHref: string }) {
   const { data } = useGetNoticesQuery({ limit: 5, priority: ['urgent', 'high'] });
   const notices = data?.data ?? [];
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
-  const items = notices.filter((n) => !dismissed.has(n.id));
+  const now = Date.now();
+  const items = notices.filter((n) => !dismissed.has(n.id) && (!n.expiresAt || new Date(n.expiresAt).getTime() > now));
   if (items.length === 0) return null;
 
   return (

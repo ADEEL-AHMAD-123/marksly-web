@@ -82,8 +82,16 @@ export function NoticesView({ manage = false }: { manage?: boolean }) {
             // every role at every institution, not just one bad badge.
             const badge = priorityBadge[n.priority] ?? priorityBadge.normal;
             const targetRoles = n.targetRoles ?? [];
+            // Only admins ever see an expired notice at all — everyone
+            // else's list() call is already filtered server-side, so this
+            // can only ever be true in manage mode. Called out explicitly
+            // rather than silently mixed in with still-live ones, since
+            // this page is otherwise the only place an admin could
+            // mistake a notice for currently reaching people when it
+            // stopped doing so days or weeks ago.
+            const isExpired = !!n.expiresAt && new Date(n.expiresAt).getTime() < Date.now();
             return (
-            <Card key={n.id} className="p-5">
+            <Card key={n.id} className={cn('p-5', isExpired && 'opacity-60')}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -92,12 +100,16 @@ export function NoticesView({ manage = false }: { manage?: boolean }) {
                     {n.isPlatformAnnouncement && (
                       <Badge variant="primary" className="gap-1"><Sparkles size={10} /> Platform</Badge>
                     )}
+                    {isExpired && <Badge variant="neutral">Expired</Badge>}
                   </div>
                   <p className="mt-1.5 whitespace-pre-line text-sm text-muted-foreground">{n.body}</p>
                   <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span>{formatDate(n.publishedAt)}</span>
                     {n.isPlatformAnnouncement ? <span>· Marksly</span> : n.author && <span>· {n.author}</span>}
                     <span>· {targetRoles.length === 0 ? 'Everyone' : targetRoles.map((r) => r + 's').join(', ')}</span>
+                    {n.expiresAt && (
+                      <span>· {isExpired ? 'Expired' : 'Expires'} {formatDate(n.expiresAt)}</span>
+                    )}
                   </div>
                 </div>
                 {manage && !n.isPlatformAnnouncement && (
