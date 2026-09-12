@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Wallet, CalendarCheck, DollarSign, TrendingUp } from 'lucide-react';
+import { Wallet, CalendarCheck, DollarSign, Megaphone, ArrowRight, Users } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
@@ -14,8 +14,15 @@ export function FeeCollectionCard({ reports }: { reports: ReportsData | undefine
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Fee Collection</CardTitle>
-        <CardDescription>Monthly collected amount, last 6 months</CardDescription>
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <CardTitle>Fee Collection</CardTitle>
+            <CardDescription>Monthly collected amount, last 6 months</CardDescription>
+          </div>
+          <Link href="/admin/fees" className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary hover:underline">
+            View Fees <ArrowRight size={12} />
+          </Link>
+        </div>
       </CardHeader>
       <CardContent>
         {reports?.feeCollection?.some((m) => m.amount > 0) ? (
@@ -32,8 +39,12 @@ export function FeeCollectionCard({ reports }: { reports: ReportsData | undefine
   );
 }
 
-/** Quick actions — always accurate, never fabricated. */
-export function QuickActionsCard() {
+/**
+ * Quick actions — always accurate, never fabricated. State-aware: once
+ * today's attendance is fully marked, swapping "Mark attendance" for a
+ * fresh suggestion instead of nagging about something already done.
+ */
+export function QuickActionsCard({ attendanceFullyMarked = false }: { attendanceFullyMarked?: boolean }) {
   return (
     <Card>
       <CardHeader>
@@ -42,12 +53,21 @@ export function QuickActionsCard() {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Link
-            href="/admin/attendance"
-            className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary"
-          >
-            <CalendarCheck size={18} className="shrink-0" /> Mark attendance
-          </Link>
+          {attendanceFullyMarked ? (
+            <Link
+              href="/admin/staff"
+              className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary"
+            >
+              <Users size={18} className="shrink-0" /> Manage staff
+            </Link>
+          ) : (
+            <Link
+              href="/admin/attendance"
+              className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary"
+            >
+              <CalendarCheck size={18} className="shrink-0" /> Mark attendance
+            </Link>
+          )}
           <Link
             href="/admin/fees"
             className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary"
@@ -58,7 +78,7 @@ export function QuickActionsCard() {
             href="/admin/notices"
             className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary"
           >
-            <TrendingUp size={18} className="shrink-0" /> Post a notice
+            <Megaphone size={18} className="shrink-0" /> Post a notice
           </Link>
         </div>
       </CardContent>

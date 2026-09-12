@@ -1,7 +1,9 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import {
   CheckCircle2, Clock, XCircle, AlarmClock, UserX, Layers, CalendarCheck,
+  ChevronDown, ChevronUp, Search,
   type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,7 +13,13 @@ import {
 } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useTerminology } from '@/lib/terminology';
-import type { AttendanceCoverage } from '@/store/api/attendanceApi';
+import type { AttendanceCoverage, AttendanceCoverageClass } from '@/store/api/attendanceApi';
+
+// Below this many classes, a search box is more friction than help — a
+// small school can just scan the list. Above it, scanning stops working
+// and jumping straight to one class by name is what an admin actually
+// wants.
+const SEARCH_THRESHOLD = 15;
 
 /**
  * Replaces the old institution-wide present/absent donut chart. That chart
@@ -21,10 +29,14 @@ import type { AttendanceCoverage } from '@/store/api/attendanceApi';
  * reassuring "92% present" based only on the half that did. An admin's
  * actual job here is knowing which classes/sections still need chasing, not
  * just a single blended percentage — so this leads with coverage
- * (X of Y sections marked) and lists every class's sections with a clear
- * marked/not-marked state, real present/absent/late/leave counts pulled
- * from `attendance/coverage-today` (see attendance.service.ts's
- * coverageToday()).
+ * (X of Y sections marked) and then, in the body, puts whatever still
+ * needs attention front and center: unmarked sections grouped by class,
+ * full visual weight. Classes that are fully marked collapse into a single
+ * summary line by default — a school with 30+ classes fully marked by noon
+ * would otherwise force the admin to scroll past a wall of green pills to
+ * find the handful still outstanding, and re-invert that once a search
+ * query is typed (see `filterMatches` below) since a searched class should
+ * always show in full regardless of its state.
  */
 export function TodaysAttendanceCard({
   coverage,
@@ -49,10 +61,32 @@ export function TodaysAttendanceCard({
   readOnly?: boolean;
 }) {
   const terminology = useTerminology();
+  const [query, setQuery] = useState('');
+  const [showMarked, setShowMarked] = useState(false);
+
   const totalSections = coverage?.totalSections ?? 0;
   const markedSections = coverage?.markedSections ?? 0;
   const pct = totalSections > 0 ? Math.round((markedSections / totalSections) * 100) : 0;
   const markedStudents = (coverage?.present ?? 0) + (coverage?.absent ?? 0) + (coverage?.late ?? 0) + (coverage?.leave ?? 0);
+  const classCount = coverage?.classes?.length ?? 0;
+  const showSearch = classCount >= SEARCH_THRESHOLD;
+
+  const { needsAttention, fullyMarked } = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const classes = (coverage?.classes ?? [])
+      .map((c) => ({ ...c, sections: [...c.sections].sort((a, b) => Number(a.marked) - Number(b.marked)) }))
+      .filter((c) => !q || c.className.toLowerCase().includes(q));
+    return {
+      needsAttention: classes.filter((c) => c.sections.some((s) => !s.marked)),
+      fullyMarked: classes.filter((c) => c.sections.every((s) => s.marked)),
+    };
+  }, [coverage?.classes, query]);
+
+  // While actively searching, show everything that matches (marked or not)
+  // rather than keeping a matched, fully-marked class hidden behind the
+  // collapsed summary — the whole point of typing a class name is to find
+  // it immediately.
+  const isSearching = query.trim().length > 0;
 
   return (
     <Card>
@@ -98,7 +132,7 @@ export function TodaysAttendanceCard({
             description={`Once you've created ${terminology.classUnitPlural.toLowerCase()} and ${terminology.sectionPlural.toLowerCase()}, today's attendance coverage will show up here.`}
           />
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-4">
             {markedStudents > 0 && (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <AttendanceMiniStat icon={CheckCircle2} label="Present" value={coverage!.present} tone="success" />
@@ -108,55 +142,114 @@ export function TodaysAttendanceCard({
               </div>
             )}
 
-            {/* Unmarked sections sort first WITHIN each class — the whole
-                point of this widget is showing what still needs chasing, so
-                burying that behind a wall of already-marked green pills (in
-                whatever order the API happened to return) defeated its own
-                purpose. Classes themselves keep the API's own order rather
-                than also being re-sorted by completion — reordering the
-                whole list as sections get marked throughout the day would
-                make classes visibly jump around while an admin is mid-scan,
-                which is worse than just scanning past a few marked pills
-                within a class that's mostly done. */}
-            <div className="max-h-72 space-y-4 overflow-y-auto">
-              {coverage!.classes
-                .map((c) => ({ ...c, sections: [...c.sections].sort((a, b) => Number(a.marked) - Number(b.marked)) }))
-                .map((c) => (
-                <div key={c.classId}>
-                  <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{c.className}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {c.sections.map((s) => (
-                      <button
-                        key={s.sectionId}
-                        type="button"
-                        disabled={readOnly}
-                        title={readOnly ? undefined : s.marked ? `Review ${c.className} — ${s.sectionName}` : `Mark ${c.className} — ${s.sectionName}`}
-                        onClick={() => onMarkAttendance({ classId: c.classId, sectionId: s.sectionId })}
-                        className={cn(
-                          'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
-                          s.marked ? 'border-success/30 bg-success-soft text-success' : 'border-warning/30 bg-warning-soft text-warning',
-                          !readOnly && 'hover:brightness-95'
-                        )}
-                      >
-                        {s.marked ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                        {s.sectionName}
-                        {s.marked ? (
-                          <span className="text-muted-foreground">· {s.present}/{s.present + s.absent + s.late + s.leave}</span>
-                        ) : s.periodsScheduled > 0 ? (
-                          <span>· {s.periodsMarked}/{s.periodsScheduled} periods</span>
-                        ) : (
-                          <span>· not marked</span>
-                        )}
-                      </button>
+            {showSearch && (
+              <div className="relative">
+                <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={`Find a ${terminology.classUnit.toLowerCase()}…`}
+                  className="w-full rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-sm outline-none ring-primary/30 placeholder:text-muted-foreground focus:ring-2"
+                />
+              </div>
+            )}
+
+            {/* Needs attention — full visual weight, always shown first.
+                This is the actual job here: knowing what still needs
+                chasing, not scanning past a wall of already-done pills. */}
+            {needsAttention.length > 0 ? (
+              <div className="space-y-4">
+                {needsAttention.map((c) => (
+                  <ClassRow key={c.classId} c={c} readOnly={readOnly} onMarkAttendance={onMarkAttendance} />
+                ))}
+              </div>
+            ) : !isSearching && classCount > 0 ? (
+              <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft px-3 py-2.5 text-sm font-medium text-success">
+                <CheckCircle2 size={16} className="shrink-0" /> All {terminology.sectionPlural.toLowerCase()} marked for today
+              </div>
+            ) : null}
+
+            {/* Fully marked — collapsed into one summary line by default so
+                it never buries what's actually outstanding. Expands on
+                request, and auto-expands (in full) while searching so a
+                searched-for class is never hidden behind the toggle. */}
+            {fullyMarked.length > 0 && (
+              <div>
+                {!isSearching && (
+                  <button
+                    type="button"
+                    onClick={() => setShowMarked((v) => !v)}
+                    className="flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1.5 text-left text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 size={13} className="text-success" />
+                      {fullyMarked.length} {(fullyMarked.length === 1 ? terminology.classUnit : terminology.classUnitPlural).toLowerCase()} fully marked
+                    </span>
+                    {showMarked ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
+                )}
+                {(isSearching || showMarked) && (
+                  <div className="mt-2 max-h-60 space-y-4 overflow-y-auto">
+                    {fullyMarked.map((c) => (
+                      <ClassRow key={c.classId} c={c} readOnly={readOnly} onMarkAttendance={onMarkAttendance} />
                     ))}
                   </div>
-                </div>
-              ))}
-            </div>
+                )}
+              </div>
+            )}
+
+            {needsAttention.length === 0 && fullyMarked.length === 0 && isSearching && (
+              <p className="py-4 text-center text-sm text-muted-foreground">No {terminology.classUnitPlural.toLowerCase()} match &quot;{query}&quot;.</p>
+            )}
           </div>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+type CoverageClass = AttendanceCoverageClass;
+
+function ClassRow({
+  c,
+  readOnly,
+  onMarkAttendance,
+}: {
+  c: CoverageClass;
+  readOnly: boolean;
+  onMarkAttendance: (target?: { classId: string; sectionId: string }) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{c.className}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {c.sections.map((s) => (
+          <button
+            key={s.sectionId}
+            type="button"
+            disabled={readOnly}
+            title={readOnly ? undefined : s.marked ? `Review ${c.className} — ${s.sectionName}` : `Mark ${c.className} — ${s.sectionName}`}
+            onClick={() => onMarkAttendance({ classId: c.classId, sectionId: s.sectionId })}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+              s.marked ? 'border-success/30 bg-success-soft text-success' : 'border-warning/30 bg-warning-soft text-warning',
+              !readOnly && 'hover:brightness-95'
+            )}
+          >
+            {s.marked ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+            {s.sectionName}
+            {s.marked ? (
+              <span className="text-muted-foreground">· {s.present}/{s.present + s.absent + s.late + s.leave}</span>
+            ) : s.periodsScheduled > 0 ? (
+              <span>· {s.periodsMarked}/{s.periodsScheduled} periods</span>
+            ) : (
+              <span>· not marked</span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

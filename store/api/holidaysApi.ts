@@ -42,11 +42,13 @@ export const holidaysApi = baseApi.injectEndpoints({
     // selected) — the backend returns institution-wide holidays plus this
     // exact class+section's own, which is exactly what actually affects
     // whatever's being viewed (never some other class's holiday).
-    getHolidays: builder.query<ApiArray<Holiday>, { classId?: string; sectionId?: string }>({
-      query: ({ classId, sectionId }) => {
+    getHolidays: builder.query<ApiArray<Holiday>, { classId?: string; sectionId?: string; from?: string; to?: string }>({
+      query: ({ classId, sectionId, from, to }) => {
         const params = new URLSearchParams();
         if (classId) params.set('classId', classId);
         if (sectionId) params.set('sectionId', sectionId);
+        if (from) params.set('from', from);
+        if (to) params.set('to', to);
         const qs = params.toString();
         return `/holidays${qs ? `?${qs}` : ''}`;
       },

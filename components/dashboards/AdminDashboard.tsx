@@ -26,6 +26,7 @@ import { DashboardNoticeBanner } from '@/components/dashboards/DashboardNoticeBa
 import { DashboardNotices } from '@/components/dashboards/DashboardNotices';
 import { TodaysAttendanceCard } from '@/components/dashboards/AdminDashboardAttendance';
 import { FeeCollectionCard, QuickActionsCard } from '@/components/dashboards/AdminDashboardActions';
+import { UpcomingCard } from '@/components/dashboards/AdminDashboardUpcoming';
 
 export function AdminDashboard() {
   const router = useRouter();
@@ -184,20 +185,36 @@ export function AdminDashboard() {
   // yet, say.
   const isNewInstitution = !onboardingLoading && !anyStepDone;
 
+  // Unmarked-sections count drives QuickActionsCard's state-awareness —
+  // it needs "is today's attendance still outstanding", not the raw
+  // coverage object.
+  const attendanceFullyMarked = !coverageLoading && (coverage?.totalSections ?? 0) > 0 && (coverage?.unmarkedSections ?? 0) === 0;
+
   return (
     <div className="space-y-6">
-      <DashboardAlertBanner />
-      <DashboardNoticeBanner noticesHref="/admin/notices" />
-
-      {overLimit && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-warning">
-          <AlertTriangle size={17} className="mt-0.5 shrink-0" />
-          <span>
-            You&apos;ve exceeded your plan limit by <strong>{stats?.overLimitBy}</strong> student{stats?.overLimitBy === 1 ? '' : 's'}
-            {stats?.planLimit != null ? ` (limit ${stats.planLimit})` : ''}. Please upgrade your plan to avoid account restrictions.
-          </span>
-        </div>
-      )}
+      {/* Attention zone — everything that actually needs the admin to do
+          something today, grouped as one visually consistent band instead
+          of three separately-styled elements (system-detected issues,
+          urgent/high notices, plan-limit warning) stacked with no shared
+          treatment. */}
+      <div className="space-y-2.5">
+        <DashboardAlertBanner />
+        <DashboardNoticeBanner noticesHref="/admin/notices" />
+        {overLimit && (
+          <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning-soft p-3.5 sm:items-center">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-card text-warning sm:mt-0">
+              <AlertTriangle size={16} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">Over your plan limit</p>
+              <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
+                You&apos;ve exceeded your plan limit by <strong>{stats?.overLimitBy}</strong> student{stats?.overLimitBy === 1 ? '' : 's'}
+                {stats?.planLimit != null ? ` (limit ${stats.planLimit})` : ''}. Please upgrade your plan to avoid account restrictions.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
 
       <PageHeader
         title="Dashboard"
@@ -265,9 +282,16 @@ export function AdminDashboard() {
             />
           )}
 
+          {/* Quick actions — right after stats/checklist, where an admin
+              looks first for "what do I do now", rather than buried below
+              two data-heavy cards. State-aware: swaps out "Mark
+              attendance" once today's is fully marked. */}
+          <QuickActionsCard attendanceFullyMarked={attendanceFullyMarked} />
+
           {/* Today's attendance — per-class/section coverage, not just a
               single blended percentage. See TodaysAttendanceCard's own
-              comment for why this replaced the old donut chart. */}
+              comment for why this replaced the old donut chart, and for
+              why unmarked sections now lead the card entirely. */}
           <TodaysAttendanceCard
             coverage={coverage}
             loading={coverageLoading}
@@ -276,19 +300,22 @@ export function AdminDashboard() {
             )}
           />
 
-          {/* Fee Collection — real data from the reports API */}
-          <FeeCollectionCard reports={reports} />
+          {/* Upcoming — next 7 days of exams + holidays merged into one
+              list, so planning the week ahead doesn't mean checking two
+              separate pages. */}
+          <UpcomingCard />
 
-          {/* Quick actions — always accurate, never fabricated */}
-          <QuickActionsCard />
-
-          {/* Recent notices — same shared widget every other role's
-              dashboard now shows, including platform-wide announcements
-              from Marksly itself alongside this institution's own. Admin
-              already has a direct "Post a notice" quick action above; this
-              is what lets them (and everyone else) actually see what's been
-              posted without leaving the dashboard. */}
+          {/* Recent notices — moved up from the very bottom: notices are
+              routine daily-relevant reading, not something that belongs
+              below a monthly finance chart. Same shared widget every other
+              role's dashboard shows, including platform-wide announcements
+              from Marksly itself alongside this institution's own. */}
           <DashboardNotices noticesHref="/admin/notices" />
+
+          {/* Fee Collection — moved to last: a monthly trend chart is the
+              least daily-urgent thing on this page, so it's the thing
+              furthest from the top. */}
+          <FeeCollectionCard reports={reports} />
         </>
       )}
     </div>

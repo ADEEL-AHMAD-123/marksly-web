@@ -28,6 +28,14 @@ export interface ExamGradingScheme {
   config: GradingSchemeConfig;
 }
 
+export interface UpcomingExam {
+  id: string;
+  title: string;
+  type: string;
+  examDate: string;
+  className: string | null;
+}
+
 export interface ExamListItem {
   id: string;
   title: string;
@@ -286,6 +294,13 @@ export const examsApi = baseApi.injectEndpoints({
       query: (examId) => `/exams/${examId}/analysis`,
       providesTags: (_r, _e, examId) => [{ type: 'Exams', id: `ANALYSIS-${examId}` }],
     }),
+    // Admin dashboard's Upcoming widget -- exams in the next 7 days,
+    // institution-wide, already sorted/limited server-side (see
+    // exam.service.ts's upcoming()).
+    getUpcomingExams: builder.query<ApiArray<UpcomingExam>, void>({
+      query: () => '/exams/upcoming',
+      providesTags: [{ type: 'Exams', id: 'UPCOMING' }],
+    }),
   }),
 });
 
@@ -300,4 +315,5 @@ export const {
   useDeleteExamMutation,
   usePreviewExamQuery,
   useGetExamAnalysisQuery,
+  useGetUpcomingExamsQuery,
 } = examsApi;
