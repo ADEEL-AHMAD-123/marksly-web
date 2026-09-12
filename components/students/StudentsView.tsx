@@ -70,6 +70,19 @@ const statusBadge: Record<
 
 const PAGE_SIZE = 20;
 
+/** Mirrors StaffManagementView.tsx's missingStaffInfo() — the fields the ID
+ *  card feature needs, surfaced inline per row here too. This existed on
+ *  the Staff page (whose own comment referenced this function as if it
+ *  already existed here) but was never actually added to the Students
+ *  page, so a student missing their photo or address showed no indicator
+ *  at all here while the equivalent staff member did. */
+export function missingIdInfo(s: StudentListItem): string[] {
+  const missing: string[] = [];
+  if (!s.address) missing.push('address');
+  if (!s.profilePhoto) missing.push('photo');
+  return missing;
+}
+
 export function StudentsView() {
   const terminology = useTerminology();
   const [query, setQuery] = useState(() =>
@@ -360,6 +373,11 @@ export function StudentsView() {
                             <p className="text-xs text-foreground/70">
                               Roll: <span className="font-medium">{s.rollNumber}</span>
                             </p>
+                            {missingIdInfo(s).length > 0 && (
+                              <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-warning">
+                                <AlertCircle size={11} className="shrink-0" /> Missing {missingIdInfo(s).join(', ')}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </TableCell>
@@ -458,6 +476,11 @@ export function StudentsView() {
                     {(s.guardianName || s.guardianPhone || s.guardianEmail) && (
                       <p className="truncate text-xs text-foreground/70">
                         {s.guardianName ?? 'Guardian'}{s.guardianPhone ? ` · ${s.guardianPhone}` : ''}
+                      </p>
+                    )}
+                    {missingIdInfo(s).length > 0 && (
+                      <p className="flex items-center gap-1 text-[11px] font-medium text-warning">
+                        <AlertCircle size={11} className="shrink-0" /> Missing {missingIdInfo(s).join(', ')}
                       </p>
                     )}
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
