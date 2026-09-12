@@ -2,7 +2,7 @@
 
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff, Search, X, UserCircle, MapPin, Users, RotateCw, Pencil, RefreshCw, ChevronRight } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, Droplet, GraduationCap, ImageOff, Search, X, UserCircle, MapPin, Users, RotateCw, Pencil, RefreshCw, ChevronRight, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -162,6 +162,7 @@ export function IdCardsView() {
           renderCard={(s) => (
             <IdCardItem student={s} institution={sheet.institution} className={sheet.className} section={sheet.section} termName={sheet.termName} />
           )}
+          downloadFileName={`${([sheet.className, sheet.section].filter(Boolean).join('-') || 'students').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-id-cards.pdf`}
         />
       )}
 
@@ -289,9 +290,29 @@ function StudentIdCardPreview({
 }) {
   const [showBack, setShowBack] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const frontRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLDivElement>(null);
   const { term: termLabel } = useTerminology();
   const nationalIdLabel = nationalIdLabelForInstitutionType(institution.type);
   const settings = institution.settings?.idCard;
+
+  const handleDownload = async () => {
+    if (!frontRef.current) return;
+    setDownloading(true);
+    try {
+      const { downloadCardPdf, cardFileName } = await import('@/components/shared/cardDownload');
+      await downloadCardPdf({
+        frontEl: frontRef.current,
+        backEl: backRef.current,
+        fileName: cardFileName(student.name, 'student-id-card'),
+      });
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not generate the PDF'));
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // What's missing FOR WHAT'S CURRENTLY CONFIGURED TO SHOW on this card —
   // photo is deliberately excluded here since the card face already shows
@@ -327,6 +348,9 @@ function StudentIdCardPreview({
         <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
           <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
         </Button>
+        <Button size="sm" variant="outline" loading={downloading} onClick={handleDownload}>
+          <Download size={15} /> Download card
+        </Button>
         <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print card</Button>
       </div>
       <IdCardMissingFieldsBanner items={missingItems} />
@@ -339,10 +363,10 @@ function StudentIdCardPreview({
         <div className="w-full max-w-md space-y-4">
           {/* On screen, only the flipped-to face shows; on print, both
               always render regardless of which one was showing. */}
-          <div className={cn(showBack ? 'hidden print:block' : 'block')}>
+          <div ref={frontRef} className={cn(showBack ? 'hidden print:block' : 'block')}>
             <IdCardItem student={student} institution={institution} className={className} section={section} termName={termName} />
           </div>
-          <div className={cn(showBack ? 'block' : 'hidden print:block')}>
+          <div ref={backRef} className={cn(showBack ? 'block' : 'hidden print:block')}>
             <IdCardBack
               institution={institution}
               qrValue={student.qr}

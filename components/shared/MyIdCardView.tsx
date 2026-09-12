@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Printer, CreditCard as IdCardIcon, Loader2, MapPin, Droplet, Camera, X, RotateCw } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, Loader2, MapPin, Droplet, Camera, X, RotateCw, Download } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -278,6 +278,9 @@ function StaffMyIdCard() {
   const [nationalId, setNationalId] = useState('');
   const [nationalIdError, setNationalIdError] = useState<string | null>(null);
   const [showBack, setShowBack] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const frontRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLDivElement>(null);
 
   const missing = card?.missing ?? [];
   const fixableMissing = missing.filter((k) => SELF_FIXABLE_MISSING_KEYS.has(k));
@@ -289,6 +292,23 @@ function StaffMyIdCard() {
   const blocked = fixableMissing.length > 0;
   const needsAddress = fixableMissing.includes('address');
   const needsNationalId = fixableMissing.includes('nationalId');
+
+  const handleDownload = async () => {
+    if (!frontRef.current || !card) return;
+    setDownloading(true);
+    try {
+      const { downloadCardPdf, cardFileName } = await import('@/components/shared/cardDownload');
+      await downloadCardPdf({
+        frontEl: frontRef.current,
+        backEl: backRef.current,
+        fileName: cardFileName(card.name, 'staff-id-card'),
+      });
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not generate the PDF'));
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -365,14 +385,17 @@ function StaffMyIdCard() {
             <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
               <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
             </Button>
+            <Button size="sm" variant="outline" loading={downloading} onClick={handleDownload}>
+              <Download size={15} /> Download my card
+            </Button>
             <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print my card</Button>
           </div>
           <div id="id-card-print" className="flex justify-center">
             <div className="w-full max-w-sm space-y-4">
-              <div className={cn(showBack ? 'hidden print:block' : 'block')}>
+              <div ref={frontRef} className={cn(showBack ? 'hidden print:block' : 'block')}>
                 <StaffIdCardItem member={card} institution={card.institution} />
               </div>
-              <div className={cn(showBack ? 'block' : 'hidden print:block')}>
+              <div ref={backRef} className={cn(showBack ? 'block' : 'hidden print:block')}>
                 <IdCardBack institution={card.institution} qrValue={card.qr} rows={staffBackRows(card)} />
               </div>
             </div>
@@ -605,8 +628,28 @@ function StudentMyIdCard() {
   const [nationalId, setNationalId] = useState('');
   const [nationalIdError, setNationalIdError] = useState<string | null>(null);
   const [showBack, setShowBack] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const frontRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLDivElement>(null);
   const { term: termLabel } = useTerminology();
   const nationalIdLabel = nationalIdLabelForInstitutionType(card?.institution?.type);
+
+  const handleDownload = async () => {
+    if (!frontRef.current || !card) return;
+    setDownloading(true);
+    try {
+      const { downloadCardPdf, cardFileName } = await import('@/components/shared/cardDownload');
+      await downloadCardPdf({
+        frontEl: frontRef.current,
+        backEl: backRef.current,
+        fileName: cardFileName(card.name, 'student-id-card'),
+      });
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not generate the PDF'));
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const missing = card?.missing ?? [];
   const fixableMissing = missing.filter((k) => SELF_FIXABLE_MISSING_KEYS.has(k));
@@ -722,11 +765,14 @@ function StudentMyIdCard() {
             <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
               <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
             </Button>
+            <Button size="sm" variant="outline" loading={downloading} onClick={handleDownload}>
+              <Download size={15} /> Download my card
+            </Button>
             <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print my card</Button>
           </div>
           <div id="id-card-print" className="flex justify-center">
             <div className="w-full max-w-sm space-y-4">
-              <div className={cn(showBack ? 'hidden print:block' : 'block')}>
+              <div ref={frontRef} className={cn(showBack ? 'hidden print:block' : 'block')}>
                 <IdCardItem
                   student={card}
                   institution={card.institution}
@@ -735,7 +781,7 @@ function StudentMyIdCard() {
                   termName={card.termName}
                 />
               </div>
-              <div className={cn(showBack ? 'block' : 'hidden print:block')}>
+              <div ref={backRef} className={cn(showBack ? 'block' : 'hidden print:block')}>
                 <IdCardBack
                   institution={card.institution}
                   qrValue={card.qr}

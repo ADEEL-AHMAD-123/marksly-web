@@ -2,7 +2,7 @@
 
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff, Search, X, UserCircle, Phone, MapPin, RotateCw, Pencil, RefreshCw, ChevronRight } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff, Search, X, UserCircle, Phone, MapPin, RotateCw, Pencil, RefreshCw, ChevronRight, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -197,6 +197,7 @@ export function StaffIdCardsView() {
           items={roster}
           keyOf={(s) => s.id}
           renderCard={(s) => <StaffIdCardItem member={s} institution={sheet.institution} />}
+          downloadFileName={`${roleParam.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-id-cards.pdf`}
         />
       )}
 
@@ -312,8 +313,28 @@ function StaffIdCardPreview({
 }) {
   const [showBack, setShowBack] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const frontRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLDivElement>(null);
   const nationalIdLabel = 'CNIC';
   const settings = institution.settings?.idCard;
+
+  const handleDownload = async () => {
+    if (!frontRef.current) return;
+    setDownloading(true);
+    try {
+      const { downloadCardPdf, cardFileName } = await import('@/components/shared/cardDownload');
+      await downloadCardPdf({
+        frontEl: frontRef.current,
+        backEl: backRef.current,
+        fileName: cardFileName(member.name, 'staff-id-card'),
+      });
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not generate the PDF'));
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // Every item here fixes through the same "Edit card details" dialog now
   // — no more routing address to the full staff profile page, since the
@@ -339,6 +360,9 @@ function StaffIdCardPreview({
         <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
           <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
         </Button>
+        <Button size="sm" variant="outline" loading={downloading} onClick={handleDownload}>
+          <Download size={15} /> Download card
+        </Button>
         <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print card</Button>
       </div>
       <IdCardMissingFieldsBanner items={missingItems} />
@@ -346,10 +370,10 @@ function StaffIdCardPreview({
           IdCardsView.tsx's student preview — see that file's comment. */}
       <div id={printSuppressed ? undefined : 'id-card-print'} className="flex justify-center rounded-2xl bg-muted/30 p-6 sm:p-10">
         <div className="w-full max-w-md space-y-4">
-          <div className={cn(showBack ? 'hidden print:block' : 'block')}>
+          <div ref={frontRef} className={cn(showBack ? 'hidden print:block' : 'block')}>
             <StaffIdCardItem member={member} institution={institution} />
           </div>
-          <div className={cn(showBack ? 'block' : 'hidden print:block')}>
+          <div ref={backRef} className={cn(showBack ? 'block' : 'hidden print:block')}>
             <IdCardBack
               institution={institution}
               qrValue={member.qr}
