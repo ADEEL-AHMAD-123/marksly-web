@@ -102,7 +102,10 @@ export function AttendanceReportView() {
 
   return (
     <div className="space-y-6">
-      <Card className="p-4">
+      {/* Toolbar — purely instrumental (filter the report), kept visually
+          lighter than the cards below it, same convention as the admin
+          dashboard's Classes/Subjects/ID Cards/Timetable pages. */}
+      <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
         <div className={cn('grid grid-cols-1 gap-3', isTeacher ? 'sm:grid-cols-4' : 'sm:grid-cols-6')}>
           <div>
             <Label htmlFor="from">From</Label>
@@ -178,7 +181,7 @@ export function AttendanceReportView() {
             </Select>
           </div>
         </div>
-      </Card>
+      </div>
 
       {isError ? (
         <Card>

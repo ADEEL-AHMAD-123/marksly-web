@@ -133,7 +133,10 @@ export function ClassRosterView({ mode, embedded }: Props) {
         />
       )}
 
-      <Card className="space-y-3 p-4">
+      {/* Toolbar — purely instrumental (pick a class/section, export),
+          kept visually lighter than the cards below it, same convention as
+          the admin dashboard's Classes/Subjects/ID Cards/Timetable pages. */}
+      <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <Label>{terminology.classUnit}</Label>
@@ -170,7 +173,7 @@ export function ClassRosterView({ mode, embedded }: Props) {
             </div>
           )}
         </div>
-      </Card>
+      </div>
 
       {!ready ? (
         <Card><EmptyState icon={Users2} title={`Select a ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()}`} description="Then view every student's Login ID and PIN status." /></Card>

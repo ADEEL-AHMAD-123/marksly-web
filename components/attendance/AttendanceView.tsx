@@ -246,8 +246,11 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
         <AttendanceReportView />
       ) : (
         <>
-      {/* Controls */}
-      <Card className="p-4">
+      {/* Toolbar — purely instrumental (pick the class/section/date/period to
+          mark), kept visually lighter than the cards below it, same
+          convention as the admin dashboard's Classes/Subjects/ID Cards/
+          Timetable pages. */}
+      <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
         <div className={cn('grid grid-cols-1 gap-3', !isTeacher && 'sm:grid-cols-3')}>
           {!isTeacher && (
             <>
@@ -327,7 +330,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
             )}
           </div>
         )}
-      </Card>
+      </div>
 
       {!isTeacher && classes.length === 0 ? (
         <Card>
