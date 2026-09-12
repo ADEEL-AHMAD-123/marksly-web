@@ -41,6 +41,13 @@ interface RegisterRequest {
   city?: string;
 }
 
+export interface SessionInfo {
+  sessionId: string;
+  userAgent: string | null;
+  createdAt: string;
+  isCurrent: boolean;
+}
+
 interface RegisterResponse {
   success: boolean;
   data: {
@@ -110,6 +117,14 @@ export const authApi = baseApi.injectEndpoints({
     switchRole: builder.mutation<LoginResponse, { role: string }>({
       query: (body) => ({ url: '/auth/switch-role', method: 'POST', body }),
     }),
+    getSessions: builder.query<{ success: boolean; data: SessionInfo[] }, void>({
+      query: () => '/auth/sessions',
+      providesTags: ['Sessions'],
+    }),
+    revokeSession: builder.mutation<void, { sessionId: string }>({
+      query: ({ sessionId }) => ({ url: `/auth/sessions/${sessionId}`, method: 'DELETE' }),
+      invalidatesTags: ['Sessions'],
+    }),
   }),
 });
 
@@ -129,4 +144,6 @@ export const {
   useConfirmEmailChangeMutation,
   useGetMeQuery,
   useSwitchRoleMutation,
+  useGetSessionsQuery,
+  useRevokeSessionMutation,
 } = authApi;

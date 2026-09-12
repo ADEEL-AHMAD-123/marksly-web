@@ -8,7 +8,7 @@ import { z } from 'zod';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import en from 'react-phone-number-input/locale/en.json';
 import {
-  Eye, EyeOff, Building2, User, Mail, Lock, AlertCircle, Check, MailCheck,
+  Eye, EyeOff, Building2, User, Mail, Lock, AlertCircle, MailCheck,
 } from 'lucide-react';
 import { useRegisterMutation, useResendVerificationMutation } from '@/store/api/authApi';
 import toast from 'react-hot-toast';
@@ -18,6 +18,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { PasswordRequirements } from './PasswordRequirements';
 import { getErrorMessage } from '@/lib/get-error-message';
 
 // Wording here is kept identical to the backend's registerSchema
@@ -82,11 +83,6 @@ export function RegisterView() {
   } = useForm<Form>({ resolver: zodResolver(schema), mode: 'onTouched', defaultValues: { country: 'PK', acceptedTerms: false as unknown as true } });
 
   const password = watch('password') || '';
-  const rules = [
-    { ok: password.length >= 8, label: '8+ characters' },
-    { ok: /[A-Z]/.test(password), label: 'Uppercase' },
-    { ok: /[0-9]/.test(password), label: 'Number' },
-  ];
 
   const onSubmit = async ({ acceptedTerms: _acceptedTerms, ...data }: Form) => {
     setFormError(null);
@@ -291,20 +287,7 @@ export function RegisterView() {
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {rules.map((r) => (
-              <span
-                key={r.label}
-                className={cn(
-                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs',
-                  r.ok ? 'bg-success-soft text-success' : 'bg-muted text-muted-foreground'
-                )}
-              >
-                <Check size={11} className={r.ok ? 'opacity-100' : 'opacity-40'} />
-                {r.label}
-              </span>
-            ))}
-          </div>
+          <PasswordRequirements password={password} />
         </div>
 
         {/* Explicit consent checkbox — there was previously no acceptance

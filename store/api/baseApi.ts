@@ -93,6 +93,7 @@ export const baseApi = createApi({
     'MyStudentContact',
     'StudentRoster',
     'Holidays',
+    'Sessions',
   ],
   endpoints: () => ({}),
 });

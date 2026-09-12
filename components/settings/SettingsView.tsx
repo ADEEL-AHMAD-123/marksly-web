@@ -4,7 +4,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useEffect, useState } from 'react';
-import { Check, Palette, Landmark, UserCircle, Building2, ShieldCheck, CreditCard } from 'lucide-react';
+import { Check, Palette, Landmark, UserCircle, Building2, ShieldCheck, CreditCard, Laptop, Smartphone, Monitor, LogOut } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import en from 'react-phone-number-input/locale/en.json';
@@ -18,12 +18,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateUser } from '@/store/slices/authSlice';
-import { useUpdateProfileMutation, useChangePasswordMutation, useRequestEmailChangeMutation } from '@/store/api/authApi';
+import { useUpdateProfileMutation, useChangePasswordMutation, useRequestEmailChangeMutation, useGetSessionsQuery, useRevokeSessionMutation, type SessionInfo } from '@/store/api/authApi';
 import { useGetBankDetailsQuery, useUpdateBankDetailsMutation } from '@/store/api/superadminApi';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { THEMES } from '@/lib/themes';
 import { cn } from '@/lib/utils';
 import { InstitutionProfileTab } from './InstitutionProfileTab';
+import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
+import { formatDistanceToNow } from 'date-fns';
 
 export function SettingsView() {
   const { user } = useAppSelector((s) => s.auth);
@@ -274,9 +276,10 @@ type PasswordForm = z.infer<typeof passwordSchema>;
 function SecurityTab() {
   const dispatch = useAppDispatch();
   const [changePassword, { isLoading }] = useChangePasswordMutation();
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<PasswordForm>({
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<PasswordForm>({
     resolver: zodResolver(passwordSchema),
   });
+  const newPasswordValue = watch('newPassword') || '';
 
   const onSubmit = async (values: PasswordForm) => {
     try {
@@ -290,7 +293,8 @@ function SecurityTab() {
   };
 
   return (
-    <Card className="max-w-2xl">
+    <div className="max-w-2xl space-y-6">
+    <Card>
       <CardHeader className="p-6 pb-4">
         <CardTitle className="text-lg">Change password</CardTitle>
         <CardDescription>Use at least 8 characters with an uppercase letter and a number.</CardDescription>
@@ -306,6 +310,7 @@ function SecurityTab() {
             <Label htmlFor="newPassword">New password</Label>
             <PasswordInput id="newPassword" autoComplete="new-password" {...register('newPassword')} />
             {errors.newPassword && <p className="mt-1 text-xs text-danger">{errors.newPassword.message}</p>}
+            <PasswordRequirements password={newPasswordValue} />
           </div>
           <div>
             <Label htmlFor="confirm">Confirm new password</Label>
@@ -316,6 +321,103 @@ function SecurityTab() {
             <Button type="submit" loading={isLoading}>Update password</Button>
           </div>
         </form>
+      </CardContent>
+    </Card>
+    <ActiveSessionsCard />
+    </div>
+  );
+}
+
+/** Parses just enough of a stored userAgent string to show something a
+ *  person recognizes ("Chrome on Windows", "Safari on iPhone") rather than
+ *  the raw UA string — this doesn't need to be exhaustive, just readable;
+ *  an unrecognized shape falls back to "Unknown device" rather than
+ *  showing garbled text. */
+function describeUserAgent(ua: string | null): string {
+  if (!ua) return 'Unknown device';
+  const browser = /edg\//i.test(ua) ? 'Edge' : /chrome/i.test(ua) ? 'Chrome' : /firefox/i.test(ua) ? 'Firefox' : /safari/i.test(ua) ? 'Safari' : 'Browser';
+  const os = /iphone|ipad/i.test(ua) ? 'iPhone/iPad' : /android/i.test(ua) ? 'Android' : /mac os/i.test(ua) ? 'Mac' : /windows/i.test(ua) ? 'Windows' : /linux/i.test(ua) ? 'Linux' : '';
+  return os ? `${browser} on ${os}` : browser;
+}
+
+function deviceIcon(ua: string | null) {
+  if (ua && /iphone|android/i.test(ua)) return Smartphone;
+  if (ua && /ipad/i.test(ua)) return Laptop;
+  return Monitor;
+}
+
+/** Self-service device list — the User model has tracked one session per
+ *  signed-in device for a while, but there was previously no way for
+ *  someone to actually see or manage them (e.g. sign out a session left
+ *  open on a shared/library computer) short of changing their password,
+ *  which signs out every device at once. */
+function ActiveSessionsCard() {
+  const { data, isLoading } = useGetSessionsQuery();
+  const [revokeSession, { isLoading: revoking }] = useRevokeSessionMutation();
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const sessions: SessionInfo[] = data?.data ?? [];
+
+  const handleRevoke = async (sessionId: string) => {
+    setRevokingId(sessionId);
+    try {
+      await revokeSession({ sessionId }).unwrap();
+      toast.success('Signed out on that device');
+    } catch (e: any) {
+      toast.error(e?.data?.error?.message || 'Could not sign out that device');
+    } finally {
+      setRevokingId(null);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="p-6 pb-4">
+        <CardTitle className="text-lg">Active sessions</CardTitle>
+        <CardDescription>Devices currently signed in to your account. If you don't recognize one, sign it out.</CardDescription>
+      </CardHeader>
+      <CardContent className="p-6 pt-0">
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : sessions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No active sessions found.</p>
+        ) : (
+          <ul className="divide-y divide-border rounded-lg border border-border">
+            {sessions.map((s) => {
+              const Icon = deviceIcon(s.userAgent);
+              return (
+                <li key={s.sessionId} className="flex items-center justify-between gap-3 px-3.5 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                      <Icon size={16} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {describeUserAgent(s.userAgent)}
+                        {s.isCurrent && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">This device</span>}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Signed in {formatDistanceToNow(new Date(s.createdAt), { addSuffix: true })}</p>
+                    </div>
+                  </div>
+                  {!s.isCurrent && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      loading={revoking && revokingId === s.sessionId}
+                      onClick={() => handleRevoke(s.sessionId)}
+                      className="gap-1.5 text-muted-foreground hover:text-danger"
+                    >
+                      <LogOut size={14} /> Sign out
+                    </Button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </CardContent>
     </Card>
   );

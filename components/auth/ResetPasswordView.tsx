@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import { cn } from '@/lib/utils';
+import { PasswordRequirements } from './PasswordRequirements';
 import { useResetPasswordMutation } from '@/store/api/authApi';
 import { getErrorMessage, getErrorCode, getErrorDetails } from '@/lib/get-error-message';
 
@@ -54,8 +55,10 @@ function ResetPasswordForm() {
     register,
     handleSubmit,
     getValues,
+    watch,
     formState: { errors },
   } = useForm<Form>({ resolver: zodResolver(schema), mode: 'onTouched' });
+  const newPassword = watch('newPassword') || '';
 
   const completeReset = async (data: { newPassword: string; institutionId?: string }) => {
     await resetPassword({ token, newPassword: data.newPassword, institutionId: data.institutionId }).unwrap();
@@ -213,6 +216,7 @@ function ResetPasswordForm() {
           {errors.newPassword && (
             <p className="mt-1.5 text-xs text-danger">{errors.newPassword.message}</p>
           )}
+          <PasswordRequirements password={newPassword} />
         </div>
 
         <div>

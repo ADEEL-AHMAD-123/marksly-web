@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { PasswordRequirements } from './PasswordRequirements';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateUser } from '@/store/slices/authSlice';
 import { useChangePasswordMutation, useUpdateProfileMutation } from '@/store/api/authApi';
@@ -154,8 +155,10 @@ function SetPasswordStep() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<PasswordForm>({ resolver: zodResolver(passwordSchema) });
+  const newPassword = watch('newPassword') || '';
 
   const onSubmit = async (values: PasswordForm) => {
     try {
@@ -200,6 +203,7 @@ function SetPasswordStep() {
             <Label htmlFor="newPassword">New password</Label>
             <PasswordInput id="newPassword" autoComplete="new-password" {...register('newPassword')} />
             {errors.newPassword && <p className="mt-1 text-xs text-danger">{errors.newPassword.message}</p>}
+            <PasswordRequirements password={newPassword} />
           </div>
           <div>
             <Label htmlFor="confirm">Confirm new password</Label>

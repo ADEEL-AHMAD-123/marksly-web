@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import { cn } from '@/lib/utils';
+import { PasswordRequirements } from './PasswordRequirements';
 import { useAcceptInviteMutation, useResendInviteSelfMutation } from '@/store/api/authApi';
 import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
 
@@ -54,8 +55,10 @@ function ActivateAccountForm() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<Form>({ resolver: zodResolver(schema), mode: 'onTouched' });
+  const password = watch('password') || '';
 
   const onSubmit = async (data: Form) => {
     setFormError(null);
@@ -201,6 +204,7 @@ function ActivateAccountForm() {
             className={cn('h-11', errors.password ? 'border-danger' : 'border-input')}
           />
           {errors.password && <p className="mt-1.5 text-xs text-danger">{errors.password.message}</p>}
+          <PasswordRequirements password={password} />
         </div>
 
         <div>
