@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import {
   CheckCircle2, Clock, XCircle, AlarmClock, UserX, Layers, CalendarCheck,
-  ChevronDown, ChevronUp, Search,
+  ChevronDown, ChevronUp, Search, ArrowRight,
   type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,11 +15,12 @@ import { cn } from '@/lib/utils';
 import { useTerminology } from '@/lib/terminology';
 import type { AttendanceCoverage, AttendanceCoverageClass } from '@/store/api/attendanceApi';
 
-// Below this many classes, a search box is more friction than help — a
-// small school can just scan the list. Above it, scanning stops working
-// and jumping straight to one class by name is what an admin actually
-// wants.
-const SEARCH_THRESHOLD = 15;
+// Below this many classes, scanning the whole list works fine and a search
+// box is more friction than help. Past it, a school's list is genuinely
+// too long to scan and jumping straight to a class by name is what an
+// admin actually needs — kept low (not the old 15) because even a
+// one-line-per-class list gets tall well before 15.
+const SEARCH_THRESHOLD = 8;
 
 /**
  * Replaces the old institution-wide present/absent donut chart. That chart
@@ -27,16 +28,17 @@ const SEARCH_THRESHOLD = 15;
  * nothing about sections that hadn't marked attendance AT ALL — a school
  * where half the teachers forgot to mark attendance could still show a
  * reassuring "92% present" based only on the half that did. An admin's
- * actual job here is knowing which classes/sections still need chasing, not
- * just a single blended percentage — so this leads with coverage
- * (X of Y sections marked) and then, in the body, puts whatever still
- * needs attention front and center: unmarked sections grouped by class,
- * full visual weight. Classes that are fully marked collapse into a single
- * summary line by default — a school with 30+ classes fully marked by noon
- * would otherwise force the admin to scroll past a wall of green pills to
- * find the handful still outstanding, and re-invert that once a search
- * query is typed (see `filterMatches` below) since a searched class should
- * always show in full regardless of its state.
+ * actual job here is knowing which classes/sections still need chasing.
+ *
+ * Rebuilt (2nd pass) around a school with 30-40 classes, which the
+ * previous version — one heading + a full row of pills per class, always
+ * rendered — still didn't handle: even with fully-marked classes
+ * collapsed, an unmarked list of 15-20 classes was still a wall of
+ * two-line blocks. This version uses ONE dense line per class (name +
+ * inline section chips, no separate heading line), leads with a single
+ * "Mark next" shortcut so the very first thing an admin sees is an action
+ * they can take immediately rather than a list to parse, and shows the
+ * search box much earlier since even a compact list gets long fast.
  */
 export function TodaysAttendanceCard({
   coverage,
@@ -71,14 +73,21 @@ export function TodaysAttendanceCard({
   const classCount = coverage?.classes?.length ?? 0;
   const showSearch = classCount >= SEARCH_THRESHOLD;
 
-  const { needsAttention, fullyMarked } = useMemo(() => {
+  const { needsAttention, fullyMarked, firstUnmarked } = useMemo(() => {
     const q = query.trim().toLowerCase();
     const classes = (coverage?.classes ?? [])
       .map((c) => ({ ...c, sections: [...c.sections].sort((a, b) => Number(a.marked) - Number(b.marked)) }))
       .filter((c) => !q || c.className.toLowerCase().includes(q));
+    const needsAttention = classes.filter((c) => c.sections.some((s) => !s.marked));
+    let firstUnmarked: { classId: string; sectionId: string; className: string; sectionName: string } | null = null;
+    for (const c of needsAttention) {
+      const s = c.sections.find((s) => !s.marked);
+      if (s) { firstUnmarked = { classId: c.classId, sectionId: s.sectionId, className: c.className, sectionName: s.sectionName }; break; }
+    }
     return {
-      needsAttention: classes.filter((c) => c.sections.some((s) => !s.marked)),
+      needsAttention,
       fullyMarked: classes.filter((c) => c.sections.every((s) => s.marked)),
+      firstUnmarked,
     };
   }, [coverage?.classes, query]);
 
@@ -107,11 +116,6 @@ export function TodaysAttendanceCard({
               <CalendarCheck size={15} /> View attendance
             </Button>
           )}
-          {!loading && totalSections > 0 && !readOnly && coverage!.unmarkedSections > 0 && (
-            <Button variant="secondary" size="sm" onClick={() => onMarkAttendance()}>
-              <CalendarCheck size={15} /> Mark attendance
-            </Button>
-          )}
         </div>
         {!loading && totalSections > 0 && (
           <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -132,13 +136,37 @@ export function TodaysAttendanceCard({
             description={`Once you've created ${terminology.classUnitPlural.toLowerCase()} and ${terminology.sectionPlural.toLowerCase()}, today's attendance coverage will show up here.`}
           />
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {markedStudents > 0 && (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <AttendanceMiniStat icon={CheckCircle2} label="Present" value={coverage!.present} tone="success" />
                 <AttendanceMiniStat icon={XCircle} label="Absent" value={coverage!.absent} tone="danger" />
                 <AttendanceMiniStat icon={AlarmClock} label="Late" value={coverage!.late} tone="warning" />
                 <AttendanceMiniStat icon={UserX} label="Leave" value={coverage!.leave} tone="muted" />
+              </div>
+            )}
+
+            {/* The single most useful thing this card can offer at a
+                glance: not a list to read, but the next thing to do. Only
+                shown unfiltered (not mid-search, where the admin is
+                looking for something specific instead). */}
+            {!readOnly && !isSearching && firstUnmarked && (
+              <button
+                type="button"
+                onClick={() => onMarkAttendance({ classId: firstUnmarked.classId, sectionId: firstUnmarked.sectionId })}
+                className="flex w-full items-center justify-between gap-2 rounded-lg border border-warning/30 bg-warning-soft px-3 py-2.5 text-left text-sm font-medium text-warning transition-colors hover:brightness-95"
+              >
+                <span className="flex items-center gap-2 truncate">
+                  <Clock size={15} className="shrink-0" />
+                  Mark next: <span className="truncate font-semibold">{firstUnmarked.className} — {firstUnmarked.sectionName}</span>
+                </span>
+                <ArrowRight size={15} className="shrink-0" />
+              </button>
+            )}
+
+            {needsAttention.length === 0 && !isSearching && classCount > 0 && (
+              <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft px-3 py-2.5 text-sm font-medium text-success">
+                <CheckCircle2 size={16} className="shrink-0" /> All {terminology.sectionPlural.toLowerCase()} marked for today
               </div>
             )}
 
@@ -149,31 +177,31 @@ export function TodaysAttendanceCard({
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder={`Find a ${terminology.classUnit.toLowerCase()}…`}
+                  placeholder={`Find a ${terminology.classUnit.toLowerCase()} (${classCount} total)…`}
                   className="w-full rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-sm outline-none ring-primary/30 placeholder:text-muted-foreground focus:ring-2"
                 />
               </div>
             )}
 
-            {/* Needs attention — full visual weight, always shown first.
-                This is the actual job here: knowing what still needs
-                chasing, not scanning past a wall of already-done pills. */}
-            {needsAttention.length > 0 ? (
-              <div className="space-y-4">
+            {/* Needs attention — one dense row per class (name + inline
+                section chips), not a heading-plus-pill-row per class. At
+                20+ unmarked classes the old two-line-per-class layout was
+                itself the wall of content; this fits roughly 2x as many
+                rows in the same height and reads as a list, not a stack of
+                cards. */}
+            {needsAttention.length > 0 && (
+              <div className="max-h-72 divide-y divide-border overflow-y-auto rounded-lg border border-border">
                 {needsAttention.map((c) => (
                   <ClassRow key={c.classId} c={c} readOnly={readOnly} onMarkAttendance={onMarkAttendance} />
                 ))}
               </div>
-            ) : !isSearching && classCount > 0 ? (
-              <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft px-3 py-2.5 text-sm font-medium text-success">
-                <CheckCircle2 size={16} className="shrink-0" /> All {terminology.sectionPlural.toLowerCase()} marked for today
-              </div>
-            ) : null}
+            )}
 
             {/* Fully marked — collapsed into one summary line by default so
-                it never buries what's actually outstanding. Expands on
-                request, and auto-expands (in full) while searching so a
-                searched-for class is never hidden behind the toggle. */}
+                it never competes for space with what's actually
+                outstanding. Expands on request, and auto-expands while
+                searching so a searched-for class is never hidden behind
+                the toggle. */}
             {fullyMarked.length > 0 && (
               <div>
                 {!isSearching && (
@@ -190,7 +218,7 @@ export function TodaysAttendanceCard({
                   </button>
                 )}
                 {(isSearching || showMarked) && (
-                  <div className="mt-2 max-h-60 space-y-4 overflow-y-auto">
+                  <div className="mt-1 max-h-60 divide-y divide-border overflow-y-auto rounded-lg border border-border">
                     {fullyMarked.map((c) => (
                       <ClassRow key={c.classId} c={c} readOnly={readOnly} onMarkAttendance={onMarkAttendance} />
                     ))}
@@ -209,21 +237,26 @@ export function TodaysAttendanceCard({
   );
 }
 
-type CoverageClass = AttendanceCoverageClass;
-
+/**
+ * One dense line per class: name (fixed width, truncates), then every
+ * section as a small inline chip. Replaces the old per-class heading +
+ * full pill row, which cost two lines of vertical space per class — at
+ * 30-40 classes that difference is the entire reason the card felt
+ * unmanageable.
+ */
 function ClassRow({
   c,
   readOnly,
   onMarkAttendance,
 }: {
-  c: CoverageClass;
+  c: AttendanceCoverageClass;
   readOnly: boolean;
   onMarkAttendance: (target?: { classId: string; sectionId: string }) => void;
 }) {
   return (
-    <div>
-      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{c.className}</p>
-      <div className="flex flex-wrap gap-1.5">
+    <div className="flex items-center gap-3 px-3 py-2 text-sm">
+      <span className="w-24 shrink-0 truncate font-medium text-foreground sm:w-32" title={c.className}>{c.className}</span>
+      <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
         {c.sections.map((s) => (
           <button
             key={s.sectionId}
@@ -232,20 +265,14 @@ function ClassRow({
             title={readOnly ? undefined : s.marked ? `Review ${c.className} — ${s.sectionName}` : `Mark ${c.className} — ${s.sectionName}`}
             onClick={() => onMarkAttendance({ classId: c.classId, sectionId: s.sectionId })}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+              'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors',
               s.marked ? 'border-success/30 bg-success-soft text-success' : 'border-warning/30 bg-warning-soft text-warning',
               !readOnly && 'hover:brightness-95'
             )}
           >
-            {s.marked ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+            {s.marked ? <CheckCircle2 size={11} /> : <Clock size={11} />}
             {s.sectionName}
-            {s.marked ? (
-              <span className="text-muted-foreground">· {s.present}/{s.present + s.absent + s.late + s.leave}</span>
-            ) : s.periodsScheduled > 0 ? (
-              <span>· {s.periodsMarked}/{s.periodsScheduled} periods</span>
-            ) : (
-              <span>· not marked</span>
-            )}
+            {!s.marked && s.periodsScheduled > 0 && <span>· {s.periodsMarked}/{s.periodsScheduled}</span>}
           </button>
         ))}
       </div>
