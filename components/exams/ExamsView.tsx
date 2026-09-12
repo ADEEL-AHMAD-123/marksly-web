@@ -108,29 +108,10 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
         actions={isTeacher ? <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Create exam</Button> : undefined}
       />
 
-      {isTeacher ? (
-        <InfoNote title="Students can't see marks until you publish">
-          <p>
-            Entering and saving marks never shows anything to students or parents — they only see results once you
-            click <strong>Publish</strong> on that exam. Until then the exam sits as &quot;Pending&quot; or
-            &quot;Graded&quot;, visible only to staff.
-          </p>
-          <p>
-            <strong>Publishing can&apos;t be undone</strong> from this screen, so double-check marks first. If one
-            student&apos;s result isn&apos;t ready yet, use <strong>Withhold</strong> on that student before publishing
-            — everyone else&apos;s result goes out, and theirs stays back until you release it.
-          </p>
-        </InfoNote>
-      ) : (
-        <InfoNote title="Read-only view">
-          <p>
-            You can see every exam, its results and online-attempt activity across the school, but creating,
-            grading and publishing is handled by the class teacher.
-          </p>
-        </InfoNote>
-      )}
-
-      <Card className="p-4">
+      {/* Toolbar — purely instrumental (filter by term), kept visually lighter
+          than the cards below it, same convention as Classes/Subjects/ID
+          Cards/Timetable. */}
+      <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
         <div className="max-w-xs">
           <Select value={termId} onValueChange={setTermId}>
             <SelectTrigger><SelectValue placeholder="All terms" /></SelectTrigger>
@@ -144,7 +125,7 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
             </SelectContent>
           </Select>
         </div>
-      </Card>
+      </div>
 
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -209,6 +190,33 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
           ))}
         </div>
       )}
+
+      {/* Help — placed after the actual tool, same bottom-of-page pattern as
+          Students, ID Cards, Academic Terms & Grading, Timetable, Classes,
+          Subjects, Attendance and Fees, not before it. */}
+      <div className="space-y-2">
+        {isTeacher ? (
+          <InfoNote title="Students can't see marks until you publish">
+            <p>
+              Entering and saving marks never shows anything to students or parents — they only see results once you
+              click <strong>Publish</strong> on that exam. Until then the exam sits as &quot;Pending&quot; or
+              &quot;Graded&quot;, visible only to staff.
+            </p>
+            <p>
+              <strong>Publishing can&apos;t be undone</strong> from this screen, so double-check marks first. If one
+              student&apos;s result isn&apos;t ready yet, use <strong>Withhold</strong> on that student before publishing
+              — everyone else&apos;s result goes out, and theirs stays back until you release it.
+            </p>
+          </InfoNote>
+        ) : (
+          <InfoNote title="Read-only view">
+            <p>
+              You can see every exam, its results and online-attempt activity across the school, but creating,
+              grading and publishing is handled by the class teacher.
+            </p>
+          </InfoNote>
+        )}
+      </div>
 
       {isTeacher && <CreateExamWizard open={addOpen} onClose={() => setAddOpen(false)} />}
       {previewExamId && (
