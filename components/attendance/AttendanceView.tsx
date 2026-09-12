@@ -330,7 +330,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={title} description={tab === 'mark' ? 'Mark attendance for a specific period.' : 'Absent, late and leave students, with guardian contact details.'} />
+      <PageHeader title={title} description={tab === 'mark' ? 'Mark attendance for a specific period.' : 'Attendance by date, class and period, with guardian contact details.'} />
 
       <div className="flex gap-2">
         <button
@@ -351,7 +351,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
             tab === 'report' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary'
           )}
         >
-          Absentee report
+          Attendance report
         </button>
       </div>
 

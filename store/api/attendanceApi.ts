@@ -109,6 +109,10 @@ export interface AttendanceReportRow {
   studentId: string;
   studentName: string;
   rollNumber: string;
+  // Institution-wide unique ID (unlike rollNumber, only unique within a
+  // class/section) -- what a CSV export needs to identify a student
+  // unambiguously outside the app.
+  admissionNumber: string;
   status: AttendanceStatus;
   note: string;
   guardians: { name: string; phone: string | null }[];
@@ -210,5 +214,10 @@ export const {
   useGetAttendanceSummaryQuery,
   useGetAttendanceCoverageTodayQuery,
   useGetAttendanceReportQuery,
+  // Lazy variant used by the report's CSV export -- fetches the FULL
+  // matching result set (not just the current page) on demand, only when
+  // the admin actually clicks Download, rather than the paginated query
+  // the table itself uses.
+  useLazyGetAttendanceReportQuery,
   useMarkAttendanceMutation,
 } = attendanceApi;
