@@ -743,7 +743,7 @@ function HolidaysDialog({
   const { data, isFetching } = useGetHolidaysQuery({ classId, sectionId }, { skip: !open });
   const holidays = data?.data ?? [];
   const [createHoliday, { isLoading: creating }] = useCreateHolidayMutation();
-  const [deleteHoliday] = useDeleteHolidayMutation();
+  const [deleteHoliday, { isLoading: removing }] = useDeleteHolidayMutation();
 
   const [date, setDate] = useState('');
   const [reason, setReason] = useState('');
@@ -847,6 +847,14 @@ function HolidaysDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {audience === 'staff' && (
+                <p className="mt-1.5 flex items-start gap-1.5 text-xs text-muted-foreground">
+                  <Info size={12} className="mt-0.5 shrink-0" />
+                  There&apos;s no staff attendance tracking in Marksly yet, so this is for the record only — it
+                  won&apos;t change anything else automatically. &quot;Students only&quot; and &quot;Everyone&quot;
+                  do actively stop attendance being taken that day.
+                </p>
+              )}
             </div>
             <div className="flex justify-end">
               <Button type="submit" size="sm" loading={creating}>Add holiday</Button>
@@ -873,8 +881,8 @@ function HolidaysDialog({
                   {confirmingId === h.id ? (
                     <div className="flex shrink-0 items-center gap-1">
                       <span className="text-xs text-muted-foreground">Remove?</span>
-                      <Button type="button" size="sm" variant="danger" onClick={() => remove(h.id)}>Yes</Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => setConfirmingId(null)}>Cancel</Button>
+                      <Button type="button" size="sm" variant="danger" loading={removing} onClick={() => remove(h.id)}>Yes</Button>
+                      <Button type="button" size="sm" variant="ghost" disabled={removing} onClick={() => setConfirmingId(null)}>Cancel</Button>
                     </div>
                   ) : (
                     <button
