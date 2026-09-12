@@ -40,9 +40,13 @@ export function FeeCollectionCard({ reports }: { reports: ReportsData | undefine
 }
 
 /**
- * Quick actions — always accurate, never fabricated. State-aware: once
- * today's attendance is fully marked, swapping "Mark attendance" for a
- * fresh suggestion instead of nagging about something already done.
+ * Quick actions — always accurate, never fabricated. Attendance is marked
+ * by teachers now, not admins (see AttendanceView's admin-override
+ * rework), so this card no longer offers to "mark" it — it links into the
+ * Attendance Report instead, which is what /admin/attendance actually
+ * opens on for an admin. State-aware: once today's attendance is fully
+ * marked, swapping that link for a fresh suggestion instead of nagging
+ * about something already done.
  */
 export function QuickActionsCard({ attendanceFullyMarked = false }: { attendanceFullyMarked?: boolean }) {
   return (
@@ -65,7 +69,7 @@ export function QuickActionsCard({ attendanceFullyMarked = false }: { attendance
               href="/admin/attendance"
               className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary"
             >
-              <CalendarCheck size={18} className="shrink-0" /> Mark attendance
+              <CalendarCheck size={18} className="shrink-0" /> Review attendance
             </Link>
           )}
           <Link
