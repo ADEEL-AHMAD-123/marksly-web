@@ -5,7 +5,9 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Sparkles, Bell, Search } from 'lucide-react';
+import {
+  Sparkles, Bell, Search, Megaphone, AlertTriangle, CalendarDays, BookOpen, Info,
+} from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,7 +23,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn, formatDate } from '@/lib/utils';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useGetInstitutionsQuery } from '@/store/api/superadminApi';
-import { useGetAnnouncementsQuery, useCreateAnnouncementMutation } from '@/store/api/superadminApi';
+import {
+  useGetAnnouncementsQuery, useCreateAnnouncementMutation, type PlatformAnnouncementType,
+} from '@/store/api/superadminApi';
 
 const priorityBadge: Record<string, { variant: 'neutral' | 'primary' | 'warning' | 'danger'; label: string }> = {
   low: { variant: 'neutral', label: 'Low' },
@@ -29,6 +33,49 @@ const priorityBadge: Record<string, { variant: 'neutral' | 'primary' | 'warning'
   high: { variant: 'warning', label: 'High' },
   urgent: { variant: 'danger', label: 'Urgent' },
 };
+
+// Same type concept as an institution's own Post Notice form
+// (components/notices/NoticesView.tsx) -- what the announcement is
+// ABOUT, separate from priority (how urgent it is).
+const TYPE_META: Record<PlatformAnnouncementType, { label: string; icon: typeof Megaphone; variant: 'neutral' | 'primary' | 'warning' | 'danger' }> = {
+  announcement: { label: 'Announcement', icon: Megaphone, variant: 'neutral' },
+  alert: { label: 'Alert', icon: AlertTriangle, variant: 'danger' },
+  event: { label: 'Event', icon: CalendarDays, variant: 'primary' },
+  academic: { label: 'Academic', icon: BookOpen, variant: 'primary' },
+};
+
+const TYPE_HINT: Record<PlatformAnnouncementType, string> = {
+  announcement: 'General information for every targeted institution -- stays up until it expires or you send an update.',
+  alert: 'Something urgent or time-sensitive -- planned downtime, a security notice, a last-minute policy change.',
+  event: 'Something happening on a specific day, platform-wide -- a webinar, a maintenance window, a deadline.',
+  academic: 'Guidance about academic features -- exam tools, grading changes, term-related updates.',
+};
+
+type ExpiryPreset = 'none' | '3' | '7' | '30' | 'custom';
+
+const EXPIRY_PRESETS: { value: ExpiryPreset; label: string }[] = [
+  { value: 'none', label: 'No expiry' },
+  { value: '3', label: '3 days' },
+  { value: '7', label: '1 week' },
+  { value: '30', label: '1 month' },
+  { value: 'custom', label: 'Custom date' },
+];
+
+// Suggested default per type, same reasoning as NoticesView's own
+// TYPE_DEFAULT_EXPIRY -- purely a starting point the superadmin can
+// always override before sending.
+const TYPE_DEFAULT_EXPIRY: Record<PlatformAnnouncementType, ExpiryPreset> = {
+  announcement: 'none',
+  alert: '3',
+  event: '7',
+  academic: 'none',
+};
+
+function todayPlusDays(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 const ROLES: { value: string; label: string }[] = [
   { value: 'admin', label: 'Admins' },
@@ -39,11 +86,12 @@ const ROLES: { value: string; label: string }[] = [
   { value: 'staff', label: 'Staff' },
 ];
 
+const ANNOUNCEMENT_TYPES: PlatformAnnouncementType[] = ['announcement', 'alert', 'event', 'academic'];
+
 const schema = z.object({
   title: z.string().min(1, 'Required').max(150),
   body: z.string().min(1, 'Required').max(5000),
   priority: z.enum(['low', 'normal', 'high', 'urgent']),
-  expiresAt: z.string().optional(),
 });
 type AnnouncementForm = z.infer<typeof schema>;
 
@@ -83,13 +131,39 @@ export function AnnouncementsView() {
 
   const [createAnnouncement, { isLoading: sending }] = useCreateAnnouncementMutation();
 
+  const [type, setType] = useState<PlatformAnnouncementType>('announcement');
+  // Same touched-tracking as NoticesView's Post Notice drawer: switching
+  // type suggests a fresh expiry preset, but only until the superadmin
+  // actually picks one themselves, so a deliberate custom choice never
+  // gets silently overwritten just because they changed their mind about
+  // the type afterward.
+  const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>('none');
+  const [expiryTouched, setExpiryTouched] = useState(false);
+  const [customDate, setCustomDate] = useState('');
+
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<AnnouncementForm>({
     resolver: zodResolver(schema),
-    defaultValues: { title: '', body: '', priority: 'normal', expiresAt: '' },
+    defaultValues: { title: '', body: '', priority: 'normal' },
   });
 
   const toggleRole = (r: string) =>
     setRoles((prev) => (prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]));
+
+  const pickType = (t: PlatformAnnouncementType) => {
+    setType(t);
+    if (!expiryTouched) setExpiryPreset(TYPE_DEFAULT_EXPIRY[t]);
+  };
+
+  const pickExpiry = (p: ExpiryPreset) => {
+    setExpiryTouched(true);
+    setExpiryPreset(p);
+  };
+
+  const resolveExpiresAt = (): string | undefined => {
+    if (expiryPreset === 'none') return undefined;
+    if (expiryPreset === 'custom') return customDate || undefined;
+    return todayPlusDays(Number(expiryPreset));
+  };
 
   // Tracks names alongside ids so a selected institution stays visible (and
   // removable) as its own chip even after the search box moves on to a
@@ -126,19 +200,28 @@ export function AnnouncementsView() {
       toast.error('Select at least one institution, or switch to "All institutions"');
       return;
     }
+    if (expiryPreset === 'custom' && !customDate) {
+      toast.error('Pick a custom expiry date, or choose a different option');
+      return;
+    }
     try {
       const result = await createAnnouncement({
         title: values.title,
         body: values.body,
+        type,
         priority: values.priority,
         targetRoles: roles,
-        expiresAt: values.expiresAt || undefined,
+        expiresAt: resolveExpiresAt(),
         institutionScope: scope,
         institutionIds: scope === 'selected' ? Array.from(selectedInstitutionIds) : undefined,
       }).unwrap();
       toast.success(`Sent to ${result.data.institutionCount} institution${result.data.institutionCount === 1 ? '' : 's'}`);
       reset();
       setRoles([]);
+      setType('announcement');
+      setExpiryPreset('none');
+      setExpiryTouched(false);
+      setCustomDate('');
       setScope('all');
       setSelectedInstitutionIds(new Set());
       setSelectedInstitutionNames(new Map());
@@ -162,6 +245,30 @@ export function AnnouncementsView() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
+              <Label>Type</Label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {ANNOUNCEMENT_TYPES.map((t) => {
+                  const meta = TYPE_META[t];
+                  const Icon = meta.icon;
+                  const active = type === t;
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => pickType(t)}
+                      className={cn(
+                        'flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors',
+                        active ? 'border-primary bg-primary-soft text-primary-soft-foreground' : 'border-border hover:bg-muted'
+                      )}
+                    >
+                      <Icon size={14} className="shrink-0" /> {meta.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1.5 text-xs text-muted-foreground">{TYPE_HINT[type]}</p>
+            </div>
+            <div>
               <Label htmlFor="title">Title</Label>
               <Input id="title" placeholder="e.g. Scheduled maintenance tonight" {...register('title')} />
               {errors.title && <p className="mt-1 text-xs text-danger">{errors.title.message}</p>}
@@ -172,29 +279,64 @@ export function AnnouncementsView() {
               {errors.body && <p className="mt-1 text-xs text-danger">{errors.body.message}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="priority">Priority</Label>
-                <Controller
-                  control={control}
-                  name="priority"
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="priority"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="urgent">Urgent</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
+            <div>
+              <Label htmlFor="priority">Priority</Label>
+              <Controller
+                control={control}
+                name="priority"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="priority"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div>
+              <Label>Expires</Label>
+              <div className="flex flex-wrap gap-2">
+                {EXPIRY_PRESETS.map((p) => {
+                  const active = expiryPreset === p.value;
+                  return (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => pickExpiry(p.value)}
+                      className={cn(
+                        'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                        active
+                          ? 'border-primary bg-primary-soft text-primary-soft-foreground'
+                          : 'border-border text-muted-foreground hover:bg-muted'
+                      )}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {expiryPreset === 'custom' && (
+                <input
+                  type="date"
+                  value={customDate}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  className="mt-2 h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
-              </div>
-              <div>
-                <Label htmlFor="expiresAt">Expires (optional)</Label>
-                <input id="expiresAt" type="date" {...register('expiresAt')} className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-              </div>
+              )}
+              <p className="mt-1.5 flex items-start gap-1.5 text-xs text-muted-foreground">
+                <Info size={12} className="mt-0.5 shrink-0" />
+                {expiryPreset === 'none'
+                  ? "This announcement stays live at every targeted institution until you send an update -- there's no automatic cutoff."
+                  : `Every institution's copy disappears from its notices after ${
+                      expiryPreset === 'custom' ? (customDate || 'the date you pick') : todayPlusDays(Number(expiryPreset))
+                    }.`}
+              </p>
             </div>
 
             <div>
@@ -390,11 +532,14 @@ export function AnnouncementsView() {
               // undefined) previously took down the entire Announcements
               // page for every admin, not just hidden the one bad badge.
               const badge = priorityBadge[a.priority] ?? priorityBadge.normal;
+              const typeMeta = TYPE_META[a.type] ?? TYPE_META.announcement;
+              const TypeIcon = typeMeta.icon;
               const targetRoles = a.targetRoles ?? [];
               return (
                 <Card key={a.id} className="p-5">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold text-foreground">{a.title}</h3>
+                    <Badge variant={typeMeta.variant} className="gap-1"><TypeIcon size={10} /> {typeMeta.label}</Badge>
                     <Badge variant={badge.variant}>{badge.label}</Badge>
                   </div>
                   <p className="mt-1.5 whitespace-pre-line text-sm text-muted-foreground">{a.body}</p>

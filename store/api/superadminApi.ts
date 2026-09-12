@@ -144,11 +144,16 @@ export interface BankDetails {
   bankIban: string;
 }
 
+// Same public type an institution's own Notice uses (see noticesApi.ts) --
+// 'holiday' is excluded there too since it's only ever stamped internally.
+export type PlatformAnnouncementType = 'announcement' | 'alert' | 'event' | 'academic';
+
 export interface PlatformAnnouncement {
   id: string;
   title: string;
   body: string;
   priority: 'low' | 'normal' | 'high' | 'urgent';
+  type: PlatformAnnouncementType;
   targetRoles: string[];
   institutionScope: 'all' | 'selected';
   institutionCount: number;
@@ -161,6 +166,7 @@ export interface PlatformAnnouncement {
 export interface CreatePlatformAnnouncementBody {
   title: string;
   body: string;
+  type: PlatformAnnouncementType;
   priority: 'low' | 'normal' | 'high' | 'urgent';
   targetRoles?: string[];
   expiresAt?: string;
