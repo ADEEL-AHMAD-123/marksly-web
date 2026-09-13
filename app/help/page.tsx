@@ -58,6 +58,7 @@ const TOPICS = [
       { q: 'How does exam grading work?', a: 'You define the grading scheme once — percentage/letter, GPA, or Cambridge-style — and Marksly calculates grades automatically as marks are entered on the exam grid.' },
       { q: 'Can I move a student between sections or classes?', a: 'Yes — update the student’s record from the Students module, and their attendance and exam history carries forward with them.' },
       { q: 'How do students move up to the next class at year-end?', a: 'Use the promotion tool to move an entire class or section to the next grade in one action — students who repeat a year can be handled in the same batch.' },
+      { q: 'Can students choose their own subjects?', a: 'If your institution offers electives, students can request to join a subject from their portal, and a teacher or admin approves or rejects each request — core subjects are assigned directly by an admin.' },
     ],
   },
   {
@@ -69,6 +70,7 @@ const TOPICS = [
       { q: 'Can I message a single class instead of the whole institution?', a: 'Yes — you can target a message to a specific class or section, or send it institution-wide.' },
       { q: 'What’s the difference between messaging and notices?', a: 'Messaging (WhatsApp/SMS) reaches parents outside the app. Notices post inside Marksly itself — on the dashboard every parent, student and staff member already sees — and can optionally also go out by WhatsApp or SMS.' },
       { q: 'Do holidays show up as notices automatically?', a: 'Yes — adding a holiday posts a matching notice automatically, so it appears on every dashboard without being entered twice.' },
+      { q: 'Is there an in-app notification inbox, separate from WhatsApp/SMS and notices?', a: 'Yes — every account has a personal inbox for updates specific to them (an attendance alert, a published result, an account change), so nothing depends on a WhatsApp message being seen in time.' },
     ],
   },
   {

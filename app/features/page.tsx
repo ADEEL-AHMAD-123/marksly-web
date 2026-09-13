@@ -4,6 +4,7 @@ import {
   GraduationCap, CalendarCheck, Wallet, FileText, CalendarClock,
   CreditCard, MessageSquare, BarChart2, ShieldCheck, ArrowRight, Check,
   Settings, Users2, Bell, Headphones, LayoutDashboard, BookOpen,
+  Layers, Inbox,
 } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
@@ -17,7 +18,7 @@ const TITLE = 'Features — Marksly School & Campus Management Software';
 // Kept under ~160 chars — Bing Webmaster Tools flags longer descriptions as
 // an error, and both Google/Bing truncate them in the search snippet anyway.
 const DESCRIPTION =
-  'Explore Marksly features: attendance, exams & results, timetable, fees & invoices, students, parent & student portal, notices, ID cards, reports.';
+  'Explore Marksly features: attendance, exams & results, timetable, subjects, fees & invoices, students, portal, notices, notifications, ID cards, reports.';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -85,6 +86,17 @@ const FEATURES: Feature[] = [
       'No clashing periods across sections',
     ],
     visual: 'timetable', plan: 'Growth',
+  },
+  {
+    slug: 'subjects', icon: Layers, title: 'Subjects & enrollment',
+    desc: 'Define the subjects taught in every class, assign a teacher to each one, and let students request electives — with a simple approval step for whoever’s in charge.',
+    bullets: [
+      'Subjects assigned per class and section, each with its own teacher',
+      'Subject codes generated automatically (e.g. MATH-8), or set your own',
+      'Students can request to join elective subjects; a teacher or admin approves or rejects each request',
+      'Feeds straight into Timetable and Exams, so a subject only ever has one source of truth',
+    ],
+    visual: 'subjects', plan: 'Growth',
   },
   {
     slug: 'fees', icon: Wallet, title: 'Fees & invoices',
@@ -159,12 +171,12 @@ const FEATURES: Feature[] = [
   },
   {
     slug: 'id-cards', icon: CreditCard, title: 'ID cards',
-    desc: 'Printable student ID cards with a scannable QR code, generated class by class.',
+    desc: 'Printable student and staff ID cards with a scannable QR code, generated class by class — and verifiable by anyone, instantly, no login required.',
     bullets: [
-      'Generated class by class in bulk',
-      'Scannable QR code per student',
-      'Reprint anytime as students join',
-      'Consistent design across the institution',
+      'Generated class by class in bulk, for students and staff alike',
+      'Each QR code opens a public verification page — name, class/role and status, confirmed in one scan',
+      'Gate staff or security can confirm an ID is genuine without ever needing dashboard access',
+      'Reprint anytime as students join, with a consistent design across the institution',
     ],
     visual: 'idcard', plan: 'Growth',
   },
@@ -189,6 +201,17 @@ const FEATURES: Feature[] = [
       'Set an expiry date so old notices quietly stop showing themselves',
     ],
     visual: 'notices', plan: 'Starter',
+  },
+  {
+    slug: 'inbox', icon: Inbox, title: 'Notifications & inbox',
+    desc: 'Every account — admin, teacher, parent, student or accountant — gets a personal inbox for the things that matter specifically to them, separate from broadcast notices.',
+    bullets: [
+      'Personal updates land here automatically — an attendance alert, a published result, an account change',
+      'Nothing gets missed in a WhatsApp thread — every notification is also visible from inside the dashboard',
+      'Read and unread are tracked per person, so nothing quietly slips by',
+      'Works alongside Notices and WhatsApp/SMS, not instead of them — the same update can reach all three',
+    ],
+    visual: 'inbox', plan: 'Starter',
   },
   {
     slug: 'reports', icon: BarChart2, title: 'Reports',

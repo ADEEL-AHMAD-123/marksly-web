@@ -1,9 +1,10 @@
-import { Check, MessageCircle, QrCode, Bell, ShieldCheck, Wallet, Layers, UserCog } from 'lucide-react';
+import { Check, MessageCircle, QrCode, Bell, ShieldCheck, Wallet, Layers, UserCog, BookMarked, Inbox } from 'lucide-react';
 
 export type VisualKind =
   | 'attendance' | 'exams' | 'timetable' | 'fees'
   | 'students' | 'messaging' | 'idcard' | 'reports'
-  | 'portal' | 'payments' | 'notices' | 'academics' | 'staff';
+  | 'portal' | 'payments' | 'notices' | 'academics' | 'staff'
+  | 'subjects' | 'inbox';
 
 /**
  * Abstract, branded illustrative panels — deliberately NOT screenshots of
@@ -304,6 +305,46 @@ export function FeatureVisual({ kind }: { kind: VisualKind }) {
           <div className="mt-3 flex items-center gap-2 rounded-lg bg-accent/10 px-3 py-2 text-xs font-semibold text-accent">
             <UserCog aria-hidden size={14} /> Scoped by role, not shared logins
           </div>
+        </Frame>
+      );
+
+    case 'subjects':
+      return (
+        <Frame>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Class 9 — Subjects</p>
+          <div className="mt-3 space-y-2">
+            <Row label="Mathematics (MATH-9)" sub="Mr. Farooq" status="success" />
+            <Row label="Computer Science (CS-9)" sub="3 pending enrollment requests" status="muted" />
+            <Row label="Physics (PHY-9)" sub="Ms. Iqbal" status="success" />
+          </div>
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-accent/10 px-3 py-2 text-xs font-semibold text-accent">
+            <BookMarked aria-hidden size={14} /> Feeds straight into Timetable & Exams
+          </div>
+        </Frame>
+      );
+
+    case 'inbox':
+      return (
+        <Frame>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Inbox — Sana Tariq (Parent)</p>
+          <div className="mt-3 space-y-2.5">
+            {[
+              { title: 'Attendance alert', sub: 'Bilal was marked absent today', unread: true },
+              { title: 'Result published', sub: 'Mid-Term — Mathematics', unread: true },
+              { title: 'Notice', sub: 'PTM scheduled for Friday', unread: false },
+            ].map((n) => (
+              <div key={n.title} className="flex items-start justify-between gap-2 rounded-lg border border-border px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{n.title}</p>
+                  <p className="text-xs text-muted-foreground">{n.sub}</p>
+                </div>
+                {n.unread && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-accent" />}
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-accent">
+            <Inbox aria-hidden size={13} /> 2 unread
+          </p>
         </Frame>
       );
 
