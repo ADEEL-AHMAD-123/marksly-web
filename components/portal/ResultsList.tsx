@@ -1,4 +1,4 @@
-import { FileText, Clock, Laptop, User, CalendarDays } from 'lucide-react';
+import { FileText, Laptop, User, CalendarDays } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,10 +22,16 @@ export function ResultsList({ data, isLoading }: { data?: ResultItem[]; isLoadin
   return (
     <div className="space-y-4">
       {data.map((r, i) => {
-        const isPending = r.status === 'pending';
         // `grade` is the PREDICTED grade under a cambridge-type scheme —
         // only `officialGrade` is the real, final result. Never present the
         // predicted grade as if it were final here.
+        //
+        // Note: portal.service.ts's resultsFor() only ever returns rows
+        // with status:'final' (a 'pending'/withheld result is filtered out
+        // server-side before it reaches here at all) — so there is
+        // deliberately no "Awaiting official result" branch in this
+        // component. A withheld result simply doesn't appear in this list
+        // yet, rather than appearing with a placeholder.
         const hasOfficial = !!r.officialGrade;
         return (
           <Card key={i}>
@@ -52,11 +58,7 @@ export function ResultsList({ data, isLoading }: { data?: ResultItem[]; isLoadin
                 </p>
               </div>
               <div className="text-right">
-                {isPending ? (
-                  <Badge variant="warning">
-                    <Clock size={12} /> Awaiting official result
-                  </Badge>
-                ) : hasOfficial ? (
+                {hasOfficial ? (
                   <Badge variant="success">{r.officialGrade} · {r.percentage}%</Badge>
                 ) : r.gradePoints != null ? (
                   <Badge variant={r.isPassed ? 'success' : 'danger'}>
@@ -65,9 +67,7 @@ export function ResultsList({ data, isLoading }: { data?: ResultItem[]; isLoadin
                 ) : (
                   <Badge variant={r.isPassed ? 'success' : 'danger'}>{r.grade} · {r.percentage}%</Badge>
                 )}
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {isPending ? `Predicted: ${r.grade} · ` : ''}{r.totalObtained}/{r.totalMarks}
-                </p>
+                <p className="mt-1 text-xs text-muted-foreground">{r.totalObtained}/{r.totalMarks}</p>
               </div>
             </CardHeader>
             <CardContent>

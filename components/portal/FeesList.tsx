@@ -134,7 +134,12 @@ export function FeesList({ data, isLoading }: { data?: FeeItem[]; isLoading: boo
                     <Badge variant={feeBadgeFor(f.status).variant}>{feeBadgeFor(f.status).label}</Badge>
                     {f.balance > 0 && <p className="mt-1 text-xs text-muted-foreground">Bal {formatCurrency(f.balance)}</p>}
                   </div>
-                  {f.balance > 0 && liveGateways.length === 1 && (
+                  {/* balance is already 0 for a waived invoice (see
+                      portal.service.ts's feesFor()), but excluding
+                      'waived' explicitly here too means a stale cached
+                      value can never offer a payment button that the
+                      backend would reject with a confusing 409 anyway. */}
+                  {f.balance > 0 && f.status !== 'waived' && liveGateways.length === 1 && (
                     <Button
                       size="sm"
                       variant="soft"
@@ -144,7 +149,7 @@ export function FeesList({ data, isLoading }: { data?: FeeItem[]; isLoading: boo
                       <CreditCard size={14} /> Pay online
                     </Button>
                   )}
-                  {f.balance > 0 && liveGateways.length > 1 && (
+                  {f.balance > 0 && f.status !== 'waived' && liveGateways.length > 1 && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button size="sm" variant="soft" loading={paying && payingId === f.id}>

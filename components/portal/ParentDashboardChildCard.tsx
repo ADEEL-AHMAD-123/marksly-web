@@ -24,8 +24,13 @@ const LOW_ATTENDANCE_THRESHOLD = 75;
 export function ParentDashboardChildCard({ child }: { child: ChildSummary }) {
   const { data: feesRes } = useChildFeesQuery(child.id);
   const fees = feesRes?.data ?? [];
+  // Excludes 'waived' too, not just 'paid' -- a waived invoice's balance is
+  // already reported as 0 by the backend (portal.service.ts's feesFor()),
+  // but without this filter it could still surface here as "next due" with
+  // a $0 amount, which reads as a bug rather than the fee having been
+  // written off.
   const nextDue = fees
-    .filter((f) => f.status !== 'paid')
+    .filter((f) => f.status !== 'paid' && f.status !== 'waived')
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
 
   const { data: resultsRes } = useChildResultsQuery(child.id);
