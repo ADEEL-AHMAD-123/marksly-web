@@ -137,6 +137,33 @@ export interface CreateExamBody {
   autoSubmitOnTimeout?: boolean;
 }
 
+// Mirrors backend exam.service.ts's getExamForEdit() -- every field
+// updateExam() can touch, plus reference-only fields (mode, classId,
+// className) the edit form needs to decide what to show but can never
+// change (mode/classId aren't part of UpdateExamBody at all).
+export interface ExamForEdit {
+  id: string;
+  title: string;
+  type: ExamType;
+  mode: ExamMode;
+  classId: string;
+  className: string;
+  examDate: string | null;
+  passingPercentage: number;
+  published: boolean;
+  subjects: { name: string; totalMarks: number; passingMarks: number; notes: string | null }[];
+  subjectName: string | null;
+  questions: ExamQuestion[];
+  durationMinutes: number | null;
+  windowStart: string | null;
+  windowEnd: string | null;
+  shuffleQuestions: boolean;
+  shuffleOptions: boolean;
+  maxAttempts: number;
+  integrityMode: IntegrityMode;
+  autoSubmitOnTimeout: boolean;
+}
+
 export interface SaveResultsBody {
   examId: string;
   records: {
@@ -274,11 +301,16 @@ export const examsApi = baseApi.injectEndpoints({
       // slightly broader than necessary but this is a low-frequency admin action.
       invalidatesTags: ['Results'],
     }),
+    getExamForEdit: builder.query<ApiObject<ExamForEdit>, string>({
+      query: (examId) => `/exams/${examId}`,
+      providesTags: (_r, _e, examId) => [{ type: 'Exams', id: `EDIT-${examId}` }],
+    }),
     updateExam: builder.mutation<ApiObject<unknown>, { examId: string; body: UpdateExamBody }>({
       query: ({ examId, body }) => ({ url: `/exams/${examId}`, method: 'PATCH', body }),
       invalidatesTags: (_r, _e, { examId }) => [
         { type: 'Exams', id: 'LIST' },
         { type: 'Exams', id: `ATTEMPT-${examId}` },
+        { type: 'Exams', id: `EDIT-${examId}` },
         { type: 'Results', id: examId },
         'Exams',
       ],
@@ -314,6 +346,7 @@ export const {
   useSaveExamResultsMutation,
   usePublishExamMutation,
   useSetOfficialGradeMutation,
+  useGetExamForEditQuery,
   useUpdateExamMutation,
   useDeleteExamMutation,
   usePreviewExamQuery,

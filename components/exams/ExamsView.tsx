@@ -10,6 +10,7 @@ import {
   Check, ChevronRight, ChevronLeft, ListChecks, Settings2, Pencil,
 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { SearchInput } from '@/components/ui/search-input';
 import { getErrorMessage } from '@/lib/get-error-message';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
@@ -30,6 +31,7 @@ import { useAppSelector } from '@/store/hooks';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import {
   useGetExamsQuery, useCreateExamMutation, useDeleteExamMutation, usePreviewExamQuery,
+  useGetExamForEditQuery, useUpdateExamMutation,
   type ExamType, type ExamMode, type IntegrityMode, type ExamQuestion, type QuestionType,
 } from '@/store/api/examsApi';
 import { useGetTermsQuery } from '@/store/api/termsApi';
@@ -61,6 +63,12 @@ const INTEGRITY_MODES: { value: IntegrityMode; label: string }[] = [
   { value: 'fullscreen_lock', label: 'Fullscreen lock' },
 ];
 
+// Below this many exams, scanning the whole grid works fine and a search
+// box is more friction than help — same threshold/reasoning as
+// AdminDashboardAttendance's/Subjects' own SEARCH_THRESHOLD.
+const EXAM_SEARCH_THRESHOLD = 9;
+const EXAM_PAGE_SIZE = 12;
+
 const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
   { value: 'mcq_single', label: 'Multiple choice (1 answer)' },
   { value: 'mcq_multi', label: 'Multiple choice (multi)' },
@@ -87,13 +95,24 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
 
   const [termId, setTermId] = useState('all');
   const { data, isLoading } = useGetExamsQuery({ termId: termId === 'all' ? undefined : termId });
-  const exams = data?.data ?? [];
+  const allExams = data?.data ?? [];
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const q = query.trim().toLowerCase();
+  const exams = q
+    ? allExams.filter((e) => [e.title, e.className].some((v) => (v ?? '').toLowerCase().includes(q)))
+    : allExams;
+  const showSearch = allExams.length > EXAM_SEARCH_THRESHOLD;
+  const totalPages = Math.max(1, Math.ceil(exams.length / EXAM_PAGE_SIZE));
+  const pageSafe = Math.min(page, totalPages);
+  const pagedExams = exams.slice((pageSafe - 1) * EXAM_PAGE_SIZE, pageSafe * EXAM_PAGE_SIZE);
   const { data: termsRes } = useGetTermsQuery();
   const terms = termsRes?.data ?? [];
   const [addOpen, setAddOpen] = useState(false);
   const [activeExam, setActiveExam] = useState<string | null>(null);
   const [monitoringExam, setMonitoringExam] = useState<string | null>(null);
   const [previewExamId, setPreviewExamId] = useState<string | null>(null);
+  const [editExamId, setEditExamId] = useState<string | null>(null);
   const [deleteExam, { isLoading: deleting }] = useDeleteExamMutation();
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const onConfirmDelete = async () => {
@@ -119,12 +138,12 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
   const searchParams = useSearchParams();
   const deepLinkExamId = searchParams.get('examId');
   useEffect(() => {
-    if (!deepLinkExamId || !exams.length) return;
-    const target = exams.find((e) => e.id === deepLinkExamId);
+    if (!deepLinkExamId || !allExams.length) return;
+    const target = allExams.find((e) => e.id === deepLinkExamId);
     if (!target) return;
     if (target.mode === 'online') setMonitoringExam(target.id);
     else setActiveExam(target.id);
-  }, [deepLinkExamId, exams]);
+  }, [deepLinkExamId, allExams]);
 
   if (activeExam) {
     return <ResultsEntry examId={activeExam} onBack={() => setActiveExam(null)} readOnly={!isTeacher} />;
@@ -138,16 +157,16 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
     <div className="space-y-6">
       <PageHeader
         title={title}
-        description={isLoading ? 'Loading…' : `${exams.length} exams`}
+        description={isLoading ? 'Loading…' : `${allExams.length} exams`}
         actions={isTeacher ? <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Create exam</Button> : undefined}
       />
 
-      {/* Toolbar — purely instrumental (filter by term), kept visually lighter
-          than the cards below it, same convention as Classes/Subjects/ID
-          Cards/Timetable. */}
-      <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
-        <div className="max-w-xs">
-          <Select value={termId} onValueChange={setTermId}>
+      {/* Toolbar — purely instrumental (filter by term, search once the
+          list grows), kept visually lighter than the cards below it, same
+          convention as Classes/Subjects/ID Cards/Timetable. */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-4">
+        <div className="max-w-xs flex-1">
+          <Select value={termId} onValueChange={(v) => { setTermId(v); setPage(1); }}>
             <SelectTrigger><SelectValue placeholder="All terms" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All terms</SelectItem>
@@ -159,13 +178,18 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
             </SelectContent>
           </Select>
         </div>
+        {showSearch && (
+          <div className="w-full sm:w-56">
+            <SearchInput value={query} onChange={(v) => { setQuery(v); setPage(1); }} placeholder="Search by title or class…" />
+          </div>
+        )}
       </div>
 
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => <Card key={i} className="p-5"><Skeleton className="h-28 w-full" /></Card>)}
         </div>
-      ) : exams.length === 0 ? (
+      ) : allExams.length === 0 ? (
         <Card>
           <EmptyState
             icon={FileText}
@@ -174,9 +198,12 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
             action={isTeacher ? <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Create exam</Button> : undefined}
           />
         </Card>
+      ) : exams.length === 0 ? (
+        <Card><EmptyState icon={FileText} title="No exams match your search" description="Try a different title or class." /></Card>
       ) : (
+        <>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {exams.map((e) => (
+          {pagedExams.map((e) => (
             <Card key={e.id} className="flex flex-col p-5">
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -187,15 +214,26 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
                   <div className="flex items-center gap-1">
                     <ModeBadge mode={e.mode} />
                     {isTeacher && (
-                      <button
-                        type="button"
-                        aria-label="Delete exam"
-                        title="Delete exam"
-                        onClick={() => setDeleteTarget({ id: e.id, title: e.title })}
-                        className="rounded-md p-1 text-muted-foreground hover:bg-danger-soft hover:text-danger"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          aria-label="Edit exam"
+                          title="Edit exam"
+                          onClick={() => setEditExamId(e.id)}
+                          className="rounded-md p-1 text-muted-foreground hover:bg-primary-soft hover:text-primary-soft-foreground"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Delete exam"
+                          title="Delete exam"
+                          onClick={() => setDeleteTarget({ id: e.id, title: e.title })}
+                          className="rounded-md p-1 text-muted-foreground hover:bg-danger-soft hover:text-danger"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
                     )}
                   </div>
                   {e.published
@@ -236,6 +274,16 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
             </Card>
           ))}
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-muted/20 px-4 py-2.5">
+            <p className="text-xs text-muted-foreground">Page {pageSafe} of {totalPages} · {exams.length} exam{exams.length === 1 ? '' : 's'}</p>
+            <div className="flex items-center gap-1.5">
+              <Button variant="secondary" size="sm" disabled={pageSafe <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
+              <Button variant="secondary" size="sm" disabled={pageSafe >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
+            </div>
+          </div>
+        )}
+        </>
       )}
 
       {/* Help — placed after the actual tool, same bottom-of-page pattern as
@@ -266,6 +314,9 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
       </div>
 
       {isTeacher && <CreateExamWizard open={addOpen} onClose={() => setAddOpen(false)} />}
+      {isTeacher && editExamId && (
+        <EditExamDrawer examId={editExamId} onClose={() => setEditExamId(null)} />
+      )}
       {previewExamId && (
         <ExamPreviewModal examId={previewExamId} onClose={() => setPreviewExamId(null)} />
       )}
@@ -887,6 +938,244 @@ function CreateExamWizard({ open, onClose }: { open: boolean; onClose: () => voi
             )}
           </div>
         </form>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Edit an existing exam. Only the fields updateExam() actually accepts are
+// editable here (title/examDate/passingPercentage/subjects, plus the
+// online-mode live-exam fields questions/durationMinutes/window) — type,
+// mode, and class are permanent once an exam is created (see
+// exam.validator.ts's updateExamSchema) and are shown read-only for
+// context. A single-page form rather than the create wizard's multi-step
+// flow, since there's no "pick mode / pick class" decision to walk through
+// here — just "here's what this exam currently is, change what you need".
+// ─────────────────────────────────────────────────────────────────────────
+
+const editSchema = z
+  .object({
+    title: z.string().min(1, 'Required'),
+    examDate: z.string().optional(),
+    // Blank must map to undefined (falls back to the backend's own
+    // default), not to the number 0 — same reasoning as the create
+    // wizard's passingPercentage field.
+    passingPercentage: z.preprocess(
+      (v) => (v === '' || v === null || v === undefined ? undefined : v),
+      z.coerce.number().min(0).max(100).optional()
+    ),
+    subjects: z.array(subjectSchema).optional(),
+    questions: z.array(questionSchema).optional(),
+    durationMinutes: z.coerce.number().optional(),
+    windowStart: z.string().optional(),
+    windowEnd: z.string().optional(),
+  })
+  .superRefine((d, ctx) => {
+    if (d.windowStart && d.windowEnd && new Date(d.windowEnd) <= new Date(d.windowStart)) {
+      ctx.addIssue({ code: 'custom', path: ['windowEnd'], message: 'End must be after start' });
+    }
+  });
+type EditExamForm = z.infer<typeof editSchema>;
+
+/** yyyy-MM-ddThh:mm, the format <input type="datetime-local"> needs — an
+ *  ISO string straight from the backend has seconds/a trailing Z and won't
+ *  populate the input at all. */
+function toDatetimeLocal(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function EditExamDrawer({ examId, onClose }: { examId: string; onClose: () => void }) {
+  const { data, isLoading, isError } = useGetExamForEditQuery(examId);
+  const exam = data?.data;
+  const [updateExam, { isLoading: saving }] = useUpdateExamMutation();
+
+  const { register, control, handleSubmit, reset, watch, formState: { errors } } = useForm<EditExamForm>({
+    resolver: zodResolver(editSchema),
+    defaultValues: { title: '', examDate: '', subjects: [], questions: [] },
+  });
+  const { fields, append, remove } = useFieldArray({ control, name: 'subjects' });
+  const questions = watch('questions') ?? [];
+  const totalQuestionMarks = questions.reduce((s, q) => s + (Number(q.marks) || 0), 0);
+  const totalSubjectMarks = (watch('subjects') ?? []).reduce((s, x) => s + (Number(x.totalMarks) || 0), 0);
+
+  // Reset the form once the exam data actually arrives — it's fetched
+  // fresh per drawer-open (examId only ever changes by remounting via the
+  // `key` below), so this only needs to fire once per open, not on every
+  // keystroke re-render.
+  useEffect(() => {
+    if (!exam) return;
+    reset({
+      title: exam.title,
+      examDate: exam.examDate ? exam.examDate.slice(0, 10) : '',
+      passingPercentage: exam.passingPercentage,
+      subjects: exam.subjects.map((s) => ({ name: s.name, totalMarks: s.totalMarks, notes: s.notes ?? '' })),
+      questions: exam.questions,
+      durationMinutes: exam.durationMinutes ?? undefined,
+      windowStart: toDatetimeLocal(exam.windowStart),
+      windowEnd: toDatetimeLocal(exam.windowEnd),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exam]);
+
+  const onSubmit = async (values: EditExamForm) => {
+    if (!exam) return;
+    try {
+      const body: Record<string, unknown> = {
+        title: values.title,
+        examDate: values.examDate || undefined,
+        passingPercentage: values.passingPercentage,
+      };
+      if (exam.mode === 'online') {
+        body.questions = values.questions;
+        body.durationMinutes = values.durationMinutes;
+        if (values.windowStart) body.windowStart = new Date(values.windowStart).toISOString();
+        if (values.windowEnd) body.windowEnd = new Date(values.windowEnd).toISOString();
+      } else {
+        body.subjects = (values.subjects ?? []).map((s) => ({
+          name: s.name,
+          totalMarks: s.totalMarks,
+          notes: s.notes || undefined,
+        }));
+      }
+      await updateExam({ examId, body }).unwrap();
+      toast.success('Exam updated');
+      onClose();
+    } catch (e) {
+      // The backend refuses to touch the live-exam fields once a student
+      // has an in-progress attempt (EXAM_HAS_ACTIVE_ATTEMPTS) -- surface
+      // that reason directly rather than a generic failure.
+      toast.error(getErrorMessage(e, 'Could not update this exam'));
+    }
+  };
+
+  return (
+    <Sheet open onOpenChange={(o) => !o && onClose()}>
+      <SheetContent className="flex w-full flex-col sm:max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h3 className="text-base font-semibold text-foreground">Edit exam</h3>
+          <SheetClose asChild><button type="button" aria-label="Close" className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></button></SheetClose>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-3 p-5"><Skeleton className="h-8 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>
+        ) : isError || !exam ? (
+          <div className="p-5"><EmptyState icon={AlertCircle} title="Couldn't load this exam" description="There was a problem reaching the server." /></div>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
+            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+              {/* Permanent, read-only context -- type/mode/class can't be
+                  changed once an exam is created (updateExamSchema simply
+                  doesn't accept them), so there's nothing to edit here,
+                  only to confirm you're editing the right exam. */}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                <Badge variant="outline" className="capitalize">{exam.type}</Badge>
+                <ModeBadge mode={exam.mode} />
+                <span>{exam.className}</span>
+                {exam.published && <Badge variant="success">Published</Badge>}
+              </div>
+
+              {exam.published && (
+                <div className="rounded-lg bg-warning-soft p-3 text-xs text-warning">
+                  This exam is already published — saving here changes it immediately with no separate confirmation
+                  or notification to students/parents.
+                </div>
+              )}
+
+              <div>
+                <Label htmlFor="edit-title">Title</Label>
+                <Input id="edit-title" {...register('title')} />
+                {errors.title && <p className="mt-1 text-xs text-danger">{errors.title.message}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="edit-examDate">Date</Label>
+                <input id="edit-examDate" type="date" {...register('examDate')} className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-passingPercentage">Pass mark (%)</Label>
+                <Input id="edit-passingPercentage" type="number" min={0} max={100} placeholder="Defaults to 40%" {...register('passingPercentage')} />
+                {errors.passingPercentage && <p className="mt-1 text-xs text-danger">{errors.passingPercentage.message}</p>}
+              </div>
+
+              {exam.mode === 'online' ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="edit-duration">Duration (min)</Label>
+                      <Input id="edit-duration" type="number" min={1} {...register('durationMinutes')} />
+                    </div>
+                    <div />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="edit-windowStart">Window start</Label>
+                      <input id="edit-windowStart" type="datetime-local" {...register('windowStart')} className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-windowEnd">Window end</Label>
+                      <input id="edit-windowEnd" type="datetime-local" {...register('windowEnd')} className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                      {errors.windowEnd && <p className="mt-1 text-xs text-danger">{errors.windowEnd.message}</p>}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground">
+                    Blocked while a student has this exam in progress — the server will explain if that's the case.
+                  </div>
+                  <div>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <Label className="mb-0">Questions</Label>
+                      <span className="text-xs text-muted-foreground">{totalQuestionMarks} total marks</span>
+                    </div>
+                    <QuestionBuilder control={control} totalMarks={totalQuestionMarks} />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <Label className="mb-0">Subjects & marks</Label>
+                    <span className="text-xs text-muted-foreground">{totalSubjectMarks} total marks</span>
+                  </div>
+                  <div className="space-y-2">
+                    {fields.map((f, i) => (
+                      <div key={f.id} className="space-y-1.5 rounded-lg border border-border p-2">
+                        <div className="flex items-center gap-2">
+                          <Input placeholder="Subject" className="flex-1" {...register(`subjects.${i}.name` as const)} />
+                          <Input type="number" placeholder="Total" className="w-24" {...register(`subjects.${i}.totalMarks` as const)} />
+                          <button type="button" onClick={() => fields.length > 1 && remove(i)} disabled={fields.length <= 1} aria-label="Remove" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-danger-soft hover:text-danger disabled:opacity-40">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                        <Input placeholder="Optional — rubric notes, viva topics, practical setup, etc." {...register(`subjects.${i}.notes` as const)} />
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => append({ name: '', totalMarks: 100, notes: '' })} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                    <Plus size={13} /> Add subject
+                  </button>
+                  {errors.subjects && <p className="mt-1 text-xs text-danger">{(errors.subjects as any).message || 'Check subjects'}</p>}
+                  {exam.published && (
+                    <p className="mt-2 text-xs text-warning">
+                      Renaming a subject after marks were entered under its old name can leave that subject&apos;s
+                      marks orphaned — safest to only rename before results are entered.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
+              <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+              <Button type="submit" loading={saving}>
+                <Check size={16} /> Save changes
+              </Button>
+            </div>
+          </form>
+        )}
       </SheetContent>
     </Sheet>
   );
