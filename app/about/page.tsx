@@ -213,12 +213,14 @@ export default function AboutPage() {
             <div>
               <h3 className="text-lg font-bold tracking-tight">The approach</h3>
               <p className="mt-2.5 text-sm leading-relaxed text-foreground/90 sm:text-base">
-                Marksly is the answer to that gap: one connected system for attendance, fees, exams,
-                timetable, a parent &amp; student portal and staff management, with JazzCash, EasyPaisa,
-                WhatsApp and PKR pricing built in from the start — not added on later as an afterthought.
-                Every institution that signs up runs in its own fully isolated space, with role-based
-                access so a teacher, an accountant and an admin each see exactly what their job needs and
-                nothing more.
+                Marksly is the answer to that gap: one connected system covering attendance, exams and
+                custom grading schemes, fees and invoices, timetable, subjects and teacher assignment, a
+                parent &amp; student portal, notices and holidays, digital ID cards, and staff management —
+                all talking to each other instead of living in separate tools that never sync. WhatsApp
+                and PKR pricing are built in from the start, not added on later as an afterthought. Every
+                institution that signs up runs in its own fully isolated space, with role-based access so
+                a teacher, an accountant and an admin each see exactly what their job needs and nothing
+                more.
               </p>
               <p className="mt-4 text-sm leading-relaxed text-foreground/90 sm:text-base">
                 That same principle — build it around the real workflow, not a generic template — is why
