@@ -37,6 +37,7 @@ export interface Subject {
   isElective: boolean;
   isActive: boolean;
   enrolledCount: number;
+  creditHours: number | null;
 }
 
 interface ApiArray<T> { success: boolean; data: T[]; message: string }
@@ -54,6 +55,11 @@ export interface CreateSubjectBody {
   teacherId?: string;
   sectionTeachers?: SectionTeacherInput[];
   isElective?: boolean;
+  // Only meaningful for institutions on a GPA-type grading scheme (see
+  // grading-scheme.model.ts) -- used to weight this subject's grade points
+  // into a credit-hour-weighted GPA/CGPA. Defaults to 1 server-side
+  // (gpa.service.ts's DEFAULT_CREDIT_HOURS) when left unset.
+  creditHours?: number;
 }
 
 export interface UpdateSubjectBody extends Partial<CreateSubjectBody> {
@@ -112,6 +118,12 @@ export const subjectsApi = baseApi.injectEndpoints({
       query: (id) => ({ url: `/subjects/${id}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Subjects', id: 'LIST' }, { type: 'Subjects', id: 'MINE' }],
     }),
+    // Read-only -- lets the Add Subject form show the real code live as the
+    // admin types name/class, instead of leaving the field blank until
+    // after saving. Nothing here is reserved; create() re-checks for real.
+    previewSubjectCode: builder.query<ApiObject<{ code: string | null }>, { name: string; classId: string }>({
+      query: ({ name, classId }) => `/subjects/preview-code?name=${encodeURIComponent(name)}&classId=${classId}`,
+    }),
     getEnrollmentRequests: builder.query<ApiArray<EnrollmentRequest>, { status?: string } | void>({
       query: (params) => `/subjects/enrollments${params?.status ? `?status=${params.status}` : ''}`,
       providesTags: [{ type: 'Subjects', id: 'ENROLLMENTS' }],
@@ -139,4 +151,5 @@ export const {
   useGetEnrollmentRequestsQuery,
   useApproveEnrollmentMutation,
   useRejectEnrollmentMutation,
+  useLazyPreviewSubjectCodeQuery,
 } = subjectsApi;

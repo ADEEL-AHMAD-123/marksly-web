@@ -33,6 +33,7 @@ import {
   useGetEnrollmentRequestsQuery,
   useApproveEnrollmentMutation,
   useRejectEnrollmentMutation,
+  useLazyPreviewSubjectCodeQuery,
   type Subject,
 } from '@/store/api/subjectsApi';
 import { getErrorMessage } from '@/lib/get-error-message';
@@ -146,7 +147,12 @@ export function SubjectsView() {
                 <TableBody>
                   {paged.map((s) => (
                     <TableRow key={s.id}>
-                      <TableCell className="font-medium text-foreground">{s.name}</TableCell>
+                      <TableCell className="font-medium text-foreground">
+                        {s.name}
+                        {s.creditHours != null && (
+                          <span className="ml-1 font-normal text-muted-foreground">({s.creditHours} cr.)</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{s.code ?? '—'}</TableCell>
                       <TableCell className="text-muted-foreground">{s.className ?? `All ${terminology.classUnitPlural.toLowerCase()}`}</TableCell>
                       <TableCell><TeacherCell subject={s} /></TableCell>
@@ -185,7 +191,10 @@ export function SubjectsView() {
               <Card key={s.id} className="p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-foreground">{s.name}</p>
+                    <p className="truncate font-medium text-foreground">
+                      {s.name}
+                      {s.creditHours != null && <span className="font-normal text-muted-foreground"> ({s.creditHours} cr.)</span>}
+                    </p>
                     <p className="text-xs text-muted-foreground">{s.code ? `${s.code} · ` : ''}{s.className ?? `All ${terminology.classUnitPlural.toLowerCase()}`}{s.teacherName ? ` · ${s.teacherName}` : ''}</p>
                   </div>
                   <Badge variant={s.isElective ? 'warning' : 'neutral'}>{s.isElective ? 'Elective' : 'Core'}</Badge>
@@ -334,6 +343,13 @@ const schema = z.object({
   classId: z.string().min(1, 'Select a class for this subject'),
   teacherId: z.string().optional(),
   isElective: z.boolean().optional(),
+  // Only used for GPA-scheme institutions (see gpa.service.ts) — left
+  // blank, the backend defaults it to 1 rather than 0, so blank must map
+  // to `undefined` here, not to the number 0.
+  creditHours: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? undefined : v),
+    z.coerce.number().min(0).max(20).optional()
+  ),
 });
 type SubjectForm = z.infer<typeof schema>;
 
@@ -348,14 +364,45 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
   const [updateSubject, { isLoading: updating }] = useUpdateSubjectMutation();
   const isLoading = creating || updating;
 
-  const { register, control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<SubjectForm>({
+  const { register, control, handleSubmit, reset, watch, setValue, formState: { errors, dirtyFields } } = useForm<SubjectForm>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', code: '', classId: '', teacherId: '', isElective: false },
+    defaultValues: { name: '', code: '', classId: '', teacherId: '', isElective: false, creditHours: undefined },
   });
   const isElective = watch('isElective');
   const classId = watch('classId');
+  const name = watch('name');
   const fallbackTeacherId = watch('teacherId');
   const selectedClass = classes.find((c) => c.id === classId);
+
+  // Live preview of the code create() would actually generate for the name
+  // + class typed so far — the field no longer just sits blank behind a
+  // static placeholder until after saving. Only while adding: an edit's
+  // Code field already holds the subject's real code, and blanking it to
+  // regenerate is a deliberate, separate action (see the helper text below).
+  const [fetchPreviewCode] = useLazyPreviewSubjectCodeQuery();
+  useEffect(() => {
+    if (isEdit || !open) return;
+    // Once the admin has typed into Code themselves, their input wins —
+    // never overwrite it out from under them.
+    if (dirtyFields.code) return;
+    const trimmedName = name.trim();
+    if (!trimmedName || !classId) {
+      setValue('code', '');
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetchPreviewCode({ name: trimmedName, classId }).unwrap();
+        if (!cancelled && res.data.code) setValue('code', res.data.code);
+      } catch {
+        // Silent — this is a nice-to-have preview, not a validation step;
+        // the real code is still generated for real when the form is saved.
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, open, name, classId, dirtyFields.code]);
 
   // Per-section teacher overrides, keyed by sectionId. An empty string
   // means "no override — use the fallback teacher above." Rebuilt whenever
@@ -387,10 +434,11 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
         classId: subject.classId ?? '',
         teacherId: subject.teacherId ?? '',
         isElective: subject.isElective,
+        creditHours: subject.creditHours ?? undefined,
       });
       setSectionTeacherMap(Object.fromEntries(subject.sectionTeachers.map((r) => [r.sectionId, r.teacherId])));
     } else {
-      reset({ name: '', code: '', classId: '', teacherId: '', isElective: false });
+      reset({ name: '', code: '', classId: '', teacherId: '', isElective: false, creditHours: undefined });
       setSectionTeacherMap({});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -441,6 +489,7 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
       teacherId: values.teacherId || undefined,
       sectionTeachers,
       isElective: values.isElective ?? false,
+      creditHours: values.creditHours,
     };
 
     try {
@@ -489,14 +538,37 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
                 <Input id="name" placeholder="e.g. Mathematics" {...register('name')} />
                 {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
               </div>
-              <div className="col-span-2">
+              <div>
                 <Label htmlFor="code">Code</Label>
-                <Input id="code" placeholder="Auto-generated from name + class" {...register('code')} />
+                <Input
+                  id="code"
+                  placeholder={isEdit ? 'Auto-generated from name + class' : 'Pick a name and class to preview'}
+                  {...register('code')}
+                />
                 <p className="mt-1 text-xs text-muted-foreground">
                   {isEdit
                     ? 'Leave blank to auto-generate a fresh code. Used to tell apart subjects with the same name across different classes.'
-                    : 'Leave blank and one will be generated for you (e.g. "MATH-8") — must be unique per institution either way.'}
+                    : 'Filled in for you as you type — must be unique per institution, but you can still edit it by hand.'}
                 </p>
+              </div>
+              <div>
+                <Label htmlFor="creditHours">Credit hours</Label>
+                <Input
+                  id="creditHours"
+                  type="number"
+                  min={0}
+                  max={20}
+                  step={0.5}
+                  placeholder="1"
+                  {...register('creditHours')}
+                />
+                {errors.creditHours ? (
+                  <p className="mt-1 text-xs text-danger">{errors.creditHours.message}</p>
+                ) : (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Only used for GPA-based grading — weights this subject in a student&apos;s GPA. Defaults to 1 if left blank.
+                  </p>
+                )}
               </div>
             </div>
             <div>
