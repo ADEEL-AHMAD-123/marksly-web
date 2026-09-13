@@ -157,7 +157,7 @@ export const usersApi = baseApi.injectEndpoints({
     // create()), no more explicit-password override or invite-link path.
     createUser: builder.mutation<ApiObject<ManagedUser & { pin: string }>, CreateUserBody>({
       query: (body) => ({ url: '/users', method: 'POST', body }),
-      invalidatesTags: [{ type: 'Users', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Users', id: 'LIST' }, 'Users'],
     }),
     // Re-sends the account's login PIN by email (a fresh one if the current
     // one is no longer school-issued) — informational only now, not an
@@ -166,7 +166,7 @@ export const usersApi = baseApi.injectEndpoints({
     // directly if the email doesn't arrive.
     resendInvite: builder.mutation<ApiObject<ManagedUser & { pin: string }>, { id: string; email?: string; confirmUnverifiedEmail?: boolean }>({
       query: ({ id, ...body }) => ({ url: `/users/${id}/resend-invite`, method: 'POST', body }),
-      invalidatesTags: [{ type: 'Users', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Users', id: 'LIST' }, 'Users'],
     }),
     // Admin-only decrypted PIN lookup — only non-null while pinState is
     // 'school_issued'. Mirrors studentsApi.ts's getStudentPin exactly.
@@ -178,7 +178,7 @@ export const usersApi = baseApi.injectEndpoints({
     // studentsApi.ts's resetStudentPin.
     resetStaffPin: builder.mutation<ApiObject<{ pin: string }>, { id: string; customPin?: string }>({
       query: ({ id, customPin }) => ({ url: `/users/${id}/reset-pin`, method: 'POST', body: customPin ? { customPin } : {} }),
-      invalidatesTags: [{ type: 'Users', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Users', id: 'LIST' }, 'Users'],
     }),
     updateUser: builder.mutation<
       ApiObject<ManagedUser>,
@@ -200,7 +200,7 @@ export const usersApi = baseApi.injectEndpoints({
       }
     >({
       query: ({ id, body }) => ({ url: `/users/${id}`, method: 'PATCH', body }),
-      invalidatesTags: [{ type: 'Users', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Users', id: 'LIST' }, 'Users'],
     }),
     // Admin-only bulk re-issue — resets cardIssueDate/cardExpiryDate for
     // every active staff member of one role, or every manageable role at
@@ -211,7 +211,7 @@ export const usersApi = baseApi.injectEndpoints({
       { role: StaffCardRole | 'all' }
     >({
       query: (body) => ({ url: '/users/reissue-cards', method: 'POST', body }),
-      invalidatesTags: [{ type: 'Users', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Users', id: 'LIST' }, 'Users'],
     }),
     // Self-service — "My ID Card" page. Scoped to the caller's own account
     // via the JWT, not an :id param — any logged-in staff-type user can use
@@ -245,7 +245,7 @@ export const usersApi = baseApi.injectEndpoints({
     }),
     deleteUser: builder.mutation<ApiObject<{ id: string }>, string>({
       query: (id) => ({ url: `/users/${id}`, method: 'DELETE' }),
-      invalidatesTags: [{ type: 'Users', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Users', id: 'LIST' }, 'Users'],
     }),
     // FormData body — mirrors institutionApi.ts's uploadInstitutionLogo
     // exactly (fetchBaseQuery passes FormData straight through, browser
@@ -256,11 +256,11 @@ export const usersApi = baseApi.injectEndpoints({
         formData.append('photo', file);
         return { url: `/users/${userId}/photo`, method: 'POST', body: formData };
       },
-      invalidatesTags: [{ type: 'Users', id: 'LIST' }, { type: 'Students', id: 'LIST' }, 'Students'],
+      invalidatesTags: [{ type: 'Users', id: 'LIST' }, 'Users', { type: 'Students', id: 'LIST' }, 'Students'],
     }),
     removeUserPhoto: builder.mutation<ApiObject<{ profilePhoto: null }>, { userId: string }>({
       query: ({ userId }) => ({ url: `/users/${userId}/photo`, method: 'DELETE' }),
-      invalidatesTags: [{ type: 'Users', id: 'LIST' }, { type: 'Students', id: 'LIST' }, 'Students'],
+      invalidatesTags: [{ type: 'Users', id: 'LIST' }, 'Users', { type: 'Students', id: 'LIST' }, 'Students'],
     }),
     bulkImportUsers: builder.mutation<
       ApiObject<{
@@ -278,7 +278,7 @@ export const usersApi = baseApi.injectEndpoints({
       { csv: string; role: ManageableRole }
     >({
       query: (body) => ({ url: '/users/bulk', method: 'POST', body }),
-      invalidatesTags: [{ type: 'Users', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Users', id: 'LIST' }, 'Users'],
     }),
   }),
 });
