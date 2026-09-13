@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import type { TimetableEntry } from '@/store/api/timetableApi';
+import { todayDayOfWeek } from '@/lib/institution-date';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -46,7 +47,10 @@ export function TimetableWeekGrid({
   variant: 'teacher' | 'viewer';
   emptyDescription?: string;
 }) {
-  const today = new Date().getDay();
+  // Institution-timezone (Karachi), not the viewer's own browser timezone --
+  // see lib/institution-date.ts. Keeps this in agreement with TeachNowCard's
+  // backend-derived "today", which uses the exact same wall clock.
+  const today = todayDayOfWeek();
   const distinctTermCount = useMemo(
     () => new Set(entries.map((e) => e.termId).filter(Boolean)).size,
     [entries]
