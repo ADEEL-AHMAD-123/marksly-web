@@ -391,7 +391,13 @@ type SubjectForm = z.infer<typeof schema>;
 function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Subject | null; onClose: () => void }) {
   const terminology = useTerminology();
   const isEdit = !!subject;
-  const { data: classesRes } = useGetClassesQuery();
+  // activeOnly: an archived class shouldn't be offered as a place to add
+  // a NEW subject -- same reasoning as the backend's own closed-term
+  // create() guard (see subject.service.ts). When editing, though, we
+  // still need the subject's own (possibly since-archived) class to
+  // appear so the Select doesn't render blank -- so only exclude
+  // archived classes during creation.
+  const { data: classesRes } = useGetClassesQuery({ activeOnly: !isEdit });
   const { data: teachersRes } = useGetUsersQuery({ role: 'teacher', limit: 100 });
   const classes = classesRes?.data ?? [];
   const teachers = teachersRes?.data ?? [];

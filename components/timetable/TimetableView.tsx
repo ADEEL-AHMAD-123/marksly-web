@@ -177,7 +177,10 @@ const STARTER_ROW: TimeRow = { members: new Set(['09:00-09:45']), startTime: '09
 
 export function TimetableView() {
   const terminology = useTerminology();
-  const { data: classesRes } = useGetClassesQuery();
+  // activeOnly: an archived class has no business being scheduled --
+  // showing it here as a normal option would undercut the whole point
+  // of archiving it (see ClassesView's "Active" toggle).
+  const { data: classesRes } = useGetClassesQuery({ activeOnly: true });
   const classes = classesRes?.data ?? [];
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
