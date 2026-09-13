@@ -329,9 +329,10 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
   // name. Teachers still get the familiar two-tab layout, unchanged.
   // The dashboard links straight into marking a SPECIFIC unmarked section
   // (via ?classId=&sectionId=, e.g. "Mark next" on Today's Attendance) --
-  // that's a genuine exception case (a period nobody covered yet), so it
-  // should land right on the mark tab in override mode rather than on the
-  // report tab the admin would otherwise start on.
+  // that's someone already asking to take attendance for that section, so
+  // it should land right on the mark tab (still tracked as `adminOverride`
+  // for logging purposes) rather than on the report tab the admin would
+  // otherwise start on.
   const hasLinkedTarget = Boolean(linkedClassId && linkedSectionId);
   const [tab, setTab] = useState<'mark' | 'report'>(
     isTeacher || hasLinkedTarget ? 'mark' : 'report'
