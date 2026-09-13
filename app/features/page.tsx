@@ -253,6 +253,15 @@ export default function FeaturesPage() {
         description="One connected system — no more juggling registers, spreadsheets and WhatsApp groups."
       />
 
+      {/* Plain, self-contained definition sentence for AI answer engines /
+          Overviews to lift directly, same pattern as HomeHero's desktop
+          sentence and /pricing's — this page didn't have one before. */}
+      <p className="mx-auto mt-2 max-w-2xl px-5 text-center text-sm text-muted-foreground sm:mt-4 sm:text-base">
+        Marksly is a school and campus management platform for academies, schools, colleges and
+        universities in Pakistan, covering attendance, exams, timetable, fees, a parent &amp; student
+        portal, notices and ID cards in one connected system.
+      </p>
+
       {/* ── Quick jump — every module, same treatment ───────────────────── */}
       <div className="mx-auto max-w-6xl px-5">
         <nav aria-label="Jump to feature" className="flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:justify-center">

@@ -24,6 +24,22 @@ const RELATED_LINKS: Record<string, { href: string; label: string; description: 
     { href: '/features#exams', label: 'Exam and result features', description: 'See marks entry, grading and result publishing in Marksly.' },
     { href: '/college-management-system-pakistan', label: 'College management system in Pakistan', description: 'Explore exams, sections and reporting for colleges.' },
   ],
+  'whatsapp-for-parent-communication-in-pakistan': [
+    { href: '/features#messaging', label: 'Parent messaging features', description: 'See how attendance alerts, fee reminders and notices reach parents by WhatsApp and SMS.' },
+    { href: '/features#notices', label: 'Notices & announcements', description: 'Target a class, a role, or the whole institution — with holidays posted automatically.' },
+  ],
+  'reducing-late-fee-payments-schools': [
+    { href: '/features#fees', label: 'Fees & invoices features', description: 'Fee structures, automatic receipts, dues tracking and waivers, all in one place.' },
+    { href: '/pricing', label: 'Marksly pricing', description: 'Start with the free plan for up to 50 students.' },
+  ],
+  'qr-code-student-id-cards-guide': [
+    { href: '/features#id-cards', label: 'ID card features', description: 'See bulk generation and QR verification for student and staff cards.' },
+    { href: '/school-management-system-pakistan', label: 'School management system in Pakistan', description: 'See ID cards alongside attendance, fees and exams in one platform.' },
+  ],
+  'marksly-reviews-what-schools-say': [
+    { href: '/testimonials', label: 'Full Marksly reviews & testimonials', description: 'Read every confirmed review, with the school’s name and role.' },
+    { href: '/features', label: 'Explore all Marksly features', description: 'See attendance, exams, fees, portal, notices and ID cards in one place.' },
+  ],
 };
 
 export function generateStaticParams() {

@@ -55,6 +55,15 @@ export default function PricingPage() {
         description="Start free. Upgrade when you grow. No card required to begin, cancel anytime."
       />
 
+      {/* Plain, self-contained definition sentence — the kind an AI Overview
+          or chatbot answer engine can lift directly for "what does Marksly
+          cost" without needing the rest of the page for context. */}
+      <p className="mx-auto mt-2 max-w-2xl px-5 text-center text-sm text-muted-foreground sm:mt-4 sm:text-base">
+        Marksly is a school and campus management platform priced in PKR, with a free plan for up to 50
+        students and paid plans that scale with your institution — no card required to start, and no
+        long-term contract to leave.
+      </p>
+
       {/* Plans — fetched live from the backend so this page can never drift
            out of sync with what billing.service.ts actually charges */}
       <section className="pb-14 sm:pb-20">

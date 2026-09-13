@@ -68,6 +68,14 @@ export default function HelpPage() {
         }
       />
 
+      {/* Plain, self-contained definition sentence for AI answer engines /
+          Overviews to lift directly — this page didn't have one before. */}
+      <p className="mx-auto mt-2 max-w-2xl px-5 text-center text-sm text-muted-foreground sm:mt-4 sm:text-base">
+        Marksly is a school and campus management platform used by academies, schools, colleges and
+        universities across Pakistan — this Help Center covers billing, the parent &amp; student portal,
+        exams, notices, messaging and account security.
+      </p>
+
       {/* ── Search + quick jump + FAQ list — client component so search can
            filter without a page reload, while this page stays a server
            component for metadata + structured data ──────────────────────── */}
