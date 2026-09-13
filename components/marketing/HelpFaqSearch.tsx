@@ -1,8 +1,28 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Search, ChevronDown, X } from 'lucide-react';
-import type { HelpTopic } from '@/lib/help-topics';
+import {
+  Search, ChevronDown, X, Rocket, Wallet, LayoutDashboard, GraduationCap,
+  MessageSquare, Bell, BarChart2, ShieldCheck, type LucideIcon,
+} from 'lucide-react';
+import type { HelpTopic, HelpIconKey } from '@/lib/help-topics';
+
+// Resolves lib/help-topics.ts's plain string icon keys to the real lucide
+// components -- done here, inside this client component, specifically so
+// help-topics.ts (imported by the server-rendered page for structured data)
+// never has to hold an actual React component reference; see that file's
+// own comment on why passing one across the server/client boundary breaks
+// the Next.js build.
+const ICONS: Record<HelpIconKey, LucideIcon> = {
+  rocket: Rocket,
+  wallet: Wallet,
+  'layout-dashboard': LayoutDashboard,
+  'graduation-cap': GraduationCap,
+  'message-square': MessageSquare,
+  bell: Bell,
+  'bar-chart-2': BarChart2,
+  'shield-check': ShieldCheck,
+};
 
 /**
  * Client-side search over the Help Center's Q&As. Deliberately client-only
@@ -89,7 +109,7 @@ export function HelpFaqSearch({ topics }: { topics: HelpTopic[] }) {
             <div key={section.category} id={section.slug} className="scroll-mt-20 sm:scroll-mt-24">
               <div className="flex items-center gap-2.5">
                 <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent">
-                  <section.icon aria-hidden size={16} />
+                  {(() => { const Icon = ICONS[section.icon]; return <Icon aria-hidden size={16} />; })()}
                 </span>
                 <h2 className="text-lg font-bold tracking-tight sm:text-xl">{section.category}</h2>
               </div>

@@ -1,7 +1,16 @@
-import {
-  Rocket, Wallet, LayoutDashboard, GraduationCap, MessageSquare, Bell,
-  BarChart2, ShieldCheck, type LucideIcon,
-} from 'lucide-react';
+// Icon KEYS only, not the lucide components themselves — this file is
+// imported by app/help/page.tsx (a server component) to build the
+// FAQPage/BreadcrumbList structured data, and the exact same HELP_TOPICS
+// value is passed as a prop into HelpFaqSearch (a client component) to
+// render the actual list. A React component reference (e.g. the Rocket
+// icon itself) isn't serializable across that server->client boundary --
+// Next.js's build fails outright trying to pass one ("Functions cannot be
+// passed directly to Client Components"). Storing a plain string key here
+// and resolving it to the real icon component only inside HelpFaqSearch
+// (which is already client-side, so no serialization involved) avoids that
+// entirely while keeping this file as the single source of truth for both
+// the content AND which icon each topic uses.
+export type HelpIconKey = 'rocket' | 'wallet' | 'layout-dashboard' | 'graduation-cap' | 'message-square' | 'bell' | 'bar-chart-2' | 'shield-check';
 
 export interface HelpItem {
   q: string;
@@ -11,7 +20,7 @@ export interface HelpItem {
 export interface HelpTopic {
   slug: string;
   category: string;
-  icon: LucideIcon;
+  icon: HelpIconKey;
   items: HelpItem[];
 }
 
@@ -23,7 +32,7 @@ export interface HelpTopic {
 // isn't actually visible on the page, and vice versa.
 export const HELP_TOPICS: HelpTopic[] = [
   {
-    slug: 'getting-started', category: 'Getting started', icon: Rocket,
+    slug: 'getting-started', category: 'Getting started', icon: 'rocket',
     items: [
       { q: 'How do I create my institution’s account?', a: 'Click “Start free trial” on the homepage, fill in your institution’s details, and verify your email — your account is ready in a couple of minutes, no card required.' },
       { q: 'Is Marksly only for schools?', a: 'No — it works for academies, schools, colleges and universities. The modules and terminology adapt to your institution type.' },
@@ -33,7 +42,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
-    slug: 'fees-billing', category: 'Fees & billing', icon: Wallet,
+    slug: 'fees-billing', category: 'Fees & billing', icon: 'wallet',
     items: [
       { q: 'How does subscription billing work?', a: 'Growth-plan subscriptions are billed monthly through a secure card checkout, with optional auto-renewal so you don’t have to remember to pay each month. Bank transfer is also available if you’d rather pay manually.' },
       { q: 'Can I turn off auto-renewal?', a: 'Yes — go to your Billing settings and disable auto-renewal at any time. Your saved card is removed from our system when you do.' },
@@ -46,7 +55,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
-    slug: 'parent-portal', category: 'Parent & student portal', icon: LayoutDashboard,
+    slug: 'parent-portal', category: 'Parent & student portal', icon: 'layout-dashboard',
     items: [
       { q: 'What can parents see in their portal?', a: 'Each parent gets one dashboard covering every one of their children — attendance, results, fee dues, and notices — even if their kids are in different classes or grades.' },
       { q: 'Can students take exams online through the portal?', a: 'Yes — for exams your institution sets up as timed online exams, students take them directly from their own portal, and results are available as soon as they’re published.' },
@@ -55,7 +64,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
-    slug: 'students-exams', category: 'Students, classes & exams', icon: GraduationCap,
+    slug: 'students-exams', category: 'Students, classes & exams', icon: 'graduation-cap',
     items: [
       { q: 'Can teachers only see their own classes?', a: 'Yes — access is role-based, so teachers see the classes and sections assigned to them, while admins have full visibility across the institution.' },
       { q: 'How does exam grading work?', a: 'You define the grading scheme once — percentage/letter, GPA, or Cambridge-style — and Marksly calculates grades automatically as marks are entered on the exam grid.' },
@@ -67,7 +76,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
-    slug: 'notices-holidays', category: 'Notices & holidays', icon: Bell,
+    slug: 'notices-holidays', category: 'Notices & holidays', icon: 'bell',
     items: [
       { q: 'What’s the difference between a notice and a message?', a: 'A notice posts inside Marksly itself — on the dashboard every parent, student and staff member already sees — and can optionally also go out by WhatsApp or SMS. A message (WhatsApp/SMS) reaches parents outside the app directly.' },
       { q: 'Who can a notice be targeted to?', a: 'A specific class or section, a role (e.g. all teachers), or the whole institution — whoever actually needs to see it.' },
@@ -77,7 +86,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
-    slug: 'messaging', category: 'WhatsApp & SMS messaging', icon: MessageSquare,
+    slug: 'messaging', category: 'WhatsApp & SMS messaging', icon: 'message-square',
     items: [
       { q: 'Do you support WhatsApp and SMS?', a: 'Yes. Once your provider keys are connected, you can send attendance alerts, fee reminders, and notices to parents and staff via WhatsApp or SMS, with a full delivery log.' },
       { q: 'Can I send messages in a language other than English?', a: 'Message text is free-form, so you can type and send a notice in any language. The dashboard interface itself is English only.' },
@@ -87,7 +96,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
-    slug: 'reports', category: 'Reports & data', icon: BarChart2,
+    slug: 'reports', category: 'Reports & data', icon: 'bar-chart-2',
     items: [
       { q: 'How often do reports update?', a: 'Live — as attendance is marked, marks are entered, or a fee is recorded, the relevant dashboards update immediately.' },
       { q: 'Can I export my data?', a: 'Yes — reports and student data can be exported, and your data stays yours if you ever decide to leave.' },
@@ -95,7 +104,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
-    slug: 'account-security', category: 'Account & security', icon: ShieldCheck,
+    slug: 'account-security', category: 'Account & security', icon: 'shield-check',
     items: [
       { q: 'Is my institution’s data isolated from others?', a: 'Yes — Marksly is fully multi-tenant. Every institution’s data is isolated and protected, with role-based access so staff only see what their role permits.' },
       { q: 'I forgot my password — what do I do?', a: 'Use “Forgot password” on the sign-in page to receive a reset link by email.' },
