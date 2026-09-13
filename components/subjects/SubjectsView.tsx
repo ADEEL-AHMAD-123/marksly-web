@@ -294,10 +294,18 @@ function TeacherCell({ subject }: { subject: Subject }) {
   );
 }
 
+// Below this many pending requests, scanning the whole list works fine and
+// a search box is more friction than help — same threshold/reasoning as
+// AdminDashboardAttendance's SEARCH_THRESHOLD.
+const REQUEST_SEARCH_THRESHOLD = 8;
+const REQUEST_PAGE_SIZE = 10;
+
 function EnrollmentRequests() {
   const { data } = useGetEnrollmentRequestsQuery({ status: 'pending' });
   const [approve, { isLoading: approving }] = useApproveEnrollmentMutation();
   const [reject, { isLoading: rejecting }] = useRejectEnrollmentMutation();
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
   const reqs = data?.data ?? [];
   if (reqs.length === 0) return null;
 
@@ -306,29 +314,56 @@ function EnrollmentRequests() {
     catch (e: any) { toast.error(getErrorMessage(e, 'Could not update request')); }
   };
 
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? reqs.filter((rq) => [rq.studentName, rq.subjectName, rq.rollNumber].some((v) => (v ?? '').toLowerCase().includes(q)))
+    : reqs;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / REQUEST_PAGE_SIZE));
+  const pageSafe = Math.min(page, totalPages);
+  const paged = filtered.slice((pageSafe - 1) * REQUEST_PAGE_SIZE, pageSafe * REQUEST_PAGE_SIZE);
+  const showSearch = reqs.length > REQUEST_SEARCH_THRESHOLD;
+
   return (
     <Card>
-      <div className="flex items-center gap-2 border-b border-border p-4">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border p-4">
         <UserPlus size={16} className="text-primary" />
         <h3 className="text-sm font-semibold text-foreground">Elective enrollment requests</h3>
         <Badge variant="warning" className="ml-1">{reqs.length}</Badge>
+        {showSearch && (
+          <div className="ml-auto w-full sm:w-56">
+            <SearchInput value={query} onChange={(v) => { setQuery(v); setPage(1); }} placeholder="Search by student or subject…" />
+          </div>
+        )}
       </div>
-      <ul className="divide-y divide-border">
-        {reqs.map((rq) => (
-          <li key={rq.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-foreground">
-                {rq.studentName} <span className="font-normal text-muted-foreground">→ {rq.subjectName}</span>
-              </p>
-              {rq.rollNumber && <p className="text-xs text-muted-foreground">{rq.rollNumber}</p>}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" disabled={approving || rejecting} onClick={() => decide(reject, rq.id, 'Request rejected')}>Reject</Button>
-              <Button size="sm" disabled={approving || rejecting} onClick={() => decide(approve, rq.id, 'Enrolled')}><Check size={15} /> Approve</Button>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {filtered.length === 0 ? (
+        <p className="p-4 text-sm text-muted-foreground">No requests match your search.</p>
+      ) : (
+        <ul className="divide-y divide-border">
+          {paged.map((rq) => (
+            <li key={rq.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {rq.studentName} <span className="font-normal text-muted-foreground">→ {rq.subjectName}</span>
+                </p>
+                {rq.rollNumber && <p className="text-xs text-muted-foreground">{rq.rollNumber}</p>}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" disabled={approving || rejecting} onClick={() => decide(reject, rq.id, 'Request rejected')}>Reject</Button>
+                <Button size="sm" disabled={approving || rejecting} onClick={() => decide(approve, rq.id, 'Enrolled')}><Check size={15} /> Approve</Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border-t border-border p-3">
+          <p className="text-xs text-muted-foreground">Page {pageSafe} of {totalPages} · {filtered.length} request{filtered.length === 1 ? '' : 's'}</p>
+          <div className="flex items-center gap-1">
+            <Button variant="secondary" size="icon" disabled={pageSafe <= 1} onClick={() => setPage(pageSafe - 1)} aria-label="Previous"><ChevronLeft size={14} /></Button>
+            <Button variant="secondary" size="icon" disabled={pageSafe >= totalPages} onClick={() => setPage(pageSafe + 1)} aria-label="Next"><ChevronRight size={14} /></Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
