@@ -114,7 +114,11 @@ type Form = z.infer<typeof schema>;
 interface ClassOption {
   id: string;
   name: string;
-  sections: { id: string; name: string }[];
+  // Optional -- present via the admin path (classesApi's full ClassItem
+  // shape), absent via a teacher's classesOverride (TeacherClass only
+  // tracks a student count, not capacity). Used only to annotate the
+  // section picker below; sections without it just render without a count.
+  sections: { id: string; name: string; capacity?: number | null; currentCount?: number }[];
   termType?: string | null;
 }
 
@@ -190,6 +194,17 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   // short-session course should say "Batch") over the institution-wide
   // default terminology below.
   const sectionLabel = getTerminologyForTermType(selectedClass?.termType)?.section ?? terminology.section;
+  // The section this student is ALREADY in, resolved the same way the
+  // prefill effect below resolves it (by name, since StudentListItem only
+  // carries className/section strings, not their ids) -- used only to
+  // exclude their own current seat from the "full" flag in the section
+  // picker, so re-saving an edit without changing section never shows as
+  // blocked just because they're the occupant making it read as full.
+  const originalSectionId = useMemo(() => {
+    if (!student) return undefined;
+    const cls = classes.find((c) => c.name === student.className);
+    return cls?.sections.find((s) => s.name === student.section)?.id;
+  }, [student, classes]);
 
   // Prefill on open
   useEffect(() => {
@@ -599,9 +614,28 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                     <Select value={field.value} onValueChange={field.onChange} disabled={!selectedClassId}>
                       <SelectTrigger><SelectValue placeholder={sectionLabel} /></SelectTrigger>
                       <SelectContent>
-                        {sections.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                        ))}
+                        {sections.map((s) => {
+                          // Occupancy shown, not enforced here -- a full
+                          // section still needs to stay selectable (the
+                          // student being edited may already occupy the
+                          // seat that makes it read as full), the backend
+                          // is the actual source of truth (SECTION_FULL,
+                          // see class.service.ts's claimSectionSeat). This
+                          // just stops "the section I picked turned out to
+                          // be full" from being a surprise only discovered
+                          // after filling out the whole form.
+                          const full = s.capacity != null && (s.currentCount ?? 0) >= s.capacity && s.id !== originalSectionId;
+                          return (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name}
+                              {s.capacity != null && (
+                                <span className={full ? 'text-warning' : 'text-muted-foreground'}>
+                                  {' '}({s.currentCount ?? 0}/{s.capacity}{full ? ' · full' : ''})
+                                </span>
+                              )}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   )}
