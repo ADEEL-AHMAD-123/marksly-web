@@ -117,6 +117,7 @@ export interface PaymentBody {
   amountPaid: number;
   paymentMethod: PaymentMethod;
   transactionId?: string;
+  challanNumber?: string;
   paymentDate?: string;
   notes?: string;
 }

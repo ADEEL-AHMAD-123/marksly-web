@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { getErrorMessage } from '@/lib/get-error-message';
 import {
   Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
@@ -25,6 +27,11 @@ export function RefundsNeedingReviewTab() {
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  // "Reverse invoice" is the single most consequential button on this page
+  // — it posts a real debit adjustment and flips the invoice's paid/partial
+  // status, with no undo. "Keep as paid" is a no-op on the ledger, so it
+  // stays a direct click.
+  const [confirmReverseId, setConfirmReverseId] = useState<string | null>(null);
 
   const handleResolve = async (paymentId: string, action: 'reversed' | 'kept_as_paid') => {
     if (!note.trim()) return toast.error('Add a short note explaining this decision');
@@ -33,8 +40,9 @@ export function RefundsNeedingReviewTab() {
       toast.success(action === 'reversed' ? 'Invoice marked unpaid again' : 'Invoice kept as paid');
       setActiveId(null);
       setNote('');
-    } catch (e: any) {
-      toast.error(e?.data?.error?.message || 'Could not resolve this refund');
+      setConfirmReverseId(null);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not resolve this refund'));
     }
   };
 
@@ -84,7 +92,7 @@ export function RefundsNeedingReviewTab() {
                   {activeId === r.id ? (
                     <div className="flex items-center justify-end gap-1">
                       <Input placeholder="Note…" value={note} onChange={(e) => setNote(e.target.value)} className="h-8 w-36 text-xs" />
-                      <Button size="sm" variant="soft" loading={resolving} onClick={() => handleResolve(r.id, 'reversed')}>Reverse invoice</Button>
+                      <Button size="sm" variant="soft" loading={resolving} onClick={() => (note.trim() ? setConfirmReverseId(r.id) : toast.error('Add a short note explaining this decision'))}>Reverse invoice</Button>
                       <Button size="sm" loading={resolving} onClick={() => handleResolve(r.id, 'kept_as_paid')}>Keep as paid</Button>
                       <Button size="sm" variant="ghost" onClick={() => { setActiveId(null); setNote(''); }}>Cancel</Button>
                     </div>
@@ -97,6 +105,18 @@ export function RefundsNeedingReviewTab() {
           </TableBody>
         </Table>
       </TableWrapper>
+      {confirmReverseId && (
+        <ConfirmDialog
+          open
+          onClose={() => setConfirmReverseId(null)}
+          onConfirm={() => handleResolve(confirmReverseId, 'reversed')}
+          title="Reverse this invoice?"
+          description="Posts a debit adjustment against the invoice and marks it unpaid again — the family's already-refunded payment no longer counts, and this can't be undone from here."
+          confirmLabel="Reverse invoice"
+          tone="warning"
+          loading={resolving}
+        />
+      )}
     </Card>
   );
 }

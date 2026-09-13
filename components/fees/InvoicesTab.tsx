@@ -242,6 +242,10 @@ const paymentSchema = z.object({
   amountPaid: z.coerce.number().positive('Enter an amount greater than 0'),
   paymentMethod: z.enum(['jazzcash', 'easypaisa', 'bank', 'cash', 'cheque', 'challan']),
   transactionId: z.string().optional(),
+  // Distinct from the invoice's own stable challanNumber (printed on the
+  // slip) -- this is the bank/challan slip's OWN reference number staff
+  // reconcile a deposit against, only meaningful for bank/challan methods.
+  challanNumber: z.string().optional(),
   paymentDate: z.string().optional(),
 });
 type PaymentForm = z.infer<typeof paymentSchema>;
@@ -250,9 +254,11 @@ function CollectPaymentDrawer({ invoice, onClose }: { invoice: Invoice | null; o
   const [recordPayment, { isLoading }] = useRecordPaymentMutation();
   const open = !!invoice;
 
-  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<PaymentForm>({
+  const { register, handleSubmit, reset, control, watch, formState: { errors } } = useForm<PaymentForm>({
     resolver: zodResolver(paymentSchema),
   });
+  const paymentMethod = watch('paymentMethod');
+  const showChallanField = paymentMethod === 'challan' || paymentMethod === 'bank';
 
   // Re-seed the form whenever a new invoice is selected
   useEffect(() => {
@@ -261,6 +267,7 @@ function CollectPaymentDrawer({ invoice, onClose }: { invoice: Invoice | null; o
         amountPaid: invoice.balance,
         paymentMethod: 'cash',
         transactionId: '',
+        challanNumber: '',
         paymentDate: new Date().toISOString().slice(0, 10),
       });
     }
@@ -323,6 +330,13 @@ function CollectPaymentDrawer({ invoice, onClose }: { invoice: Invoice | null; o
                 <Label htmlFor="transactionId">Transaction / Reference (optional)</Label>
                 <Input id="transactionId" {...register('transactionId')} />
               </div>
+
+              {showChallanField && (
+                <div>
+                  <Label htmlFor="challanNumber">Bank challan number (optional)</Label>
+                  <Input id="challanNumber" placeholder="For reconciling against the physical deposit slip" {...register('challanNumber')} />
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="paymentDate">Date</Label>

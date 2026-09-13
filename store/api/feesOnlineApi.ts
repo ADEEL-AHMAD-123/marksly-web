@@ -139,7 +139,14 @@ export const feesOnlineApi = baseApi.injectEndpoints({
     }),
     generatePayout: builder.mutation<ApiObject<Payout>, string>({
       query: (institutionId) => ({ url: `/fees-online/${institutionId}/payouts/generate`, method: 'POST' }),
-      invalidatesTags: [{ type: 'Fees', id: 'OWED' }, { type: 'Fees', id: 'PAYOUTS' }],
+      // Also invalidate the institution-admin-facing MY_OWED/MY_PAYOUTS
+      // tags -- a superadmin/institution-admin dual-role account (or two
+      // tabs under the same account) would otherwise see this stay stale
+      // until an unrelated refetch.
+      invalidatesTags: [
+        { type: 'Fees', id: 'OWED' }, { type: 'Fees', id: 'PAYOUTS' },
+        { type: 'Fees', id: 'MY_OWED' }, { type: 'Fees', id: 'MY_PAYOUTS' },
+      ],
     }),
     getPayouts: builder.query<ApiArray<Payout>, { institutionId?: string } | void>({
       query: (params) => {
@@ -150,7 +157,7 @@ export const feesOnlineApi = baseApi.injectEndpoints({
     }),
     markPayoutPaid: builder.mutation<ApiObject<Payout>, { payoutId: string; paidVia: string; paidReference?: string }>({
       query: ({ payoutId, ...body }) => ({ url: `/fees-online/payouts/${payoutId}/mark-paid`, method: 'POST', body }),
-      invalidatesTags: [{ type: 'Fees', id: 'PAYOUTS' }],
+      invalidatesTags: [{ type: 'Fees', id: 'PAYOUTS' }, { type: 'Fees', id: 'MY_PAYOUTS' }],
     }),
 
     runReconciliation: builder.mutation<ApiObject<{ checked: number; settled: number; failed: number; abandoned: number }>, void>({
