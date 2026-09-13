@@ -58,6 +58,13 @@ export function ExamMonitoringView({ examId, onBack, readOnly = false }: { examI
   const [gradingAttemptId, setGradingAttemptId] = useState<string | null>(null);
 
   const roster = data?.data;
+  // Ordered queue of attempts still needing a grade, so a teacher grading
+  // one attempt after another can move to the next without backing out to
+  // this table and re-finding/re-clicking the next "Needs review" row each
+  // time. Excludes the currently-open attempt so "Next" always advances.
+  const gradingQueue = (roster?.attempts ?? [])
+    .filter((a) => a.status === 'needs_review' && a.attemptId)
+    .map((a) => a.attemptId as string);
 
   // Grading/publishing an attempt is teacher-only on the backend now — an
   // admin never reaches this branch since the "Grade" button below is
@@ -69,6 +76,8 @@ export function ExamMonitoringView({ examId, onBack, readOnly = false }: { examI
         attemptId={gradingAttemptId}
         examId={examId}
         onBack={() => setGradingAttemptId(null)}
+        queue={gradingQueue}
+        onNavigate={(id) => setGradingAttemptId(id)}
       />
     );
   }

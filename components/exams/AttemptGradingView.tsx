@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Save, Send, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Save, Send, CheckCircle2, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -127,11 +127,16 @@ function QuestionCard({
 }
 
 export function AttemptGradingView({
-  attemptId, examId, onBack,
+  attemptId, examId, onBack, queue, onNavigate,
 }: {
   attemptId: string;
   examId: string;
   onBack: () => void;
+  /** Ordered ids of other attempts still needing a grade, so this view can
+   *  offer "Next student" instead of forcing a trip back to the monitoring
+   *  table between every attempt in a batch. Excludes attemptId itself. */
+  queue?: string[];
+  onNavigate?: (attemptId: string) => void;
 }) {
   const { data, isLoading } = useGetAttemptForGradingQuery(attemptId);
   const [publishAttemptResult, { isLoading: publishing }] = usePublishAttemptResultMutation();
@@ -144,6 +149,7 @@ export function AttemptGradingView({
   const { attempt, exam, questions } = data.data;
   const allGraded = questions.every((q) => q.awardedMarks !== null);
   const readyToPublish = allGraded && (attempt.status === 'graded' || attempt.status === 'auto_graded');
+  const nextInQueue = (queue ?? []).find((id) => id !== attemptId);
 
   const publish = async () => {
     if (publishingRef.current) return;
@@ -151,7 +157,11 @@ export function AttemptGradingView({
     try {
       await publishAttemptResult({ attemptId, examId }).unwrap();
       toast.success('Result published to student');
-      onBack();
+      // Move straight to the next student still needing a grade rather than
+      // bouncing back to the monitoring table, which a teacher grading a
+      // whole class one attempt at a time would just have to leave again.
+      if (nextInQueue && onNavigate) onNavigate(nextInQueue);
+      else onBack();
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not publish result');
     } finally {
@@ -170,10 +180,18 @@ export function AttemptGradingView({
             <h2 className="text-lg font-bold text-foreground">{attempt.studentName}</h2>
             <p className="text-xs text-muted-foreground">
               {exam.title} · Attempt #{attempt.attemptNumber} · Submitted {attempt.submittedAt ? formatDate(attempt.submittedAt) : '—'}
+              {queue && queue.length > 0 && <span> · {queue.filter((id) => id !== attemptId).length} more need grading</span>}
             </p>
           </div>
         </div>
-        <div className="text-sm font-medium text-foreground">Total: {attempt.totalAwarded}</div>
+        <div className="flex items-center gap-3">
+          <div className="text-sm font-medium text-foreground">Total: {attempt.totalAwarded}</div>
+          {nextInQueue && onNavigate && (
+            <Button variant="ghost" size="sm" onClick={() => onNavigate(nextInQueue)}>
+              Next student <ChevronRight size={14} />
+            </Button>
+          )}
+        </div>
       </div>
 
       {attempt.integrityFlags.length > 0 && (

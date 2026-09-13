@@ -38,9 +38,9 @@ export function ParentExamsView() {
   const { data, isLoading, isError, refetch } = useChildrenExamsQuery();
   const exams = data?.data ?? [];
 
-  const byChild = new Map<string, { childName: string; items: (MyOnlineExamItem & { childId: string; childName: string })[] }>();
+  const byChild = new Map<string, { childId: string; childName: string; items: (MyOnlineExamItem & { childId: string; childName: string })[] }>();
   for (const e of exams) {
-    const entry = byChild.get(e.childId) ?? { childName: e.childName, items: [] };
+    const entry = byChild.get(e.childId) ?? { childId: e.childId, childName: e.childName, items: [] };
     entry.items.push(e);
     byChild.set(e.childId, entry);
   }
@@ -60,8 +60,11 @@ export function ParentExamsView() {
       ) : byChild.size === 0 ? (
         <Card><EmptyState icon={Laptop} title="No online exams" description="Nothing scheduled for your children yet — this page updates automatically once a teacher schedules one." /></Card>
       ) : (
-        Array.from(byChild.values()).map(({ childName, items }) => (
-          <Card key={childName}>
+        // Keyed by childId, not childName — two children (siblings sharing
+        // a first name, or a same-name coincidence across a large family)
+        // must never collide and swap content on re-render.
+        Array.from(byChild.values()).map(({ childId, childName, items }) => (
+          <Card key={childId}>
             <CardHeader>
               <CardTitle>{childName}</CardTitle>
             </CardHeader>
