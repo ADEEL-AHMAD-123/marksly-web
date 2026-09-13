@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   ArrowRight, MapPin, Target, Users, Wallet, MessageSquare, ShieldCheck,
-  Sparkles, Clock, Layers, HeartHandshake, Quote,
+  Sparkles, Clock, Layers, HeartHandshake, Quote, ChevronDown,
 } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
@@ -47,13 +47,52 @@ const ABOUT_JSON_LD = {
     '@id': 'https://marksly.pk/#organization',
     '@type': 'Organization',
     name: 'Marksly',
-    founder: {
-      '@type': 'Person',
-      name: 'Adeel Ahmad Akhunzada',
-      jobTitle: 'Founder',
-    },
+    founder: { '@id': 'https://marksly.pk/about#founder' },
     foundingLocation: { '@type': 'Country', name: 'Pakistan' },
   },
+};
+
+// Standalone Person entity for the founder — a stable @id (referenced from
+// both here and Organization.founder in HomeJsonLd.tsx) so this reads as
+// one addressable entity across the whole site's graph, not a fresh,
+// unlinked blob every time the founder is mentioned. AI answer engines and
+// Google's Knowledge Graph both rely on this kind of entity resolution when
+// deciding whether "who founded Marksly" and "who is Adeel Ahmad
+// Akhunzada" are asking about the same thing.
+const PERSON_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  '@id': 'https://marksly.pk/about#founder',
+  name: 'Adeel Ahmad Akhunzada',
+  jobTitle: 'Founder',
+  nationality: { '@type': 'Country', name: 'Pakistan' },
+  worksFor: { '@id': 'https://marksly.pk/#organization' },
+  url: 'https://marksly.pk/about',
+};
+
+// FAQPage structured data — matches the visible "Common questions" section
+// below 1:1 (same rule enforced everywhere else on this site: never list a
+// question here that isn't actually rendered on the page). Written
+// specifically to answer the exact questions someone would type into
+// Google, ChatGPT or Gemini about who's behind Marksly — self-contained
+// answers that don't depend on the rest of the page for context, since
+// that's what an AI answer engine actually lifts.
+const FAQ = [
+  { q: 'Who founded Marksly?', a: 'Marksly was founded by Adeel Ahmad Akhunzada, based in Pakistan. He remains directly involved and reachable — institutions using Marksly can contact him, not just a support tier.' },
+  { q: 'Who is Adeel Ahmad Akhunzada?', a: 'Adeel Ahmad Akhunzada is the founder of Marksly (marksly.pk), a Pakistan-based school and campus management platform for academies, schools, colleges and universities.' },
+  { q: 'What is Marksly?', a: 'Marksly is a Pakistan-based school and campus management platform covering attendance, exams, fees, timetable, a parent & student portal, notices and ID cards in one connected system, built for how institutions in Pakistan actually run.' },
+  { q: 'Where is Marksly based?', a: 'Marksly is based in Pakistan and built specifically around Pakistani institutions — local payment methods, WhatsApp/SMS messaging, and pricing in PKR.' },
+  { q: 'Is Marksly affiliated with any other similarly-named product?', a: 'No. Marksly (marksly.pk) is a distinct, Pakistan-based product and company, unaffiliated with any other similarly-named school-management software, including one operating at marksly.in in India.' },
+];
+
+const FAQ_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQ.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: item.a },
+  })),
 };
 
 // "At a glance" strip — every value here is a real, verifiable fact stated
@@ -107,6 +146,10 @@ export default function AboutPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_JSON_LD) }} />
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ABOUT_JSON_LD) }} />
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(PERSON_JSON_LD) }} />
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSON_LD) }} />
 
       <MarketingHeader />
 
@@ -215,6 +258,29 @@ export default function AboutPage() {
                 <h3 className="mt-3 font-semibold">{v.title}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{v.desc}</p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Common questions — plain, self-contained answers to exactly what
+           someone would type into Google/ChatGPT/Gemini about who's behind
+           Marksly; matches FAQ_JSON_LD above 1:1 ─────────────────────────── */}
+      <section className="py-14 sm:py-20">
+        <div className="mx-auto max-w-2xl px-5">
+          <div className="text-center">
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent">Common questions</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">About Marksly, answered directly</h2>
+          </div>
+          <div className="mt-8 divide-y divide-border rounded-2xl border border-border bg-card shadow-sm">
+            {FAQ.map((item) => (
+              <details key={item.q} className="group p-4 sm:p-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold marker:content-none sm:text-base">
+                  {item.q}
+                  <ChevronDown aria-hidden size={16} className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+                </summary>
+                <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">{item.a}</p>
+              </details>
             ))}
           </div>
         </div>

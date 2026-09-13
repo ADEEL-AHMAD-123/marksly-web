@@ -18,10 +18,21 @@ const JSON_LD = {
       url: 'https://marksly.pk',
       logo: 'https://marksly.pk/logo-full.svg',
       email: 'support@marksly.pk',
-      // Named on /about, which links back to this exact @id — a real
-      // E-E-A-T/trust signal (who's actually behind this product) this
-      // graph didn't carry anywhere before.
-      founder: { '@type': 'Person', name: 'Adeel Ahmad Akhunzada', jobTitle: 'Founder' },
+      // Google's structured-data validator checks each PAGE's JSON-LD in
+      // isolation (see testimonials/page.tsx's REVIEW_JSON_LD comment on the
+      // exact same issue) — a bare `{'@id': '.../about#founder'}` reference
+      // here can't resolve back to the Person object that's only actually
+      // defined in app/about/page.tsx's own script tag on a different page,
+      // so it would show as "Invalid object type" in Search Console. Same
+      // @id as that page's Person entity, but the full object inlined here
+      // too, so this page's own graph is self-contained and valid on its
+      // own — same fix shape as the testimonials page.
+      founder: {
+        '@id': 'https://marksly.pk/about#founder',
+        '@type': 'Person',
+        name: 'Adeel Ahmad Akhunzada',
+        jobTitle: 'Founder',
+      },
       // Disambiguation signal for Google — Marksly is a Pakistan-based
       // company/product, distinct from any similarly-named site elsewhere
       // (e.g. marksly.in), which otherwise risks getting blended together
