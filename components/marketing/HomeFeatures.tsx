@@ -81,7 +81,7 @@ export function HomeFeatures() {
               </span>
               <h3 className="text-xs font-semibold sm:text-sm">Fees &amp; billing</h3>
             </div>
-            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-xs">Fee structures, monthly auto-billing, discounts, dues tracking — plus online payment by card, JazzCash or EasyPaisa.</p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-xs">Fee structures, monthly auto-billing, discounts, receipts and dues tracking.</p>
           </div>
 
           {/* second highlight — exams & results, the other core academic
@@ -107,7 +107,7 @@ export function HomeFeatures() {
               </span>
               <h3 className="text-xs font-semibold sm:text-sm">Parent &amp; student portal</h3>
             </div>
-            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-xs">Every family gets their own dashboard for attendance, results, fees and online payment — no more calling the office to ask.</p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-xs">Every family gets their own dashboard for attendance, results, fee dues and notices — no more calling the office to ask.</p>
           </div>
 
           <div className="col-span-2 rounded-2xl border border-border bg-card p-3.5 transition-shadow hover:shadow-md sm:p-5 md:col-span-3">

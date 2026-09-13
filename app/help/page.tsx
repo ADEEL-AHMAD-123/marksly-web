@@ -8,7 +8,7 @@ import { PageHero } from '@/components/marketing/PageHero';
 
 const TITLE = 'Help Center';
 const DESCRIPTION =
-  'Common Marksly questions — getting started, fees & online payments, the parent & student portal, exams, notices, messaging, reports and account security.';
+  'Common Marksly questions — getting started, fees & billing, the parent & student portal, exams, notices, messaging, reports and account security.';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -37,7 +37,8 @@ const TOPICS = [
       { q: 'What happens if a payment fails?', a: 'Failed auto-renewal charges are retried automatically over the following week. If it still doesn’t go through, your account moves to a grace period rather than being cut off immediately, and you’ll be notified by email.' },
       { q: 'Do you offer annual billing?', a: 'Yes — annual billing is available on the Growth and Institution plans at a discount. Contact us and we’ll set it up for you.' },
       { q: 'Will I get a receipt for every payment?', a: 'Yes — a receipt is generated automatically for every successful payment and sent to your billing email.' },
-      { q: 'Can parents pay student fees online?', a: 'Yes — parents can pay an invoice directly from their portal by card, JazzCash, EasyPaisa or bank transfer. The invoice is marked paid automatically the moment the payment settles, so there’s nothing for your office to record by hand.' },
+      // Online fee payment (card/JazzCash/EasyPaisa) commented out for now -- not ready to advertise publicly yet.
+      // { q: 'Can parents pay student fees online?', a: 'Yes — parents can pay an invoice directly from their portal by card, JazzCash, EasyPaisa or bank transfer. The invoice is marked paid automatically the moment the payment settles, so there’s nothing for your office to record by hand.' },
       { q: 'Can a fee be waived or corrected after it’s issued?', a: 'Yes — an admin can waive an invoice or void a payment, each with a reason recorded. Nothing about what a family owes changes silently; every adjustment is on the record.' },
     ],
   },

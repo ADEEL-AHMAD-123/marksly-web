@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {
   GraduationCap, CalendarCheck, Wallet, FileText, CalendarClock,
   CreditCard, MessageSquare, BarChart2, ShieldCheck, ArrowRight, Check,
-  Settings, Users2, Bell, Headphones, LayoutDashboard, Landmark,
+  Settings, Users2, Bell, Headphones, LayoutDashboard, BookOpen,
 } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
@@ -17,7 +17,7 @@ const TITLE = 'Features — Marksly School & Campus Management Software';
 // Kept under ~160 chars — Bing Webmaster Tools flags longer descriptions as
 // an error, and both Google/Bing truncate them in the search snippet anyway.
 const DESCRIPTION =
-  'Explore Marksly features: attendance, exams & results, timetable, fees & online payments, students, parent & student portal, notices, ID cards, reports.';
+  'Explore Marksly features: attendance, exams & results, timetable, fees & invoices, students, parent & student portal, notices, ID cards, reports.';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -97,17 +97,22 @@ const FEATURES: Feature[] = [
     ],
     visual: 'fees', plan: 'Starter',
   },
-  {
-    slug: 'payments', icon: Landmark, title: 'Online fee payments',
-    desc: 'Parents pay school fees online in a few taps — the invoice is marked paid automatically, with no manual reconciliation on your end.',
-    bullets: [
-      'Card, JazzCash, EasyPaisa and bank transfer, all from the parent portal',
-      'Invoices update to "paid" the moment a payment settles — no admin has to record it by hand',
-      'A digital receipt is generated and delivered automatically for every successful payment',
-      'Refunds, disputes and failed payments are tracked and reconciled, not silently dropped',
-    ],
-    visual: 'payments', plan: 'Starter',
-  },
+  // Online fee payments — commented out for now rather than deleted; the
+  // card/JazzCash/EasyPaisa checkout exists in the product but isn't ready
+  // to advertise publicly yet. Re-enable by uncommenting this entry (and
+  // its matching quick-jump/FeatureVisual 'payments' case, both untouched)
+  // once it's ready to go live on the marketing site.
+  // {
+  //   slug: 'payments', icon: Landmark, title: 'Online fee payments',
+  //   desc: 'Parents pay school fees online in a few taps — the invoice is marked paid automatically, with no manual reconciliation on your end.',
+  //   bullets: [
+  //     'Card, JazzCash, EasyPaisa and bank transfer, all from the parent portal',
+  //     'Invoices update to "paid" the moment a payment settles — no admin has to record it by hand',
+  //     'A digital receipt is generated and delivered automatically for every successful payment',
+  //     'Refunds, disputes and failed payments are tracked and reconciled, not silently dropped',
+  //   ],
+  //   visual: 'payments', plan: 'Starter',
+  // },
   {
     slug: 'students', icon: GraduationCap, title: 'Student records',
     desc: 'Admissions, profiles, classes and sections — one record per student, not scattered across registers, with terms and academic years to keep every year properly separated.',
@@ -120,12 +125,23 @@ const FEATURES: Feature[] = [
     visual: 'students', plan: 'Starter',
   },
   {
+    slug: 'academics', icon: BookOpen, title: 'Academic structure',
+    desc: 'Set up your classes, sections, terms and grading scheme once — attendance, exams and reports all line up inside that structure automatically, with no re-entering it module by module.',
+    bullets: [
+      'Classes and sections, each with its own capacity, so you always know how full a room is',
+      'Multiple terms and academic years, kept properly separate so last year’s records never mix with this year’s',
+      'A grading scheme per class — percentage/letter, GPA, or Cambridge-style — grades calculate themselves from it',
+      'Promote an entire class or section to the next grade in one action at year-end, including students repeating a year',
+    ],
+    visual: 'academics', plan: 'Starter',
+  },
+  {
     slug: 'portal', icon: LayoutDashboard, title: 'Parent & student portal',
     desc: 'Every parent and student gets their own dashboard — no more asking the school office for a result, a due date, or an attendance record.',
     bullets: [
       'Parents see every child in one place — attendance, results, fees and notices, even across siblings in different classes',
       'Students take their own timed online exams and check results directly, no admin hand-off needed',
-      'Pay outstanding fees online from the same dashboard',
+      'Check outstanding fee dues at a glance, right alongside results and attendance',
       'Works on any phone or computer, no app to install',
     ],
     visual: 'portal', plan: 'Starter',
@@ -151,6 +167,17 @@ const FEATURES: Feature[] = [
       'Consistent design across the institution',
     ],
     visual: 'idcard', plan: 'Growth',
+  },
+  {
+    slug: 'staff', icon: Users2, title: 'Staff & role-based access',
+    desc: 'Every staff member — teacher, accountant, or general staff — gets a login scoped to exactly what their job needs, instead of one shared admin account everyone uses.',
+    bullets: [
+      'Teachers see only the classes and sections assigned to them, nothing institution-wide',
+      'Accountants get fees, invoices and payments — not exam grading or student records',
+      'Add as many admins as you need, so responsibility isn’t tied to a single account or person',
+      'Deactivate a staff member the day they leave — access is revoked immediately, not "eventually"',
+    ],
+    visual: 'staff', plan: 'Starter',
   },
   {
     slug: 'notices', icon: Bell, title: 'Notices & announcements',

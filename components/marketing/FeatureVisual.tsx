@@ -1,9 +1,9 @@
-import { Check, MessageCircle, QrCode, Bell, ShieldCheck, Wallet } from 'lucide-react';
+import { Check, MessageCircle, QrCode, Bell, ShieldCheck, Wallet, Layers, UserCog } from 'lucide-react';
 
 export type VisualKind =
   | 'attendance' | 'exams' | 'timetable' | 'fees'
   | 'students' | 'messaging' | 'idcard' | 'reports'
-  | 'portal' | 'payments' | 'notices';
+  | 'portal' | 'payments' | 'notices' | 'academics' | 'staff';
 
 /**
  * Abstract, branded illustrative panels — deliberately NOT screenshots of
@@ -266,6 +266,43 @@ export function FeatureVisual({ kind }: { kind: VisualKind }) {
                 </div>
               </div>
             ))}
+          </div>
+        </Frame>
+      );
+
+    case 'academics':
+      return (
+        <Frame>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Grading scheme — GPA</p>
+          <div className="mt-3 space-y-1.5">
+            {[
+              { band: 'A (90-100%)', points: '4.0' },
+              { band: 'B (80-89%)', points: '3.0' },
+              { band: 'C (70-79%)', points: '2.0' },
+            ].map((row) => (
+              <div key={row.band} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-xs">
+                <span className="font-medium">{row.band}</span>
+                <span className="text-muted-foreground">{row.points} pts</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-accent/10 px-3 py-2 text-xs font-semibold text-accent">
+            <Layers aria-hidden size={14} /> Class 8 → Class 9, promoted in one action
+          </div>
+        </Frame>
+      );
+
+    case 'staff':
+      return (
+        <Frame>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Staff access</p>
+          <div className="mt-3 space-y-2">
+            <Row label="Sana Tariq — Teacher" sub="Class 8, Section A only" status="success" />
+            <Row label="Bilal Hussain — Accountant" sub="Fees & payments only" status="success" />
+            <Row label="Ahmed Raza — Staff (deactivated)" sub="Access revoked" status="danger" />
+          </div>
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-accent/10 px-3 py-2 text-xs font-semibold text-accent">
+            <UserCog aria-hidden size={14} /> Scoped by role, not shared logins
           </div>
         </Frame>
       );

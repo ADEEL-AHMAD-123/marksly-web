@@ -18,7 +18,8 @@ import { useGetPublicPlansQuery, type Plan } from '@/store/api/plansApi';
 const CORE_FEATURES = [
   'Attendance tracking with automatic guardian notifications',
   'Manual & timed online exams, auto-graded with GPA / grading schemes',
-  'Fee management — invoices, online card/JazzCash/Easypaisa payments, printable slips',
+  'Fee management — invoices, discounts, waivers and printable slips',
+  // 'Online card/JazzCash/Easypaisa payments' -- commented out for now, not ready to advertise publicly yet.
   'Digital ID cards with QR-code verification',
   'Timetable builder',
   'Notices & announcements by role',
