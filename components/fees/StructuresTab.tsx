@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, X, FileStack, Receipt } from 'lucide-react';
+import { Plus, Trash2, X, FileStack, Receipt, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,9 +21,11 @@ import { useGetClassesQuery } from '@/store/api/classesApi';
 import {
   useGetFeeStructuresQuery,
   useCreateFeeStructureMutation,
+  useUpdateFeeStructureMutation,
   useGenerateInvoicesMutation,
   type FeeStructure,
 } from '@/store/api/feesApi';
+import { getErrorMessage } from '@/lib/get-error-message';
 import { formatCurrency } from '@/lib/utils';
 import { useTerminology } from '@/lib/terminology';
 
@@ -34,6 +36,7 @@ export function StructuresTab() {
   const structures = data?.data ?? [];
   const [addOpen, setAddOpen] = useState(false);
   const [generateFor, setGenerateFor] = useState<FeeStructure | null>(null);
+  const [editStructure, setEditStructure] = useState<FeeStructure | null>(null);
 
   return (
     <div className="space-y-4">
@@ -50,12 +53,15 @@ export function StructuresTab() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {structures.map((s) => (
-            <Card key={s.id} className="flex flex-col p-5">
+            <Card key={s.id} className={`flex flex-col p-5 ${!s.isActive ? 'opacity-60' : ''}`}>
               <div className="flex items-start justify-between">
                 <div>
                   <p className="font-semibold text-foreground">{s.name}</p>
                   <p className="text-xs text-muted-foreground">{s.academicYear} · {s.className ?? 'All classes'}</p>
-                  {s.autoBill && <Badge variant="success" className="mt-1">Auto-bill · due {s.dueDay}th</Badge>}
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {s.autoBill && <Badge variant="success">Auto-bill · due {s.dueDay}th</Badge>}
+                    {!s.isActive && <Badge variant="neutral">Inactive</Badge>}
+                  </div>
                 </div>
                 <Badge variant="primary">{formatCurrency(s.total)}</Badge>
               </div>
@@ -67,9 +73,14 @@ export function StructuresTab() {
                   </div>
                 ))}
               </div>
-              <Button variant="secondary" size="sm" className="mt-4" onClick={() => setGenerateFor(s)}>
-                <Receipt size={15} /> Generate invoices
-              </Button>
+              <div className="mt-4 flex gap-2">
+                <Button variant="secondary" size="sm" className="flex-1" onClick={() => setGenerateFor(s)}>
+                  <Receipt size={15} /> Generate invoices
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => setEditStructure(s)}>
+                  <Pencil size={15} />
+                </Button>
+              </div>
             </Card>
           ))}
         </div>
@@ -77,6 +88,7 @@ export function StructuresTab() {
 
       <AddStructureDrawer open={addOpen} onClose={() => setAddOpen(false)} />
       <GenerateDrawer structure={generateFor} onClose={() => setGenerateFor(null)} />
+      <EditStructureDrawer structure={editStructure} onClose={() => setEditStructure(null)} />
     </div>
   );
 }
@@ -222,6 +234,144 @@ function AddStructureDrawer({ open, onClose }: { open: boolean; onClose: () => v
             <Button type="submit" loading={isLoading}>Create</Button>
           </div>
         </form>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/* ── Edit structure ────────────────────────────────────────────────────────── */
+const editStructSchema = z.object({
+  name: z.string().min(1, 'Required'),
+  isActive: z.boolean(),
+  autoBill: z.boolean(),
+  dueDay: z.coerce.number().int().min(1).max(28),
+  components: z.array(z.object({
+    name: z.string().min(1, 'Required'),
+    amount: z.coerce.number().min(0, '≥ 0'),
+    frequency: z.enum(['monthly', 'quarterly', 'annually', 'once']),
+  })).min(1, 'Add at least one component'),
+});
+type EditStructForm = z.infer<typeof editStructSchema>;
+
+function EditStructureDrawer({ structure, onClose }: { structure: FeeStructure | null; onClose: () => void }) {
+  const open = !!structure;
+  const [updateStructure, { isLoading }] = useUpdateFeeStructureMutation();
+
+  const { register, control, handleSubmit, reset, formState: { errors } } = useForm<EditStructForm>({
+    resolver: zodResolver(editStructSchema),
+    // "values" (not just a one-time defaultValues) so switching which
+    // structure is being edited re-seeds the form from that structure's
+    // current data rather than carrying over the previous one's.
+    values: structure
+      ? {
+          name: structure.name,
+          isActive: structure.isActive,
+          autoBill: structure.autoBill,
+          dueDay: structure.dueDay,
+          components: structure.components.map((c) => ({ name: c.name, amount: c.amount, frequency: (c.frequency as EditStructForm['components'][number]['frequency']) || 'monthly' })),
+        }
+      : undefined,
+  });
+  const { fields, append, remove } = useFieldArray({ control, name: 'components' });
+
+  const onSubmit = async (values: EditStructForm) => {
+    if (!structure) return;
+    try {
+      await updateStructure({ id: structure.id, ...values }).unwrap();
+      toast.success('Fee structure updated');
+      onClose();
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Could not update structure'));
+    }
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[460px]">
+        {structure && (
+          <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <h2 className="text-lg font-semibold">Edit Fee Structure</h2>
+              <SheetClose className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></SheetClose>
+            </div>
+
+            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+              <div>
+                <Label htmlFor="edit-name">Name</Label>
+                <Input id="edit-name" {...register('name')} />
+                {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {structure.academicYear} · {structure.className ?? 'All classes'} — the billing period and class scope can't be changed here; create a new structure instead.
+              </p>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <Label className="mb-0">Components</Label>
+                  <button type="button" onClick={() => append({ name: '', amount: 0, frequency: 'monthly' })} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                    <Plus size={13} /> Add
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {fields.map((f, i) => (
+                    <div key={f.id} className="flex items-center gap-2">
+                      <Input placeholder="Name" className="flex-1" {...register(`components.${i}.name` as const)} />
+                      <Input type="number" placeholder="Amount" className="w-28" {...register(`components.${i}.amount` as const)} />
+                      <Controller
+                        control={control}
+                        name={`components.${i}.frequency` as const}
+                        render={({ field }) => (
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                              <SelectItem value="quarterly">Quarterly</SelectItem>
+                              <SelectItem value="annually">Annually</SelectItem>
+                              <SelectItem value="once">One-time</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      <button type="button" onClick={() => fields.length > 1 && remove(i)} disabled={fields.length <= 1} aria-label="Remove" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-danger-soft hover:text-danger disabled:opacity-40">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {errors.components && <p className="mt-1 text-xs text-danger">{(errors.components as any).message || 'Check components'}</p>}
+              </div>
+
+              <div className="rounded-xl border border-border p-4 space-y-3">
+                <label className="flex items-start gap-3">
+                  <input type="checkbox" {...register('autoBill')} className="mt-0.5 h-4 w-4 rounded border-input text-primary focus-visible:ring-2 focus-visible:ring-ring" />
+                  <span>
+                    <span className="block text-sm font-medium text-foreground">Auto-bill every month</span>
+                    <span className="block text-xs text-muted-foreground">The monthly components are billed automatically on the 1st of each month.</span>
+                  </span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="edit-dueDay" className="mb-0 text-xs">Due day of month</Label>
+                  <Input id="edit-dueDay" type="number" min={1} max={28} className="w-20" {...register('dueDay')} />
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border p-4">
+                <label className="flex items-start gap-3">
+                  <input type="checkbox" {...register('isActive')} className="mt-0.5 h-4 w-4 rounded border-input text-primary focus-visible:ring-2 focus-visible:ring-ring" />
+                  <span>
+                    <span className="block text-sm font-medium text-foreground">Active</span>
+                    <span className="block text-xs text-muted-foreground">Turn this off to retire the structure — it stops appearing as an option for new invoices/billing without deleting its history.</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
+              <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
+              <Button type="submit" loading={isLoading}>Save changes</Button>
+            </div>
+          </form>
+        )}
       </SheetContent>
     </Sheet>
   );

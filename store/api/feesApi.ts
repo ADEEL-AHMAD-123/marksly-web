@@ -105,6 +105,14 @@ export interface CreateStructureBody {
   dueDay?: number;
 }
 
+export interface UpdateStructureBody {
+  name?: string;
+  isActive?: boolean;
+  autoBill?: boolean;
+  dueDay?: number;
+  components?: { name: string; amount: number; frequency?: string }[];
+}
+
 export interface GenerateBody {
   feeStructureId: string;
   month: number;
@@ -130,6 +138,13 @@ export const feesApi = baseApi.injectEndpoints({
     }),
     createFeeStructure: builder.mutation<ApiObject<{ id: string }>, CreateStructureBody>({
       query: (body) => ({ url: '/fees/structures', method: 'POST', body }),
+      invalidatesTags: [{ type: 'Fees', id: 'STRUCTURES' }],
+    }),
+    // isActive/autoBill/dueDay/components/name are all independently
+    // editable; classId and academicYear are deliberately excluded (backend
+    // rejects them silently by ignoring the fields, see updateStructureSchema).
+    updateFeeStructure: builder.mutation<ApiObject<{ id: string }>, { id: string } & UpdateStructureBody>({
+      query: ({ id, ...body }) => ({ url: `/fees/structures/${id}`, method: 'PATCH', body }),
       invalidatesTags: [{ type: 'Fees', id: 'STRUCTURES' }],
     }),
 
@@ -232,6 +247,7 @@ export const feesApi = baseApi.injectEndpoints({
 export const {
   useGetFeeStructuresQuery,
   useCreateFeeStructureMutation,
+  useUpdateFeeStructureMutation,
   useGetInvoicesQuery,
   useGenerateInvoicesMutation,
   useRunBillingMutation,
