@@ -118,6 +118,9 @@ export interface CreateExamBody {
   // Legacy free-text label, unused in UI — see ExamListItem.academicYear.
   academicYear?: string;
   examDate?: string;
+  // Global pass/fail cutoff for the exam — defaults to 40 on the backend
+  // (exam.service.ts) when omitted.
+  passingPercentage?: number;
   // Required for every mode EXCEPT 'online'.
   subjects?: { name: string; totalMarks: number; passingMarks?: number; notes?: string }[];
 

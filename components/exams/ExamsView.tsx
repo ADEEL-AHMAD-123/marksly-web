@@ -74,7 +74,7 @@ const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
 function ModeBadge({ mode }: { mode: ExamMode }) {
   if (mode === 'online') return <Badge variant="primary">Online</Badge>;
   const label = MODES.find((m) => m.value === mode)?.label ?? mode;
-  return <Badge variant="neutral" className="capitalize">{label}</Badge>;
+  return <Badge variant="outline" className="capitalize">{label}</Badge>;
 }
 
 export function ExamsView({ title = 'Exams' }: { title?: string }) {
@@ -426,6 +426,13 @@ const schema = z
     classId: z.string().min(1, 'Select a class'),
     examDate: z.string().optional(),
     subjects: z.array(subjectSchema).optional(),
+    // Global pass/fail cutoff for the exam as a whole -- defaults to 40 on
+    // the backend if left blank (see exam.service.ts), so blank must map to
+    // undefined here, not to the number 0.
+    passingPercentage: z.preprocess(
+      (v) => (v === '' || v === null || v === undefined ? undefined : v),
+      z.coerce.number().min(0).max(100).optional()
+    ),
 
     subjectName: z.string().optional(),
     questions: z.array(questionSchema).optional(),
@@ -471,6 +478,7 @@ const defaultValues: ExamForm = {
   classId: '',
   examDate: '',
   subjects: [{ name: 'Mathematics', totalMarks: 100, notes: '' }],
+  passingPercentage: undefined,
   subjectName: '',
   questions: [],
   durationMinutes: 30,
@@ -524,7 +532,10 @@ function StepIndicator({ current, total, mode }: { current: number; total: numbe
 
 function CreateExamWizard({ open, onClose }: { open: boolean; onClose: () => void }) {
   const terminology = useTerminology();
-  const { data: classesRes } = useGetClassesQuery();
+  // This wizard only ever creates a NEW exam (no edit mode) -- an archived
+  // class has no business being offered as a place to schedule one, same
+  // reasoning as the Subjects/Timetable class pickers.
+  const { data: classesRes } = useGetClassesQuery({ activeOnly: true });
   const classes = classesRes?.data ?? [];
   const noClasses = classes.length === 0;
   const [createExam, { isLoading }] = useCreateExamMutation();
@@ -587,6 +598,7 @@ function CreateExamWizard({ open, onClose }: { open: boolean; onClose: () => voi
           mode: values.mode,
           classId: values.classId,
           examDate: values.examDate || undefined,
+          passingPercentage: values.passingPercentage,
           subjectName: values.subjectName,
           questions: (values.questions ?? []) as ExamQuestion[],
           durationMinutes: values.durationMinutes,
@@ -605,6 +617,7 @@ function CreateExamWizard({ open, onClose }: { open: boolean; onClose: () => voi
           mode: values.mode,
           classId: values.classId,
           examDate: values.examDate || undefined,
+          passingPercentage: values.passingPercentage,
           subjects: (values.subjects ?? []).map((s) => ({
             name: s.name,
             totalMarks: s.totalMarks,
@@ -839,6 +852,18 @@ function CreateExamWizard({ open, onClose }: { open: boolean; onClose: () => voi
                     <SummaryRow label="Subjects" value={`${(watch('subjects') ?? []).length} · ${totalSubjectMarks} marks`} />
                   )}
                 </Card>
+                <div>
+                  <Label htmlFor="passingPercentage">Pass mark (%)</Label>
+                  <Input
+                    id="passingPercentage"
+                    type="number"
+                    min={0}
+                    max={100}
+                    placeholder="Defaults to 40%"
+                    {...register('passingPercentage')}
+                  />
+                  {errors.passingPercentage && <p className="mt-1 text-xs text-danger">{errors.passingPercentage.message}</p>}
+                </div>
               </div>
             )}
           </div>
