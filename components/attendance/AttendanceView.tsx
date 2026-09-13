@@ -318,16 +318,15 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
 
   const selectedPeriod = periods.find((p) => p.periodId === periodId);
   // Marking attendance is a teacher's everyday job, not an admin one — an
-  // admin's whole reason to be on this page is to review/export what
-  // teachers have already recorded. So for admin/staff this page IS the
-  // Attendance Report: no tab bar, no "Mark attendance" landing view, just
-  // the report with a plain explanation of who actually does the marking.
-  // Correcting a record directly is kept, but only as a clearly secondary,
-  // named "admin override" — for the genuine exception (a teacher who's
-  // left, or a period nobody covered), not a routine second half of this
-  // page. Every mark() call it makes is logged server-side (see
-  // attendance-marking.service.ts) precisely because it's meant to be
-  // rare. Teachers still get the familiar two-tab layout, unchanged.
+  // admin's whole reason to be on this page is mostly to review/export
+  // what teachers have already recorded. So for admin/staff this page
+  // defaults to the Attendance Report: no persistent tab bar, no "Mark
+  // attendance" landing view. Taking attendance directly is still fully
+  // available -- just as a clearly secondary action ('Take attendance'),
+  // not the thing this page leads with, and internally still tracked as
+  // `adminOverride` since every mark() call it makes is logged
+  // server-side (see attendance-marking.service.ts) with the admin's
+  // name. Teachers still get the familiar two-tab layout, unchanged.
   // The dashboard links straight into marking a SPECIFIC unmarked section
   // (via ?classId=&sectionId=, e.g. "Mark next" on Today's Attendance) --
   // that's a genuine exception case (a period nobody covered yet), so it
@@ -346,9 +345,9 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
         description={
           isTeacher
             ? tab === 'mark' ? 'Mark attendance for a specific period.' : 'Attendance by date, class and period, with guardian contact details.'
-            : adminOverride
-              ? 'Admin override — marking or correcting a period directly.'
-              : 'Attendance is marked by teachers, period by period. Review it here across your institution, and export it whenever you need to.'
+            : tab === 'mark'
+              ? 'Taking attendance directly as an admin, on behalf of the class\'s own teacher.'
+              : 'Attendance is marked by teachers, period by period. Review it here across your institution, export it whenever you need to, or take it directly yourself if you ever need to.'
         }
       />
 
@@ -377,29 +376,32 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
         </div>
       )}
 
-      {/* Admin/staff, everyday case: this IS the Attendance Report page —
-          a plain explanation of who marks attendance and why this page is
-          a report, not a marking tool, with the rare correction path
-          folded into that same explanation instead of floating as its own
-          top-of-page control. */}
+      {/* Admin/staff, everyday case: this IS the Attendance Report page --
+          reports are the focus here, but taking attendance directly is
+          still available as a clearly secondary action, not tucked away
+          as a scare-worded "exception only" link. */}
       {!isTeacher && tab === 'report' && (
-        <div className="flex items-start gap-3 rounded-xl border border-border/70 bg-muted/20 p-4">
-          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-card text-muted-foreground">
-            <Users size={16} />
-          </span>
-          <div className="min-w-0 text-sm text-muted-foreground">
-            <p>
-              You shouldn&apos;t need to touch a record directly except in a real exception — a teacher who&apos;s left the
-              school, or a period nobody covered.{' '}
-              <button
-                type="button"
-                onClick={() => { setTab('mark'); setAdminOverride(true); }}
-                className="font-medium text-primary underline decoration-dotted underline-offset-4 hover:no-underline"
-              >
-                Correct a record directly (admin override)
-              </button>
-            </p>
+        <div className="flex flex-col items-start gap-3 rounded-xl border border-border/70 bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-card text-muted-foreground">
+              <Users size={16} />
+            </span>
+            <div className="min-w-0 text-sm text-muted-foreground">
+              <p>
+                Attendance is normally marked and corrected by each class&apos;s own teacher. As an admin you can take or
+                correct it directly too, whenever you need to.
+              </p>
+            </div>
           </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="shrink-0"
+            onClick={() => { setTab('mark'); setAdminOverride(true); }}
+          >
+            <CalendarCheck size={16} /> Take attendance
+          </Button>
         </div>
       )}
 
@@ -418,12 +420,11 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
       ) : (
         <>
         {!isTeacher && adminOverride && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-warning/40 bg-warning-soft px-3.5 py-3 text-sm text-warning">
+          <div className="flex items-start gap-2.5 rounded-lg border border-border/70 bg-primary-soft px-3.5 py-3 text-sm text-primary-soft-foreground">
             <AlertTriangle size={17} className="mt-0.5 shrink-0" />
             <span>
-              You&apos;re marking/correcting attendance directly as an admin, bypassing the class&apos;s own teacher — this
-              is meant for exceptions (a teacher no longer has access, or a period nobody has covered) and is recorded
-              in the server log with your name and what changed.
+              You&apos;re taking attendance directly as an admin, on behalf of the class&apos;s own teacher — this is
+              recorded in the server log with your name and what changed, so it stays easy to trace later.
             </span>
           </div>
         )}
@@ -799,16 +800,16 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
         </div>
       ) : (
         <div className="mt-2 space-y-2 border-t border-border pt-5">
-          <InfoNote title="What is admin override, and when should I use it?">
+          <InfoNote title="About taking attendance as an admin">
             <p>
-              Every teacher can now correct their own attendance any time, with no 24-hour cutoff — so this shouldn&apos;t
-              come up often. Use it only when the teacher who owns a period genuinely can&apos;t fix it themselves (they&apos;ve
-              left the school, lost access, or a period was never covered by anyone).
+              Every teacher can correct their own attendance any time, with no 24-hour cutoff, so day-to-day this
+              shouldn&apos;t come up often — the report above is where you&apos;ll spend most of your time. But it&apos;s here
+              whenever you need it: covering for a teacher who&apos;s away, or a period nobody marked.
             </p>
             <p>
               Picking a {terminology.classUnit.toLowerCase()}, {terminology.section.toLowerCase()} and date shows only
               the periods scheduled that day — a &quot;Marked&quot; badge means attendance was already submitted.
-              Every override you make here is written to the server log with your name, so use it deliberately.
+              Everything you save here is written to the server log with your name, so it&apos;s always easy to trace back.
             </p>
           </InfoNote>
         </div>
