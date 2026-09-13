@@ -778,6 +778,24 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
         </>
       )}
 
+      {/* "Reviewed"/"Not reviewed" is a small but easy-to-miss distinction
+          in the roster above, so it gets its own short, dedicated note
+          rather than being folded into the longer notes below -- kept
+          separate on purpose (see the Students page's InfoNote split for
+          the same reasoning): someone who only wants to know what the badge
+          means shouldn't have to read a whole "tips for taking attendance"
+          note to find it. Shown for both admin and teacher, since the
+          roster and its badges are the same shared UI for both. */}
+      {tab === 'mark' && (
+        <InfoNote title="What do 'Reviewed' and 'Not reviewed' mean?">
+          <p>
+            A student stays &quot;Not reviewed&quot; until you tap a status for them. If you save the roster while
+            they&apos;re still Not reviewed, they&apos;re recorded as Present by default — reviewing everyone first is
+            what lets you actually mark someone Absent, Late or on Leave instead.
+          </p>
+        </InfoNote>
+      )}
+
       {/* Help — placed after the actual tool, same bottom-of-page pattern as
           Students, ID Cards, Academic Terms & Grading, Timetable, Classes and
           Subjects, not before it. Only relevant to marking, so it's gated to
