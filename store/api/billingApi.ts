@@ -149,9 +149,12 @@ export const billingApi = baseApi.injectEndpoints({
         monthlyAmount: number;
         effective: 'now' | 'next_renewal' | 'pending_payment';
         effectiveAt?: string | null;
-        // Set (non-blocking) when the target plan's student limit is lower
-        // than the number of active students already enrolled.
-        overStudentLimit?: number | null;
+        // No overStudentLimit field here -- the backend's downgrade branch
+        // now refuses the switch outright (409) when it would put the
+        // institution over the target plan's student limit, rather than
+        // scheduling it anyway and reporting the overage back. The
+        // plan-picker UI already does its own pre-submit check per plan
+        // card using getMyBilling's activeStudentCount for that warning.
       }>,
       { planKey: string }
     >({
