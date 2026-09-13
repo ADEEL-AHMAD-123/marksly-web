@@ -82,7 +82,7 @@ export interface InvoiceDetail {
   paidAmount: number;
   balance: number;
   status: InvoiceStatus;
-  payments: { id: string; amountPaid: number; paymentMethod: PaymentMethod; receiptNumber: string | null; paymentDate: string }[];
+  payments: { id: string; amountPaid: number; paymentMethod: PaymentMethod; receiptNumber: string | null; paymentDate: string; voided: boolean; voidReason: string | null }[];
   adjustments: { id: string; type: 'credit' | 'debit'; amount: number; reason: string; createdAt: string }[];
 }
 
@@ -165,6 +165,29 @@ export const feesApi = baseApi.injectEndpoints({
       query: (id) => `/fees/invoices/${id}`,
       providesTags: (_r, _e, id) => [{ type: 'Fees', id: `INVOICE-${id}` }],
     }),
+    // Both admin-only corrections (see fee.service.ts's voidPayment()/
+    // voidInvoice()) -- invalidate the same tag set as adjustInvoice/
+    // recordPayment above so every cached view (this invoice's detail, the
+    // list, the summary, and the student/parent portal's bare 'Fees' tag)
+    // refreshes consistently.
+    voidPayment: builder.mutation<ApiObject<{ id: string; voided: boolean }>, { invoiceId: string; paymentId: string; reason: string }>({
+      query: ({ paymentId, reason }) => ({ url: `/fees/payments/${paymentId}/void`, method: 'POST', body: { reason } }),
+      invalidatesTags: (_r, _e, { invoiceId }) => [
+        { type: 'Fees', id: 'INVOICES' },
+        { type: 'Fees', id: 'SUMMARY' },
+        { type: 'Fees', id: `INVOICE-${invoiceId}` },
+        'Fees',
+      ],
+    }),
+    voidInvoice: builder.mutation<ApiObject<{ id: string; status: InvoiceStatus }>, { invoiceId: string; reason: string }>({
+      query: ({ invoiceId, reason }) => ({ url: `/fees/invoices/${invoiceId}/void`, method: 'POST', body: { reason } }),
+      invalidatesTags: (_r, _e, { invoiceId }) => [
+        { type: 'Fees', id: 'INVOICES' },
+        { type: 'Fees', id: 'SUMMARY' },
+        { type: 'Fees', id: `INVOICE-${invoiceId}` },
+        'Fees',
+      ],
+    }),
     adjustInvoice: builder.mutation<ApiObject<unknown>, AdjustBody>({
       query: ({ invoiceId, ...body }) => ({ url: `/fees/invoices/${invoiceId}/adjust`, method: 'POST', body }),
       // Also invalidate the bare 'Fees' tag — RTK Query only matches
@@ -213,6 +236,8 @@ export const {
   useRunBillingMutation,
   useGetInvoiceDetailQuery,
   useAdjustInvoiceMutation,
+  useVoidPaymentMutation,
+  useVoidInvoiceMutation,
   useRecordPaymentMutation,
   useGetFeesSummaryQuery,
   useGetFeeCardQuery,

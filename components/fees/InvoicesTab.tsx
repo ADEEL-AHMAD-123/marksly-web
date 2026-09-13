@@ -5,7 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  ChevronLeft, ChevronRight, AlertCircle, FileText, X, Wallet, RefreshCw, Receipt, Plus, Minus, Printer,
+  ChevronLeft, ChevronRight, AlertCircle, FileText, X, Wallet, RefreshCw, Receipt, Plus, Minus, Printer, Ban, ShieldOff,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
@@ -28,9 +28,13 @@ import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { SearchInput } from '@/components/ui/search-input';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/get-error-message';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   useGetInvoicesQuery,
   useRecordPaymentMutation,
+  useVoidPaymentMutation,
+  useVoidInvoiceMutation,
   useRunBillingMutation,
   useGetInvoiceDetailQuery,
   useAdjustInvoiceMutation,
@@ -347,9 +351,43 @@ function InvoiceDetailDrawer({ invoiceId, onClose }: { invoiceId: string | null;
   const open = !!invoiceId;
   const { data, isFetching } = useGetInvoiceDetailQuery(invoiceId as string, { skip: !invoiceId });
   const [adjust, { isLoading }] = useAdjustInvoiceMutation();
+  const [voidPayment, { isLoading: voidingPayment }] = useVoidPaymentMutation();
+  const [voidInvoice, { isLoading: voidingInvoice }] = useVoidInvoiceMutation();
   const d = data?.data;
   const accessToken = useSelector((s: RootState) => s.auth.accessToken);
+  // Voiding/waiving is admin-only server-side (fee.routes.ts's canVoid) --
+  // an accountant can still record payments/adjustments here, just not
+  // correct them after the fact.
+  const isAdmin = useSelector((s: RootState) => s.auth.user?.role) === 'admin';
   const [printing, setPrinting] = useState(false);
+  const [voidPaymentTarget, setVoidPaymentTarget] = useState<{ id: string; amount: number } | null>(null);
+  const [voidPaymentReason, setVoidPaymentReason] = useState('');
+  const [waiveOpen, setWaiveOpen] = useState(false);
+  const [waiveReason, setWaiveReason] = useState('');
+
+  const confirmVoidPayment = async () => {
+    if (!voidPaymentTarget || !invoiceId || !voidPaymentReason.trim()) return;
+    try {
+      await voidPayment({ invoiceId, paymentId: voidPaymentTarget.id, reason: voidPaymentReason.trim() }).unwrap();
+      toast.success('Payment voided');
+      setVoidPaymentTarget(null);
+      setVoidPaymentReason('');
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not void this payment'));
+    }
+  };
+
+  const confirmWaiveInvoice = async () => {
+    if (!invoiceId || !waiveReason.trim()) return;
+    try {
+      await voidInvoice({ invoiceId, reason: waiveReason.trim() }).unwrap();
+      toast.success('Invoice waived');
+      setWaiveOpen(false);
+      setWaiveReason('');
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not waive this invoice'));
+    }
+  };
 
   const handlePrintSlip = async () => {
     if (!invoiceId) return;
@@ -441,9 +479,30 @@ function InvoiceDetailDrawer({ invoiceId, onClose }: { invoiceId: string | null;
                   ) : (
                     <ul className="space-y-1.5">
                       {d.payments.map((p) => (
-                        <li key={p.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
-                          <span className="text-foreground">{formatCurrency(p.amountPaid)} <span className="text-xs text-muted-foreground">· {p.paymentMethod}</span></span>
-                          <span className="text-xs text-muted-foreground">{formatDate(p.paymentDate)}</span>
+                        <li key={p.id} className={`rounded-lg border px-3 py-2 text-sm ${p.voided ? 'border-border/60 bg-muted/30' : 'border-border'}`}>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={p.voided ? 'text-muted-foreground line-through' : 'text-foreground'}>
+                              {formatCurrency(p.amountPaid)} <span className="text-xs text-muted-foreground no-underline">· {p.paymentMethod}</span>
+                            </span>
+                            <div className="flex shrink-0 items-center gap-2">
+                              <span className="text-xs text-muted-foreground">{formatDate(p.paymentDate)}</span>
+                              {p.voided ? (
+                                <Badge variant="neutral">Voided</Badge>
+                              ) : isAdmin ? (
+                                <button
+                                  type="button"
+                                  title="Void this payment — for a wrongly-recorded amount"
+                                  onClick={() => setVoidPaymentTarget({ id: p.id, amount: p.amountPaid })}
+                                  className="rounded-md p-1 text-muted-foreground hover:bg-danger-soft hover:text-danger"
+                                >
+                                  <Ban size={13} />
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                          {p.voided && p.voidReason && (
+                            <p className="mt-1 text-xs text-muted-foreground">Voided: {p.voidReason}</p>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -472,16 +531,84 @@ function InvoiceDetailDrawer({ invoiceId, onClose }: { invoiceId: string | null;
             ) : null}
           </div>
 
-          <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
-            {d && (
-              <Button type="button" variant="secondary" loading={printing} onClick={handlePrintSlip}>
-                <Printer size={16} /> Print slip
-              </Button>
-            )}
-            <SheetClose asChild><Button type="button" variant="secondary">Close</Button></SheetClose>
+          <div className="flex items-center justify-between gap-2 border-t border-border px-5 py-4">
+            <div>
+              {/* Waiving only makes sense while nothing has been collected
+                  yet -- voidPayment first otherwise, same rule the backend
+                  enforces (INVOICE_HAS_PAYMENTS). */}
+              {isAdmin && d && d.status !== 'waived' && d.paidAmount === 0 && (
+                <Button type="button" variant="ghost" onClick={() => setWaiveOpen(true)}>
+                  <ShieldOff size={16} /> Waive invoice
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {d && (
+                <Button type="button" variant="secondary" loading={printing} onClick={handlePrintSlip}>
+                  <Printer size={16} /> Print slip
+                </Button>
+              )}
+              <SheetClose asChild><Button type="button" variant="secondary">Close</Button></SheetClose>
+            </div>
           </div>
         </div>
       </SheetContent>
+
+      {voidPaymentTarget && (
+        <ConfirmDialog
+          open
+          onClose={() => { setVoidPaymentTarget(null); setVoidPaymentReason(''); }}
+          onConfirm={confirmVoidPayment}
+          title="Void this payment?"
+          description={
+            <>
+              This removes <strong>{formatCurrency(voidPaymentTarget.amount)}</strong> from the invoice&apos;s paid
+              total — it stays in the history marked voided, but the invoice balance updates immediately.
+              <div className="mt-3">
+                <Label htmlFor="void-payment-reason">Reason</Label>
+                <Input
+                  id="void-payment-reason"
+                  value={voidPaymentReason}
+                  onChange={(e) => setVoidPaymentReason(e.target.value)}
+                  placeholder="e.g. Entered wrong amount"
+                />
+              </div>
+            </>
+          }
+          confirmLabel="Void payment"
+          tone="warning"
+          loading={voidingPayment}
+          icon={Ban}
+        />
+      )}
+
+      {waiveOpen && (
+        <ConfirmDialog
+          open
+          onClose={() => { setWaiveOpen(false); setWaiveReason(''); }}
+          onConfirm={confirmWaiveInvoice}
+          title="Waive this invoice?"
+          description={
+            <>
+              Marks the invoice as waived — it will no longer show as due anywhere. Only possible because nothing
+              has been paid against it yet.
+              <div className="mt-3">
+                <Label htmlFor="waive-reason">Reason</Label>
+                <Input
+                  id="waive-reason"
+                  value={waiveReason}
+                  onChange={(e) => setWaiveReason(e.target.value)}
+                  placeholder="e.g. Wrong student billed"
+                />
+              </div>
+            </>
+          }
+          confirmLabel="Waive invoice"
+          tone="warning"
+          loading={voidingInvoice}
+          icon={ShieldOff}
+        />
+      )}
     </Sheet>
   );
 }
