@@ -80,7 +80,7 @@ export interface TeacherClass {
   termId: string | null;
   termName: string | null;
   termType: string | null;
-  sections: { id: string; name: string; students: number }[];
+  sections: { id: string; name: string; students: number; subjects: string[] }[];
 }
 
 export interface CoreSubject {

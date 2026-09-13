@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { School, Users, Layers, UserPlus } from 'lucide-react';
+import { School, Users, Layers, UserPlus, BookOpen } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,11 +56,23 @@ export function TeacherClassesView() {
                     <p className="text-xs text-muted-foreground">{c.termName ?? 'No term'}</p>
                   </div>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-1.5">
+                <div className="mt-4 space-y-1.5">
                   {c.sections.map((s) => (
-                    <span key={s.id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
-                      <Layers size={11} /> {s.name} · {s.students}
-                    </span>
+                    <div key={s.id} className="flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+                        <Layers size={11} /> {s.name} · {s.students}
+                      </span>
+                      {/* Which subject(s) this teacher covers in THIS
+                          section — without it, a teacher covering Math for
+                          one section and Science for another saw two
+                          identical-looking chips with no way to tell them
+                          apart. */}
+                      {s.subjects.length > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-primary-soft px-2 py-1 text-xs text-primary-soft-foreground">
+                          <BookOpen size={11} /> {s.subjects.join(', ')}
+                        </span>
+                      )}
+                    </div>
                   ))}
                 </div>
                 <div className="mt-4 flex items-center gap-1.5 border-t border-border pt-3 text-sm text-muted-foreground">
