@@ -1,10 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { Laptop, ArrowRight, Clock, AlertTriangle } from 'lucide-react';
+import { Laptop, Clock, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn, formatDate } from '@/lib/utils';
 import { useChildrenExamsQuery } from '@/store/api/portalApi';
