@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { cn } from '@/lib/utils';
 import {
   Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
@@ -411,7 +412,9 @@ export function ResultsEntry({ examId, onBack, readOnly = false }: { examId: str
     return exam.subjects.reduce((sum, s) => sum + (Number(row[s.name]) || 0), 0);
   };
 
-  const save = async () => {
+  const [confirmOverwritePublished, setConfirmOverwritePublished] = useState(false);
+
+  const doSave = async () => {
     const records = students.map((s) => ({
       studentId: s.studentId,
       marks: exam.subjects.map((sub) => {
@@ -427,9 +430,23 @@ export function ResultsEntry({ examId, onBack, readOnly = false }: { examId: str
     try {
       await saveResults({ examId, records }).unwrap();
       toast.success('Results saved');
+      setConfirmOverwritePublished(false);
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not save results');
     }
+  };
+
+  // Saving over an already-published exam takes effect immediately with no
+  // separate re-publish step and no automatic notification to whoever
+  // already saw the old number — the backend has no re-notify hook for a
+  // plain saveResults() call (only publish() itself notifies). Warn before
+  // it happens rather than let a correction go out silently.
+  const save = () => {
+    if (exam.published) {
+      setConfirmOverwritePublished(true);
+      return;
+    }
+    void doSave();
   };
 
   const publish = async () => {
@@ -628,6 +645,22 @@ export function ResultsEntry({ examId, onBack, readOnly = false }: { examId: str
           )}
         </div>
       )}
+      <ConfirmDialog
+        open={confirmOverwritePublished}
+        onClose={() => setConfirmOverwritePublished(false)}
+        onConfirm={doSave}
+        title="Overwrite published results?"
+        description={
+          <>
+            Students and parents have already seen these results. Saving now changes them immediately, and no
+            notification is sent about the correction — you may want to tell them separately.
+          </>
+        }
+        confirmLabel="Save anyway"
+        tone="warning"
+        loading={saving}
+        icon={AlertTriangle}
+      />
     </div>
   );
 }
