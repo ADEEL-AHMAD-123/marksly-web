@@ -18,6 +18,10 @@ const JSON_LD = {
       url: 'https://marksly.pk',
       logo: 'https://marksly.pk/logo-full.svg',
       email: 'support@marksly.pk',
+      // Named on /about, which links back to this exact @id — a real
+      // E-E-A-T/trust signal (who's actually behind this product) this
+      // graph didn't carry anywhere before.
+      founder: { '@type': 'Person', name: 'Adeel Ahmad Akhunzada', jobTitle: 'Founder' },
       // Disambiguation signal for Google — Marksly is a Pakistan-based
       // company/product, distinct from any similarly-named site elsewhere
       // (e.g. marksly.in), which otherwise risks getting blended together

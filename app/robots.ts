@@ -8,7 +8,7 @@ const BASE_URL = 'https://marksly.pk';
 // bot below, human or AI.
 const DASHBOARD_DISALLOW = ['/student', '/admin', '/superadmin', '/teacher', '/parent', '/accountant', '/verify-email', '/forgot-password/reset', '/verify'];
 const MARKETING_ALLOW = [
-  '/', '/login', '/register', '/pricing', '/features', '/help', '/contact', '/blog',
+  '/', '/login', '/register', '/pricing', '/features', '/help', '/contact', '/blog', '/about',
   '/school-management-system-pakistan', '/college-management-system-pakistan', '/education-management-system-pakistan',
   '/best-school-management-software-pakistan', '/feed.xml', '/testimonials', '/privacy', '/terms',
 ];

@@ -41,6 +41,7 @@ export function MarketingFooter() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-accent">Company</p>
             <ul className="mt-3 space-y-2 text-sm text-sidebar-muted">
+              <li><Link href="/about" className="hover:text-sidebar-foreground">About</Link></li>
               <li><Link href="/contact" className="hover:text-sidebar-foreground">Contact</Link></li>
               <li><a href="mailto:support@marksly.pk" className="hover:text-sidebar-foreground">support@marksly.pk</a></li>
               <li><a href="https://wa.me/923175496466" className="hover:text-sidebar-foreground">WhatsApp</a></li>
