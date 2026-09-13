@@ -56,19 +56,19 @@ export const holidaysApi = baseApi.injectEndpoints({
     }),
     createHoliday: builder.mutation<ApiObject<Holiday>, CreateHolidayBody>({
       query: (body) => ({ url: '/holidays', method: 'POST', body }),
-      invalidatesTags: [{ type: 'Holidays', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Holidays', id: 'LIST' }, { type: 'Notices', id: 'LIST' }],
     }),
     createHolidaysBulk: builder.mutation<ApiObject<BulkCreateHolidaysResult>, { holidays: CreateHolidayBody[] }>({
       query: (body) => ({ url: '/holidays/bulk', method: 'POST', body }),
-      invalidatesTags: [{ type: 'Holidays', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Holidays', id: 'LIST' }, { type: 'Notices', id: 'LIST' }],
     }),
     updateHoliday: builder.mutation<ApiObject<Holiday>, { id: string } & CreateHolidayBody>({
       query: ({ id, ...body }) => ({ url: `/holidays/${id}`, method: 'PATCH', body }),
-      invalidatesTags: [{ type: 'Holidays', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Holidays', id: 'LIST' }, { type: 'Notices', id: 'LIST' }],
     }),
     deleteHoliday: builder.mutation<ApiObject<{ id: string }>, string>({
       query: (id) => ({ url: `/holidays/${id}`, method: 'DELETE' }),
-      invalidatesTags: [{ type: 'Holidays', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Holidays', id: 'LIST' }, { type: 'Notices', id: 'LIST' }],
     }),
     // Not tied to cache invalidation like the others — this is a
     // point-in-time "would this collide with anything" check the form
