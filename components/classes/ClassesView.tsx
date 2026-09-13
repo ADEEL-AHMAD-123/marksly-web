@@ -4,7 +4,7 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, School, Trash2, X, Users, AlertCircle, Layers, ChevronLeft, ChevronRight, Filter, Pencil } from 'lucide-react';
+import { Plus, School, Trash2, X, Users, AlertCircle, Layers, ChevronLeft, ChevronRight, Filter, Pencil, Archive, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage, getErrorCode } from '@/lib/get-error-message';
 import { PageHeader } from '@/components/ui/page-header';
@@ -30,6 +30,7 @@ import {
 import { useGetActiveTermsQuery, useGetTermsQuery } from '@/store/api/termsApi';
 import { useTerminology } from '@/lib/terminology';
 import { useGetGradingSchemesQuery } from '@/store/api/gradingSchemesApi';
+import { cn } from '@/lib/utils';
 
 const schema = z.object({
   // Generic on purpose — this schema is created once at module scope, before
@@ -42,6 +43,12 @@ const schema = z.object({
   // '' means "use institution default" — resolved server-side in
   // grading-scheme.service.ts's resolveSchemeForClass().
   gradingSchemeId: z.string().optional(),
+  // Only meaningful when editing — create() has no isActive input at all
+  // (a brand-new class is always active). See class.service.ts's update():
+  // this is the ONLY way to retire an old class (there is no delete), and
+  // it's also the required escape hatch for deliberately moving a class
+  // into an already-closed term for historical record-keeping.
+  isActive: z.boolean().optional(),
   sections: z
     .array(
       z.object({
@@ -95,13 +102,22 @@ export function ClassesView() {
   const classes = data?.data ?? [];
   const noTerms = activeTerms.length === 0;
 
+  // Archived classes (isActive:false) are real, intentional records — the
+  // ONLY way to retire an old class, since there's no delete — so they
+  // stay out of the way by default rather than cluttering the everyday
+  // list, same as how done onboarding steps or fully-marked attendance
+  // sections get out of the way elsewhere in this app.
+  const [showInactive, setShowInactive] = useState(false);
+  const inactiveCount = useMemo(() => classes.filter((c) => !c.isActive).length, [classes]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return classes;
-    return classes.filter((c) =>
+    let rows = showInactive ? classes : classes.filter((c) => c.isActive);
+    if (!q) return rows;
+    return rows.filter((c) =>
       [c.name, c.termName, ...c.sections.map((s) => s.name)].some((v) => (v ?? '').toLowerCase().includes(q))
     );
-  }, [classes, query]);
+  }, [classes, query, showInactive]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageSafe = Math.min(page, totalPages);
@@ -109,11 +125,13 @@ export function ClassesView() {
 
   const [typeLockedError, setTypeLockedError] = useState<string | null>(null);
 
-  const { register, control, handleSubmit, reset, formState: { errors } } = useForm<Form>({
+  const { register, control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<Form>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', level: 1, termId: '', gradingSchemeId: '', sections: [{ name: 'A', capacity: 40 }] },
+    defaultValues: { name: '', level: 1, termId: '', gradingSchemeId: '', isActive: true, sections: [{ name: 'A', capacity: 40 }] },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'sections' });
+  const watchedSections = watch('sections');
+  const isActive = watch('isActive');
 
   useEffect(() => {
     if (!open) return;
@@ -124,10 +142,11 @@ export function ClassesView() {
         level: editing.level,
         termId: editing.termId ?? '',
         gradingSchemeId: editing.gradingSchemeId ?? '',
+        isActive: editing.isActive,
         sections: editing.sections.map((s) => ({ id: s.id, name: s.name, capacity: s.capacity ?? 40 })),
       });
     } else {
-      reset({ name: '', level: 1, termId: activeTerms[0]?.id ?? '', gradingSchemeId: '', sections: [{ name: 'A', capacity: 40 }] });
+      reset({ name: '', level: 1, termId: activeTerms[0]?.id ?? '', gradingSchemeId: '', isActive: true, sections: [{ name: 'A', capacity: 40 }] });
     }
   }, [open, editing, reset, activeTerms]);
 
@@ -154,6 +173,7 @@ export function ClassesView() {
             // than being dropped from the body (which would leave it
             // untouched instead).
             gradingSchemeId: values.gradingSchemeId ? values.gradingSchemeId : null,
+            isActive: values.isActive,
             sections,
           },
         }).unwrap();
@@ -192,8 +212,21 @@ export function ClassesView() {
           than the cards below it, same convention as the ID Cards/Timetable
           pickers — and shown unconditionally (not gated on data having
           loaded) so it doesn't pop in after the fact, same as Students. */}
-      <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+      <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
         <SearchInput value={query} onChange={(v) => { setQuery(v); setPage(1); }} placeholder={`Search by ${terminology.classUnit.toLowerCase()} name, year or ${terminology.section.toLowerCase()}…`} />
+        {inactiveCount > 0 && (
+          <button
+            type="button"
+            onClick={() => { setShowInactive((v) => !v); setPage(1); }}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              showInactive
+                ? 'border-primary bg-primary-soft text-primary-soft-foreground'
+                : 'border-border text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            <Archive size={12} /> {inactiveCount} archived {showInactive ? '· showing' : '· hidden'}
+          </button>
+        )}
       </div>
 
       {isError ? (
@@ -212,7 +245,7 @@ export function ClassesView() {
             {paged.map((c) => {
               const total = c.sections.reduce((sum, s) => sum + (s.currentCount || 0), 0);
               return (
-                <Card key={c.id} className="p-5">
+                <Card key={c.id} className={cn('p-5', !c.isActive && 'opacity-70')}>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary-soft-foreground"><School size={18} /></span>
@@ -222,17 +255,24 @@ export function ClassesView() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
+                      {!c.isActive && <Badge variant="neutral"><Archive size={11} /> Archived</Badge>}
                       <Badge variant="neutral">Level {c.level}</Badge>
                       <button onClick={() => openEdit(c)} aria-label="Edit class" className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"><Pencil size={15} /></button>
                     </div>
                   </div>
 
                   <div className="mt-4 space-y-1.5">
-                    {c.sections.map((s) => (
-                      <div key={s.id} className="flex items-center justify-between gap-2 rounded-md bg-muted px-2.5 py-1.5 text-xs">
-                        <span className="inline-flex items-center gap-1 text-muted-foreground"><Layers size={11} /> {s.name}{s.capacity ? <span className="opacity-60">/{s.capacity}</span> : null}</span>
-                      </div>
-                    ))}
+                    {c.sections.map((s) => {
+                      const full = s.capacity != null && s.currentCount >= s.capacity;
+                      return (
+                        <div key={s.id} className="flex items-center justify-between gap-2 rounded-md bg-muted px-2.5 py-1.5 text-xs">
+                          <span className="inline-flex items-center gap-1 text-muted-foreground"><Layers size={11} /> {s.name}</span>
+                          <span className={cn('font-medium', full ? 'text-warning' : 'text-muted-foreground')}>
+                            {s.currentCount}{s.capacity ? `/${s.capacity}` : ''}{full ? ' · full' : ''}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <div className="mt-4 flex items-center gap-1.5 border-t border-border pt-3 text-sm text-muted-foreground">
@@ -361,20 +401,64 @@ export function ClassesView() {
                   </button>
                 </div>
                 <div className="space-y-3">
-                  {fields.map((field, i) => (
-                    <div key={field.id} className="rounded-lg border border-border p-3">
-                      <div className="flex items-center gap-2">
-                        <Input placeholder="Name (e.g. A)" className="flex-1" {...register(`sections.${i}.name` as const)} />
-                        <Input type="number" placeholder="Capacity" className="w-24" {...register(`sections.${i}.capacity` as const)} />
-                        <button type="button" onClick={() => fields.length > 1 && remove(i)} disabled={fields.length <= 1} aria-label="Remove section" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-danger-soft hover:text-danger disabled:opacity-40">
-                          <Trash2 size={16} />
-                        </button>
+                  {fields.map((field, i) => {
+                    // An existing (already-saved) section can't actually be
+                    // removed here — class.service.ts's update() deliberately
+                    // keeps any section not listed in the request rather than
+                    // deleting it, so students already in it are never
+                    // silently orphaned. Letting the button look clickable
+                    // for these rows was misleading: it visually "removed"
+                    // the row and saved successfully, but the section quietly
+                    // stayed on the class the whole time. Only a row added in
+                    // THIS session (no persisted id yet) can actually be
+                    // dropped before it's ever saved.
+                    const isExisting = !!watchedSections?.[i]?.id;
+                    return (
+                      <div key={field.id} className="rounded-lg border border-border p-3">
+                        <div className="flex items-center gap-2">
+                          <Input placeholder="Name (e.g. A)" className="flex-1" {...register(`sections.${i}.name` as const)} />
+                          <Input type="number" placeholder="Capacity" className="w-24" {...register(`sections.${i}.capacity` as const)} />
+                          <button
+                            type="button"
+                            onClick={() => !isExisting && fields.length > 1 && remove(i)}
+                            disabled={isExisting || fields.length <= 1}
+                            aria-label={isExisting ? 'Existing sections cannot be removed here' : 'Remove section'}
+                            title={isExisting ? 'Already saved — sections already in use are kept, not deleted, to avoid orphaning enrolled students' : undefined}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-danger-soft hover:text-danger disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+                          >
+                            {isExisting ? <Lock size={14} /> : <Trash2 size={16} />}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 {errors.sections && <p className="mt-1 text-xs text-danger">{(errors.sections as any).message || 'Check section names'}</p>}
+                {editing && (
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    Existing sections can&apos;t be deleted here — they&apos;re kept even if left out, so no enrolled student is ever silently dropped. New sections you just added above can still be removed before saving.
+                  </p>
+                )}
               </div>
+
+              {editing && (
+                <div className="rounded-lg border border-border p-3">
+                  <label className="flex items-center gap-2 text-sm text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={isActive ?? true}
+                      onChange={(e) => setValue('isActive', e.target.checked)}
+                      className="h-4 w-4 rounded border-input accent-[hsl(var(--primary))]"
+                    />
+                    Active
+                  </label>
+                  <p className="mt-1 pl-6 text-xs text-muted-foreground">
+                    {isActive
+                      ? `Uncheck to archive this ${terminology.classUnit.toLowerCase()} — it drops out of the everyday list (still reachable via "Show archived") without deleting anything. This is also how you move it into an already-closed term for historical record-keeping.`
+                      : `Archived — hidden from the everyday list. Check this again to bring it back into active use.`}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
