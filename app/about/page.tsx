@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight, MapPin, Target, Users, Wallet, MessageSquare, ShieldCheck } from 'lucide-react';
+import {
+  ArrowRight, MapPin, Target, Users, Wallet, MessageSquare, ShieldCheck,
+  Sparkles, Clock, Layers, HeartHandshake, Quote,
+} from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
@@ -53,6 +56,17 @@ const ABOUT_JSON_LD = {
   },
 };
 
+// "At a glance" strip — every value here is a real, verifiable fact stated
+// elsewhere on the site (HomeHero's stat bar, the free-plan pricing tier,
+// HomeJsonLd.tsx's contactPoint hoursAvailable) restated here for scanners
+// who land on /about first, not new claims invented for this page.
+const AT_A_GLANCE = [
+  { icon: MapPin, label: 'Based in Pakistan', sub: 'Built for local institutions, not adapted from one' },
+  { icon: Sparkles, label: 'Free up to 50 students', sub: 'No card required to start' },
+  { icon: Clock, label: 'Support 8am – 11pm', sub: 'Every day of the week, by WhatsApp or email' },
+  { icon: HeartHandshake, label: 'Founder-led', sub: 'One person still directly reachable, not a support tier' },
+];
+
 const VALUES = [
   {
     icon: MapPin,
@@ -68,6 +82,16 @@ const VALUES = [
     icon: ShieldCheck,
     title: 'Every institution’s data, isolated',
     desc: 'Marksly is fully multi-tenant — one institution’s records are never mixed with another’s, and role-based access keeps every staff member scoped to exactly what their job needs.',
+  },
+  {
+    icon: Wallet,
+    title: 'Pricing you can see, in your currency',
+    desc: 'Plans are published in PKR on the pricing page itself — no "contact sales to find out what this costs" for a normal-sized institution.',
+  },
+  {
+    icon: Layers,
+    title: 'Actively maintained, not left to drift',
+    desc: 'Marksly keeps getting reviewed and refined module by module — new capability, tightened permissions, clearer error messages — rather than shipped once and left alone.',
   },
   {
     icon: Users,
@@ -87,46 +111,104 @@ export default function AboutPage() {
       <MarketingHeader />
 
       <PageHero
-        eyebrow="About"
-        title="Why Marksly exists"
+        eyebrow="About Marksly"
+        title="Software built by someone who actually looked at the problem"
         description="A school and campus management platform built in and for Pakistan — not a global product with a translation bolted on."
       />
 
-      {/* ── Founder + origin story ───────────────────────────────────────── */}
-      <section className="pb-4 sm:pb-6">
-        <div className="mx-auto max-w-2xl px-5">
-          <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
-            <p className="text-xs font-semibold uppercase tracking-wide text-accent">Founder</p>
-            <h2 className="mt-1.5 text-xl font-bold tracking-tight sm:text-2xl">Adeel Ahmad Akhunzada</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Founder, Marksly · Pakistan</p>
-            <p className="mt-4 text-sm leading-relaxed text-foreground/90 sm:text-base">
-              Marksly was started by Adeel Ahmad Akhunzada in Pakistan, out of a simple observation: most
-              academies, schools, colleges and universities here were still running on paper registers,
-              scattered spreadsheets and a patchwork of WhatsApp groups — not because better software
-              didn’t exist, but because most of what existed wasn’t actually built around how institutions
-              in Pakistan operate. Fee collection assumed a foreign card, parent communication assumed an
-              app nobody would install, and pricing assumed a currency and a budget that didn’t match a
-              typical local academy.
-            </p>
-            <p className="mt-4 text-sm leading-relaxed text-foreground/90 sm:text-base">
-              Marksly is the answer to that gap: one connected system for attendance, fees, exams,
-              timetable and parent communication, with JazzCash, EasyPaisa, WhatsApp and PKR pricing
-              built in from the start — not added on later as an afterthought.
-            </p>
+      {/* ── At a glance — same inline-stat pattern as HomeHero, so a visitor
+           who lands here first gets the same quick credibility signals ──── */}
+      <section className="pb-2 sm:pb-4">
+        <div className="mx-auto max-w-4xl px-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+            {AT_A_GLANCE.map((s) => (
+              <div key={s.label} className="rounded-2xl border border-border bg-card p-4 text-center sm:p-5">
+                <span className="mx-auto inline-flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                  <s.icon aria-hidden size={17} />
+                </span>
+                <p className="mt-2.5 text-sm font-bold leading-snug">{s.label}</p>
+                <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground sm:text-xs">{s.sub}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Founder + origin story — the real substance of the page,
+           broken into scannable sub-sections rather than one dense block ── */}
+      <section className="py-14 sm:py-20">
+        <div className="mx-auto max-w-3xl px-5">
+          <div className="text-center">
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent">Our story</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Why Marksly exists</h2>
+          </div>
+
+          <div className="mt-10 space-y-8">
+            <div>
+              <h3 className="text-lg font-bold tracking-tight">The problem</h3>
+              <p className="mt-2.5 text-sm leading-relaxed text-foreground/90 sm:text-base">
+                Marksly was started by Adeel Ahmad Akhunzada in Pakistan, out of a simple observation:
+                most academies, schools, colleges and universities here were still running on paper
+                registers, scattered spreadsheets and a patchwork of WhatsApp groups — not because
+                better software didn’t exist, but because most of what did exist wasn’t actually built
+                around how institutions in Pakistan operate. Fee collection assumed a foreign card,
+                parent communication assumed an app nobody would install, and pricing assumed a
+                currency and a budget that didn’t match a typical local academy.
+              </p>
+            </div>
+
+            <div className="relative rounded-2xl border border-accent/30 bg-accent/5 p-6 sm:p-7">
+              <Quote aria-hidden size={22} className="text-accent/40" />
+              <p className="mt-3 text-base font-medium leading-relaxed text-foreground sm:text-lg">
+                The idea behind Marksly, from day one: institutions here don’t need a smaller version
+                of software built for somewhere else — they need something built for how they run, from
+                the first line of code.
+              </p>
+              <p className="mt-3 text-sm text-muted-foreground">The founding principle behind Marksly</p>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold tracking-tight">The approach</h3>
+              <p className="mt-2.5 text-sm leading-relaxed text-foreground/90 sm:text-base">
+                Marksly is the answer to that gap: one connected system for attendance, fees, exams,
+                timetable, a parent &amp; student portal and staff management, with JazzCash, EasyPaisa,
+                WhatsApp and PKR pricing built in from the start — not added on later as an afterthought.
+                Every institution that signs up runs in its own fully isolated space, with role-based
+                access so a teacher, an accountant and an admin each see exactly what their job needs and
+                nothing more.
+              </p>
+              <p className="mt-4 text-sm leading-relaxed text-foreground/90 sm:text-base">
+                That same principle — build it around the real workflow, not a generic template — is why
+                Marksly keeps expanding module by module: a parent portal so families stop calling the
+                office for a result or a due date, a notices system that posts holidays automatically, a
+                promotion tool so year-end doesn’t mean re-entering an entire class by hand. None of it
+                is theoretical; it’s built in response to what an institution actually needs next.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold tracking-tight">Where it’s headed</h3>
+              <p className="mt-2.5 text-sm leading-relaxed text-foreground/90 sm:text-base">
+                Marksly is still directly founder-led — every institution using it can reach Adeel
+                directly, not just a support tier. That’s deliberate: a product built for how Pakistani
+                institutions actually work stays that way by staying close to the people running them,
+                not by scaling support away from a founder who still answers.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* ── What we believe / how we build ──────────────────────────────── */}
-      <section className="py-14 sm:py-20">
+      <section className="border-t border-border bg-card/40 py-14 sm:py-20">
         <div className="mx-auto max-w-6xl px-5">
           <div className="mx-auto max-w-xl text-center">
             <p className="text-xs font-semibold uppercase tracking-wide text-accent">What we believe</p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">How Marksly is built</h2>
           </div>
-          <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {VALUES.map((v) => (
-              <div key={v.title} className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+              <div key={v.title} className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent/15 text-accent">
                   <v.icon aria-hidden size={18} />
                 </span>
@@ -164,6 +246,13 @@ export default function AboutPage() {
               </p>
             </div>
           </div>
+          <p className="mt-6 text-xs text-sidebar-muted">
+            Prefer to talk first?{' '}
+            <Link href="/contact" className="font-medium text-accent hover:underline">Contact us</Link>{' '}
+            or read what{' '}
+            <Link href="/testimonials" className="font-medium text-accent hover:underline">schools already running Marksly</Link>{' '}
+            have to say.
+          </p>
         </div>
       </section>
 
