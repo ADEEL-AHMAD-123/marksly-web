@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {
   GraduationCap, CalendarCheck, Wallet, FileText, CalendarClock,
   CreditCard, MessageSquare, BarChart2, ShieldCheck, ArrowRight, Check,
-  Settings, Users2, Bell, Headphones,
+  Settings, Users2, Bell, Headphones, LayoutDashboard, Landmark,
 } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
@@ -17,7 +17,7 @@ const TITLE = 'Features — Marksly School & Campus Management Software';
 // Kept under ~160 chars — Bing Webmaster Tools flags longer descriptions as
 // an error, and both Google/Bing truncate them in the search snippet anyway.
 const DESCRIPTION =
-  'Explore Marksly’s features: attendance, exams & results, timetable, fees & invoices, student records, parent messaging, ID cards, and live reports.';
+  'Explore Marksly features: attendance, exams & results, timetable, fees & online payments, students, parent & student portal, notices, ID cards, reports.';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -66,12 +66,12 @@ const FEATURES: Feature[] = [
   },
   {
     slug: 'exams', icon: FileText, title: 'Exams & results',
-    desc: 'Create exams, enter marks on a fast grid, and publish results straight to students and parents.',
+    desc: 'Create manual or timed online exams, enter marks on a fast grid, and publish results straight to students and parents — graded automatically the moment marks are in.',
     bullets: [
       'Marks entry on a fast, spreadsheet-style grid',
-      'Grades calculated automatically from your scheme',
-      'Results published directly to students and parents',
-      'Full result history kept per student',
+      'Timed online exams students take from their own portal, alongside traditional manual exams',
+      'Custom grading schemes — percentage/letter, GPA, or Cambridge-style — auto-calculated as marks are entered',
+      'Results published directly to students and parents, with full result history kept per student',
     ],
     visual: 'exams', plan: 'Starter',
   },
@@ -88,25 +88,47 @@ const FEATURES: Feature[] = [
   },
   {
     slug: 'fees', icon: Wallet, title: 'Fees & invoices',
-    desc: 'Fee structures, monthly billing, discounts and dues — tracked automatically, with receipts generated for you.',
+    desc: 'Fee structures, monthly billing, discounts and dues — tracked automatically, with receipts generated for you and a clear audit trail for every adjustment.',
     bullets: [
-      'Fee structures with discounts and fines',
-      'Monthly billing and automatic receipts',
-      'Outstanding-dues view per class',
-      'Full payment history per student',
+      'Fee structures with discounts, fines and per-student customisation',
+      'Monthly billing and automatic receipts, with edits to a structure applied going forward',
+      'Waive or void a fee with a reason on record — never a silent edit to what a family owes',
+      'Outstanding-dues view per class, plus full payment history per student',
     ],
     visual: 'fees', plan: 'Starter',
   },
   {
+    slug: 'payments', icon: Landmark, title: 'Online fee payments',
+    desc: 'Parents pay school fees online in a few taps — the invoice is marked paid automatically, with no manual reconciliation on your end.',
+    bullets: [
+      'Card, JazzCash, EasyPaisa and bank transfer, all from the parent portal',
+      'Invoices update to "paid" the moment a payment settles — no admin has to record it by hand',
+      'A digital receipt is generated and delivered automatically for every successful payment',
+      'Refunds, disputes and failed payments are tracked and reconciled, not silently dropped',
+    ],
+    visual: 'payments', plan: 'Starter',
+  },
+  {
     slug: 'students', icon: GraduationCap, title: 'Student records',
-    desc: 'Admissions, profiles, classes and sections — one record per student, not scattered across registers.',
+    desc: 'Admissions, profiles, classes and sections — one record per student, not scattered across registers, with terms and academic years to keep every year properly separated.',
     bullets: [
       'Bulk CSV import for existing rosters',
-      'Auto-linked parent contacts',
-      'Class and section history kept per student',
-      'Searchable across the whole institution',
+      'Auto-linked parent contacts, with a guardian PIN for portal access',
+      'Classes, sections and academic terms — with one-click, term-end student promotion to the next class',
+      'Class and section history kept per student, searchable across the whole institution',
     ],
     visual: 'students', plan: 'Starter',
+  },
+  {
+    slug: 'portal', icon: LayoutDashboard, title: 'Parent & student portal',
+    desc: 'Every parent and student gets their own dashboard — no more asking the school office for a result, a due date, or an attendance record.',
+    bullets: [
+      'Parents see every child in one place — attendance, results, fees and notices, even across siblings in different classes',
+      'Students take their own timed online exams and check results directly, no admin hand-off needed',
+      'Pay outstanding fees online from the same dashboard',
+      'Works on any phone or computer, no app to install',
+    ],
+    visual: 'portal', plan: 'Starter',
   },
   {
     slug: 'messaging', icon: MessageSquare, title: 'Parent messaging',
@@ -129,6 +151,17 @@ const FEATURES: Feature[] = [
       'Consistent design across the institution',
     ],
     visual: 'idcard', plan: 'Growth',
+  },
+  {
+    slug: 'notices', icon: Bell, title: 'Notices & announcements',
+    desc: 'Post a notice once and reach exactly the right audience — a class, a role, or the whole institution — including holidays that appear automatically wherever notices do.',
+    bullets: [
+      'Target a notice to a class, a section, a role, or the whole institution',
+      'Holidays post as notices automatically, so they show up on every dashboard, not just a calendar',
+      'Pin urgent notices so they surface first on parent and staff dashboards',
+      'Set an expiry date so old notices quietly stop showing themselves',
+    ],
+    visual: 'notices', plan: 'Starter',
   },
   {
     slug: 'reports', icon: BarChart2, title: 'Reports',

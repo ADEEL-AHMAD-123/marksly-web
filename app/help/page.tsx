@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Mail, MessageCircle, ArrowRight, Rocket, Wallet, MessageSquare, ShieldCheck, ChevronDown, GraduationCap, BarChart2 } from 'lucide-react';
+import { Mail, MessageCircle, ArrowRight, Rocket, Wallet, MessageSquare, ShieldCheck, ChevronDown, GraduationCap, BarChart2, LayoutDashboard, Bell } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
@@ -8,7 +8,7 @@ import { PageHero } from '@/components/marketing/PageHero';
 
 const TITLE = 'Help Center';
 const DESCRIPTION =
-  'Answers to common Marksly questions — getting started, fees & billing, students & exams, WhatsApp/SMS messaging, reports & data, and account security.';
+  'Common Marksly questions — getting started, fees & online payments, the parent & student portal, exams, notices, messaging, reports and account security.';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -37,14 +37,26 @@ const TOPICS = [
       { q: 'What happens if a payment fails?', a: 'Failed auto-renewal charges are retried automatically over the following week. If it still doesn’t go through, your account moves to a grace period rather than being cut off immediately, and you’ll be notified by email.' },
       { q: 'Do you offer annual billing?', a: 'Yes — annual billing is available on the Growth and Institution plans at a discount. Contact us and we’ll set it up for you.' },
       { q: 'Will I get a receipt for every payment?', a: 'Yes — a receipt is generated automatically for every successful payment and sent to your billing email.' },
+      { q: 'Can parents pay student fees online?', a: 'Yes — parents can pay an invoice directly from their portal by card, JazzCash, EasyPaisa or bank transfer. The invoice is marked paid automatically the moment the payment settles, so there’s nothing for your office to record by hand.' },
+      { q: 'Can a fee be waived or corrected after it’s issued?', a: 'Yes — an admin can waive an invoice or void a payment, each with a reason recorded. Nothing about what a family owes changes silently; every adjustment is on the record.' },
+    ],
+  },
+  {
+    slug: 'parent-portal', category: 'Parent & student portal', icon: LayoutDashboard,
+    items: [
+      { q: 'What can parents see in their portal?', a: 'Each parent gets one dashboard covering every one of their children — attendance, results, fee dues, and notices — even if their kids are in different classes or grades.' },
+      { q: 'Can students take exams online through the portal?', a: 'Yes — for exams your institution sets up as timed online exams, students take them directly from their own portal, and results are available as soon as they’re published.' },
+      { q: 'Do parents and students need to install an app?', a: 'No — the portal works in any browser, on a phone or a computer, just like the rest of Marksly.' },
+      { q: 'How does a parent get portal access?', a: 'When a student is added, their guardian’s contact is linked automatically and a portal PIN is issued — no separate signup needed.' },
     ],
   },
   {
     slug: 'students-exams', category: 'Students & exams', icon: GraduationCap,
     items: [
       { q: 'Can teachers only see their own classes?', a: 'Yes — access is role-based, so teachers see the classes and sections assigned to them, while admins have full visibility across the institution.' },
-      { q: 'How does exam grading work?', a: 'You define the grading scheme once, and Marksly calculates grades automatically as marks are entered on the exam grid.' },
+      { q: 'How does exam grading work?', a: 'You define the grading scheme once — percentage/letter, GPA, or Cambridge-style — and Marksly calculates grades automatically as marks are entered on the exam grid.' },
       { q: 'Can I move a student between sections or classes?', a: 'Yes — update the student’s record from the Students module, and their attendance and exam history carries forward with them.' },
+      { q: 'How do students move up to the next class at year-end?', a: 'Use the promotion tool to move an entire class or section to the next grade in one action — students who repeat a year can be handled in the same batch.' },
     ],
   },
   {
@@ -54,6 +66,8 @@ const TOPICS = [
       { q: 'Can I send messages in a language other than English?', a: 'Message text is free-form, so you can type and send a notice in any language. The dashboard interface itself is English only.' },
       { q: 'What if a message fails to deliver?', a: 'Failed deliveries are flagged in the message log so you know immediately, rather than assuming a notice reached a parent when it didn’t.' },
       { q: 'Can I message a single class instead of the whole institution?', a: 'Yes — you can target a message to a specific class or section, or send it institution-wide.' },
+      { q: 'What’s the difference between messaging and notices?', a: 'Messaging (WhatsApp/SMS) reaches parents outside the app. Notices post inside Marksly itself — on the dashboard every parent, student and staff member already sees — and can optionally also go out by WhatsApp or SMS.' },
+      { q: 'Do holidays show up as notices automatically?', a: 'Yes — adding a holiday posts a matching notice automatically, so it appears on every dashboard without being entered twice.' },
     ],
   },
   {
@@ -70,6 +84,7 @@ const TOPICS = [
       { q: 'I forgot my password — what do I do?', a: 'Use “Forgot password” on the sign-in page to receive a reset link by email.' },
       { q: 'How do I delete or deactivate a staff account?', a: 'An institution admin can deactivate any user from the Users section in the dashboard — this immediately revokes their access.' },
       { q: 'Can I have more than one admin?', a: 'Yes — you can add multiple staff members with admin permissions from the Users section, so responsibility isn’t tied to a single account.' },
+      { q: 'What roles does Marksly support besides admin and teacher?', a: 'Admin, teacher, accountant, general staff, parent and student each get their own dashboard, scoped to exactly what that role needs — an accountant sees fees and payments, not exam grading, for example.' },
     ],
   },
 ];

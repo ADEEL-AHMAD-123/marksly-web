@@ -51,12 +51,25 @@ const JSON_LD = {
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
       description:
-        'All-in-one school and campus management software for academies, schools, colleges and universities in Pakistan — students, attendance, fees, exams, timetable, ID cards and parent messaging.',
+        'All-in-one school and campus management software for academies, schools, colleges and universities in Pakistan — students, attendance, fees & online payments, exams, timetable, a parent & student portal, notices and ID cards.',
       disambiguatingDescription:
         'Marksly Pakistan (marksly.pk) — not affiliated with any other similarly-named school-management product, including marksly.in.',
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'PKR', description: 'Free plan for up to 50 students' },
       url: 'https://marksly.pk',
       areaServed: { '@type': 'Country', name: 'Pakistan' },
+      // Real, shipped capabilities only — mirrors PricingPlans.tsx's
+      // CORE_FEATURES list so this never drifts into claiming something the
+      // product doesn't actually do.
+      featureList: [
+        'Attendance tracking with automatic guardian notifications',
+        'Manual & timed online exams with automatic grading',
+        'Fee management with online card, JazzCash and EasyPaisa payments',
+        'Parent & student portal with results, fees and notices',
+        'Digital ID cards with QR-code verification',
+        'Timetable builder',
+        'Notices & announcements by role',
+        'Dedicated dashboards for parents, students, teachers and accountants',
+      ],
     },
     {
       '@type': 'WebSite',

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   // Kept under ~160 chars — Bing/Google truncate longer descriptions in the
   // SERP snippet, and Bing Webmaster Tools flags it as an error outright.
   description:
-    'Marksly is a Pakistan-based school management platform for academies, schools, colleges and universities — attendance, fees, exams, timetable, ID cards and parent messaging.',
+    'Marksly is a Pakistan-based school management platform for academies, schools, colleges & universities — attendance, fees, payments, exams, portal, notices.',
   alternates: { canonical: '/' },
 };
 

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import {
   GraduationCap, CalendarCheck, Wallet, FileText, CalendarClock,
-  CreditCard, MessageSquare, ArrowRight, Users,
+  CreditCard, MessageSquare, ArrowRight, Users, LayoutDashboard, Bell,
 } from 'lucide-react';
 
 export function HomeFeatures() {
@@ -81,7 +81,7 @@ export function HomeFeatures() {
               </span>
               <h3 className="text-xs font-semibold sm:text-sm">Fees &amp; billing</h3>
             </div>
-            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-xs">Fee structures, monthly auto-billing, discounts, receipts and dues tracking.</p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-xs">Fee structures, monthly auto-billing, discounts, dues tracking — plus online payment by card, JazzCash or EasyPaisa.</p>
           </div>
 
           {/* second highlight — exams & results, the other core academic
@@ -94,6 +94,31 @@ export function HomeFeatures() {
               <h3 className="text-sm font-semibold">Exams &amp; results, simplified</h3>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Fast marks entry on a grid, auto-calculated grades, and results published straight to students and parents.</p>
+          </div>
+
+          {/* new row — parent/student portal + notices, added alongside the
+              existing set rather than replacing anything above (col-span-3
+              each on desktop, matching the fees/exams row's math) */}
+          <div className="col-span-2 rounded-2xl border border-border bg-card p-3.5 transition-shadow hover:shadow-md sm:p-5 md:col-span-3">
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary sm:h-8 sm:w-8">
+                <LayoutDashboard aria-hidden size={15} className="sm:hidden" />
+                <LayoutDashboard aria-hidden size={16} className="hidden sm:block" />
+              </span>
+              <h3 className="text-xs font-semibold sm:text-sm">Parent &amp; student portal</h3>
+            </div>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-xs">Every family gets their own dashboard for attendance, results, fees and online payment — no more calling the office to ask.</p>
+          </div>
+
+          <div className="col-span-2 rounded-2xl border border-border bg-card p-3.5 transition-shadow hover:shadow-md sm:p-5 md:col-span-3">
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary sm:h-8 sm:w-8">
+                <Bell aria-hidden size={15} className="sm:hidden" />
+                <Bell aria-hidden size={16} className="hidden sm:block" />
+              </span>
+              <h3 className="text-xs font-semibold sm:text-sm">Notices &amp; announcements</h3>
+            </div>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-xs">Target a class, a role, or the whole institution — holidays post automatically, so nothing needs entering twice.</p>
           </div>
         </div>
 

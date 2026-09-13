@@ -1,8 +1,9 @@
-import { Check, MessageCircle, QrCode } from 'lucide-react';
+import { Check, MessageCircle, QrCode, Bell, ShieldCheck, Wallet } from 'lucide-react';
 
 export type VisualKind =
   | 'attendance' | 'exams' | 'timetable' | 'fees'
-  | 'students' | 'messaging' | 'idcard' | 'reports';
+  | 'students' | 'messaging' | 'idcard' | 'reports'
+  | 'portal' | 'payments' | 'notices';
 
 /**
  * Abstract, branded illustrative panels — deliberately NOT screenshots of
@@ -198,6 +199,73 @@ export function FeatureVisual({ kind }: { kind: VisualKind }) {
               <p className="text-sm font-bold">84%</p>
               <p className="text-[10px] text-muted-foreground">Avg. score</p>
             </div>
+          </div>
+        </Frame>
+      );
+
+    case 'portal':
+      return (
+        <Frame>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Parent portal — Ahmed Raza</p>
+          <div className="mt-3 grid grid-cols-2 gap-2.5">
+            {[
+              { label: 'Attendance', value: '96%' },
+              { label: 'Fee due', value: 'Rs 4,500' },
+              { label: 'Latest result', value: 'Mid-Term: A' },
+              { label: 'Notices', value: '2 new' },
+            ].map((s) => (
+              <div key={s.label} className="rounded-lg border border-border px-3 py-2.5">
+                <p className="text-[11px] text-muted-foreground">{s.label}</p>
+                <p className="mt-0.5 text-sm font-semibold">{s.value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-accent/10 px-3 py-2 text-xs font-semibold text-accent">
+            <ShieldCheck aria-hidden size={14} /> One login for every child, on any device
+          </div>
+        </Frame>
+      );
+
+    case 'payments':
+      return (
+        <Frame>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pay Bilal&apos;s fee — Rs 4,500</p>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {['Card', 'JazzCash', 'EasyPaisa', 'Bank'].map((m) => (
+              <div key={m} className="flex items-center justify-center rounded-lg border border-border px-2 py-2.5 text-[11px] font-medium">
+                {m}
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-success-soft px-3 py-2.5 text-xs font-medium text-success">
+            <Check aria-hidden size={14} strokeWidth={3} /> Paid — receipt sent automatically
+          </div>
+          <p className="mt-2.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Wallet aria-hidden size={12} /> Invoice marked paid instantly — no manual entry needed
+          </p>
+        </Frame>
+      );
+
+    case 'notices':
+      return (
+        <Frame>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notices &amp; announcements</p>
+          <div className="mt-3 space-y-2.5">
+            {[
+              { title: 'Winter break', sub: 'Institution-wide · Dec 20–Jan 2', priority: 'muted' as const },
+              { title: 'PTM this Friday', sub: 'Class 8 · Section A', priority: 'success' as const },
+              { title: 'Fee due date reminder', sub: 'All classes · Urgent', priority: 'danger' as const },
+            ].map((n) => (
+              <div key={n.title} className="flex items-start gap-2.5 rounded-lg border border-border px-3 py-2.5">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+                  <Bell aria-hidden size={12} />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{n.title}</p>
+                  <p className="text-xs text-muted-foreground">{n.sub}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </Frame>
       );
