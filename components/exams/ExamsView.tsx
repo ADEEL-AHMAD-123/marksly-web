@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,6 +9,8 @@ import {
   Plus, Trash2, X, FileText, ClipboardList, Laptop, Eye, Loader2, AlertCircle,
   Check, ChevronRight, ChevronLeft, ListChecks, Settings2, Pencil,
 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { getErrorMessage } from '@/lib/get-error-message';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
@@ -26,7 +29,7 @@ import { cn } from '@/lib/utils';
 import { useAppSelector } from '@/store/hooks';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import {
-  useGetExamsQuery, useCreateExamMutation, usePreviewExamQuery,
+  useGetExamsQuery, useCreateExamMutation, useDeleteExamMutation, usePreviewExamQuery,
   type ExamType, type ExamMode, type IntegrityMode, type ExamQuestion, type QuestionType,
 } from '@/store/api/examsApi';
 import { useGetTermsQuery } from '@/store/api/termsApi';
@@ -91,6 +94,37 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
   const [activeExam, setActiveExam] = useState<string | null>(null);
   const [monitoringExam, setMonitoringExam] = useState<string | null>(null);
   const [previewExamId, setPreviewExamId] = useState<string | null>(null);
+  const [deleteExam, { isLoading: deleting }] = useDeleteExamMutation();
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const onConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteExam(deleteTarget.id).unwrap();
+      toast.success('Exam deleted');
+      setDeleteTarget(null);
+    } catch (e) {
+      // Backend refuses once the exam has any recorded result, completed
+      // attempt, or a student mid-attempt (exam.service.ts's
+      // assertNoRecordedHistory/assertNoActiveAttempts) -- surface that
+      // reason directly rather than a generic failure, since it's actually
+      // informative ("has recorded results", "student in progress").
+      toast.error(getErrorMessage(e, 'Could not delete this exam'));
+    }
+  };
+
+  // Dashboard nudges ("needs grading", "awaiting publish", etc.) link here
+  // with ?examId=... promising to land the teacher straight on that exam --
+  // honor it once the list has loaded, routing to results entry or attempt
+  // monitoring depending on the exam's mode, same split as the card below.
+  const searchParams = useSearchParams();
+  const deepLinkExamId = searchParams.get('examId');
+  useEffect(() => {
+    if (!deepLinkExamId || !exams.length) return;
+    const target = exams.find((e) => e.id === deepLinkExamId);
+    if (!target) return;
+    if (target.mode === 'online') setMonitoringExam(target.id);
+    else setActiveExam(target.id);
+  }, [deepLinkExamId, exams]);
 
   if (activeExam) {
     return <ResultsEntry examId={activeExam} onBack={() => setActiveExam(null)} readOnly={!isTeacher} />;
@@ -150,7 +184,20 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
                   <p className="text-xs capitalize text-muted-foreground">{e.type} · {e.className ?? '—'}</p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
-                  <ModeBadge mode={e.mode} />
+                  <div className="flex items-center gap-1">
+                    <ModeBadge mode={e.mode} />
+                    {isTeacher && (
+                      <button
+                        type="button"
+                        aria-label="Delete exam"
+                        title="Delete exam"
+                        onClick={() => setDeleteTarget({ id: e.id, title: e.title })}
+                        className="rounded-md p-1 text-muted-foreground hover:bg-danger-soft hover:text-danger"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
                   {e.published
                     ? <Badge variant="success">Published</Badge>
                     : e.gradedCount > 0
@@ -221,6 +268,24 @@ export function ExamsView({ title = 'Exams' }: { title?: string }) {
       {isTeacher && <CreateExamWizard open={addOpen} onClose={() => setAddOpen(false)} />}
       {previewExamId && (
         <ExamPreviewModal examId={previewExamId} onClose={() => setPreviewExamId(null)} />
+      )}
+      {deleteTarget && (
+        <ConfirmDialog
+          open
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={onConfirmDelete}
+          title="Delete this exam?"
+          description={
+            <>
+              This permanently deletes <strong>{deleteTarget.title}</strong>. Only possible while it has no recorded
+              results or completed attempts — the server will refuse otherwise and explain why.
+            </>
+          }
+          confirmLabel="Delete exam"
+          tone="warning"
+          loading={deleting}
+          icon={Trash2}
+        />
       )}
     </div>
   );

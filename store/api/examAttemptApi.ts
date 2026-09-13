@@ -298,6 +298,22 @@ export const examAttemptApi = baseApi.injectEndpoints({
         'Results',
       ],
     }),
+    // Mirrors backend exam-attempt.service.ts's grantExtraAttempt() -- an
+    // admin/teacher override for a student who's stuck (browser crash,
+    // network drop mid-exam) or legitimately needs a retake. Immediately
+    // creates a fresh in_progress attempt the student can resume, so the
+    // attempts list for this exam needs to refetch right away.
+    grantExtraAttempt: builder.mutation<ApiObject<{ id: string }>, { examId: string; studentId: string; reason: string }>({
+      query: ({ examId, studentId, reason }) => ({
+        url: `/exams/${examId}/attempts/grant-extra`,
+        method: 'POST',
+        body: { studentId, reason },
+      }),
+      invalidatesTags: (_r, _e, { examId }) => [
+        { type: 'Exams', id: `ATTEMPTS-LIST-${examId}` },
+        { type: 'Exams', id: 'ONLINE-ATTENTION' },
+      ],
+    }),
   }),
 });
 
@@ -313,4 +329,5 @@ export const {
   useGetAttemptForGradingQuery,
   useGradeManualAnswerMutation,
   usePublishAttemptResultMutation,
+  useGrantExtraAttemptMutation,
 } = examAttemptApi;

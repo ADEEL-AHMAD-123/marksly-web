@@ -1,11 +1,15 @@
 'use client';
 
 import { memo, useRef, useState } from 'react';
-import { ArrowLeft, AlertTriangle, ClipboardCheck, Send, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, ClipboardCheck, Send, ChevronDown, ChevronUp, BarChart3, UserPlus, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { getErrorMessage } from '@/lib/get-error-message';
 import {
   Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
@@ -13,6 +17,7 @@ import { formatDate } from '@/lib/utils';
 import {
   useListAttemptsForExamQuery,
   usePublishAttemptResultMutation,
+  useGrantExtraAttemptMutation,
   type AttemptListItem,
   type RosterAttemptStatus,
 } from '@/store/api/examAttemptApi';
@@ -171,9 +176,15 @@ const AttemptRow = memo(function AttemptRow({
   // React re-renders with the mutation's isLoading flag — the `disabled`
   // prop alone depends on a render happening first.
   const publishingRef = useRef(false);
+  const [grantOpen, setGrantOpen] = useState(false);
 
   const canGrade = attempt.status === 'needs_review' || attempt.status === 'graded';
   const canPublish = attempt.status === 'auto_graded' || attempt.status === 'graded';
+  // Backend (grantExtraAttempt) only refuses when the student already has
+  // an in_progress attempt — every other status (never started, missed,
+  // submitted, graded, even published) is a legitimate reason to grant a
+  // fresh one, so this stays available everywhere except that one case.
+  const canGrantExtra = attempt.status !== 'in_progress';
 
   const flagTitle = attempt.integrityFlags
     .map((f) => `${f.type.replace('_', ' ')} — ${formatDate(f.at)}`)
@@ -193,6 +204,7 @@ const AttemptRow = memo(function AttemptRow({
   };
 
   return (
+    <>
     <TableRow className={attempt.status === 'not_started' ? 'opacity-70' : undefined}>
       <TableCell className="font-medium text-foreground">{attempt.studentName}</TableCell>
       <TableCell>{statusBadge(attempt.status, attempt.missed)}</TableCell>
@@ -225,13 +237,93 @@ const AttemptRow = memo(function AttemptRow({
                 <Send size={14} /> Publish
               </Button>
             )}
-            {!canGrade && !canPublish && <span className="text-xs text-muted-foreground">—</span>}
+            {!canGrade && !canPublish && canGrantExtra && (
+              <Button size="sm" variant="ghost" onClick={() => setGrantOpen(true)}>
+                <UserPlus size={14} /> Grant attempt
+              </Button>
+            )}
+            {!canGrade && !canPublish && !canGrantExtra && <span className="text-xs text-muted-foreground">—</span>}
           </>
         )}
       </TableCell>
     </TableRow>
+    {grantOpen && (
+      <GrantExtraAttemptDialog
+        examId={examId}
+        studentId={attempt.studentId}
+        studentName={attempt.studentName}
+        onClose={() => setGrantOpen(false)}
+      />
+    )}
+    </>
   );
 });
+
+/** Reason-required override for a stuck/legitimately-needs-a-retake
+ *  student — mirrors backend exam-attempt.service.ts's grantExtraAttempt(),
+ *  which records `reason` directly on the created attempt as this
+ *  codebase's convention for institution-level admin/teacher overrides
+ *  (no separate audit-log collection at this level). Immediately creates
+ *  an in_progress attempt the student can resume right away, so there's no
+ *  separate "start" step for them once granted. */
+function GrantExtraAttemptDialog({
+  examId, studentId, studentName, onClose,
+}: {
+  examId: string;
+  studentId: string;
+  studentName: string;
+  onClose: () => void;
+}) {
+  const [reason, setReason] = useState('');
+  const [grantExtraAttempt, { isLoading }] = useGrantExtraAttemptMutation();
+
+  const onSubmit = async () => {
+    if (!reason.trim()) return;
+    try {
+      await grantExtraAttempt({ examId, studentId, reason: reason.trim() }).unwrap();
+      toast.success(`Extra attempt granted to ${studentName}`);
+      onClose();
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not grant an extra attempt'));
+    }
+  };
+
+  return (
+    <DialogPrimitive.Root open onOpenChange={(o) => !o && !isLoading && onClose()}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-sm" />
+        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none">
+          <div className="flex items-center justify-between">
+            <DialogPrimitive.Title className="text-base font-semibold">Grant extra attempt — {studentName}</DialogPrimitive.Title>
+            <DialogPrimitive.Close aria-label="Close" className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+              <X size={16} />
+            </DialogPrimitive.Close>
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Creates a fresh attempt this student can resume immediately — useful after a browser crash, a network
+            drop mid-exam, or a legitimate retake. A reason is required and is kept on record.
+          </p>
+          <div className="mt-3">
+            <Label htmlFor="grant-reason">Reason</Label>
+            <Textarea
+              id="grant-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Browser crashed 5 minutes into the exam"
+              rows={3}
+            />
+          </div>
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
+            <Button size="sm" disabled={!reason.trim() || isLoading} loading={isLoading} onClick={onSubmit}>
+              Grant attempt
+            </Button>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  );
+}
 
 // Class-average / item-analysis summary — fetched separately from the
 // attempts roster so a slow aggregation query never blocks the roster table

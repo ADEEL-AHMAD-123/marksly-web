@@ -392,7 +392,7 @@ export function ExamTakingView({ examId }: { examId: string }) {
               <li>Max attempts: {exam.maxAttempts}</li>
             </ul>
             {exam.integrityMode === 'fullscreen_lock' && (
-              <div className="flex items-start gap-2 rounded-lg bg-warning/10 p-3 text-sm text-warning-foreground">
+              <div className="flex items-start gap-2 rounded-lg bg-warning-soft p-3 text-sm text-warning">
                 <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>This exam requires fullscreen mode — you&apos;ll be asked to enter it when you start.</span>
               </div>
@@ -510,7 +510,7 @@ export function ExamTakingView({ examId }: { examId: string }) {
       </header>
 
       {unansweredCount > 0 && (
-        <div className="flex items-center gap-2 bg-warning/10 px-4 py-2 text-sm text-warning-foreground sm:px-6">
+        <div className="flex items-center gap-2 bg-warning-soft px-4 py-2 text-sm text-warning sm:px-6">
           <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
           You have {unansweredCount} unanswered question{unansweredCount === 1 ? '' : 's'}.
         </div>
