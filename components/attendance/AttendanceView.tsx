@@ -348,7 +348,28 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
             ? tab === 'mark' ? 'Mark attendance for a specific period.' : 'Attendance by date, class and period, with guardian contact details.'
             : tab === 'mark'
               ? 'Taking attendance directly as an admin, on behalf of the class\'s own teacher.'
-              : 'Attendance is marked by teachers, period by period. Review it here across your institution, export it whenever you need to, or take it directly yourself if you ever need to.'
+              : 'Attendance is marked by teachers, period by period. Review it here across your institution and export it whenever you need to.'
+        }
+        actions={
+          isTeacher ? undefined : tab === 'mark' ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => { setTab('report'); setAdminOverride(false); }}
+            >
+              ← Back to report
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => { setTab('mark'); setAdminOverride(true); }}
+            >
+              <CalendarCheck size={16} /> Take attendance
+            </Button>
+          )
         }
       />
 
@@ -377,47 +398,26 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
         </div>
       )}
 
-      {/* Admin/staff, everyday case: this IS the Attendance Report page --
-          reports are the focus here, but taking attendance directly is
-          still available as a clearly secondary action, not tucked away
-          as a scare-worded "exception only" link. */}
-      {!isTeacher && tab === 'report' && (
-        <div className="flex flex-col items-start gap-3 rounded-xl border border-border/70 bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-card text-muted-foreground">
-              <Users size={16} />
-            </span>
-            <div className="min-w-0 text-sm text-muted-foreground">
-              <p>
-                Attendance is normally marked and corrected by each class&apos;s own teacher. As an admin you can take or
-                correct it directly too, whenever you need to.
-              </p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="shrink-0"
-            onClick={() => { setTab('mark'); setAdminOverride(true); }}
-          >
-            <CalendarCheck size={16} /> Take attendance
-          </Button>
-        </div>
-      )}
-
-      {!isTeacher && tab === 'mark' && (
-        <button
-          type="button"
-          onClick={() => { setTab('report'); setAdminOverride(false); }}
-          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-        >
-          ← Done, back to Attendance Report
-        </button>
-      )}
-
       {tab === 'report' ? (
-        <AttendanceReportView />
+        <>
+          <AttendanceReportView />
+          {/* One explanation, at the bottom, after the content -- same
+              convention as every other admin page (Classes, Subjects,
+              Timetable): not a card floating above the toolbar. */}
+          {!isTeacher && (
+            <InfoNote title="About taking attendance as an admin">
+              <p>
+                Attendance is normally marked and corrected by each class&apos;s own teacher, so this page leads with the
+                report. Use the &quot;Take attendance&quot; button above whenever you need to take or correct it directly
+                yourself — covering for a teacher who&apos;s away, or a period nobody marked.
+              </p>
+              <p>
+                Everything you save that way is written to the server log with your name, so it&apos;s always easy to
+                trace back.
+              </p>
+            </InfoNote>
+          )}
+        </>
       ) : (
         <>
         {!isTeacher && adminOverride && (
@@ -801,16 +801,14 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
         </div>
       ) : (
         <div className="mt-2 space-y-2 border-t border-border pt-5">
-          <InfoNote title="About taking attendance as an admin">
+          <InfoNote title="Tips for taking attendance directly">
             <p>
-              Every teacher can correct their own attendance any time, with no 24-hour cutoff, so day-to-day this
-              shouldn&apos;t come up often — the report above is where you&apos;ll spend most of your time. But it&apos;s here
-              whenever you need it: covering for a teacher who&apos;s away, or a period nobody marked.
+              Every teacher can correct their own attendance any time, with no 24-hour cutoff, so this shouldn&apos;t
+              come up often day-to-day — most of the time the report is all you need.
             </p>
             <p>
               Picking a {terminology.classUnit.toLowerCase()}, {terminology.section.toLowerCase()} and date shows only
               the periods scheduled that day — a &quot;Marked&quot; badge means attendance was already submitted.
-              Everything you save here is written to the server log with your name, so it&apos;s always easy to trace back.
             </p>
           </InfoNote>
         </div>
