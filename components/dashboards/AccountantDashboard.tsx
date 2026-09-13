@@ -21,7 +21,10 @@ const statusBadge = {
   partial: { variant: 'primary' as const, label: 'Partial' },
   pending: { variant: 'warning' as const, label: 'Pending' },
   overdue: { variant: 'danger' as const, label: 'Overdue' },
+  waived: { variant: 'neutral' as const, label: 'Waived' },
 };
+// Defensive fallback -- same guard as InvoicesTab.tsx/FeesList.tsx.
+const statusBadgeFor = (status: keyof typeof statusBadge) => statusBadge[status] ?? statusBadge.pending;
 
 /** Accountant's own landing page — a financial-only overview (collections,
  *  dues, online-gateway payouts owed, and the invoices most in need of
@@ -113,8 +116,8 @@ export function AccountantDashboard() {
                   <div className="flex shrink-0 items-center gap-3">
                     <div className="text-right">
                       <p className="text-sm font-semibold text-foreground">{formatCurrency(inv.balance)}</p>
-                      <Badge variant={statusBadge[inv.status].variant} className={cn('mt-0.5')}>
-                        {statusBadge[inv.status].label}
+                      <Badge variant={statusBadgeFor(inv.status).variant} className={cn('mt-0.5')}>
+                        {statusBadgeFor(inv.status).label}
                       </Badge>
                     </div>
                   </div>

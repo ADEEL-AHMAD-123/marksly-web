@@ -39,12 +39,18 @@ import {
   type PaymentMethod,
 } from '@/store/api/feesApi';
 
-const statusBadge: Record<InvoiceStatus, { variant: 'warning' | 'primary' | 'success' | 'danger'; label: string }> = {
+const statusBadge: Record<InvoiceStatus, { variant: 'warning' | 'primary' | 'success' | 'danger' | 'neutral'; label: string }> = {
   pending: { variant: 'warning', label: 'Pending' },
   partial: { variant: 'primary', label: 'Partial' },
   paid: { variant: 'success', label: 'Paid' },
   overdue: { variant: 'danger', label: 'Overdue' },
+  waived: { variant: 'neutral', label: 'Waived' },
 };
+// Defensive fallback for a status value this map hasn't been updated for --
+// InvoiceStatus is a live enum on the backend model, so a badge lookup must
+// never throw just because a new value showed up (see the same guard in
+// FeesList.tsx/StudentDashboardFeesNudge.tsx).
+const statusBadgeFor = (status: InvoiceStatus) => statusBadge[status] ?? statusBadge.pending;
 
 const METHODS: { value: PaymentMethod; label: string }[] = [
   { value: 'cash', label: 'Cash' },
@@ -162,7 +168,7 @@ export function InvoicesTab() {
                       <TableCell className="text-muted-foreground">{formatDate(inv.dueDate)}</TableCell>
                       <TableCell className="text-foreground">{formatCurrency(inv.netAmount)}</TableCell>
                       <TableCell className="font-medium text-foreground">{formatCurrency(inv.balance)}</TableCell>
-                      <TableCell><Badge variant={statusBadge[inv.status].variant}>{statusBadge[inv.status].label}</Badge></TableCell>
+                      <TableCell><Badge variant={statusBadgeFor(inv.status).variant}>{statusBadgeFor(inv.status).label}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button size="sm" variant="ghost" loading={printingId === inv.id} onClick={() => handlePrintSlip(inv.id)}>
@@ -190,7 +196,7 @@ export function InvoicesTab() {
                     <p className="truncate font-medium text-foreground">{inv.studentName}</p>
                     <p className="text-xs text-muted-foreground">{inv.rollNumber} · {inv.structureName ?? '—'}</p>
                   </div>
-                  <Badge variant={statusBadge[inv.status].variant}>{statusBadge[inv.status].label}</Badge>
+                  <Badge variant={statusBadgeFor(inv.status).variant}>{statusBadgeFor(inv.status).label}</Badge>
                 </div>
                 <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
                   <span className="text-muted-foreground">Balance {formatCurrency(inv.balance)}</span>

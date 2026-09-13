@@ -14,6 +14,7 @@ const STATUS_VARIANT = {
   pending: 'warning' as const,
   partial: 'primary' as const,
   paid: 'success' as const,
+  waived: 'neutral' as const,
 };
 
 /**
@@ -52,7 +53,7 @@ export function StudentDashboardFeesNudge() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Badge variant={STATUS_VARIANT[next.status]} className="hidden sm:inline-flex capitalize">{next.status}</Badge>
+            <Badge variant={STATUS_VARIANT[next.status] ?? 'neutral'} className="hidden sm:inline-flex capitalize">{next.status}</Badge>
             <Link href="/student/fees" className={buttonVariants({ size: 'sm', variant: isOverdue ? 'primary' : 'outline' })}>
               Pay <ArrowRight size={14} />
             </Link>

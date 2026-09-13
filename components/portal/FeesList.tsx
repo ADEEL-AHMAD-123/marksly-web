@@ -74,7 +74,12 @@ const feeBadge = {
   partial: { variant: 'primary' as const, label: 'Partial' },
   pending: { variant: 'warning' as const, label: 'Pending' },
   overdue: { variant: 'danger' as const, label: 'Overdue' },
+  waived: { variant: 'neutral' as const, label: 'Waived' },
 };
+// Defensive fallback -- a status this map hasn't been updated for must
+// never crash the fee list, same guard as InvoicesTab.tsx/
+// StudentDashboardFeesNudge.tsx.
+const feeBadgeFor = (status: keyof typeof feeBadge) => feeBadge[status] ?? feeBadge.pending;
 
 export function FeesList({ data, isLoading }: { data?: FeeItem[]; isLoading: boolean }) {
   useVerifyOnReturn();
@@ -126,7 +131,7 @@ export function FeesList({ data, isLoading }: { data?: FeeItem[]; isLoading: boo
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <Badge variant={feeBadge[f.status].variant}>{feeBadge[f.status].label}</Badge>
+                    <Badge variant={feeBadgeFor(f.status).variant}>{feeBadgeFor(f.status).label}</Badge>
                     {f.balance > 0 && <p className="mt-1 text-xs text-muted-foreground">Bal {formatCurrency(f.balance)}</p>}
                   </div>
                   {f.balance > 0 && liveGateways.length === 1 && (

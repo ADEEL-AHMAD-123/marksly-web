@@ -61,7 +61,7 @@ export interface FeeItem {
   netAmount: number;
   paid: number;
   balance: number;
-  status: 'pending' | 'partial' | 'paid' | 'overdue';
+  status: 'pending' | 'partial' | 'paid' | 'overdue' | 'waived';
 }
 
 export interface ChildSummary {

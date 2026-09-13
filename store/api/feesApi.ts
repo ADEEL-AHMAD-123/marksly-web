@@ -1,7 +1,16 @@
 import { baseApi } from './baseApi';
 
-export type InvoiceStatus = 'pending' | 'partial' | 'paid' | 'overdue';
-export type PaymentMethod = 'jazzcash' | 'easypaisa' | 'bank' | 'cash' | 'cheque' | 'challan';
+// 'waived' exists in the backend's enum (fee-invoice.model.ts) but there is
+// currently no code path that ever sets it -- included here anyway so every
+// consumer (status badges, filters) is forced to handle it rather than
+// silently crashing the day a void/waive flow is added.
+export type InvoiceStatus = 'pending' | 'partial' | 'paid' | 'overdue' | 'waived';
+// 'safepay' is the online-gateway method (fee-online.service.ts's settle()
+// records payments with paymentMethod: claimed.gateway) -- included so this
+// type doesn't silently diverge from the backend's actual enum
+// (fee-payment.model.ts), even though the manual "Collect Payment" form
+// below intentionally only offers the in-person subset.
+export type PaymentMethod = 'jazzcash' | 'easypaisa' | 'bank' | 'cash' | 'cheque' | 'challan' | 'safepay';
 
 export interface FeeStructure {
   id: string;
@@ -72,7 +81,7 @@ export interface InvoiceDetail {
   netAmount: number;
   paidAmount: number;
   balance: number;
-  status: InvoiceStatus | 'waived';
+  status: InvoiceStatus;
   payments: { id: string; amountPaid: number; paymentMethod: PaymentMethod; receiptNumber: string | null; paymentDate: string }[];
   adjustments: { id: string; type: 'credit' | 'debit'; amount: number; reason: string; createdAt: string }[];
 }
