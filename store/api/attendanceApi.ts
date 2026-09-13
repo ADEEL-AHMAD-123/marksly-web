@@ -25,16 +25,6 @@ export interface RosterResponse {
   students: RosterStudent[];
 }
 
-export interface AttendanceSummary {
-  date: string;
-  present: number;
-  absent: number;
-  late: number;
-  leave: number;
-  total: number;
-  presentRate: number;
-}
-
 interface ApiObject<T> {
   success: boolean;
   data: T;
@@ -161,11 +151,6 @@ export const attendanceApi = baseApi.injectEndpoints({
       providesTags: [{ type: 'Attendance', id: 'ROSTER' }],
     }),
 
-    getAttendanceSummary: builder.query<ApiObject<AttendanceSummary>, { date?: string } | void>({
-      query: (params) => `/attendance/summary${qs({ date: params?.date })}`,
-      providesTags: [{ type: 'Attendance', id: 'SUMMARY' }],
-    }),
-
     getAttendanceCoverageToday: builder.query<ApiObject<AttendanceCoverage>, { date?: string } | void>({
       query: (params) => `/attendance/coverage-today${qs({ date: params?.date })}`,
       providesTags: [{ type: 'Attendance', id: 'COVERAGE' }],
@@ -211,7 +196,6 @@ export const attendanceApi = baseApi.injectEndpoints({
 export const {
   useGetMyPeriodsQuery,
   useGetRosterQuery,
-  useGetAttendanceSummaryQuery,
   useGetAttendanceCoverageTodayQuery,
   useGetAttendanceReportQuery,
   // Lazy variant used by the report's CSV export -- fetches the FULL

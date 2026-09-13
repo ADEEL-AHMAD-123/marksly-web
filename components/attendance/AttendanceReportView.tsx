@@ -23,15 +23,10 @@ import {
 import { useAppSelector } from '@/store/hooks';
 import { cn } from '@/lib/utils';
 import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
+import { todayStr } from '@/lib/institution-date';
 
 // "Today" in institution-timezone (Asia/Karachi, UTC+5) terms, not the
-// browser's own UTC/local date — mirrors the backend's karachiTodayStr()
-// (attendance.helpers.ts) and AttendanceView.tsx's own todayStr(), so this
-// report's date-range `max` never caps a day behind the real current day
-// in Karachi during the UTC 19:00–23:59 window (Karachi already past
-// midnight into the next day).
-const KARACHI_OFFSET_MS = 5 * 60 * 60 * 1000;
-const todayStr = () => new Date(Date.now() + KARACHI_OFFSET_MS).toISOString().slice(0, 10);
+// browser's own UTC/local date -- see lib/institution-date.ts for why.
 
 const STATUS_OPTIONS: { value: AttendanceStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All statuses' },

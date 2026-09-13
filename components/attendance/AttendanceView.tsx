@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Avatar } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { InfoNote } from '@/components/ui/info-note';
+import { todayStr } from '@/lib/institution-date';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -43,22 +44,8 @@ const STATUSES: { key: AttendanceStatus; label: string; active: string }[] = [
 
 const dayOfWeekOf = (date: string) => new Date(`${date}T12:00:00.000Z`).getUTCDay();
 
-// A teacher may now correct their own attendance with no time limit --
-// see attendance-marking.service.ts's mark(), which removed the 24-hour
-// lockout this used to mirror. Kept only for the Karachi-offset math
-// todayStr() below still needs.
-const KARACHI_OFFSET_MS = 5 * 60 * 60 * 1000;
-
-// "Today" in institution-timezone (Asia/Karachi, UTC+5) terms, not the
-// browser's own UTC/local date — mirrors the backend's karachiTodayStr()
-// (attendance.helpers.ts), which is what actually decides FUTURE_DATE
-// server-side. A plain `new Date().toISOString()` would read as tomorrow's
-// date for part of the Karachi evening (UTC 19:00–23:59 = Karachi
-// 00:00–04:59 next day), which would wrongly cap this date picker's `max`
-// a day behind the real current day in Karachi during that window — a
-// teacher/admin marking attendance late at night could find "today" is
-// greyed out as unselectable even though the backend would accept it.
-const todayStr = () => new Date(Date.now() + KARACHI_OFFSET_MS).toISOString().slice(0, 10);
+// "Today" in institution-timezone terms -- see lib/institution-date.ts for why
+// this can't just be `new Date().toISOString()`.
 
 interface PeriodOption {
   periodId: string;
@@ -307,7 +294,18 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
   const save = async () => {
     if (!roster) return;
     if (roster.alreadyMarked) {
-      const changedCount = roster.students.filter((s) => s.status !== (statuses[s.studentId] ?? 'present')).length;
+      // Count anything the confirm dialog should actually warn about --
+      // a status change (what the dialog's copy describes) OR a note-only
+      // edit, which previously slipped through uncounted here even though
+      // isDirty (above) already treats a note-only edit as a real change
+      // worth saving. Without this, a note-only re-save skipped the
+      // "this will overwrite what's already submitted" confirmation
+      // entirely, inconsistent with every other overwrite on this page.
+      const changedCount = roster.students.filter((s) => {
+        const curStatus = statuses[s.studentId] ?? 'present';
+        const curNote = (notes[s.studentId] ?? '').trim();
+        return curStatus !== s.status || curNote !== (s.note ?? '').trim();
+      }).length;
       if (changedCount > 0) {
         setConfirmSave({ changedCount });
         return;
