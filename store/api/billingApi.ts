@@ -1,6 +1,6 @@
 import { baseApi } from './baseApi';
 
-export type Gateway = 'safepay' | 'jazzcash' | 'easypaisa';
+export type Gateway = 'safepay' | 'jazzcash' | 'easypaisa' | 'raast';
 
 export interface BillingPayment {
   id?: string;
@@ -55,7 +55,7 @@ export interface MyBilling {
   // for "load more" pagination over the full history.
   payments: BillingPayment[];
   paymentsTotal: number;
-  online: { safepay: boolean; jazzcash: boolean; easypaisa: boolean; live: boolean };
+  online: { safepay: boolean; jazzcash: boolean; easypaisa: boolean; raast: boolean; live: boolean };
   bank: { name: string | null; accountTitle: string | null; iban: string | null };
   // Auto-renewal (tokenized card, automatic charge on renewal) — a separate
   // opt-in on top of everything above, never assumed/defaulted on.
@@ -164,7 +164,10 @@ export const billingApi = baseApi.injectEndpoints({
     requestCustomPlan: builder.mutation<ApiObject<{ id: string }>, { message: string; desiredStudents?: number }>({
       query: (body) => ({ url: '/billing/request-custom-plan', method: 'POST', body }),
     }),
-    billingCheckout: builder.mutation<ApiObject<{ settled: boolean; gateway: string; reference: string; redirectUrl?: string | null; gatewayTxnId?: string | null }>, { gateway: Gateway }>({
+    billingCheckout: builder.mutation<
+      ApiObject<{ settled: boolean; gateway: string; reference: string; redirectUrl?: string | null; gatewayTxnId?: string | null; qrCode?: string | null }>,
+      { gateway: Gateway; raastMethod?: 'qr' | 'rtp'; raastDebtorRaastId?: string; raastDebtorIban?: string }
+    >({
       query: (body) => ({ url: '/billing/checkout', method: 'POST', body }),
       invalidatesTags: [{ type: 'Billing', id: 'ME' }],
     }),
@@ -179,7 +182,10 @@ export const billingApi = baseApi.injectEndpoints({
     // handling on the caller side. Fixed pack only (Rs 1,000 / 500 credits),
     // no catalog to fetch. Invalidates the credits balance query that lives
     // in messagingApi (shared 'Messaging' tag type registered in baseApi).
-    whatsappCreditsCheckout: builder.mutation<ApiObject<{ settled: boolean; gateway: string; reference: string; redirectUrl?: string | null; gatewayTxnId?: string | null }>, { gateway: Gateway }>({
+    whatsappCreditsCheckout: builder.mutation<
+      ApiObject<{ settled: boolean; gateway: string; reference: string; redirectUrl?: string | null; gatewayTxnId?: string | null; qrCode?: string | null }>,
+      { gateway: Gateway; raastMethod?: 'qr' | 'rtp'; raastDebtorRaastId?: string; raastDebtorIban?: string }
+    >({
       query: (body) => ({ url: '/billing/whatsapp-credits/checkout', method: 'POST', body }),
       invalidatesTags: [{ type: 'Messaging', id: 'WHATSAPP_CREDITS' }],
     }),

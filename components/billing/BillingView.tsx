@@ -21,6 +21,8 @@ import { SummaryStep } from './BillingSummaryStep';
 import { PlansStep } from './BillingPlansStep';
 import { PaymentStep } from './BillingPaymentStep';
 import { DisableAutoRenewDialog } from './DisableAutoRenewDialog';
+import { RaastQrDialog } from './RaastQrDialog';
+import { formatCurrency } from '@/lib/utils';
 
 export function BillingView() {
   const router = useRouter();
@@ -42,6 +44,48 @@ export function BillingView() {
   const [reconciling, setReconciling] = useState(false);
   const verifiedRef = useRef(false);
   const [confirmingDisableAutoRenew, setConfirmingDisableAutoRenew] = useState(false);
+  // Raast has no redirect page — createCheckout() hands back a QR payload
+  // instead, so payment confirmation is polled here rather than reached via
+  // the return-URL reconciliation flow above (see payOnline()'s qrCode branch).
+  const [raastQr, setRaastQr] = useState<{ code: string | null; gatewayTxnId: string | null } | null>(null);
+  const raastPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => { if (raastPollRef.current) clearInterval(raastPollRef.current); };
+  }, []);
+
+  const startRaastPoll = (gatewayTxnId: string) => {
+    if (raastPollRef.current) clearInterval(raastPollRef.current);
+    const startedAt = Date.now();
+    raastPollRef.current = setInterval(async () => {
+      // Give up after 10 minutes — a QR the payer never scans shouldn't poll
+      // forever; the payment record itself stays 'pending' and can still be
+      // reconciled later (webhook, or the next visit to this page).
+      if (Date.now() - startedAt > 10 * 60_000) {
+        if (raastPollRef.current) clearInterval(raastPollRef.current);
+        return;
+      }
+      try {
+        const res = await verifyPayment({ gateway: 'raast', gatewayTxnId }).unwrap();
+        if (res.data.status === 'success') {
+          if (raastPollRef.current) clearInterval(raastPollRef.current);
+          setRaastQr(null);
+          toast.success('Payment received — subscription updated');
+          setStep('summary');
+          refetch();
+        } else if (res.data.status === 'failed') {
+          if (raastPollRef.current) clearInterval(raastPollRef.current);
+          setRaastQr(null);
+          toast.error('Payment was not completed — please try again');
+        }
+        // 'pending'/'refunded' — keep polling (refunded shouldn't happen
+        // mid-checkout, but isn't a reason to stop silently either).
+      } catch {
+        // Transient network/API error — don't stop polling over one failed
+        // check, the next tick will retry.
+      }
+    }, 4000);
+  };
 
   // "Load more" payment history — page 1 already came inline with
   // getMyBilling; this appends subsequent pages at the same page size.
@@ -235,6 +279,11 @@ export function BillingView() {
         window.location.href = res.data.redirectUrl;
         return;
       }
+      if (res.data.qrCode && res.data.gatewayTxnId) {
+        setRaastQr({ code: res.data.qrCode, gatewayTxnId: res.data.gatewayTxnId });
+        startRaastPoll(res.data.gatewayTxnId);
+        return;
+      }
       toast.error('Could not start payment — please try again or use bank transfer');
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not start payment');
@@ -402,6 +451,16 @@ export function BillingView() {
         onClose={() => setConfirmingDisableAutoRenew(false)}
         onConfirm={confirmDisableAutoRenew}
         loading={disablingAutoRenew}
+      />
+
+      <RaastQrDialog
+        open={!!raastQr}
+        onClose={() => {
+          if (raastPollRef.current) clearInterval(raastPollRef.current);
+          setRaastQr(null);
+        }}
+        qrCode={raastQr?.code ?? null}
+        amountLabel={formatCurrency(b.amountDue)}
       />
     </div>
   );

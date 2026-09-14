@@ -22,6 +22,7 @@ export const gatewayLabel: Record<Gateway, string> = {
   safepay: 'Pay with Safepay',
   jazzcash: 'Pay with JazzCash',
   easypaisa: 'Pay with EasyPaisa',
+  raast: 'Pay with Raast (bank/wallet)',
 };
 
 export const declineReasonLabel: Record<string, string> = {

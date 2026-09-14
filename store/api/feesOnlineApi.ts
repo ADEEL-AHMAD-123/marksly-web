@@ -1,6 +1,6 @@
 import { baseApi } from './baseApi';
 
-export type OnlineGateway = 'safepay' | 'jazzcash' | 'easypaisa';
+export type OnlineGateway = 'safepay' | 'jazzcash' | 'easypaisa' | 'raast';
 export type PayoutMethod = 'bank' | 'jazzcash' | 'easypaisa';
 export type PayoutStatus = 'pending' | 'held_unverified_account' | 'paid' | 'failed';
 
@@ -13,6 +13,7 @@ export interface CheckoutResult {
   gateway: string;
   redirectUrl?: string | null;
   gatewayTxnId?: string | null;
+  qrCode?: string | null;
   status?: string;
 }
 
@@ -69,6 +70,7 @@ export interface GatewayStatus {
   safepay: boolean;
   jazzcash: boolean;
   easypaisa: boolean;
+  raast: boolean;
   live: boolean;
 }
 
@@ -78,11 +80,14 @@ export const feesOnlineApi = baseApi.injectEndpoints({
     getGatewayStatus: builder.query<ApiObject<GatewayStatus>, void>({
       query: () => '/fees-online/gateways',
     }),
-    initiateOnlineCheckout: builder.mutation<ApiObject<CheckoutResult>, { invoiceId: string; gateway: OnlineGateway }>({
-      query: ({ invoiceId, gateway }) => ({
+    initiateOnlineCheckout: builder.mutation<
+      ApiObject<CheckoutResult>,
+      { invoiceId: string; gateway: OnlineGateway; raastMethod?: 'qr' | 'rtp'; raastDebtorRaastId?: string; raastDebtorIban?: string }
+    >({
+      query: ({ invoiceId, gateway, raastMethod, raastDebtorRaastId, raastDebtorIban }) => ({
         url: `/fees-online/invoices/${invoiceId}/checkout`,
         method: 'POST',
-        body: { gateway },
+        body: { gateway, raastMethod, raastDebtorRaastId, raastDebtorIban },
       }),
       invalidatesTags: [{ type: 'Fees', id: 'INVOICES' }, { type: 'Fees', id: 'SUMMARY' }, 'Fees'],
     }),

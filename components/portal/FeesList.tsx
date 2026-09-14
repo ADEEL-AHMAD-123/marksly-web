@@ -17,6 +17,7 @@ import type { FeeItem } from '@/store/api/portalApi';
 import {
   useInitiateOnlineCheckoutMutation, useGetGatewayStatusQuery, useVerifyOnlinePaymentMutation, type OnlineGateway,
 } from '@/store/api/feesOnlineApi';
+import { RaastQrDialog } from '@/components/billing/RaastQrDialog';
 
 /** Watches for `?fee_ref=` on the current URL (added to the gateway's
  *  returnUrl by initiateCheckout) and confirms the payment's outcome the
@@ -59,14 +60,15 @@ const GATEWAY_LABEL: Record<OnlineGateway, string> = {
   safepay: 'Card / Safepay',
   jazzcash: 'JazzCash',
   easypaisa: 'EasyPaisa',
+  raast: 'Raast (bank/wallet)',
 };
 
 /** Every gateway that's actually configured server-side, in a stable
  *  preferred order — never fall back to hardcoding one that might silently
  *  mock-settle in an environment where it isn't really live. */
-function listLiveGateways(status?: { safepay: boolean; jazzcash: boolean; easypaisa: boolean }): OnlineGateway[] {
+function listLiveGateways(status?: { safepay: boolean; jazzcash: boolean; easypaisa: boolean; raast: boolean }): OnlineGateway[] {
   if (!status) return [];
-  return (['safepay', 'jazzcash', 'easypaisa'] as const).filter((g) => status[g]);
+  return (['safepay', 'jazzcash', 'easypaisa', 'raast'] as const).filter((g) => status[g]);
 }
 
 const feeBadge = {
@@ -84,16 +86,52 @@ const feeBadgeFor = (status: keyof typeof feeBadge) => feeBadge[status] ?? feeBa
 export function FeesList({ data, isLoading }: { data?: FeeItem[]; isLoading: boolean }) {
   useVerifyOnReturn();
   const [checkout, { isLoading: paying }] = useInitiateOnlineCheckoutMutation();
+  const [verifyOnlinePayment] = useVerifyOnlinePaymentMutation();
   const { data: gatewayRes } = useGetGatewayStatusQuery();
   const liveGateways = listLiveGateways(gatewayRes?.data);
   const [payingId, setPayingId] = useState<string | null>(null);
+  // Same reasoning as BillingView.tsx's raastQr state — Raast has no
+  // redirect page, so a QR is shown here and polled by the checkout
+  // `reference` (not gatewayTxnId — verifyOnlinePayment looks up by
+  // reference, which we already have from the checkout response).
+  const [raastQr, setRaastQr] = useState<{ code: string | null; amount: number } | null>(null);
+  const raastPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => { if (raastPollRef.current) clearInterval(raastPollRef.current); };
+  }, []);
 
   if (isLoading || !data) return <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>;
 
   const totalDue = data.reduce((s, f) => s + Math.max(0, f.balance), 0);
   if (data.length === 0) return <Card><EmptyState icon={Wallet} title="No fee invoices yet" /></Card>;
 
-  const handlePayOnline = async (invoiceId: string, gateway: OnlineGateway) => {
+  const startRaastPoll = (reference: string) => {
+    if (raastPollRef.current) clearInterval(raastPollRef.current);
+    const startedAt = Date.now();
+    raastPollRef.current = setInterval(async () => {
+      if (Date.now() - startedAt > 10 * 60_000) {
+        if (raastPollRef.current) clearInterval(raastPollRef.current);
+        return;
+      }
+      try {
+        const res = await verifyOnlinePayment(reference).unwrap();
+        if (res.data.status === 'succeeded') {
+          if (raastPollRef.current) clearInterval(raastPollRef.current);
+          setRaastQr(null);
+          toast.success('Payment received — thank you!');
+        } else if (res.data.status === 'failed') {
+          if (raastPollRef.current) clearInterval(raastPollRef.current);
+          setRaastQr(null);
+          toast.error('The payment was not successful');
+        }
+      } catch {
+        // Transient error — next tick retries.
+      }
+    }, 4000);
+  };
+
+  const handlePayOnline = async (invoiceId: string, gateway: OnlineGateway, balance: number) => {
     setPayingId(invoiceId);
     try {
       const res = await checkout({ invoiceId, gateway }).unwrap();
@@ -101,6 +139,9 @@ export function FeesList({ data, isLoading }: { data?: FeeItem[]; isLoading: boo
         toast.success('Payment complete');
       } else if (res.data.redirectUrl) {
         window.location.href = res.data.redirectUrl;
+      } else if (res.data.qrCode) {
+        setRaastQr({ code: res.data.qrCode, amount: balance });
+        startRaastPoll(res.data.reference);
       } else {
         toast.error('Could not start payment — try again');
       }
@@ -144,7 +185,7 @@ export function FeesList({ data, isLoading }: { data?: FeeItem[]; isLoading: boo
                       size="sm"
                       variant="soft"
                       loading={paying && payingId === f.id}
-                      onClick={() => handlePayOnline(f.id, liveGateways[0])}
+                      onClick={() => handlePayOnline(f.id, liveGateways[0], f.balance)}
                     >
                       <CreditCard size={14} /> Pay online
                     </Button>
@@ -158,7 +199,7 @@ export function FeesList({ data, isLoading }: { data?: FeeItem[]; isLoading: boo
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         {liveGateways.map((g) => (
-                          <DropdownMenuItem key={g} onClick={() => handlePayOnline(f.id, g)}>
+                          <DropdownMenuItem key={g} onClick={() => handlePayOnline(f.id, g, f.balance)}>
                             {GATEWAY_LABEL[g]}
                           </DropdownMenuItem>
                         ))}
@@ -171,6 +212,16 @@ export function FeesList({ data, isLoading }: { data?: FeeItem[]; isLoading: boo
           </ul>
         </CardContent>
       </Card>
+
+      <RaastQrDialog
+        open={!!raastQr}
+        onClose={() => {
+          if (raastPollRef.current) clearInterval(raastPollRef.current);
+          setRaastQr(null);
+        }}
+        qrCode={raastQr?.code ?? null}
+        amountLabel={formatCurrency(raastQr?.amount ?? 0)}
+      />
     </div>
   );
 }
