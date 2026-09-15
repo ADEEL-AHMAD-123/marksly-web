@@ -5,12 +5,12 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  ChevronLeft, ChevronRight, AlertCircle, FileText, X, Wallet, RefreshCw, Receipt, Plus, Minus, Printer, Ban, ShieldOff,
+  ChevronLeft, ChevronRight, AlertCircle, FileText, X, Wallet, RefreshCw, Receipt, Plus, Minus, Printer, Ban, ShieldOff, Download, FileDown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
-import { openAuthedPdf } from '@/lib/downloadFile';
+import { openAuthedPdf, openAuthedDownload } from '@/lib/downloadFile';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,7 @@ import { SearchInput } from '@/components/ui/search-input';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/get-error-message';
+import { useGetClassesQuery } from '@/store/api/classesApi';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   useGetInvoicesQuery,
@@ -56,6 +57,16 @@ const statusBadge: Record<InvoiceStatus, { variant: 'warning' | 'primary' | 'suc
 // FeesList.tsx/StudentDashboardFeesNudge.tsx).
 const statusBadgeFor = (status: InvoiceStatus) => statusBadge[status] ?? statusBadge.pending;
 
+const AUDIT_ACTION_LABEL: Record<string, string> = {
+  payment_recorded: 'Payment recorded',
+  payment_voided: 'Payment voided',
+  discount_applied: 'Discount applied',
+  charge_applied: 'Charge applied',
+  invoice_waived: 'Invoice waived',
+  adhoc_created: 'Created',
+  term_invoice_generated: 'Generated for term',
+};
+
 const METHODS: { value: PaymentMethod; label: string }[] = [
   { value: 'cash', label: 'Cash' },
   { value: 'jazzcash', label: 'JazzCash' },
@@ -70,7 +81,9 @@ const PAGE_SIZE = 20;
 export function InvoicesTab() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
+  const [classId, setClassId] = useState('all');
   const [page, setPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
   const [collecting, setCollecting] = useState<Invoice | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const debounced = useDebounce(query, 350);
@@ -99,12 +112,31 @@ export function InvoicesTab() {
     }
   };
 
+  const { data: classesRes } = useGetClassesQuery();
+  const classes = classesRes?.data ?? [];
+
   const { data, isLoading, isFetching, isError, refetch } = useGetInvoicesQuery({
     page,
     limit: PAGE_SIZE,
     search: debounced || undefined,
     status: status === 'all' ? undefined : (status as InvoiceStatus),
+    classId: classId === 'all' ? undefined : classId,
   });
+
+  const handleExportCsv = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (debounced) params.set('search', debounced);
+      if (status !== 'all') params.set('status', status);
+      if (classId !== 'all') params.set('classId', classId);
+      await openAuthedDownload(`/fees/invoices/export.csv?${params.toString()}`, accessToken, `invoices-${new Date().toISOString().slice(0, 10)}.csv`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not export invoices');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const invoices = data?.data ?? [];
   const totalPages = data?.meta?.totalPages ?? 1;
@@ -132,6 +164,16 @@ export function InvoicesTab() {
               <SelectItem value="paid">Paid</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={classId} onValueChange={(v) => { setClassId(v); setPage(1); }}>
+            <SelectTrigger className="sm:w-44"><SelectValue placeholder="Class" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All classes</SelectItem>
+              {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button variant="ghost" onClick={handleExportCsv} loading={exporting} className="sm:w-auto" title="Export the current filtered list as CSV">
+            <FileDown size={16} /> Export CSV
+          </Button>
           <Button variant="secondary" onClick={handleRunBilling} loading={billingLoading} className="sm:w-auto">
             <RefreshCw size={16} /> Run monthly billing
           </Button>
@@ -247,6 +289,7 @@ const paymentSchema = z.object({
   // reconcile a deposit against, only meaningful for bank/challan methods.
   challanNumber: z.string().optional(),
   paymentDate: z.string().optional(),
+  allowOverpaymentCredit: z.boolean().optional(),
 });
 type PaymentForm = z.infer<typeof paymentSchema>;
 
@@ -273,11 +316,18 @@ function CollectPaymentDrawer({ invoice, onClose }: { invoice: Invoice | null; o
     }
   }, [invoice, reset]);
 
+  const amountPaid = watch('amountPaid');
+  const overpaymentAmount = invoice && amountPaid ? Math.max(0, Number(amountPaid) - invoice.balance) : 0;
+
   const onSubmit = async (values: PaymentForm) => {
     if (!invoice) return;
     try {
-      await recordPayment({ invoiceId: invoice.id, ...values }).unwrap();
-      toast.success('Payment recorded');
+      const res = await recordPayment({ invoiceId: invoice.id, ...values }).unwrap();
+      if ((res as any)?.data?.creditBanked > 0) {
+        toast.success(`Payment recorded — ${formatCurrency((res as any).data.creditBanked)} banked as credit toward the next invoice`);
+      } else {
+        toast.success('Payment recorded');
+      }
       onClose();
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not record payment');
@@ -309,6 +359,20 @@ function CollectPaymentDrawer({ invoice, onClose }: { invoice: Invoice | null; o
                 <Input id="amountPaid" type="number" step="0.01" {...register('amountPaid')} />
                 {errors.amountPaid && <p className="mt-1 text-xs text-danger">{errors.amountPaid.message}</p>}
               </div>
+
+              {overpaymentAmount > 0 && (
+                <label className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning-soft p-4">
+                  <input type="checkbox" {...register('allowOverpaymentCredit')} className="mt-0.5 h-4 w-4 rounded border-input text-primary focus-visible:ring-2 focus-visible:ring-ring" />
+                  <span>
+                    <span className="block text-sm font-medium text-foreground">
+                      This is {formatCurrency(overpaymentAmount)} more than the balance due
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      Record the full amount received and bank the extra as credit toward this student's next invoice — never refunded automatically. Leave unchecked to reject this as an error instead.
+                    </span>
+                  </span>
+                </label>
+              )}
 
               <div>
                 <Label htmlFor="paymentMethod">Method</Label>
@@ -415,6 +479,18 @@ function InvoiceDetailDrawer({ invoiceId, onClose }: { invoiceId: string | null;
     }
   };
 
+  const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
+  const handleDownloadReceipt = async (paymentId: string) => {
+    setDownloadingReceiptId(paymentId);
+    try {
+      await openAuthedPdf(`/fees/payments/${paymentId}/receipt`, accessToken);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not generate the receipt');
+    } finally {
+      setDownloadingReceiptId(null);
+    }
+  };
+
   const [type, setType] = useState<'credit' | 'debit'>('credit');
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
@@ -502,7 +578,18 @@ function InvoiceDetailDrawer({ invoiceId, onClose }: { invoiceId: string | null;
                               <span className="text-xs text-muted-foreground">{formatDate(p.paymentDate)}</span>
                               {p.voided ? (
                                 <Badge variant="neutral">Voided</Badge>
-                              ) : isAdmin ? (
+                              ) : (
+                                <button
+                                  type="button"
+                                  title="Download official receipt"
+                                  disabled={downloadingReceiptId === p.id}
+                                  onClick={() => handleDownloadReceipt(p.id)}
+                                  className="rounded-md p-1 text-muted-foreground hover:bg-primary-soft hover:text-primary-soft-foreground disabled:opacity-50"
+                                >
+                                  <Download size={13} />
+                                </button>
+                              )}
+                              {!p.voided && isAdmin && (
                                 <button
                                   type="button"
                                   title="Void this payment — for a wrongly-recorded amount"
@@ -511,7 +598,7 @@ function InvoiceDetailDrawer({ invoiceId, onClose }: { invoiceId: string | null;
                                 >
                                   <Ban size={13} />
                                 </button>
-                              ) : null}
+                              )}
                             </div>
                           </div>
                           {p.voided && p.voidReason && (
@@ -536,6 +623,23 @@ function InvoiceDetailDrawer({ invoiceId, onClose }: { invoiceId: string | null;
                             <span className="ml-2 text-xs text-muted-foreground">{a.reason}</span>
                           </span>
                           <span className="shrink-0 text-xs text-muted-foreground">{formatDate(a.createdAt)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {d.auditLog.length > 0 && (
+                  <div>
+                    <p className="mb-2 text-sm font-semibold text-foreground">History</p>
+                    <ul className="space-y-1.5">
+                      {d.auditLog.map((e, i) => (
+                        <li key={i} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-xs">
+                          <span className="min-w-0 text-foreground">
+                            {AUDIT_ACTION_LABEL[e.action] ?? e.action}
+                            {e.note && <span className="ml-2 text-muted-foreground">{e.note}</span>}
+                          </span>
+                          <span className="shrink-0 text-muted-foreground">{formatDate(e.at)}</span>
                         </li>
                       ))}
                     </ul>

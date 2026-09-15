@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Wallet, Clock, FileText, Landmark, ArrowRight, AlertTriangle, MessageSquare } from 'lucide-react';
+import { Wallet, Clock, FileText, ArrowRight, AlertTriangle, MessageSquare } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { useGetFeesSummaryQuery, useGetInvoicesQuery } from '@/store/api/feesApi';
-import { useGetMyOwedQuery } from '@/store/api/feesOnlineApi';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { DashboardNoticeBanner } from '@/components/dashboards/DashboardNoticeBanner';
 import { DashboardNotices } from '@/components/dashboards/DashboardNotices';
@@ -27,18 +26,15 @@ const statusBadge = {
 const statusBadgeFor = (status: keyof typeof statusBadge) => statusBadge[status] ?? statusBadge.pending;
 
 /** Accountant's own landing page — a financial-only overview (collections,
- *  dues, online-gateway payouts owed, and the invoices most in need of
- *  follow-up) rather than the full-institution admin dashboard. Every query
- *  here already permits the 'accountant' role on the backend (see fees and
- *  fees-online RBAC), so this is purely a new, role-scoped presentation on
- *  top of existing endpoints — no backend changes required. */
+ *  dues, and the invoices most in need of follow-up) rather than the
+ *  full-institution admin dashboard. Every query here already permits the
+ *  'accountant' role on the backend, so this is purely a role-scoped
+ *  presentation on top of existing endpoints — no backend changes needed. */
 export function AccountantDashboard() {
   const { data: sumRes, isLoading: sumLoading } = useGetFeesSummaryQuery();
-  const { data: owedRes, isLoading: owedLoading } = useGetMyOwedQuery();
   const { data: overdueRes, isLoading: overdueLoading } = useGetInvoicesQuery({ status: 'overdue', limit: 6 });
 
   const s = sumRes?.data;
-  const owed = owedRes?.data;
   const overdue = overdueRes?.data ?? [];
 
   return (
@@ -47,7 +43,7 @@ export function AccountantDashboard() {
 
       <PageHeader
         title="Accountant Dashboard"
-        description="Fee collection, online payouts and dues at a glance."
+        description="Fee collection and dues at a glance."
         actions={
           <>
             <Link href="/accountant/messaging" className={buttonVariants({ variant: 'secondary', size: 'sm' })}>
@@ -60,7 +56,7 @@ export function AccountantDashboard() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           label="Collected this month"
           value={sumLoading || !s ? '—' : formatCurrency(s.collectedThisMonth)}
@@ -78,12 +74,6 @@ export function AccountantDashboard() {
           value={sumLoading || !s ? '—' : s.pendingInvoices.toLocaleString('en-PK')}
           icon={FileText}
           tone="primary"
-        />
-        <StatCard
-          label="Owed from online payments"
-          value={owedLoading || !owed ? '—' : formatCurrency(owed.gross)}
-          icon={Landmark}
-          tone="info"
         />
       </div>
 

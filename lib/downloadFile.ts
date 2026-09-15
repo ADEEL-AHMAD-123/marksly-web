@@ -23,6 +23,52 @@ async function fetchPdf(path: string, accessToken: string | null): Promise<Respo
  * since the page loaded — forcing a full page reload to fix, for no reason
  * a real user would understand.
  */
+/**
+ * Downloads a non-PDF file (CSV, etc.) via a synthetic <a download> click,
+ * rather than opening it in a new tab like openAuthedPdf() does — a CSV
+ * opened in a browser tab just shows raw text, which isn't what "export"
+ * means to anyone. Shares the exact same auth/refresh handling as
+ * openAuthedPdf() (see its own comment) since these hit the same kind of
+ * Bearer-token-authed, non-JSON endpoint.
+ */
+export async function openAuthedDownload(path: string, accessToken: string | null, filename: string): Promise<void> {
+  let res = await fetchPdf(path, accessToken);
+
+  if (res.status === 401) {
+    const refreshRes = await fetch(`${baseUrl}/auth/refresh`, { method: 'POST', credentials: 'include' });
+    if (refreshRes.ok) {
+      const body = await refreshRes.json();
+      const newToken = body?.data?.accessToken as string | undefined;
+      if (newToken) {
+        store.dispatch(updateAccessToken(newToken));
+        res = await fetchPdf(path, newToken);
+      }
+    } else {
+      store.dispatch(logout());
+    }
+  }
+
+  if (!res.ok) {
+    let message = 'Could not download the file';
+    try {
+      const body = await res.json();
+      message = body?.error?.message || message;
+    } catch {
+      // response wasn't JSON — keep default message
+    }
+    throw new Error(message);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
 export async function openAuthedPdf(path: string, accessToken: string | null): Promise<void> {
   let res = await fetchPdf(path, accessToken);
 

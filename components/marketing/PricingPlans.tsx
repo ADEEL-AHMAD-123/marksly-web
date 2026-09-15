@@ -154,25 +154,31 @@ export function PricingPlans() {
         </p>
       </div>
 
-      {/* Custom / Enterprise-scale plan — a distinct CTA rather than a 5th
-          priced card, since there's no fixed number to show: a multi-campus
-          network or an institution past the largest listed tier gets a
-          negotiated deal, not a self-service checkout. Logged-in admins can
-          also submit this same request from inside their own billing page
-          (see requestCustomPlanSchema / PlanRequest — resolved by a
-          superadmin from Superadmin -> Plan requests). */}
-      <div className="mt-4 flex flex-col items-center justify-between gap-4 rounded-2xl border border-dashed border-border bg-card/60 p-5 text-center sm:mt-6 sm:flex-row sm:p-6 sm:text-left">
+      {/* Custom / Enterprise-scale plan — a distinct, prominently styled CTA
+          rather than a 5th priced card, since there's no fixed number to
+          show: a multi-campus network, university system, or an institution
+          past the largest listed tier gets a plan sized to their actual
+          scale, not a self-service checkout. Styled with the brand accent
+          (gold) border/badge so it reads as a genuine, attractive option —
+          not a paywall or an afterthought below the real plans. Logged-in
+          admins can also submit this same request from inside their own
+          billing page (see requestCustomPlanSchema / PlanRequest — resolved
+          by a superadmin from Superadmin -> Plan requests). */}
+      <div className="relative mt-6 flex flex-col items-center justify-between gap-4 rounded-2xl border-2 border-accent/60 bg-gradient-to-br from-accent/10 via-card to-card p-5 text-center shadow-md sm:mt-8 sm:flex-row sm:p-7 sm:text-left">
+        <span className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-accent-foreground shadow sm:left-6 sm:text-xs">
+          For large institutions
+        </span>
         <div>
-          <h3 className="text-sm font-semibold sm:text-base">Need something bigger, or a multi-campus setup?</h3>
-          <p className="mt-1 text-[13px] text-muted-foreground sm:text-sm">
-            Custom student limits, storage, and pricing for large or multi-branch institutions — talk to us and we&apos;ll work out a plan that fits.
+          <h3 className="text-base font-semibold sm:text-lg">Custom Plan — built for scale</h3>
+          <p className="mt-1.5 text-[13px] text-muted-foreground sm:text-sm">
+            Running a large institution, a multi-campus network, or a university system? Get a plan sized to your actual student count, storage, and support needs — with dedicated onboarding and a priority contact, not a one-size-fits-all price.
           </p>
         </div>
         <Link
           href="/contact"
-          className={`${buttonVariants({ variant: 'secondary' })} w-full shrink-0 sm:w-auto`}
+          className={`${buttonVariants({ variant: 'primary' })} w-full shrink-0 !bg-accent !text-accent-foreground hover:!bg-accent/90 sm:w-auto`}
         >
-          Contact us <ArrowRight aria-hidden size={16} />
+          Get a custom quote <ArrowRight aria-hidden size={16} />
         </Link>
       </div>
     </div>

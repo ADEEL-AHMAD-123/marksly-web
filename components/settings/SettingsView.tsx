@@ -4,7 +4,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useEffect, useState } from 'react';
-import { Check, Palette, Landmark, UserCircle, Building2, ShieldCheck, CreditCard, Laptop, Smartphone, Monitor, LogOut } from 'lucide-react';
+import { Check, Palette, Landmark, UserCircle, Building2, ShieldCheck, CreditCard, Laptop, Smartphone, Monitor, LogOut, ListChecks } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import en from 'react-phone-number-input/locale/en.json';
@@ -24,6 +24,8 @@ import { useTheme } from '@/components/theme/ThemeProvider';
 import { THEMES } from '@/lib/themes';
 import { cn } from '@/lib/utils';
 import { InstitutionProfileTab } from './InstitutionProfileTab';
+import { SettingsSetupTab } from './SettingsSetupTab';
+import { useOnboardingSteps } from '@/hooks/useOnboardingSteps';
 import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -44,6 +46,11 @@ export function SettingsView() {
     const tab = new URLSearchParams(window.location.search).get('tab');
     if (tab) setInitialTab(tab);
   }, []);
+
+  // Shown as a nav badge on the Setup tab (admin only) so "you still have
+  // setup steps left" stays visible from Settings without needing to be
+  // back on the dashboard's own onboarding card to notice.
+  const { doneCount, totalSteps, allStepsDone, isLoading: setupLoading } = useOnboardingSteps();
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 lg:space-y-8">
@@ -70,6 +77,16 @@ export function SettingsView() {
               <Building2 size={17} className="shrink-0" /> Institution &amp; Branding
             </TabsTrigger>
           )}
+          {isAdmin && (
+            <TabsTrigger value="setup" className={settingsTabTriggerClass}>
+              <ListChecks size={17} className="shrink-0" /> Setup checklist
+              {!setupLoading && !allStepsDone && (
+                <span className="ml-1.5 shrink-0 rounded-full bg-warning-soft px-1.5 py-0.5 text-[10px] font-semibold text-warning lg:ml-auto">
+                  {totalSteps - doneCount}
+                </span>
+              )}
+            </TabsTrigger>
+          )}
           <TabsTrigger value="security" className={settingsTabTriggerClass}>
             <ShieldCheck size={17} className="shrink-0" /> Security
           </TabsTrigger>
@@ -88,6 +105,7 @@ export function SettingsView() {
         <div className="mt-4 min-w-0 flex-1 lg:mt-0">
           <TabsContent value="profile" className="mt-0"><ProfileTab /></TabsContent>
           {isAdmin && <TabsContent value="institution" className="mt-0"><InstitutionProfileTab /></TabsContent>}
+          {isAdmin && <TabsContent value="setup" className="mt-0"><SettingsSetupTab /></TabsContent>}
           <TabsContent value="security" className="mt-0"><SecurityTab /></TabsContent>
           {isSuperadmin && <TabsContent value="billing" className="mt-0"><BillingTab /></TabsContent>}
           {isSuperadmin && <TabsContent value="appearance" className="mt-0"><AppearanceTab /></TabsContent>}

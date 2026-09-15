@@ -33,6 +33,7 @@ import {
   type StudentListItem,
 } from '@/store/api/studentsApi';
 import { useGetFeeCardQuery } from '@/store/api/feesApi';
+import { StudentFeeOptIns } from './StudentFeeOptIns';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useTerminology } from '@/lib/terminology';
 import { getInitials, formatCurrency, formatDate, cn } from '@/lib/utils';
@@ -430,6 +431,10 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                       </div>
                     </div>
                   )}
+                </div>
+
+                <div className="mt-5">
+                  <StudentFeeOptIns studentId={studentId as string} />
                 </div>
 
                 {cgpaLoading && !cgpaData ? (

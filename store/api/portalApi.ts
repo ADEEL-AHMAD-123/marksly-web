@@ -54,6 +54,13 @@ export interface ResultItem {
   marks: { name: string; obtained: number; total: number }[];
 }
 
+export interface FeePaymentSummary {
+  id: string;
+  amountPaid: number;
+  paymentDate: string;
+  receiptNumber: string | null;
+}
+
 export interface FeeItem {
   id: string;
   structureName: string | null;
@@ -62,6 +69,7 @@ export interface FeeItem {
   paid: number;
   balance: number;
   status: 'pending' | 'partial' | 'paid' | 'overdue' | 'waived';
+  payments: FeePaymentSummary[];
 }
 
 export interface ChildSummary {

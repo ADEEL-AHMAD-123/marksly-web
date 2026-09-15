@@ -3,14 +3,14 @@
 import { useRouter } from 'next/navigation';
 import {
   GraduationCap, TrendingUp, Plus, AlertTriangle,
-  School, DollarSign, Users, BookOpen, ImageUp, CalendarRange, Building2,
+  School, DollarSign, Users, BookOpen, ImageUp, CalendarRange, Building2, Landmark,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGetStudentStatsQuery } from '@/store/api/studentsApi';
 import { useGetAttendanceCoverageTodayQuery } from '@/store/api/attendanceApi';
-import { useGetFeesSummaryQuery, useGetFeeStructuresQuery } from '@/store/api/feesApi';
+import { useGetFeesSummaryQuery, useGetFeeStructuresQuery, useGetPayoutAccountsQuery } from '@/store/api/feesApi';
 import { useGetReportsQuery } from '@/store/api/reportsApi';
 import { useGetNoticesQuery } from '@/store/api/noticesApi';
 import { useGetClassesQuery } from '@/store/api/classesApi';
@@ -78,6 +78,9 @@ export function AdminDashboard() {
   const teacherCount = (teachersRes as any)?.meta?.total ?? teachersRes?.data?.length ?? 0;
   const { data: feeStructRes, isLoading: feeStructLoading } = useGetFeeStructuresQuery();
   const feeStructureCount = feeStructRes?.data?.length ?? 0;
+  const { data: payoutRes, isLoading: payoutLoading } = useGetPayoutAccountsQuery();
+  // listPayoutAccounts already excludes inactive/removed accounts server-side.
+  const payoutAccountCount = payoutRes?.data?.length ?? 0;
   const { data: subjectsRes, isLoading: subjectsLoading } = useGetSubjectsQuery();
   const subjectCount = subjectsRes?.data?.length ?? 0;
   const terminology = useTerminology();
@@ -106,7 +109,7 @@ export function AdminDashboard() {
   // it would also have kept resurfacing the "Finish setting up" reminder
   // every single day regardless of how it was tracked, which isn't what
   // this checklist is for.
-  const onboardingLoading = statsLoading || classesLoading || teachersLoading || feeStructLoading || subjectsLoading || institutionLoading || termsLoading;
+  const onboardingLoading = statsLoading || classesLoading || teachersLoading || feeStructLoading || payoutLoading || subjectsLoading || institutionLoading || termsLoading;
   const studentCount = stats?.total ?? 0;
 
   // Hints below deliberately surface the CSV bulk-import path on the two
@@ -175,6 +178,16 @@ export function AdminDashboard() {
       hint: 'Migrating from a register or spreadsheet? Bulk-import your student list as a CSV.',
     },
     { label: 'Set up fee structures', href: '/admin/fees', icon: DollarSign, done: feeStructureCount > 0 },
+    // Without a payout account, every fee slip a parent downloads has no
+    // "pay to" bank details at all — Marksly never collects the money
+    // itself, so this is a hard requirement, not a nice-to-have.
+    {
+      label: 'Add a bank account for fee payments',
+      href: '/admin/fees?tab=payout',
+      icon: Landmark,
+      done: payoutAccountCount > 0,
+      hint: feeStructureCount > 0 ? "Parents pay directly into this — it's what prints on every fee slip." : 'Needs at least one fee structure set up first.',
+    },
   ];
   const allStepsDone = ONBOARDING_STEPS.every((s) => s.done);
   const anyStepDone = ONBOARDING_STEPS.some((s) => s.done);

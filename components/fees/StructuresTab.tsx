@@ -18,18 +18,46 @@ import {
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { useGetClassesQuery } from '@/store/api/classesApi';
+import { useGetTermsQuery } from '@/store/api/termsApi';
 import {
   useGetFeeStructuresQuery,
   useCreateFeeStructureMutation,
   useUpdateFeeStructureMutation,
   useGenerateInvoicesMutation,
+  useGenerateTermInvoicesMutation,
   type FeeStructure,
+  type FeeCategory,
+  type FeeApplicabilityMode,
+  type ProrationPolicy,
 } from '@/store/api/feesApi';
 import { getErrorMessage } from '@/lib/get-error-message';
 import { formatCurrency } from '@/lib/utils';
 import { useTerminology } from '@/lib/terminology';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+const CATEGORY_LABEL: Record<FeeCategory, string> = {
+  tuition: 'Tuition',
+  admission: 'Admission / Registration',
+  transport: 'Transport',
+  hostel: 'Hostel / Boarding',
+  library: 'Library',
+  sports: 'Sports / Co-curricular',
+  exam: 'Board / Exam Registration',
+  misc: 'Miscellaneous',
+};
+const APPLICABILITY_LABEL: Record<FeeApplicabilityMode, string> = {
+  'all-students-in-class': 'All students automatically',
+  'opt-in': 'Only opted-in students',
+  'one-time-event': 'One-time event / eligible cohort',
+};
+
+const PRORATION_LABEL: Record<ProrationPolicy, string> = {
+  full: 'Bill full amount, even mid-period',
+  'prorate-daily': 'Prorate by remaining days',
+  'skip-first-period': "Skip the student's first partial period",
+};
+
 
 export function StructuresTab() {
   const { data, isLoading } = useGetFeeStructuresQuery();
@@ -59,6 +87,8 @@ export function StructuresTab() {
                   <p className="font-semibold text-foreground">{s.name}</p>
                   <p className="text-xs text-muted-foreground">{s.academicYear} · {s.className ?? 'All classes'}</p>
                   <div className="mt-1 flex flex-wrap gap-1">
+                    <Badge variant="neutral">{CATEGORY_LABEL[s.category] ?? s.category}</Badge>
+                    {s.applicabilityMode === 'opt-in' && <Badge variant="warning">Opt-in</Badge>}
                     {s.autoBill && <Badge variant="success">Auto-bill · due {s.dueDay}th</Badge>}
                     {!s.isActive && <Badge variant="neutral">Inactive</Badge>}
                   </div>
@@ -97,13 +127,17 @@ export function StructuresTab() {
 const structSchema = z.object({
   name: z.string().min(1, 'Required'),
   academicYear: z.string().min(4, 'Required'),
+  termId: z.string().optional(),
+  category: z.enum(['tuition', 'admission', 'transport', 'hostel', 'library', 'sports', 'exam', 'misc']),
+  applicabilityMode: z.enum(['all-students-in-class', 'opt-in', 'one-time-event']),
   classId: z.string().optional(),
   autoBill: z.boolean(),
   dueDay: z.coerce.number().int().min(1).max(28),
+  prorationPolicy: z.enum(['full', 'prorate-daily', 'skip-first-period']),
   components: z.array(z.object({
     name: z.string().min(1, 'Required'),
     amount: z.coerce.number().min(0, '≥ 0'),
-    frequency: z.enum(['monthly', 'quarterly', 'annually', 'once']),
+    frequency: z.enum(['monthly', 'quarterly', 'annually', 'once', 'per-term']),
   })).min(1, 'Add at least one component'),
 });
 type StructForm = z.infer<typeof structSchema>;
@@ -116,17 +150,24 @@ function AddStructureDrawer({ open, onClose }: { open: boolean; onClose: () => v
   const classes = classesRes?.data ?? [];
   const [createStructure, { isLoading }] = useCreateFeeStructureMutation();
 
-  const { register, control, handleSubmit, reset, formState: { errors } } = useForm<StructForm>({
+  const { data: termsRes } = useGetTermsQuery();
+  const terms = termsRes?.data ?? [];
+  const defaults: StructForm = {
+    name: '', academicYear: defaultYear(), termId: '', category: 'tuition', applicabilityMode: 'all-students-in-class',
+    classId: '', autoBill: false, dueDay: 10, prorationPolicy: 'full', components: [{ name: 'Tuition', amount: 0, frequency: 'monthly' }],
+  };
+  const { register, control, handleSubmit, reset, watch, formState: { errors } } = useForm<StructForm>({
     resolver: zodResolver(structSchema),
-    defaultValues: { name: '', academicYear: defaultYear(), classId: '', autoBill: false, dueDay: 10, components: [{ name: 'Tuition', amount: 0, frequency: 'monthly' }] },
+    defaultValues: defaults,
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'components' });
+  const applicabilityMode = watch('applicabilityMode');
 
   const onSubmit = async (values: StructForm) => {
     try {
-      await createStructure({ ...values, classId: values.classId || undefined }).unwrap();
+      await createStructure({ ...values, classId: values.classId || undefined, termId: values.termId || undefined }).unwrap();
       toast.success('Fee structure created');
-      reset({ name: '', academicYear: defaultYear(), classId: '', autoBill: false, dueDay: 10, components: [{ name: 'Tuition', amount: 0, frequency: 'monthly' }] });
+      reset(defaults);
       onClose();
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not create structure');
@@ -152,12 +193,6 @@ function AddStructureDrawer({ open, onClose }: { open: boolean; onClose: () => v
               <div>
                 <Label htmlFor="academicYear">Billing period label</Label>
                 <Input id="academicYear" {...register('academicYear')} placeholder="e.g. Fall 2026, or 2025-2026" />
-                {/* Free text on purpose — this is just a label shown on the
-                    structure card, independent of the institution's real
-                    Terms (Academic Years/Semesters/Sessions). It won't
-                    auto-track a term's name, so word it however makes sense
-                    for this fee structure rather than assuming it must
-                    match a term exactly. */}
                 {errors.academicYear && <p className="mt-1 text-xs text-danger">{errors.academicYear.message}</p>}
               </div>
               <div>
@@ -179,6 +214,68 @@ function AddStructureDrawer({ open, onClose }: { open: boolean; onClose: () => v
             </div>
 
             <div>
+              <Label>Term (recommended)</Label>
+              <Controller
+                control={control}
+                name="termId"
+                render={({ field }) => (
+                  <Select value={field.value || 'none'} onValueChange={(v) => field.onChange(v === 'none' ? '' : v)}>
+                    <SelectTrigger><SelectValue placeholder="Link to a real term" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No term (use the label above only)</SelectItem>
+                      {terms.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Link a semester Term and use a "Per term" component below for university/college billing — the same engine bills monthly for schools using an academic-year Term.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Category</Label>
+                <Controller
+                  control={control}
+                  name="category"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(CATEGORY_LABEL) as FeeCategory[]).map((c) => (
+                          <SelectItem key={c} value={c}>{CATEGORY_LABEL[c]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+              <div>
+                <Label>Applies to</Label>
+                <Controller
+                  control={control}
+                  name="applicabilityMode"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(APPLICABILITY_LABEL) as FeeApplicabilityMode[]).map((m) => (
+                          <SelectItem key={m} value={m}>{APPLICABILITY_LABEL[m]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            </div>
+            {applicabilityMode === 'opt-in' && (
+              <p className="rounded-lg bg-warning-soft px-3 py-2 text-xs text-warning">
+                Only students you explicitly opt in (from their profile) will be billed for this — nothing is charged automatically. Good for Transport/Hostel.
+              </p>
+            )}
+
+            <div>
               <div className="mb-1.5 flex items-center justify-between">
                 <Label className="mb-0">Components</Label>
                 <button type="button" onClick={() => append({ name: '', amount: 0, frequency: 'monthly' })} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
@@ -198,6 +295,7 @@ function AddStructureDrawer({ open, onClose }: { open: boolean; onClose: () => v
                           <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="per-term">Per term</SelectItem>
                             <SelectItem value="quarterly">Quarterly</SelectItem>
                             <SelectItem value="annually">Annually</SelectItem>
                             <SelectItem value="once">One-time</SelectItem>
@@ -227,6 +325,25 @@ function AddStructureDrawer({ open, onClose }: { open: boolean; onClose: () => v
                 <Input id="dueDay" type="number" min={1} max={28} className="w-20" {...register('dueDay')} />
               </div>
             </div>
+
+            <div>
+              <Label>Mid-period enrollment</Label>
+              <Controller
+                control={control}
+                name="prorationPolicy"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(PRORATION_LABEL) as ProrationPolicy[]).map((p) => (
+                        <SelectItem key={p} value={p}>{PRORATION_LABEL[p]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">How a student who enrolls partway through a billing period is charged for that first period.</p>
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
@@ -245,10 +362,11 @@ const editStructSchema = z.object({
   isActive: z.boolean(),
   autoBill: z.boolean(),
   dueDay: z.coerce.number().int().min(1).max(28),
+  prorationPolicy: z.enum(['full', 'prorate-daily', 'skip-first-period']),
   components: z.array(z.object({
     name: z.string().min(1, 'Required'),
     amount: z.coerce.number().min(0, '≥ 0'),
-    frequency: z.enum(['monthly', 'quarterly', 'annually', 'once']),
+    frequency: z.enum(['monthly', 'quarterly', 'annually', 'once', 'per-term']),
   })).min(1, 'Add at least one component'),
 });
 type EditStructForm = z.infer<typeof editStructSchema>;
@@ -268,6 +386,7 @@ function EditStructureDrawer({ structure, onClose }: { structure: FeeStructure |
           isActive: structure.isActive,
           autoBill: structure.autoBill,
           dueDay: structure.dueDay,
+          prorationPolicy: structure.prorationPolicy,
           components: structure.components.map((c) => ({ name: c.name, amount: c.amount, frequency: (c.frequency as EditStructForm['components'][number]['frequency']) || 'monthly' })),
         }
       : undefined,
@@ -302,7 +421,7 @@ function EditStructureDrawer({ structure, onClose }: { structure: FeeStructure |
                 {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
               </div>
               <p className="text-xs text-muted-foreground">
-                {structure.academicYear} · {structure.className ?? 'All classes'} — the billing period and class scope can't be changed here; create a new structure instead.
+                {structure.academicYear} · {structure.className ?? 'All classes'} · {CATEGORY_LABEL[structure.category] ?? structure.category} · {APPLICABILITY_LABEL[structure.applicabilityMode] ?? structure.applicabilityMode} — the billing period, class, category and applicability can't be changed here; create a new structure instead.
               </p>
 
               <div>
@@ -325,6 +444,7 @@ function EditStructureDrawer({ structure, onClose }: { structure: FeeStructure |
                             <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="monthly">Monthly</SelectItem>
+                              <SelectItem value="per-term">Per term</SelectItem>
                               <SelectItem value="quarterly">Quarterly</SelectItem>
                               <SelectItem value="annually">Annually</SelectItem>
                               <SelectItem value="once">One-time</SelectItem>
@@ -352,6 +472,23 @@ function EditStructureDrawer({ structure, onClose }: { structure: FeeStructure |
                 <div className="flex items-center gap-2">
                   <Label htmlFor="edit-dueDay" className="mb-0 text-xs">Due day of month</Label>
                   <Input id="edit-dueDay" type="number" min={1} max={28} className="w-20" {...register('dueDay')} />
+                </div>
+                <div>
+                  <Label>Mid-period enrollment</Label>
+                  <Controller
+                    control={control}
+                    name="prorationPolicy"
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(PRORATION_LABEL) as ProrationPolicy[]).map((p) => (
+                            <SelectItem key={p} value={p}>{PRORATION_LABEL[p]}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </div>
               </div>
 
@@ -387,8 +524,10 @@ type GenForm = z.infer<typeof genSchema>;
 
 function GenerateDrawer({ structure, onClose }: { structure: FeeStructure | null; onClose: () => void }) {
   const [generate, { isLoading }] = useGenerateInvoicesMutation();
+  const [generateTerm, { isLoading: isLoadingTerm }] = useGenerateTermInvoicesMutation();
   const open = !!structure;
   const now = new Date();
+  const isPerTerm = structure?.components?.some((c) => c.frequency === 'per-term') && !!structure?.termId;
 
   const { register, handleSubmit, control } = useForm<GenForm>({
     resolver: zodResolver(genSchema),
@@ -409,6 +548,47 @@ function GenerateDrawer({ structure, onClose }: { structure: FeeStructure | null
       toast.error(e?.data?.error?.message || 'Could not generate invoices');
     }
   };
+
+  const onGenerateTerm = async () => {
+    if (!structure?.termId) return;
+    try {
+      const res = await generateTerm({ feeStructureId: structure.id, termId: structure.termId }).unwrap();
+      toast.success(`${res.data.created} invoices created for ${res.data.termName}, ${res.data.skipped} skipped`);
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.data?.error?.message || 'Could not generate term invoices');
+    }
+  };
+
+  if (isPerTerm) {
+    return (
+      <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+        <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[400px]">
+          {structure && (
+            <div className="flex h-full flex-col">
+              <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                <h2 className="text-lg font-semibold">Generate Term Invoices</h2>
+                <SheetClose className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></SheetClose>
+              </div>
+              <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+                <div className="rounded-xl bg-muted p-4">
+                  <p className="font-medium text-foreground">{structure.name}</p>
+                  <p className="text-xs text-muted-foreground">{structure.className ?? 'All classes'} · {formatCurrency(structure.total)} per term</p>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  This bills once for the whole linked term, due on the term's own start date. Students who already have an invoice for this term are skipped — safe to run again.
+                </p>
+              </div>
+              <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
+                <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
+                <Button type="button" loading={isLoadingTerm} onClick={onGenerateTerm}>Generate for this term</Button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>

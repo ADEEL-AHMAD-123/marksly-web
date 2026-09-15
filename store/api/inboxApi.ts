@@ -1,6 +1,6 @@
 import { baseApi } from './baseApi';
 
-export type InboxItemType = 'notice' | 'fee_paid' | 'account' | 'exam_result' | 'plan_request' | 'downgrade_blocked' | 'payment_failed' | 'new_institution' | 'fee_online_refund_needs_review' | 'attendance_alert' | 'contact_failed' | 'system_alert';
+export type InboxItemType = 'notice' | 'fee_paid' | 'fee_invoice_generated' | 'account' | 'exam_result' | 'plan_request' | 'downgrade_blocked' | 'payment_failed' | 'new_institution' | 'fee_online_refund_needs_review' | 'attendance_alert' | 'contact_failed' | 'system_alert';
 
 export interface InboxItem {
   _id: string;

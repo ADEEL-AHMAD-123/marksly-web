@@ -12,17 +12,56 @@ export type InvoiceStatus = 'pending' | 'partial' | 'paid' | 'overdue' | 'waived
 // below intentionally only offers the in-person subset.
 export type PaymentMethod = 'jazzcash' | 'easypaisa' | 'bank' | 'cash' | 'cheque' | 'challan' | 'safepay';
 
+export type FeeCategory = 'tuition' | 'admission' | 'transport' | 'hostel' | 'library' | 'sports' | 'exam' | 'misc';
+export type FeeApplicabilityMode = 'all-students-in-class' | 'opt-in' | 'one-time-event';
+export type ProrationPolicy = 'full' | 'prorate-daily' | 'skip-first-period';
+
 export interface FeeStructure {
   id: string;
   name: string;
   academicYear: string;
+  termId: string | null;
+  category: FeeCategory;
+  applicabilityMode: FeeApplicabilityMode;
   className: string | null;
   classId: string | null;
   isActive: boolean;
   autoBill: boolean;
   dueDay: number;
+  prorationPolicy: ProrationPolicy;
   total: number;
   components: { name: string; amount: number; frequency: string }[];
+}
+
+export interface StudentOptIn {
+  id: string;
+  feeStructureId: string;
+  structureName: string | null;
+  category: FeeCategory | null;
+  startDate: string;
+  endDate: string | null;
+  detail: string | null;
+  active: boolean;
+}
+
+export const PAKISTANI_BANKS = [
+  'HBL', 'UBL', 'MCB', 'Meezan Bank', 'Bank Alfalah', 'Bank Al Habib',
+  'Faysal Bank', 'Askari Bank', 'National Bank of Pakistan', 'Standard Chartered',
+  'JS Bank', 'Soneri Bank', 'Bank of Punjab', 'Allied Bank', 'Habib Metropolitan Bank',
+  'Silkbank', 'Summit Bank', 'Sindh Bank', 'First Women Bank', 'Al Baraka Bank',
+  'Dubai Islamic Bank Pakistan', 'MCB Islamic Bank', 'Bank of Khyber', 'Bank of Azad Jammu & Kashmir',
+  'SME Bank', 'Zarai Taraqiati Bank', 'Other',
+] as const;
+
+export interface PayoutAccount {
+  id: string;
+  bankName: string;
+  accountTitle: string;
+  accountNumber: string;
+  iban: string;
+  branch: string | null;
+  label: string | null;
+  isDefault: boolean;
 }
 
 export interface Invoice {
@@ -84,6 +123,7 @@ export interface InvoiceDetail {
   status: InvoiceStatus;
   payments: { id: string; amountPaid: number; paymentMethod: PaymentMethod; receiptNumber: string | null; paymentDate: string; voided: boolean; voidReason: string | null }[];
   adjustments: { id: string; type: 'credit' | 'debit'; amount: number; reason: string; createdAt: string }[];
+  auditLog: { action: string; at: string; note: string | null }[];
 }
 
 export interface AdjustBody {
@@ -99,10 +139,14 @@ interface ApiObject<T> { success: boolean; data: T; message: string }
 export interface CreateStructureBody {
   name: string;
   academicYear: string;
+  termId?: string;
+  category?: FeeCategory;
+  applicabilityMode?: FeeApplicabilityMode;
   classId?: string;
   components: { name: string; amount: number; frequency?: string }[];
   autoBill?: boolean;
   dueDay?: number;
+  prorationPolicy?: ProrationPolicy;
 }
 
 export interface UpdateStructureBody {
@@ -110,7 +154,37 @@ export interface UpdateStructureBody {
   isActive?: boolean;
   autoBill?: boolean;
   dueDay?: number;
+  prorationPolicy?: ProrationPolicy;
+  termId?: string;
+  category?: FeeCategory;
+  applicabilityMode?: FeeApplicabilityMode;
   components?: { name: string; amount: number; frequency?: string }[];
+}
+
+export interface CreateOptInBody {
+  studentId: string;
+  feeStructureId: string;
+  startDate?: string;
+  detail?: string;
+}
+
+export interface CreatePayoutAccountBody {
+  bankName: string;
+  accountTitle: string;
+  accountNumber: string;
+  iban: string;
+  branch?: string;
+  label?: string;
+  isDefault?: boolean;
+}
+
+export interface CreateAdhocInvoiceBody {
+  studentIds?: string[];
+  classId?: string;
+  description: string;
+  amount: number;
+  dueDate: string;
+  notes?: string;
 }
 
 export interface GenerateBody {
@@ -128,6 +202,16 @@ export interface PaymentBody {
   challanNumber?: string;
   paymentDate?: string;
   notes?: string;
+  allowOverpaymentCredit?: boolean;
+}
+
+export interface RecordPaymentResult {
+  invoiceId: string;
+  receiptNumber: string;
+  paidAmount: number;
+  creditBanked: number;
+  balance: number;
+  status: InvoiceStatus;
 }
 
 export const feesApi = baseApi.injectEndpoints({
@@ -218,7 +302,7 @@ export const feesApi = baseApi.injectEndpoints({
       ],
     }),
 
-    recordPayment: builder.mutation<ApiObject<unknown>, PaymentBody>({
+    recordPayment: builder.mutation<ApiObject<RecordPaymentResult>, PaymentBody>({
       query: (body) => ({ url: '/fees/payments', method: 'POST', body }),
       // Same as adjustInvoice above — a parent's cached "fees due" view
       // needs the bare 'Fees' tag invalidated too, not just the specific
@@ -241,6 +325,46 @@ export const feesApi = baseApi.injectEndpoints({
         `/fees/students/${studentId}/card${academicYear ? `?academicYear=${encodeURIComponent(academicYear)}` : ''}`,
       providesTags: (_r, _e, { studentId }) => [{ type: 'Fees', id: `CARD-${studentId}` }],
     }),
+
+    generateTermInvoices: builder.mutation<ApiObject<{ created: number; skipped: number; termName: string }>, { feeStructureId: string; termId: string }>({
+      query: (body) => ({ url: '/fees/invoices/generate-term', method: 'POST', body }),
+      invalidatesTags: [{ type: 'Fees', id: 'INVOICES' }, { type: 'Fees', id: 'SUMMARY' }, 'Fees'],
+    }),
+
+    createAdhocInvoices: builder.mutation<ApiObject<{ created: number; invoiceIds: string[] }>, CreateAdhocInvoiceBody>({
+      query: (body) => ({ url: '/fees/invoices/adhoc', method: 'POST', body }),
+      invalidatesTags: [{ type: 'Fees', id: 'INVOICES' }, { type: 'Fees', id: 'SUMMARY' }, 'Fees'],
+    }),
+
+    getStudentOptIns: builder.query<ApiArray<StudentOptIn>, string>({
+      query: (studentId) => `/fees/students/${studentId}/opt-ins`,
+      providesTags: (_r, _e, studentId) => [{ type: 'Fees', id: `OPTINS-${studentId}` }],
+    }),
+    createOptIn: builder.mutation<ApiObject<{ id: string }>, CreateOptInBody>({
+      query: (body) => ({ url: '/fees/opt-ins', method: 'POST', body }),
+      invalidatesTags: (_r, _e, { studentId }) => [{ type: 'Fees', id: `OPTINS-${studentId}` }],
+    }),
+    endOptIn: builder.mutation<ApiObject<{ id: string }>, { id: string; studentId: string; endDate?: string }>({
+      query: ({ id, endDate }) => ({ url: `/fees/opt-ins/${id}/end`, method: 'POST', body: { endDate } }),
+      invalidatesTags: (_r, _e, { studentId }) => [{ type: 'Fees', id: `OPTINS-${studentId}` }],
+    }),
+
+    getPayoutAccounts: builder.query<ApiArray<PayoutAccount>, void>({
+      query: () => '/fees/payout-accounts',
+      providesTags: [{ type: 'Fees', id: 'PAYOUT_ACCOUNTS' }],
+    }),
+    createPayoutAccount: builder.mutation<ApiObject<{ id: string }>, CreatePayoutAccountBody>({
+      query: (body) => ({ url: '/fees/payout-accounts', method: 'POST', body }),
+      invalidatesTags: [{ type: 'Fees', id: 'PAYOUT_ACCOUNTS' }],
+    }),
+    updatePayoutAccount: builder.mutation<ApiObject<{ id: string }>, { id: string } & Partial<CreatePayoutAccountBody> & { isActive?: boolean }>({
+      query: ({ id, ...body }) => ({ url: `/fees/payout-accounts/${id}`, method: 'PATCH', body }),
+      invalidatesTags: [{ type: 'Fees', id: 'PAYOUT_ACCOUNTS' }],
+    }),
+    deletePayoutAccount: builder.mutation<ApiObject<{ id: string }>, string>({
+      query: (id) => ({ url: `/fees/payout-accounts/${id}`, method: 'DELETE' }),
+      invalidatesTags: [{ type: 'Fees', id: 'PAYOUT_ACCOUNTS' }],
+    }),
   }),
 });
 
@@ -258,4 +382,13 @@ export const {
   useRecordPaymentMutation,
   useGetFeesSummaryQuery,
   useGetFeeCardQuery,
+  useGenerateTermInvoicesMutation,
+  useCreateAdhocInvoicesMutation,
+  useGetStudentOptInsQuery,
+  useCreateOptInMutation,
+  useEndOptInMutation,
+  useGetPayoutAccountsQuery,
+  useCreatePayoutAccountMutation,
+  useUpdatePayoutAccountMutation,
+  useDeletePayoutAccountMutation,
 } = feesApi;

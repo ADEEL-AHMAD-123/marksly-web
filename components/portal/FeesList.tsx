@@ -1,75 +1,19 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { ChevronDown, Wallet, CreditCard } from 'lucide-react';
+import { useState } from 'react';
+import { useSelector } from 'react-redux';
+import { Download, Wallet, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
-import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
+import { InfoNote } from '@/components/ui/info-note';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { openAuthedPdf } from '@/lib/downloadFile';
 import type { FeeItem } from '@/store/api/portalApi';
-import {
-  useInitiateOnlineCheckoutMutation, useGetGatewayStatusQuery, useVerifyOnlinePaymentMutation, type OnlineGateway,
-} from '@/store/api/feesOnlineApi';
-import { RaastQrDialog } from '@/components/billing/RaastQrDialog';
-
-/** Watches for `?fee_ref=` on the current URL (added to the gateway's
- *  returnUrl by initiateCheckout) and confirms the payment's outcome the
- *  moment the payer lands back on this page, instead of leaving them
- *  staring at a stale invoice list until the webhook eventually lands.
- *  Strips the param afterward so a page refresh doesn't re-verify. */
-function useVerifyOnReturn() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [verify] = useVerifyOnlinePaymentMutation();
-  const handledRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    const ref = searchParams.get('fee_ref');
-    if (!ref || handledRef.current === ref) return;
-    handledRef.current = ref;
-
-    verify(ref)
-      .unwrap()
-      .then((res) => {
-        const status = res.data.status;
-        if (status === 'succeeded') toast.success('Payment received — thank you!');
-        else if (status === 'failed') toast.error('The payment was not successful');
-        else if (status === 'refunded') toast('This payment was refunded');
-        else toast('Payment is still processing — this page will update shortly');
-      })
-      .catch(() => toast.error('Could not confirm the payment status — check back in a moment'))
-      .finally(() => {
-        const params = new URLSearchParams(searchParams.toString());
-        params.delete('fee_ref');
-        const qs = params.toString();
-        router.replace(qs ? `${pathname}?${qs}` : pathname);
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-}
-
-const GATEWAY_LABEL: Record<OnlineGateway, string> = {
-  safepay: 'Card / Safepay',
-  jazzcash: 'JazzCash',
-  easypaisa: 'EasyPaisa',
-  raast: 'Raast (bank/wallet)',
-};
-
-/** Every gateway that's actually configured server-side, in a stable
- *  preferred order — never fall back to hardcoding one that might silently
- *  mock-settle in an environment where it isn't really live. */
-function listLiveGateways(status?: { safepay: boolean; jazzcash: boolean; easypaisa: boolean; raast: boolean }): OnlineGateway[] {
-  if (!status) return [];
-  return (['safepay', 'jazzcash', 'easypaisa', 'raast'] as const).filter((g) => status[g]);
-}
+import type { RootState } from '@/store';
 
 const feeBadge = {
   paid: { variant: 'success' as const, label: 'Paid' },
@@ -83,72 +27,58 @@ const feeBadge = {
 // StudentDashboardFeesNudge.tsx.
 const feeBadgeFor = (status: keyof typeof feeBadge) => feeBadge[status] ?? feeBadge.pending;
 
-export function FeesList({ data, isLoading }: { data?: FeeItem[]; isLoading: boolean }) {
-  useVerifyOnReturn();
-  const [checkout, { isLoading: paying }] = useInitiateOnlineCheckoutMutation();
-  const [verifyOnlinePayment] = useVerifyOnlinePaymentMutation();
-  const { data: gatewayRes } = useGetGatewayStatusQuery();
-  const liveGateways = listLiveGateways(gatewayRes?.data);
-  const [payingId, setPayingId] = useState<string | null>(null);
-  // Same reasoning as BillingView.tsx's raastQr state — Raast has no
-  // redirect page, so a QR is shown here and polled by the checkout
-  // `reference` (not gatewayTxnId — verifyOnlinePayment looks up by
-  // reference, which we already have from the checkout response).
-  const [raastQr, setRaastQr] = useState<{ code: string | null; amount: number } | null>(null);
-  const raastPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    return () => { if (raastPollRef.current) clearInterval(raastPollRef.current); };
-  }, []);
+/** Shared by both the student and parent portals — Marksly never collects
+ *  or moves this money, so there is no "pay online" action here at all.
+ *  A parent/student only ever sees what's due and can download the exact,
+ *  immutable slip (with the institution's own bank/challan details) to pay
+ *  directly; once the institution's accountant records that payment, the
+ *  status here updates from the same PaymentRecord an admin would see. */
+export function FeesList({
+  data,
+  isLoading,
+  childId,
+}: {
+  data?: FeeItem[];
+  isLoading: boolean;
+  /** Present only from the parent portal (viewing a specific child's fees);
+   *  undefined for the student portal, which hits the `/student/fees/...`
+   *  routes for the logged-in student themselves. */
+  childId?: string;
+}) {
+  const accessToken = useSelector((s: RootState) => s.auth.accessToken);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
 
   if (isLoading || !data) return <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>;
 
   const totalDue = data.reduce((s, f) => s + Math.max(0, f.balance), 0);
   if (data.length === 0) return <Card><EmptyState icon={Wallet} title="No fee invoices yet" /></Card>;
 
-  const startRaastPoll = (reference: string) => {
-    if (raastPollRef.current) clearInterval(raastPollRef.current);
-    const startedAt = Date.now();
-    raastPollRef.current = setInterval(async () => {
-      if (Date.now() - startedAt > 10 * 60_000) {
-        if (raastPollRef.current) clearInterval(raastPollRef.current);
-        return;
-      }
-      try {
-        const res = await verifyOnlinePayment(reference).unwrap();
-        if (res.data.status === 'succeeded') {
-          if (raastPollRef.current) clearInterval(raastPollRef.current);
-          setRaastQr(null);
-          toast.success('Payment received — thank you!');
-        } else if (res.data.status === 'failed') {
-          if (raastPollRef.current) clearInterval(raastPollRef.current);
-          setRaastQr(null);
-          toast.error('The payment was not successful');
-        }
-      } catch {
-        // Transient error — next tick retries.
-      }
-    }, 4000);
+  const handleDownloadSlip = async (invoiceId: string) => {
+    setDownloadingId(invoiceId);
+    try {
+      const path = childId
+        ? `/me/children/${childId}/fees/${invoiceId}/slip`
+        : `/me/student/fees/${invoiceId}/slip`;
+      await openAuthedPdf(path, accessToken);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not generate the fee slip');
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
-  const handlePayOnline = async (invoiceId: string, gateway: OnlineGateway, balance: number) => {
-    setPayingId(invoiceId);
+  const handleDownloadReceipt = async (paymentId: string) => {
+    setDownloadingReceiptId(paymentId);
     try {
-      const res = await checkout({ invoiceId, gateway }).unwrap();
-      if (res.data.settled) {
-        toast.success('Payment complete');
-      } else if (res.data.redirectUrl) {
-        window.location.href = res.data.redirectUrl;
-      } else if (res.data.qrCode) {
-        setRaastQr({ code: res.data.qrCode, amount: balance });
-        startRaastPoll(res.data.reference);
-      } else {
-        toast.error('Could not start payment — try again');
-      }
+      const path = childId
+        ? `/me/children/${childId}/fees/payments/${paymentId}/receipt`
+        : `/me/student/fees/payments/${paymentId}/receipt`;
+      await openAuthedPdf(path, accessToken);
     } catch (e: any) {
-      toast.error(e?.data?.error?.message || 'Could not start online payment');
+      toast.error(e?.message || 'Could not generate the receipt');
     } finally {
-      setPayingId(null);
+      setDownloadingReceiptId(null);
     }
   };
 
@@ -165,63 +95,59 @@ export function FeesList({ data, isLoading }: { data?: FeeItem[]; isLoading: boo
         <CardContent className="p-0">
           <ul className="divide-y divide-border">
             {data.map((f) => (
-              <li key={f.id} className="flex items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground">{f.structureName ?? 'Fee'}</p>
-                  <p className="text-xs text-muted-foreground">Due {formatDate(f.dueDate)} · {formatCurrency(f.netAmount)}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <Badge variant={feeBadgeFor(f.status).variant}>{feeBadgeFor(f.status).label}</Badge>
-                    {f.balance > 0 && <p className="mt-1 text-xs text-muted-foreground">Bal {formatCurrency(f.balance)}</p>}
+              <li key={f.id} className="flex flex-col gap-2 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">{f.structureName ?? 'Fee'}</p>
+                    <p className="text-xs text-muted-foreground">Due {formatDate(f.dueDate)} · {formatCurrency(f.netAmount)}</p>
                   </div>
-                  {/* balance is already 0 for a waived invoice (see
-                      portal.service.ts's feesFor()), but excluding
-                      'waived' explicitly here too means a stale cached
-                      value can never offer a payment button that the
-                      backend would reject with a confusing 409 anyway. */}
-                  {f.balance > 0 && f.status !== 'waived' && liveGateways.length === 1 && (
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <Badge variant={feeBadgeFor(f.status).variant}>{feeBadgeFor(f.status).label}</Badge>
+                      {f.balance > 0 && <p className="mt-1 text-xs text-muted-foreground">Bal {formatCurrency(f.balance)}</p>}
+                    </div>
                     <Button
                       size="sm"
                       variant="soft"
-                      loading={paying && payingId === f.id}
-                      onClick={() => handlePayOnline(f.id, liveGateways[0], f.balance)}
+                      loading={downloadingId === f.id}
+                      onClick={() => handleDownloadSlip(f.id)}
                     >
-                      <CreditCard size={14} /> Pay online
+                      <Download size={14} /> Slip
                     </Button>
-                  )}
-                  {f.balance > 0 && f.status !== 'waived' && liveGateways.length > 1 && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="sm" variant="soft" loading={paying && payingId === f.id}>
-                          <CreditCard size={14} /> Pay online <ChevronDown size={14} />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {liveGateways.map((g) => (
-                          <DropdownMenuItem key={g} onClick={() => handlePayOnline(f.id, g, f.balance)}>
-                            {GATEWAY_LABEL[g]}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                  </div>
                 </div>
+                {f.payments.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg bg-success-soft/40 px-3 py-2">
+                    <p className="text-xs text-muted-foreground">
+                      {f.payments.length === 1 ? '1 payment recorded' : `${f.payments.length} payments recorded`}
+                    </p>
+                    <div className="ml-auto flex flex-wrap gap-2">
+                      {f.payments.map((p) => (
+                        <Button
+                          key={p.id}
+                          size="sm"
+                          variant="outline"
+                          loading={downloadingReceiptId === p.id}
+                          onClick={() => handleDownloadReceipt(p.id)}
+                        >
+                          <Receipt size={13} /> Receipt · {formatCurrency(p.amountPaid)} ({formatDate(p.paymentDate)})
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
         </CardContent>
       </Card>
 
-      <RaastQrDialog
-        open={!!raastQr}
-        onClose={() => {
-          if (raastPollRef.current) clearInterval(raastPollRef.current);
-          setRaastQr(null);
-        }}
-        qrCode={raastQr?.code ?? null}
-        amountLabel={formatCurrency(raastQr?.amount ?? 0)}
-      />
+      <InfoNote title="How to pay">
+        <p>
+          Download the slip above — it shows the institution's own bank account details. Pay directly by bank
+          transfer or deposit, then keep your receipt; the institution's office will record it once received.
+        </p>
+      </InfoNote>
     </div>
   );
 }

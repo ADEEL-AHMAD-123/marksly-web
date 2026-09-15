@@ -1,6 +1,8 @@
 'use client';
 
-import { Wallet, Clock, FileText } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Wallet, Clock, FileText, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -9,17 +11,32 @@ import { useGetFeesSummaryQuery } from '@/store/api/feesApi';
 import { formatCurrency } from '@/lib/utils';
 import { InvoicesTab } from './InvoicesTab';
 import { StructuresTab } from './StructuresTab';
-import { PayoutAccountTab } from './PayoutAccountTab';
-import { MyPayoutsTab } from './MyPayoutsTab';
-import { RefundsNeedingReviewTab } from './RefundsNeedingReviewTab';
+import { PayoutAccountsTab } from './PayoutAccountsTab';
+import { AdhocInvoiceDialog } from './AdhocInvoiceDialog';
+import { FeeCoveragePanel } from './FeeCoveragePanel';
 
 export function FeesView() {
   const { data: sumRes } = useGetFeesSummaryQuery();
   const s = sumRes?.data;
+  const [adhocOpen, setAdhocOpen] = useState(false);
+
+  // Deep-link support for "?tab=payout" — the onboarding checklist's "Add
+  // a bank account" step links here, and landing on the unrelated
+  // Invoices tab instead defeats the point (same pattern as
+  // SettingsView.tsx's own ?tab= handling).
+  const [initialTab, setInitialTab] = useState('invoices');
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab) setInitialTab(tab);
+  }, []);
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Fees" description="Collect fees, manage structures and track dues." />
+      <PageHeader
+        title="Fees"
+        description="Manage fee structures, generate challans and record payments."
+        actions={<Button size="sm" variant="secondary" onClick={() => setAdhocOpen(true)}><Plus size={16} /> One-off invoice</Button>}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
@@ -42,12 +59,13 @@ export function FeesView() {
         />
       </div>
 
-      <Tabs defaultValue="invoices">
+      <FeeCoveragePanel />
+
+      <Tabs key={initialTab} defaultValue={initialTab}>
         <TabsList>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="structures">Fee Structures</TabsTrigger>
-          <TabsTrigger value="payouts">Online Payouts</TabsTrigger>
-          <TabsTrigger value="payout">Payout Account</TabsTrigger>
+          <TabsTrigger value="payout">Payout Accounts</TabsTrigger>
         </TabsList>
         <TabsContent value="invoices">
           <InvoicesTab />
@@ -55,32 +73,19 @@ export function FeesView() {
         <TabsContent value="structures">
           <StructuresTab />
         </TabsContent>
-        <TabsContent value="payouts">
-          <div className="space-y-4">
-            <RefundsNeedingReviewTab />
-            <MyPayoutsTab />
-          </div>
-        </TabsContent>
         <TabsContent value="payout">
-          <PayoutAccountTab />
+          <PayoutAccountsTab />
         </TabsContent>
       </Tabs>
 
-      {/* Help — placed after the actual tool, same bottom-of-page pattern as
-          Students, ID Cards, Academic Terms & Grading, Timetable, Classes,
-          Subjects and Attendance, not before it. */}
+      <AdhocInvoiceDialog open={adhocOpen} onClose={() => setAdhocOpen(false)} />
+
       <div className="space-y-2">
-        <InfoNote title="Where does online fee money actually go?">
+        <InfoNote title="How fee collection works">
           <p>
-            Card, JazzCash and EasyPaisa payments made by parents and students don't land in your bank account
-            instantly — they collect here first, then get paid out to the bank account you set under{' '}
-            <strong>Payout Account</strong>. A new or changed payout account has to be verified before the next
-            payout goes out, so update it a few days before you're expecting a payout, not the day of.
-          </p>
-          <p>
-            <strong>Online Payouts</strong> shows what's been paid out so far and any refunds that need your review —
-            it's separate from <strong>Invoices</strong>, which is where you record fees collected manually (cash,
-            bank transfer, etc.).
+            Marksly does not collect or hold fee money on your behalf. Challans show your own bank account
+            details so parents pay you directly; once you receive a payment, record it under{' '}
+            <strong>Invoices</strong> with the payment proof to keep an auditable record.
           </p>
         </InfoNote>
       </div>

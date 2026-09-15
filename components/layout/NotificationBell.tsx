@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, CheckCheck, Wallet, Megaphone, UserCircle, Award, Sparkles, Inbox as InboxIcon, AlertTriangle, CreditCard, School, ClipboardList, MailWarning } from 'lucide-react';
+import { Bell, CheckCheck, Wallet, Receipt, Megaphone, UserCircle, Award, Sparkles, Inbox as InboxIcon, AlertTriangle, CreditCard, School, ClipboardList, MailWarning } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
 } from '@/components/ui/dropdown-menu';
@@ -16,6 +16,7 @@ import { playNotificationSound } from '@/lib/notification-sound';
 
 const TYPE_ICON: Record<InboxItemType, typeof Bell> = {
   fee_paid: Wallet,
+  fee_invoice_generated: Receipt,
   notice: Megaphone,
   account: UserCircle,
   exam_result: Award,
@@ -31,6 +32,7 @@ const TYPE_ICON: Record<InboxItemType, typeof Bell> = {
 
 const TYPE_TONE: Record<InboxItemType, string> = {
   fee_paid: 'bg-success-soft text-success',
+  fee_invoice_generated: 'bg-warning-soft text-warning',
   notice: 'bg-primary-soft text-primary-soft-foreground',
   account: 'bg-muted text-muted-foreground',
   exam_result: 'bg-warning-soft text-warning',

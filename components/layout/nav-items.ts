@@ -121,7 +121,6 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Announcements', href: '/superadmin/announcements', icon: Bell },
     { label: 'Plans', href: '/superadmin/plans', icon: Package },
     { label: 'Payments', href: '/superadmin/billing', icon: CreditCard },
-    { label: 'Fee Payouts', href: '/superadmin/fee-payouts', icon: DollarSign },
     { label: 'Revenue', href: '/superadmin/revenue', icon: DollarSign },
     { label: 'Analytics', href: '/superadmin/analytics', icon: BarChart2 },
     { label: 'Testing', href: '/superadmin/testing', icon: FlaskConical },

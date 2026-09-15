@@ -167,7 +167,7 @@ export function ParentScopedView({ kind }: { kind: Kind }) {
               <ResultsList data={res.data?.data} isLoading={res.isLoading || !sel} />
             </>
           )}
-          {kind === 'fees' && <FeesList data={fee.data?.data} isLoading={fee.isLoading || !sel} />}
+          {kind === 'fees' && <FeesList data={fee.data?.data} isLoading={fee.isLoading || !sel} childId={sel ?? undefined} />}
           {kind === 'timetable' && (
             <TimetableWeekGrid
               entries={tt.data?.data ?? []}
