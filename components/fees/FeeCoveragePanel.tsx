@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import { CheckCircle2, XCircle, School } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,8 +23,11 @@ import { useTerminology } from '@/lib/terminology';
  * as covered for Tuition if it has its own active Tuition structure, or an
  * active "all classes" Tuition structure (classId: null) applies to everyone.
  */
+const CHIP_CAP = 24;
+
 export function FeeCoveragePanel() {
   const terminology = useTerminology();
+  const [expanded, setExpanded] = useState(false);
   const { data: classesRes, isLoading: classesLoading } = useGetClassesQuery();
   const classes = classesRes?.data ?? [];
   const { data: structuresRes, isLoading: structuresLoading } = useGetFeeStructuresQuery();
@@ -62,7 +66,7 @@ export function FeeCoveragePanel() {
     <Card className="p-4">
       <p className="mb-2 text-sm font-medium text-foreground">Tuition fee coverage</p>
       <div className="flex flex-wrap gap-1.5">
-        {classes.map((c) => {
+        {(expanded ? classes : classes.slice(0, CHIP_CAP)).map((c) => {
           const covered = hasAllClassesTuition || structures.some((s) => s.isActive && s.classId === c.id && isTuition(s));
           return (
             <Badge key={c.id} variant={covered ? 'success' : 'neutral'}>
@@ -70,6 +74,15 @@ export function FeeCoveragePanel() {
             </Badge>
           );
         })}
+        {!expanded && classes.length > CHIP_CAP && (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            +{classes.length - CHIP_CAP} more
+          </button>
+        )}
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
         {uncovered.length} {terminology.classUnitPlural.toLowerCase()} without an active Tuition structure yet

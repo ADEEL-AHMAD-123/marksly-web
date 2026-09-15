@@ -5,7 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  ChevronLeft, ChevronRight, AlertCircle, FileText, X, Wallet, RefreshCw, Receipt, Plus, Minus, Printer, Ban, ShieldOff, Download, FileDown,
+  ChevronLeft, ChevronRight, AlertCircle, FileText, X, Wallet, Receipt, Plus, Minus, Printer, Ban, ShieldOff, Download, FileDown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
@@ -36,7 +36,6 @@ import {
   useRecordPaymentMutation,
   useVoidPaymentMutation,
   useVoidInvoiceMutation,
-  useRunBillingMutation,
   useGetInvoiceDetailQuery,
   useAdjustInvoiceMutation,
   type Invoice,
@@ -78,16 +77,23 @@ const METHODS: { value: PaymentMethod; label: string }[] = [
 
 const PAGE_SIZE = 20;
 
-export function InvoicesTab() {
+/**
+ * `initialStatus`/`initialClassId` let a caller (the Fees page's clickable
+ * stat cards — "Outstanding" jumps straight to overdue+pending, "Pending
+ * invoices" to pending) land here pre-filtered instead of dumping the user
+ * on an unfiltered list they then have to filter themselves. Applied once
+ * via useState's lazy initializer, not synced on every prop change — this
+ * tab still owns its own filter state after that, same as before.
+ */
+export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?: string; initialClassId?: string } = {}) {
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('all');
-  const [classId, setClassId] = useState('all');
+  const [status, setStatus] = useState(initialStatus ?? 'all');
+  const [classId, setClassId] = useState(initialClassId ?? 'all');
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
   const [collecting, setCollecting] = useState<Invoice | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const debounced = useDebounce(query, 350);
-  const [runBilling, { isLoading: billingLoading }] = useRunBillingMutation();
   const accessToken = useSelector((s: RootState) => s.auth.accessToken);
   const [printingId, setPrintingId] = useState<string | null>(null);
 
@@ -99,16 +105,6 @@ export function InvoicesTab() {
       toast.error(e?.message || 'Could not generate slip');
     } finally {
       setPrintingId(null);
-    }
-  };
-
-  const handleRunBilling = async () => {
-    const now = new Date();
-    try {
-      const res = await runBilling({ month: now.getMonth() + 1, year: now.getFullYear() }).unwrap();
-      toast.success(`Billing done — ${res.data.created} invoice(s) created across ${res.data.structures} structure(s)`);
-    } catch (e: any) {
-      toast.error(e?.data?.error?.message || 'Could not run billing');
     }
   };
 
@@ -151,7 +147,7 @@ export function InvoicesTab() {
           <SearchInput
             value={query}
             onChange={(v) => { setQuery(v); setPage(1); }}
-            placeholder="Search student or roll number…"
+            placeholder="Search student, roll no., challan or receipt number…"
             className="flex-1"
           />
           <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
@@ -173,9 +169,6 @@ export function InvoicesTab() {
           </Select>
           <Button variant="ghost" onClick={handleExportCsv} loading={exporting} className="sm:w-auto" title="Export the current filtered list as CSV">
             <FileDown size={16} /> Export CSV
-          </Button>
-          <Button variant="secondary" onClick={handleRunBilling} loading={billingLoading} className="sm:w-auto">
-            <RefreshCw size={16} /> Run monthly billing
           </Button>
         </div>
       </div>
@@ -222,7 +215,7 @@ export function InvoicesTab() {
                           </Button>
                           <Button size="sm" variant="ghost" onClick={() => setDetailId(inv.id)}>Details</Button>
                           {inv.status !== 'paid' && (
-                            <Button size="sm" variant="soft" onClick={() => setCollecting(inv)}>Collect</Button>
+                            <Button size="sm" variant="primary" onClick={() => setCollecting(inv)}>Collect</Button>
                           )}
                         </div>
                       </TableCell>
@@ -252,7 +245,7 @@ export function InvoicesTab() {
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => setDetailId(inv.id)}>Details</Button>
                     {inv.status !== 'paid' && (
-                      <Button size="sm" variant="soft" onClick={() => setCollecting(inv)}>Collect</Button>
+                      <Button size="sm" variant="primary" onClick={() => setCollecting(inv)}>Collect</Button>
                     )}
                   </div>
                 </div>

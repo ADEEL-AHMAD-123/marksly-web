@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Landmark, Star, Trash2, X, Pencil } from 'lucide-react';
+import { Plus, Landmark, Star, Trash2, X, Pencil, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,13 +34,25 @@ import { getErrorMessage } from '@/lib/get-error-message';
  * money, it only shows these details on the challan (see fee.service.ts's
  * createAdhocInvoices()/createInvoicesFor() payoutAccountId snapshot).
  */
-export function PayoutAccountsTab() {
+/**
+ * `autoOpenOnEmpty` mirrors StructuresTab.tsx's own pattern -- a deep link
+ * from the onboarding checklist/setup-status strip ("Add a bank account")
+ * should only pop the drawer open when there's genuinely nothing here yet,
+ * never on top of accounts that already exist.
+ */
+export function PayoutAccountsTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boolean } = {}) {
   const { data, isLoading } = useGetPayoutAccountsQuery();
   const accounts = data?.data ?? [];
   const [addOpen, setAddOpen] = useState(false);
   const [editAccount, setEditAccount] = useState<PayoutAccount | null>(null);
   const [deleteAccount, { isLoading: deleting }] = useDeletePayoutAccountMutation();
   const [updateAccount] = useUpdatePayoutAccountMutation();
+  const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (autoOpenOnEmpty && !isLoading && accounts.length === 0) setAddOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenOnEmpty, isLoading]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -116,8 +128,18 @@ export function PayoutAccountsTab() {
                 </div>
               </div>
               <div className="text-sm text-muted-foreground">
-                <p>A/C: {a.accountNumber}</p>
-                <p className="font-mono text-xs">{a.iban}</p>
+                <p className="flex items-center gap-1.5">
+                  A/C: {revealed[a.id] ? a.accountNumber : maskAccountNumber(a.accountNumber)}
+                  <button
+                    type="button"
+                    onClick={() => setRevealed((r) => ({ ...r, [a.id]: !r[a.id] }))}
+                    className="text-muted-foreground hover:text-foreground"
+                    aria-label={revealed[a.id] ? 'Hide account number' : 'Show account number'}
+                  >
+                    {revealed[a.id] ? <EyeOff size={13} /> : <Eye size={13} />}
+                  </button>
+                </p>
+                <p className="font-mono text-xs">{revealed[a.id] ? a.iban : maskAccountNumber(a.iban)}</p>
                 {a.branch && <p>Branch: {a.branch}</p>}
                 {a.label && <p className="mt-1 text-xs italic">{a.label}</p>}
               </div>
@@ -135,6 +157,17 @@ export function PayoutAccountsTab() {
       <EditPayoutAccountDrawer account={editAccount} onClose={() => setEditAccount(null)} />
     </div>
   );
+}
+
+/**
+ * Fintech-standard default-masked display for account numbers/IBANs shown
+ * to admins -- keeps the last 4 characters visible (enough to recognize
+ * "yes, that's the right account") while hiding the rest until the admin
+ * explicitly clicks to reveal.
+ */
+function maskAccountNumber(value: string) {
+  if (value.length <= 4) return value;
+  return '••••'.repeat(Math.ceil((value.length - 4) / 4)) + value.slice(-4);
 }
 
 const ibanRegex = /^PK\d{2}[A-Z]{4}[A-Z0-9]{16}$/;

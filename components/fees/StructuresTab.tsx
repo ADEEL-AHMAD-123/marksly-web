@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -59,12 +59,27 @@ const PRORATION_LABEL: Record<ProrationPolicy, string> = {
 };
 
 
-export function StructuresTab() {
+/**
+ * `autoOpenOnEmpty` lets a caller (the Fees page, when someone arrives via
+ * the onboarding checklist's "Set up fee structures" link) skip the extra
+ * click of finding "Add structure" themselves — but ONLY when the list is
+ * genuinely empty. If structures already exist, the same deep link should
+ * land here to review/manage what's there, not blindly pop open another
+ * "add" form on top of existing data.
+ */
+export function StructuresTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boolean } = {}) {
   const { data, isLoading } = useGetFeeStructuresQuery();
   const structures = data?.data ?? [];
   const [addOpen, setAddOpen] = useState(false);
   const [generateFor, setGenerateFor] = useState<FeeStructure | null>(null);
   const [editStructure, setEditStructure] = useState<FeeStructure | null>(null);
+
+  useEffect(() => {
+    if (autoOpenOnEmpty && !isLoading && structures.length === 0) setAddOpen(true);
+    // Only ever auto-opens once, right when the empty state is first
+    // confirmed — never re-fires just because `structures` re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenOnEmpty, isLoading]);
 
   return (
     <div className="space-y-4">
