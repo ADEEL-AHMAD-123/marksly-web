@@ -245,6 +245,11 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
   // the recommended default. `termTouched` tracks whether the admin has
   // deliberately unchecked it, so we don't fight their choice.
   const [termTouched, setTermTouched] = useState(!!duplicateFrom);
+  // With only one term to choose from, the field itself is hidden by
+  // default (same treatment as the single-charge Structure name above) --
+  // it's silently linked and a plain sentence says so, with a "Change"
+  // link for the rare case someone wants this one structure to skip it.
+  const [termRevealed, setTermRevealed] = useState(!!duplicateFrom);
 
   useEffect(() => {
     if (open) {
@@ -252,6 +257,7 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
       setNameRevealed(!!duplicateFrom);
       setYearEdited(!!duplicateFrom);
       setTermTouched(!!duplicateFrom);
+      setTermRevealed(!!duplicateFrom);
     }
   }, [open, duplicateFrom]);
 
@@ -431,40 +437,52 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
 
             <div className="border-t border-border pt-4">
               <Label>Term</Label>
-              {soleTerm ? (
-                <label className="mt-1 flex items-start gap-2.5 rounded-lg border border-border p-3">
-                  <input
-                    type="checkbox"
-                    checked={!!termId}
-                    onChange={(e) => {
-                      setTermTouched(true);
-                      setValue('termId', e.target.checked ? soleTerm.id : '', { shouldValidate: false });
-                    }}
-                    className="mt-0.5 h-4 w-4 rounded border-input text-primary focus-visible:ring-2 focus-visible:ring-ring"
-                  />
-                  <span>
-                    <span className="block text-sm font-medium text-foreground">Link to {soleTerm.name}</span>
-                    <span className="block text-xs text-muted-foreground">Recommended -- uncheck only if this structure needs a custom billing-period label instead.</span>
-                  </span>
-                </label>
+              {soleTerm && !termRevealed ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Linked to <span className="font-medium text-foreground">{soleTerm.name}</span> -- your only term.
+                  {' '}<button type="button" onClick={() => setTermRevealed(true)} className="font-medium text-primary hover:underline">Change</button>
+                </p>
+              ) : soleTerm ? (
+                <>
+                  <label className="mt-1 flex items-start gap-2.5 rounded-lg border border-border p-3">
+                    <input
+                      type="checkbox"
+                      checked={!!termId}
+                      onChange={(e) => {
+                        setTermTouched(true);
+                        setValue('termId', e.target.checked ? soleTerm.id : '', { shouldValidate: false });
+                      }}
+                      className="mt-0.5 h-4 w-4 rounded border-input text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-foreground">Link to {soleTerm.name}</span>
+                      <span className="block text-xs text-muted-foreground">Recommended -- uncheck only if this structure needs a custom billing-period label instead.</span>
+                    </span>
+                  </label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Use a "Per term" charge above for university/college billing — the same engine bills monthly for schools using an academic-year Term.
+                  </p>
+                </>
               ) : (
-                <Controller
-                  control={control}
-                  name="termId"
-                  render={({ field }) => (
-                    <Select value={field.value || 'none'} onValueChange={(v) => field.onChange(v === 'none' ? '' : v)}>
-                      <SelectTrigger><SelectValue placeholder="Link to a real term" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No term (set a custom label below instead)</SelectItem>
-                        {terms.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
+                <>
+                  <Controller
+                    control={control}
+                    name="termId"
+                    render={({ field }) => (
+                      <Select value={field.value || 'none'} onValueChange={(v) => field.onChange(v === 'none' ? '' : v)}>
+                        <SelectTrigger><SelectValue placeholder="Link to a real term" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No term (set a custom label below instead)</SelectItem>
+                          {terms.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Link a semester Term and use a "Per term" charge above for university/college billing — the same engine bills monthly for schools using an academic-year Term.
+                  </p>
+                </>
               )}
-              <p className="mt-1 text-xs text-muted-foreground">
-                Link a semester Term and use a "Per term" charge above for university/college billing — the same engine bills monthly for schools using an academic-year Term.
-              </p>
               <div className="mt-2">
                 <Label htmlFor="academicYear" className="text-xs">Billing period label</Label>
                 <Input
