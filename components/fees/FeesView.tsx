@@ -2,16 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import {
-  Wallet, Clock, FileText, Plus, RefreshCw, AlertTriangle, Landmark, LayoutList, FileStack, Eye,
+  Wallet, FileText, Plus, RefreshCw, AlertTriangle, Landmark, LayoutList, FileStack, Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
-import { StatCard } from '@/components/ui/stat-card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { InfoNote } from '@/components/ui/info-note';
 import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { useGetFeesSummaryQuery, useRunBillingMutation, usePreviewBillingQuery } from '@/store/api/feesApi';
+import { useRunBillingMutation, usePreviewBillingQuery } from '@/store/api/feesApi';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
 import { openAuthedPdf } from '@/lib/downloadFile';
@@ -39,8 +38,6 @@ import toast from 'react-hot-toast';
  * all three surfaces never independently drift on the same live data.
  */
 export function FeesView() {
-  const { data: sumRes } = useGetFeesSummaryQuery();
-  const s = sumRes?.data;
   const [adhocOpen, setAdhocOpen] = useState(false);
   const [billingConfirmOpen, setBillingConfirmOpen] = useState(false);
   const [runBilling, { isLoading: billingLoading }] = useRunBillingMutation();
@@ -102,20 +99,11 @@ export function FeesView() {
   // empty -- never on top of existing structures/accounts.
   const [initialTopTab, setInitialTopTab] = useState('collections');
   const [autoOpen, setAutoOpen] = useState(false);
-  // Which status the Collections tab should land pre-filtered on, driven by
-  // clicking a stat card ("Outstanding" -> overdue, "Pending invoices" ->
-  // pending). Undefined leaves InvoicesTab on its own default ("all").
-  const [collectionsFilter, setCollectionsFilter] = useState<string | undefined>(undefined);
-  // Bumped on every stat-card click so the top-level Tabs remounts and jumps
-  // to Collections even if the admin had already switched to Setup and the
-  // `initialTopTab` value itself isn't changing (e.g. clicking "Outstanding"
-  // twice in a row) -- Tabs is uncontrolled, so only a key change moves it.
+  // Bumped whenever a jump needs to force the top-level Tabs to remount and
+  // switch (e.g. the partial-setup banner's "Add bank account"/"Add fee
+  // structure" buttons) even when `initialTopTab`'s value itself isn't
+  // changing -- Tabs is uncontrolled, so only a key change moves it.
   const [tabNonce, setTabNonce] = useState(0);
-  const jumpToCollections = (status: string) => {
-    setInitialTopTab('collections');
-    setCollectionsFilter(status);
-    setTabNonce((n) => n + 1);
-  };
   useEffect(() => {
     const tab = new URLSearchParams(window.location.search).get('tab');
     if (tab === 'payout') {
@@ -275,29 +263,7 @@ export function FeesView() {
           <TabsTrigger value="payout"><Landmark size={14} className="mr-1.5" /> Bank Accounts</TabsTrigger>
         </TabsList>
         <TabsContent value="collections" className="space-y-4 pt-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatCard label="Collected this month" value={s ? formatCurrency(s.collectedThisMonth) : '—'} icon={Wallet} tone="success" />
-            <StatCard
-              label="Outstanding"
-              value={s ? formatCurrency(s.outstanding) : '—'}
-              icon={Clock}
-              tone="warning"
-              onClick={() => jumpToCollections('overdue')}
-            />
-            <StatCard
-              label="Pending invoices"
-              value={s ? s.pendingInvoices.toLocaleString('en-PK') : '—'}
-              icon={FileText}
-              tone="primary"
-              onClick={() => jumpToCollections('pending')}
-            />
-          </div>
-          {/* Keyed on the filter so clicking a different stat card forces a
-              remount -- InvoicesTab seeds its internal filter state from
-              `initialStatus` only once, via useState's lazy initializer, so
-              without this key a second click while already on Collections
-              would silently do nothing. */}
-          <InvoicesTab key={collectionsFilter ?? 'all'} initialStatus={collectionsFilter} />
+          <InvoicesTab />
           <InfoNote title="New to fee collection? Read this first">
             <p>
               Marksly does not collect or hold fee money on your behalf. Challans show your own bank account
