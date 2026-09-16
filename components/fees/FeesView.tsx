@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
-  Wallet, Clock, FileText, Plus, RefreshCw, AlertTriangle, Landmark, LayoutList, Settings2, Eye,
+  Wallet, Clock, FileText, Plus, RefreshCw, AlertTriangle, Landmark, LayoutList, FileStack, Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
@@ -101,7 +101,6 @@ export function FeesView() {
   // open, but only once setup data confirms that section is genuinely
   // empty -- never on top of existing structures/accounts.
   const [initialTopTab, setInitialTopTab] = useState('collections');
-  const [initialSetupTab, setInitialSetupTab] = useState('structures');
   const [autoOpen, setAutoOpen] = useState(false);
   // Which status the Collections tab should land pre-filtered on, driven by
   // clicking a stat card ("Outstanding" -> overdue, "Pending invoices" ->
@@ -120,12 +119,10 @@ export function FeesView() {
   useEffect(() => {
     const tab = new URLSearchParams(window.location.search).get('tab');
     if (tab === 'payout') {
-      setInitialTopTab('setup');
-      setInitialSetupTab('payout');
+      setInitialTopTab('payout');
       setAutoOpen(true);
     } else if (tab === 'structures') {
-      setInitialTopTab('setup');
-      setInitialSetupTab('structures');
+      setInitialTopTab('structures');
       setAutoOpen(true);
     } else if (tab === 'invoices' || tab === 'collections') {
       setInitialTopTab('collections');
@@ -201,13 +198,13 @@ export function FeesView() {
           </div>
         </Card>
 
-        <Tabs key={initialSetupTab} defaultValue={initialSetupTab}>
+        <Tabs key={initialTopTab} defaultValue={initialTopTab === 'payout' ? 'payout' : 'structures'}>
           <TabsList>
-            <TabsTrigger value="structures">What you charge</TabsTrigger>
-            <TabsTrigger value="payout">Where you get paid</TabsTrigger>
+            <TabsTrigger value="structures">Fee Structures</TabsTrigger>
+            <TabsTrigger value="payout">Bank Accounts</TabsTrigger>
           </TabsList>
-          <TabsContent value="structures" className="pt-4"><StructuresTab autoOpenOnEmpty={autoOpen && initialSetupTab === 'structures'} /></TabsContent>
-          <TabsContent value="payout" className="pt-4"><PayoutAccountsTab autoOpenOnEmpty={autoOpen && initialSetupTab === 'payout'} /></TabsContent>
+          <TabsContent value="structures" className="pt-4"><StructuresTab autoOpenOnEmpty={autoOpen && initialTopTab === 'structures'} /></TabsContent>
+          <TabsContent value="payout" className="pt-4"><PayoutAccountsTab autoOpenOnEmpty={autoOpen && initialTopTab === 'payout'} /></TabsContent>
         </Tabs>
 
         <AdhocInvoiceDialog open={adhocOpen} onClose={() => setAdhocOpen(false)} />
@@ -242,11 +239,11 @@ export function FeesView() {
               </p>
               <div className="mt-2">
                 {!setup.hasPayoutAccount ? (
-                  <Button size="sm" variant="secondary" onClick={() => { setInitialSetupTab('payout'); setInitialTopTab('setup'); setAutoOpen(true); }}>
+                  <Button size="sm" variant="secondary" onClick={() => { setInitialTopTab('payout'); setAutoOpen(true); setTabNonce((n) => n + 1); }}>
                     <Landmark size={14} /> Add bank account
                   </Button>
                 ) : (
-                  <Button size="sm" variant="secondary" onClick={() => { setInitialSetupTab('structures'); setInitialTopTab('setup'); setAutoOpen(true); }}>
+                  <Button size="sm" variant="secondary" onClick={() => { setInitialTopTab('structures'); setAutoOpen(true); setTabNonce((n) => n + 1); }}>
                     <FileText size={14} /> Add fee structure
                   </Button>
                 )}
@@ -276,10 +273,18 @@ export function FeesView() {
 
       <FeeCoveragePanel />
 
+      {/* A single row of to-the-point, purpose-named tabs -- Collections
+          for the daily work, and Fee Structures / Bank Accounts as their
+          own tabs rather than nested one level down inside a generic
+          "Setup" tab. The old two-level Collections/Setup->What-you-charge/
+          Where-you-get-paid nesting meant an admin saw two stacked pill
+          bars just to get to bank accounts; this collapses that into one
+          bar, one click away, same as Collections always was. */}
       <Tabs key={`${initialTopTab}-${tabNonce}`} defaultValue={initialTopTab}>
         <TabsList>
           <TabsTrigger value="collections"><LayoutList size={14} className="mr-1.5" /> Collections</TabsTrigger>
-          <TabsTrigger value="setup"><Settings2 size={14} className="mr-1.5" /> Setup</TabsTrigger>
+          <TabsTrigger value="structures"><FileStack size={14} className="mr-1.5" /> Fee Structures</TabsTrigger>
+          <TabsTrigger value="payout"><Landmark size={14} className="mr-1.5" /> Bank Accounts</TabsTrigger>
         </TabsList>
         <TabsContent value="collections" className="pt-4">
           {/* Keyed on the filter so clicking a different stat card forces a
@@ -289,15 +294,11 @@ export function FeesView() {
               would silently do nothing. */}
           <InvoicesTab key={collectionsFilter ?? 'all'} initialStatus={collectionsFilter} />
         </TabsContent>
-        <TabsContent value="setup" className="pt-4">
-          <Tabs key={initialSetupTab} defaultValue={initialSetupTab}>
-            <TabsList>
-              <TabsTrigger value="structures">What you charge</TabsTrigger>
-              <TabsTrigger value="payout">Where you get paid</TabsTrigger>
-            </TabsList>
-            <TabsContent value="structures" className="pt-4"><StructuresTab autoOpenOnEmpty={autoOpen && initialSetupTab === 'structures'} /></TabsContent>
-            <TabsContent value="payout" className="pt-4"><PayoutAccountsTab autoOpenOnEmpty={autoOpen && initialSetupTab === 'payout'} /></TabsContent>
-          </Tabs>
+        <TabsContent value="structures" className="pt-4">
+          <StructuresTab autoOpenOnEmpty={autoOpen && initialTopTab === 'structures'} />
+        </TabsContent>
+        <TabsContent value="payout" className="pt-4">
+          <PayoutAccountsTab autoOpenOnEmpty={autoOpen && initialTopTab === 'payout'} />
         </TabsContent>
       </Tabs>
 

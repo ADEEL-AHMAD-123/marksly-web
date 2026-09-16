@@ -41,7 +41,7 @@ const SLIDES = [
   {
     icon: FileText,
     title: 'Step 1 — What you charge (fee structures)',
-    body: 'A "fee structure" is just a named amount you charge -- e.g. Monthly Tuition, Transport, Admission Fee. You create these yourself under the "What you charge" tab; nobody else sets this for you.',
+    body: 'A "fee structure" is just a named amount you charge -- e.g. Monthly Tuition, Transport, Admission Fee. You create these yourself under the "Fee Structures" tab; nobody else sets this for you.',
     details: [
       'Give it a name, a category (Tuition, Transport, Library, etc.), and an amount.',
       'Choose a class, or leave it applying to every class at once.',
@@ -62,7 +62,7 @@ const SLIDES = [
   {
     icon: Landmark,
     title: 'Step 2 — Where you get paid (bank accounts)',
-    body: 'Add at least one of your own real bank accounts under "Where you get paid." This exact bank name, account number and IBAN is what gets printed on every bill, for whoever is paying it -- a parent or the student -- so double-check it carefully before saving.',
+    body: 'Add at least one of your own real bank accounts under "Bank Accounts." This exact bank name, account number and IBAN is what gets printed on every bill, for whoever is paying it -- a parent or the student -- so double-check it carefully before saving.',
     details: [
       'You can add more than one account, and mark one as the default.',
       'No bank account on file yet means bills can\'t tell the payer where to send money -- so add this before generating real bills.',
