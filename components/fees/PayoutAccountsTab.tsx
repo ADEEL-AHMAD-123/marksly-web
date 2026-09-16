@@ -48,16 +48,26 @@ export function PayoutAccountsTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boole
   const [deleteAccount, { isLoading: deleting }] = useDeletePayoutAccountMutation();
   const [updateAccount] = useUpdatePayoutAccountMutation();
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [ibanRevealed, setIbanRevealed] = useState<Record<string, boolean>>({});
+  // Removing this used to fire immediately on click with zero confirmation
+  // -- for most lists that's fine, but this one prints directly on bills a
+  // parent or student pays against, and removing the account a fee
+  // structure or an already-generated invoice still points to is exactly
+  // the kind of mistake that should cost a second click, especially when
+  // it's the default (or only) account.
+  const [removeTarget, setRemoveTarget] = useState<PayoutAccount | null>(null);
 
   useEffect(() => {
     if (autoOpenOnEmpty && !isLoading && accounts.length === 0) setAddOpen(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenOnEmpty, isLoading]);
 
-  const handleDelete = async (id: string) => {
+  const confirmDelete = async () => {
+    if (!removeTarget) return;
     try {
-      await deleteAccount(id).unwrap();
+      await deleteAccount(removeTarget.id).unwrap();
       toast.success('Payout account removed');
+      setRemoveTarget(null);
     } catch (e: any) {
       toast.error(getErrorMessage(e, 'Could not remove account'));
     }
@@ -151,14 +161,24 @@ export function PayoutAccountsTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boole
                     {revealed[a.id] ? <EyeOff size={13} /> : <Eye size={13} />}
                   </button>
                 </p>
-                <p className="font-mono text-xs">{revealed[a.id] ? a.iban : maskAccountNumber(a.iban)}</p>
+                <p className="flex items-center gap-1.5 font-mono text-xs">
+                  IBAN: {ibanRevealed[a.id] ? a.iban : maskAccountNumber(a.iban)}
+                  <button
+                    type="button"
+                    onClick={() => setIbanRevealed((r) => ({ ...r, [a.id]: !r[a.id] }))}
+                    className="font-sans text-muted-foreground hover:text-foreground"
+                    aria-label={ibanRevealed[a.id] ? 'Hide IBAN' : 'Show IBAN'}
+                  >
+                    {ibanRevealed[a.id] ? <EyeOff size={13} /> : <Eye size={13} />}
+                  </button>
+                </p>
                 {a.branch && <p>Branch: {a.branch}</p>}
                 {a.label && a.label !== `${a.bankName} - ${a.branch}` && a.label !== a.bankName && (
                   <p className="mt-1 text-xs italic">{a.label}</p>
                 )}
               </div>
               <div className="mt-2 flex justify-end">
-                <Button variant="ghost" size="sm" loading={deleting} onClick={() => handleDelete(a.id)}>
+                <Button variant="ghost" size="sm" onClick={() => setRemoveTarget(a)}>
                   <Trash2 size={14} /> Remove
                 </Button>
               </div>
@@ -177,6 +197,35 @@ export function PayoutAccountsTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boole
 
       <AddPayoutAccountDrawer open={addOpen} onClose={() => setAddOpen(false)} />
       <EditPayoutAccountDrawer account={editAccount} onClose={() => setEditAccount(null)} />
+
+      <ConfirmDialog
+        open={!!removeTarget}
+        onClose={() => setRemoveTarget(null)}
+        onConfirm={confirmDelete}
+        title="Remove this bank account?"
+        description={
+          removeTarget ? (
+            <>
+              <p>
+                <strong>{removeTarget.bankName} — {removeTarget.accountTitle}</strong> will no longer be
+                selectable for new challans. Invoices already generated keep showing it as-is -- this only
+                affects what's offered going forward.
+              </p>
+              {removeTarget.isDefault && (
+                <p className="mt-2 font-medium text-warning">
+                  {accounts.length === 1
+                    ? "This is your only account -- removing it leaves nothing for new challans to point to until you add another."
+                    : "This is your default account -- removing it leaves no default until you mark a different one, so double-check that's really what you want."}
+                </p>
+              )}
+            </>
+          ) : null
+        }
+        confirmLabel="Yes, remove it"
+        tone="warning"
+        loading={deleting}
+        icon={Trash2}
+      />
     </div>
   );
 }
@@ -270,9 +319,15 @@ function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () 
               <p className="mt-1 text-xs text-muted-foreground">The account holder's name your bank has on file -- this prints on the challan, so it must match exactly.</p>
               {errors.accountTitle && <p className="mt-1 text-xs text-danger">{errors.accountTitle.message}</p>}
             </div>
+            {/* Both are asked for because different payment methods need a
+                different one -- a cash/over-the-counter deposit slip
+                usually references the account number, while a bank
+                transfer or online payment goes by IBAN. Both print on the
+                challan so a payer can use whichever their method needs. */}
             <div>
               <Label htmlFor="accountNumber">Account number</Label>
               <Input id="accountNumber" {...register('accountNumber')} />
+              <p className="mt-1 text-xs text-muted-foreground">For counter/deposit-slip payments. IBAN below covers bank transfers -- both print on the challan.</p>
               {errors.accountNumber && <p className="mt-1 text-xs text-danger">{errors.accountNumber.message}</p>}
             </div>
             <div>
@@ -290,7 +345,6 @@ function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () 
             <div>
               <Label htmlFor="label">Internal label (optional)</Label>
               <Input id="label" placeholder="e.g. Transport fee account" {...register('label')} />
-              <p className="mt-1 text-xs text-muted-foreground">Only if you want a short note to tell this account apart from others in the list below.</p>
               <p className="mt-1 text-xs text-muted-foreground">Just for telling accounts apart in your own list below -- parents/students never see this.</p>
             </div>
             <label className="flex items-start gap-3 rounded-xl border border-border p-4">
@@ -322,6 +376,8 @@ function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () 
               <p className="font-medium text-foreground">{pendingValues.bankName} — {pendingValues.accountTitle}</p>
               <p className="mt-0.5 text-muted-foreground">A/C {pendingValues.accountNumber}</p>
               <p className="font-mono text-muted-foreground">{pendingValues.iban}</p>
+              {pendingValues.branch && <p className="mt-0.5 text-muted-foreground">Branch: {pendingValues.branch}</p>}
+              {pendingValues.isDefault && <p className="mt-1 font-medium text-foreground">Will become the default account.</p>}
             </div>
           </>
         ) : null
@@ -355,19 +411,29 @@ function EditPayoutAccountDrawer({ account, onClose }: { account: PayoutAccount 
         }
       : { bankName: '', accountTitle: '', accountNumber: '', iban: '', branch: '', label: '', isDefault: false },
   });
+  // Same "please double check" stop as the Add form -- editing these
+  // details carries identical challan-printing stakes (see the note at the
+  // bottom of this form), so it deserves the same second look before
+  // saving, not just on first creation.
+  const [pendingValues, setPendingValues] = useState<FormValues | null>(null);
 
-  const onSubmit = async (values: FormValues) => {
-    if (!account) return;
+  const onSubmit = (values: FormValues) => setPendingValues(values);
+
+  const confirmSave = async () => {
+    if (!account || !pendingValues) return;
     try {
-      await updateAccount({ id: account.id, ...values }).unwrap();
+      await updateAccount({ id: account.id, ...pendingValues }).unwrap();
       toast.success('Bank account updated');
+      setPendingValues(null);
       onClose();
     } catch (e: any) {
       toast.error(getErrorMessage(e, 'Could not update bank account'));
+      setPendingValues(null);
     }
   };
 
   return (
+    <>
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[440px]">
         {account && (
@@ -431,11 +497,37 @@ function EditPayoutAccountDrawer({ account, onClose }: { account: PayoutAccount 
             </div>
             <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
               <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
-              <Button type="submit" loading={isLoading}>Save changes</Button>
+              <Button type="submit">Save changes</Button>
             </div>
           </form>
         )}
       </SheetContent>
     </Sheet>
+    <ConfirmDialog
+      open={!!pendingValues}
+      onClose={() => setPendingValues(null)}
+      onConfirm={confirmSave}
+      title="Double check these bank details?"
+      description={
+        pendingValues ? (
+          <>
+            This exact text prints on every challan a parent or student sees, so a typo here means they pay the wrong
+            place. Please confirm:
+            <div className="mt-2 rounded-lg bg-muted p-3 text-xs">
+              <p className="font-medium text-foreground">{pendingValues.bankName} — {pendingValues.accountTitle}</p>
+              <p className="mt-0.5 text-muted-foreground">A/C {pendingValues.accountNumber}</p>
+              <p className="font-mono text-muted-foreground">{pendingValues.iban}</p>
+              {pendingValues.branch && <p className="mt-0.5 text-muted-foreground">Branch: {pendingValues.branch}</p>}
+              {pendingValues.isDefault && <p className="mt-1 font-medium text-foreground">Will become (or stay) the default account.</p>}
+            </div>
+          </>
+        ) : null
+      }
+      confirmLabel="Yes, save these changes"
+      tone="warning"
+      loading={isLoading}
+      icon={Landmark}
+    />
+    </>
   );
 }
