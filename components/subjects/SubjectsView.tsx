@@ -573,45 +573,12 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
             <SheetClose className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></SheetClose>
           </div>
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <Label htmlFor="name">Subject name</Label>
-                <Input id="name" placeholder="e.g. Mathematics" {...register('name')} />
-                {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
-              </div>
-              <div>
-                <Label htmlFor="code">Code</Label>
-                <Input
-                  id="code"
-                  placeholder={isEdit ? 'Auto-generated from name + class' : 'Pick a name and class to preview'}
-                  {...register('code')}
-                />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {isEdit
-                    ? 'Leave blank to auto-generate a fresh code. Used to tell apart subjects with the same name across different classes.'
-                    : 'Filled in for you as you type — must be unique per institution, but you can still edit it by hand.'}
-                </p>
-              </div>
-              <div>
-                <Label htmlFor="creditHours">Credit hours</Label>
-                <Input
-                  id="creditHours"
-                  type="number"
-                  min={0}
-                  max={20}
-                  step={0.5}
-                  placeholder="1"
-                  {...register('creditHours')}
-                />
-                {errors.creditHours ? (
-                  <p className="mt-1 text-xs text-danger">{errors.creditHours.message}</p>
-                ) : (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Only used for GPA-based grading — weights this subject in a student&apos;s GPA. Defaults to 1 if left blank.
-                  </p>
-                )}
-              </div>
+            <div>
+              <Label htmlFor="name">Subject name</Label>
+              <Input id="name" placeholder="e.g. Mathematics" {...register('name')} />
+              {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
             </div>
+
             <div>
               <Label htmlFor="classId">{terminology.classUnit}</Label>
               <Controller
@@ -630,9 +597,44 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
                 <p className="mt-1 text-xs text-danger">{errors.classId.message}</p>
               ) : (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Every subject belongs to one {terminology.classUnit.toLowerCase()} — pick it first to assign teachers below.
+                  Every subject belongs to one {terminology.classUnit.toLowerCase()} — picking it lets us suggest a code below and lets you assign teachers.
                 </p>
               )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="code">Code</Label>
+                <Input
+                  id="code"
+                  placeholder={isEdit ? 'Auto-generated from name + class' : 'Pick a name and class to preview'}
+                  {...register('code')}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {isEdit
+                    ? 'Leave blank to auto-generate a fresh code.'
+                    : 'Filled in for you once you pick a class above — still editable by hand.'}
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="creditHours" className="text-muted-foreground">Credit hours <span className="font-normal">(optional)</span></Label>
+                <Input
+                  id="creditHours"
+                  type="number"
+                  min={0}
+                  max={20}
+                  step={0.5}
+                  placeholder="1"
+                  {...register('creditHours')}
+                />
+                {errors.creditHours ? (
+                  <p className="mt-1 text-xs text-danger">{errors.creditHours.message}</p>
+                ) : (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Only if you use GPA-based grading. Ignore otherwise.
+                  </p>
+                )}
+              </div>
             </div>
 
             {selectedClass && (
