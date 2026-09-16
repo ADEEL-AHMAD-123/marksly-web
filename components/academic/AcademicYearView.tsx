@@ -449,6 +449,13 @@ function TermFormSheet({
   const [status, setStatus] = useState<TermStatus>('upcoming');
   const [parentAcademicYearId, setParentAcademicYearId] = useState<string>('');
   const [typeLockedError, setTypeLockedError] = useState<string | null>(null);
+  // Only "Academic Year" gets an auto-suggested name (from its own
+  // start/end dates, e.g. "AY 2026-2027") -- a Semester/Term/Quarter has no
+  // reliable way to guess "Fall" vs "Spring" from dates alone (varies by
+  // hemisphere/calendar), so those stay fully manual. Suggesting stops the
+  // moment the admin types their own value, same pattern as the fee
+  // structure form's name auto-sync.
+  const [nameEdited, setNameEdited] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -468,6 +475,7 @@ function TermFormSheet({
       setParentAcademicYearId('');
     }
     setTypeLockedError(null);
+    setNameEdited(mode === 'edit');
     // `structure` (and therefore defaultType) is included so that if
     // useGetMyInstitutionQuery is still loading when the create sheet first
     // opens, the form reseeds with the real default type once it arrives —
@@ -476,6 +484,13 @@ function TermFormSheet({
     // has already actively changed mid-session.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode, term?.id, structure]);
+
+  useEffect(() => {
+    if (mode !== 'create' || type !== 'academic_year' || nameEdited) return;
+    const startYear = startDate ? new Date(startDate).getFullYear() : new Date().getFullYear();
+    const endYear = endDate ? new Date(endDate).getFullYear() : startYear + 1;
+    setName(`AY ${startYear}-${endYear}`);
+  }, [mode, type, startDate, endDate, nameEdited]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -542,7 +557,15 @@ function TermFormSheet({
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
             <div>
               <Label htmlFor="term-name">Name</Label>
-              <Input id="term-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Fall 2026" />
+              <Input
+                id="term-name"
+                value={name}
+                onChange={(e) => { setNameEdited(true); setName(e.target.value); }}
+                placeholder="e.g. Fall 2026"
+              />
+              {mode === 'create' && type === 'academic_year' && !nameEdited && (
+                <p className="mt-1 text-xs text-muted-foreground">Suggested from the dates below — edit it if you'd like something different.</p>
+              )}
             </div>
             <div>
               <Label htmlFor="term-type">Type</Label>
@@ -1498,6 +1521,11 @@ function GradingSchemeCreateSheet({ open, onClose }: { open: boolean; onClose: (
   const [step, setStep] = useState<'type' | 'config'>('type');
   const [type, setType] = useState<GradingSchemeType>('percentage_letter');
   const [name, setName] = useState('');
+  // Suggests the type's own title as a starting name once it's picked
+  // (e.g. "Percentage-based Grading") -- stops overwriting the moment the
+  // admin types their own value, or if they go back and pick a different
+  // type after already customizing it.
+  const [nameEdited, setNameEdited] = useState(false);
   const [repeatPolicy, setRepeatPolicy] = useState<RepeatPolicy>('replace');
   const [config, setConfig] = useState<GradingSchemeConfig>(seedConfigFor('percentage_letter'));
   const [configError, setConfigError] = useState<string | null>(null);
@@ -1507,6 +1535,7 @@ function GradingSchemeCreateSheet({ open, onClose }: { open: boolean; onClose: (
     setStep('type');
     setType('percentage_letter');
     setName('');
+    setNameEdited(false);
     setRepeatPolicy('replace');
     setConfig(seedConfigFor('percentage_letter'));
     setConfigError(null);
@@ -1517,6 +1546,7 @@ function GradingSchemeCreateSheet({ open, onClose }: { open: boolean; onClose: (
     setConfig(seedConfigFor(t));
     setConfigError(null);
     setStep('config');
+    if (!nameEdited) setName(SCHEME_TYPE_INFO.find((info) => info.value === t)?.title ?? '');
   };
 
   const handleConfigChange = (c: GradingSchemeConfig) => {
@@ -1585,7 +1615,15 @@ function GradingSchemeCreateSheet({ open, onClose }: { open: boolean; onClose: (
               <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
                 <div>
                   <Label htmlFor="scheme-name">Name</Label>
-                  <Input id="scheme-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. High School Grading" />
+                  <Input
+                    id="scheme-name"
+                    value={name}
+                    onChange={(e) => { setNameEdited(true); setName(e.target.value); }}
+                    placeholder="e.g. High School Grading"
+                  />
+                  {!nameEdited && (
+                    <p className="mt-1 text-xs text-muted-foreground">Suggested from the type you picked — edit it if you'd like something more specific.</p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">{SCHEME_TYPE_INFO.find((t) => t.value === type)?.title}</Badge>
