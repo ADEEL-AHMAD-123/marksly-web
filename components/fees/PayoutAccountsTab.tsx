@@ -255,6 +255,7 @@ function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () 
             <div>
               <Label htmlFor="accountTitle">Account title</Label>
               <Input id="accountTitle" placeholder="Exactly as it appears on the bank statement" {...register('accountTitle')} />
+              <p className="mt-1 text-xs text-muted-foreground">The account holder's name your bank has on file -- this prints on the challan, so it must match exactly.</p>
               {errors.accountTitle && <p className="mt-1 text-xs text-danger">{errors.accountTitle.message}</p>}
             </div>
             <div>
@@ -275,8 +276,9 @@ function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () 
               <Input id="branch" placeholder="e.g. Main Boulevard Branch" {...register('branch')} />
             </div>
             <div>
-              <Label htmlFor="label">Label (optional)</Label>
+              <Label htmlFor="label">Internal label (optional)</Label>
               <Input id="label" placeholder="e.g. Transport fee account" {...register('label')} />
+              <p className="mt-1 text-xs text-muted-foreground">Just for telling accounts apart in your own list below -- parents/students never see this.</p>
             </div>
             <label className="flex items-start gap-3 rounded-xl border border-border p-4">
               <input type="checkbox" {...register('isDefault')} className="mt-0.5 h-4 w-4 rounded border-input text-primary focus-visible:ring-2 focus-visible:ring-ring" />
@@ -381,6 +383,7 @@ function EditPayoutAccountDrawer({ account, onClose }: { account: PayoutAccount 
               <div>
                 <Label htmlFor="edit-accountTitle">Account title</Label>
                 <Input id="edit-accountTitle" placeholder="Exactly as it appears on the bank statement" {...register('accountTitle')} />
+                <p className="mt-1 text-xs text-muted-foreground">The account holder's name your bank has on file -- this prints on the challan, so it must match exactly.</p>
                 {errors.accountTitle && <p className="mt-1 text-xs text-danger">{errors.accountTitle.message}</p>}
               </div>
               <div>
@@ -398,8 +401,9 @@ function EditPayoutAccountDrawer({ account, onClose }: { account: PayoutAccount 
                 <Input id="edit-branch" {...register('branch')} />
               </div>
               <div>
-                <Label htmlFor="edit-label">Label (optional)</Label>
+                <Label htmlFor="edit-label">Internal label (optional)</Label>
                 <Input id="edit-label" placeholder="e.g. Transport fee account" {...register('label')} />
+                <p className="mt-1 text-xs text-muted-foreground">Just for telling accounts apart in your own list below -- parents/students never see this.</p>
               </div>
               <label className="flex items-start gap-3 rounded-xl border border-border p-4">
                 <input type="checkbox" {...register('isDefault')} className="mt-0.5 h-4 w-4 rounded border-input text-primary focus-visible:ring-2 focus-visible:ring-ring" />
