@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -101,7 +100,18 @@ export function StructuresTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boolean }
           {Array.from({ length: 3 }).map((_, i) => <Card key={i} className="p-5"><Skeleton className="h-28 w-full" /></Card>)}
         </div>
       ) : structures.length === 0 ? (
-        <Card><EmptyState icon={FileStack} title="No fee structures yet" description="Create a structure (e.g. Monthly Tuition) then generate invoices for students." action={<Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Add structure</Button>} /></Card>
+        <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <FileStack size={16} />
+            </span>
+            <div>
+              <p className="text-sm font-medium text-foreground">No fee structures yet</p>
+              <p className="text-xs text-muted-foreground">e.g. Monthly Tuition -- add one to start generating invoices.</p>
+            </div>
+          </div>
+          <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Add structure</Button>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {structures.map((s) => (

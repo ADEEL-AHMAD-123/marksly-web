@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { InfoNote } from '@/components/ui/info-note';
 import {
@@ -96,13 +95,23 @@ export function PayoutAccountsTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boole
       {isLoading ? (
         <Card className="p-5"><Skeleton className="h-32 w-full" /></Card>
       ) : accounts.length === 0 ? (
-        <Card>
-          <EmptyState
-            icon={Landmark}
-            title="No bank account on file yet"
-            description="Add at least one account before generating any challans — parents need somewhere real to pay."
-            action={<Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Add bank account</Button>}
-          />
+        // A compact, left-aligned row rather than the big centered
+        // EmptyState -- the intro card above the tabs already explains why
+        // an account is needed, so a second full hero block here (icon,
+        // title, description, button, all vertically centered in a tall
+        // box) just restates the same thing and reads as an awkward,
+        // sparsely-filled placeholder rather than a normal part of the page.
+        <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <Landmark size={16} />
+            </span>
+            <div>
+              <p className="text-sm font-medium text-foreground">No bank account on file yet</p>
+              <p className="text-xs text-muted-foreground">Parents need somewhere real to pay -- add one to get started.</p>
+            </div>
+          </div>
+          <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Add bank account</Button>
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
