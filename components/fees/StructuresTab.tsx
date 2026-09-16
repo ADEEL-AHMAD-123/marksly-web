@@ -211,12 +211,54 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
         components: duplicateFrom.components.map((c) => ({ name: c.name, amount: c.amount, frequency: c.frequency as StructForm['components'][number]['frequency'] })),
       }
     : blankDefaults;
-  const { register, control, handleSubmit, reset, watch, formState: { errors } } = useForm<StructForm>({
+  const { register, control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<StructForm>({
     resolver: zodResolver(structSchema),
     values: defaults,
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'components' });
   const applicabilityMode = watch('applicabilityMode');
+  const componentValues = watch('components');
+  const termId = watch('termId');
+
+  // The "Name" field used to be a source of real confusion: with a single
+  // component (the overwhelming common case -- one fee, one amount), admins
+  // had to type essentially the same thing twice ("Monthly Tuition" here,
+  // then "Tuition" again as the one component's name below). While there's
+  // exactly one component and the admin hasn't deliberately renamed the
+  // structure themselves, we keep the two in sync automatically. The
+  // moment a second component is added, or the admin edits the name
+  // directly, autosync stops -- a bundle of several fees genuinely needs
+  // its own name (e.g. "Term Fee Package") that isn't any one component's.
+  const [nameEdited, setNameEdited] = useState(!!duplicateFrom);
+  // Same idea for the billing-period label vs. a linked Term: picking a
+  // real Term already implies a period, so typing the label a second time
+  // is redundant busywork -- unless the admin wants a custom label instead.
+  const [yearEdited, setYearEdited] = useState(!!duplicateFrom);
+
+  useEffect(() => {
+    if (open) {
+      setNameEdited(!!duplicateFrom);
+      setYearEdited(!!duplicateFrom);
+    }
+  }, [open, duplicateFrom]);
+
+  useEffect(() => {
+    if (nameEdited) return;
+    if (componentValues && componentValues.length === 1 && componentValues[0]?.name) {
+      setValue('name', componentValues[0].name, { shouldValidate: false });
+    }
+  }, [componentValues, nameEdited, setValue]);
+
+  useEffect(() => {
+    if (yearEdited || !termId) return;
+    const term = terms.find((t: any) => t.id === termId);
+    if (term?.name) setValue('academicYear', term.name, { shouldValidate: false });
+  }, [termId, terms, yearEdited, setValue]);
+
+  const nameField = register('name');
+  const academicYearField = register('academicYear');
+  const componentsTotal = (componentValues ?? []).reduce((sum, c) => sum + (Number(c?.amount) || 0), 0);
+  const isBundle = fields.length > 1;
 
   const onSubmit = async (values: StructForm) => {
     try {
@@ -237,57 +279,67 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
             <SheetClose className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></SheetClose>
           </div>
 
-          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+          <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
             <div>
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" placeholder="e.g. Monthly Tuition" {...register('name')} />
-              {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="academicYear">Billing period label</Label>
-                <Input id="academicYear" {...register('academicYear')} placeholder="e.g. Fall 2026, or 2025-2026" />
-                {errors.academicYear && <p className="mt-1 text-xs text-danger">{errors.academicYear.message}</p>}
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">What you're charging</p>
+              <div className="mt-2 space-y-2">
+                {fields.map((f, i) => (
+                  <div key={f.id} className="flex items-center gap-2">
+                    <Input placeholder="e.g. Tuition" className="flex-1" {...register(`components.${i}.name` as const)} />
+                    <Input type="number" placeholder="e.g. 5000" className="w-28" {...register(`components.${i}.amount` as const)} />
+                    <Controller
+                      control={control}
+                      name={`components.${i}.frequency` as const}
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="per-term">Per term</SelectItem>
+                            <SelectItem value="quarterly">Quarterly</SelectItem>
+                            <SelectItem value="annually">Annually</SelectItem>
+                            <SelectItem value="once">One-time</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    <button type="button" onClick={() => fields.length > 1 && remove(i)} disabled={fields.length <= 1} aria-label="Remove" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-danger-soft hover:text-danger disabled:opacity-40">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
               </div>
-              <div>
-                <Label>{terminology.classUnit} (optional)</Label>
-                <Controller
-                  control={control}
-                  name="classId"
-                  render={({ field }) => (
-                    <Select value={field.value || 'all'} onValueChange={(v) => field.onChange(v === 'all' ? '' : v)}>
-                      <SelectTrigger><SelectValue placeholder={`All ${terminology.classUnitPlural.toLowerCase()}`} /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All {terminology.classUnitPlural.toLowerCase()}</SelectItem>
-                        {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Term (recommended)</Label>
-              <Controller
-                control={control}
-                name="termId"
-                render={({ field }) => (
-                  <Select value={field.value || 'none'} onValueChange={(v) => field.onChange(v === 'none' ? '' : v)}>
-                    <SelectTrigger><SelectValue placeholder="Link to a real term" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No term (use the label above only)</SelectItem>
-                      {terms.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+              <div className="mt-2 flex items-center justify-between">
+                <button type="button" onClick={() => append({ name: '', amount: 0, frequency: 'monthly' })} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                  <Plus size={13} /> Add another charge
+                </button>
+                {componentsTotal > 0 && (
+                  <span className="text-xs font-medium text-muted-foreground">Total: {formatCurrency(componentsTotal)}</span>
                 )}
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Link a semester Term and use a "Per term" component below for university/college billing — the same engine bills monthly for schools using an academic-year Term.
+              </div>
+              {errors.components && <p className="mt-1 text-xs text-danger">{(errors.components as any).message || 'Check components'}</p>}
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                One line per charge -- e.g. just "Tuition," or several lines like "Tuition," "Transport," "Library" bundled under one bill.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="border-t border-border pt-4">
+              <Label htmlFor="name">Structure name</Label>
+              <Input
+                id="name"
+                placeholder="e.g. Monthly Tuition"
+                {...nameField}
+                onChange={(e) => { setNameEdited(true); nameField.onChange(e); }}
+              />
+              {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
+              <p className="mt-1 text-xs text-muted-foreground">
+                {isBundle
+                  ? 'This is what parents/students see on the bill for the whole group of charges above -- e.g. "Term Fee Package."'
+                  : "This is what parents/students see on the bill. We've filled it in from the charge above -- change it here if you'd like a different label."}
+              </p>
+            </div>
+
+            <div className="border-t border-border pt-4 grid grid-cols-2 gap-3">
               <div>
                 <Label>Category</Label>
                 <Controller
@@ -329,58 +381,75 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
               </p>
             )}
 
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <Label className="mb-0">Components</Label>
-                <button type="button" onClick={() => append({ name: '', amount: 0, frequency: 'monthly' })} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                  <Plus size={13} /> Add
-                </button>
-              </div>
-              <div className="space-y-2">
-                {fields.map((f, i) => (
-                  <div key={f.id} className="flex items-center gap-2">
-                    <Input placeholder="Name" className="flex-1" {...register(`components.${i}.name` as const)} />
-                    <Input type="number" placeholder="e.g. 5000" className="w-28" {...register(`components.${i}.amount` as const)} />
-                    <Controller
-                      control={control}
-                      name={`components.${i}.frequency` as const}
-                      render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="monthly">Monthly</SelectItem>
-                            <SelectItem value="per-term">Per term</SelectItem>
-                            <SelectItem value="quarterly">Quarterly</SelectItem>
-                            <SelectItem value="annually">Annually</SelectItem>
-                            <SelectItem value="once">One-time</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    <button type="button" onClick={() => fields.length > 1 && remove(i)} disabled={fields.length <= 1} aria-label="Remove" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-danger-soft hover:text-danger disabled:opacity-40">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              {errors.components && <p className="mt-1 text-xs text-danger">{(errors.components as any).message || 'Check components'}</p>}
+            <div className="border-t border-border pt-4">
+              <Label>{terminology.classUnit} (optional)</Label>
+              <Controller
+                control={control}
+                name="classId"
+                render={({ field }) => (
+                  <Select value={field.value || 'all'} onValueChange={(v) => field.onChange(v === 'all' ? '' : v)}>
+                    <SelectTrigger><SelectValue placeholder={`All ${terminology.classUnitPlural.toLowerCase()}`} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All {terminology.classUnitPlural.toLowerCase()}</SelectItem>
+                      {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
 
-            <div className="rounded-xl border border-border p-4">
-              <label className="flex items-start gap-3">
+            <div className="border-t border-border pt-4">
+              <Label>Term (recommended)</Label>
+              <Controller
+                control={control}
+                name="termId"
+                render={({ field }) => (
+                  <Select value={field.value || 'none'} onValueChange={(v) => field.onChange(v === 'none' ? '' : v)}>
+                    <SelectTrigger><SelectValue placeholder="Link to a real term" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No term (set a custom label below instead)</SelectItem>
+                      {terms.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Link a semester Term and use a "Per term" charge above for university/college billing — the same engine bills monthly for schools using an academic-year Term.
+              </p>
+              <div className="mt-2">
+                <Label htmlFor="academicYear" className="text-xs">Billing period label</Label>
+                <Input
+                  id="academicYear"
+                  {...academicYearField}
+                  onChange={(e) => { setYearEdited(true); academicYearField.onChange(e); }}
+                  placeholder="e.g. Fall 2026, or 2025-2026"
+                />
+                {errors.academicYear && <p className="mt-1 text-xs text-danger">{errors.academicYear.message}</p>}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {termId ? "Filled in from the term you picked above -- edit it if you'd like a different label." : 'Used to group and report on bills from this structure.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="border-t border-border pt-4">
+              <Label className="mb-0">When are bills due?</Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Applies to every bill generated from this structure -- whether by auto-bill below or you generating it manually.
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <Input id="dueDay" type="number" min={1} max={28} className="w-20" {...register('dueDay')} />
+                <span className="text-sm text-muted-foreground">day of the month</span>
+              </div>
+              <label className="mt-3 flex items-start gap-3 rounded-xl border border-border p-3">
                 <input type="checkbox" {...register('autoBill')} className="mt-0.5 h-4 w-4 rounded border-input text-primary focus-visible:ring-2 focus-visible:ring-ring" />
                 <span>
                   <span className="block text-sm font-medium text-foreground">Auto-bill every month</span>
-                  <span className="block text-xs text-muted-foreground">The monthly components are billed automatically on the 1st of each month.</span>
+                  <span className="block text-xs text-muted-foreground">Generates the monthly charges above automatically on the 1st -- leave this off if you'd rather click "Generate this month's bills" yourself.</span>
                 </span>
               </label>
-              <div className="mt-3 flex items-center gap-2">
-                <Label htmlFor="dueDay" className="mb-0 text-xs">Due day of month</Label>
-                <Input id="dueDay" type="number" min={1} max={28} className="w-20" {...register('dueDay')} />
-              </div>
             </div>
 
-            <div>
+            <div className="border-t border-border pt-4">
               <Label>Mid-period enrollment</Label>
               <Controller
                 control={control}
