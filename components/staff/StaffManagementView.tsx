@@ -797,6 +797,10 @@ function AddStaffDrawer({
               </div>
             )}
 
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Core details
+            </p>
+
             {!isEditing && (
               <div>
                 <Label htmlFor="role">Role</Label>
