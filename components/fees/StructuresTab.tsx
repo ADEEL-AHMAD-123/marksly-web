@@ -230,6 +230,11 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
   // directly, autosync stops -- a bundle of several fees genuinely needs
   // its own name (e.g. "Term Fee Package") that isn't any one component's.
   const [nameEdited, setNameEdited] = useState(!!duplicateFrom);
+  // Whether the "Structure name" field is actually shown. For the common
+  // single-charge case it stays hidden entirely -- one less field to fill
+  // in -- and only appears once there's a real bundle (2+ charges) or the
+  // admin explicitly asks to customize the bill label.
+  const [nameRevealed, setNameRevealed] = useState(!!duplicateFrom);
   // Same idea for the billing-period label vs. a linked Term: picking a
   // real Term already implies a period, so typing the label a second time
   // is redundant busywork -- unless the admin wants a custom label instead.
@@ -238,6 +243,7 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
   useEffect(() => {
     if (open) {
       setNameEdited(!!duplicateFrom);
+      setNameRevealed(!!duplicateFrom);
       setYearEdited(!!duplicateFrom);
     }
   }, [open, duplicateFrom]);
@@ -259,6 +265,7 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
   const academicYearField = register('academicYear');
   const componentsTotal = (componentValues ?? []).reduce((sum, c) => sum + (Number(c?.amount) || 0), 0);
   const isBundle = fields.length > 1;
+  const showNameField = isBundle || nameEdited || nameRevealed;
 
   const onSubmit = async (values: StructForm) => {
     try {
@@ -324,19 +331,28 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
             </div>
 
             <div className="border-t border-border pt-4">
-              <Label htmlFor="name">Structure name</Label>
-              <Input
-                id="name"
-                placeholder="e.g. Monthly Tuition"
-                {...nameField}
-                onChange={(e) => { setNameEdited(true); nameField.onChange(e); }}
-              />
-              {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
-              <p className="mt-1 text-xs text-muted-foreground">
-                {isBundle
-                  ? 'This is what parents/students see on the bill for the whole group of charges above -- e.g. "Term Fee Package."'
-                  : "This is what parents/students see on the bill. We've filled it in from the charge above -- change it here if you'd like a different label."}
-              </p>
+              {showNameField ? (
+                <>
+                  <Label htmlFor="name">Structure name</Label>
+                  <Input
+                    id="name"
+                    placeholder="e.g. Monthly Tuition"
+                    {...nameField}
+                    onChange={(e) => { setNameEdited(true); nameField.onChange(e); }}
+                  />
+                  {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {isBundle
+                      ? 'This is what parents/students see on the bill for the whole group of charges above -- e.g. "Term Fee Package."'
+                      : 'This is what parents/students see on the bill.'}
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Bill label: <span className="font-medium text-foreground">{componentValues?.[0]?.name || '—'}</span>
+                  {' '}<button type="button" onClick={() => setNameRevealed(true)} className="font-medium text-primary hover:underline">Use a different label</button>
+                </p>
+              )}
             </div>
 
             <div className="border-t border-border pt-4 grid grid-cols-2 gap-3">
