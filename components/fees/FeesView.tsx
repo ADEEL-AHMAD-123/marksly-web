@@ -98,6 +98,12 @@ export function FeesView() {
   // open, but only once setup data confirms that section is genuinely
   // empty -- never on top of existing structures/accounts.
   const [initialTopTab, setInitialTopTab] = useState('collections');
+  // Which tab is actually on screen right now -- drives which header
+  // actions show (preview belongs to Structures/Payout, invoicing actions
+  // belong to Collections), separately from `initialTopTab` (the tab we
+  // land/jump to) so that clicking between tabs doesn't fight the
+  // deep-link/jump-button remount logic below.
+  const [activeTab, setActiveTab] = useState('collections');
   const [autoOpen, setAutoOpen] = useState(false);
   // Bumped whenever a jump needs to force the top-level Tabs to remount and
   // switch (e.g. the partial-setup banner's "Add bank account"/"Add fee
@@ -116,6 +122,9 @@ export function FeesView() {
       setInitialTopTab('collections');
     }
   }, []);
+  useEffect(() => {
+    setActiveTab(initialTopTab);
+  }, [initialTopTab]);
 
   const handleRunBilling = async () => {
     const now = new Date();
@@ -136,17 +145,25 @@ export function FeesView() {
   // from "does something", and the recurring billing run gets the primary
   // (most prominent) treatment since it's the one thing that has to happen
   // every month for challans to go out at all.
+  const showPreview = activeTab === 'structures' || activeTab === 'payout';
+  const showCollectionsActions = activeTab === 'collections';
   const headerActions = (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      <Button size="sm" variant="ghost" loading={previewingSlip} onClick={handlePreviewSlip} title="See exactly what a parent or student will receive, with sample data">
-        <Eye size={16} /> Preview a sample challan
-      </Button>
-      <div className="hidden h-5 w-px bg-border sm:block" />
-      <Button size="sm" variant="secondary" onClick={() => setAdhocOpen(true)}><Plus size={16} /> One-off invoice</Button>
-      {!setup.isLoading && !setup.isNotStarted && (
-        <Button size="sm" variant="primary" onClick={() => setBillingConfirmOpen(true)}>
-          <RefreshCw size={16} /> Generate this month's bills
+      {showPreview && (
+        <Button size="sm" variant="ghost" loading={previewingSlip} onClick={handlePreviewSlip} title="See exactly what a parent or student will receive on their challan">
+          <Eye size={16} /> Preview challan
         </Button>
+      )}
+      {showPreview && showCollectionsActions && <div className="hidden h-5 w-px bg-border sm:block" />}
+      {showCollectionsActions && (
+        <>
+          <Button size="sm" variant="secondary" onClick={() => setAdhocOpen(true)}><Plus size={16} /> One-off invoice</Button>
+          {!setup.isLoading && !setup.isNotStarted && (
+            <Button size="sm" variant="primary" onClick={() => setBillingConfirmOpen(true)}>
+              <RefreshCw size={16} /> Generate this month's bills
+            </Button>
+          )}
+        </>
       )}
     </div>
   );
@@ -256,7 +273,7 @@ export function FeesView() {
           active, so switching to Bank Accounts still showed "Collected
           this month" and a Collections FAQ with nothing to do with either
           tab. That's now scoped to the one tab each belongs to. */}
-      <Tabs key={`${initialTopTab}-${tabNonce}`} defaultValue={initialTopTab}>
+      <Tabs key={`${initialTopTab}-${tabNonce}`} defaultValue={initialTopTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="collections"><LayoutList size={14} className="mr-1.5" /> Collections</TabsTrigger>
           <TabsTrigger value="structures"><FileStack size={14} className="mr-1.5" /> Fee Structures</TabsTrigger>
