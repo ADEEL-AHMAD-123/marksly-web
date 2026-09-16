@@ -157,7 +157,9 @@ export function PayoutAccountsTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boole
                 </p>
                 <p className="font-mono text-xs">{revealed[a.id] ? a.iban : maskAccountNumber(a.iban)}</p>
                 {a.branch && <p>Branch: {a.branch}</p>}
-                {a.label && <p className="mt-1 text-xs italic">{a.label}</p>}
+                {a.label && a.label !== `${a.bankName} - ${a.branch}` && a.label !== a.bankName && (
+                  <p className="mt-1 text-xs italic">{a.label}</p>
+                )}
               </div>
               <div className="mt-2 flex justify-end">
                 <Button variant="ghost" size="sm" loading={deleting} onClick={() => handleDelete(a.id)}>
@@ -200,7 +202,7 @@ type FormValues = z.infer<typeof schema>;
 
 function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [createAccount, { isLoading }] = useCreatePayoutAccountMutation();
-  const { register, control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormValues>({
+  const { register, control, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { bankName: '', accountTitle: '', accountNumber: '', iban: '', branch: '', label: '', isDefault: false },
   });
@@ -209,23 +211,12 @@ function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () 
   // before it's committed -- cheap insurance against a typo'd IBAN that
   // would otherwise only surface once a payer can't pay.
   const [pendingValues, setPendingValues] = useState<FormValues | null>(null);
-  // Internal label is optional and just for telling accounts apart in the
-  // list below -- most admins won't bother typing one, so this quietly
-  // suggests "{bank} - {branch}" (or "{bank} - {account title}" if there's
-  // no branch) the moment both are filled in. Still fully editable/clearable,
-  // since a short custom mnemonic like "Transport fee account" is often
-  // more useful than the literal bank/branch combo.
-  const [labelEdited, setLabelEdited] = useState(false);
-  const bankNameWatch = watch('bankName');
-  const branchWatch = watch('branch');
-  const accountTitleWatch = watch('accountTitle');
-
-  useEffect(() => {
-    if (labelEdited) return;
-    if (!bankNameWatch) return;
-    const suffix = branchWatch || accountTitleWatch;
-    setValue('label', suffix ? `${bankNameWatch} - ${suffix}` : bankNameWatch, { shouldValidate: false });
-  }, [labelEdited, bankNameWatch, branchWatch, accountTitleWatch, setValue]);
+  // Deliberately NOT auto-suggested from bank/branch: the card below
+  // already prints the bank name and branch right above where this would
+  // show, so a "{bank} - {branch}" default just repeats those two lines
+  // back verbatim. This field only earns its place on the card when it
+  // holds something the other fields don't already say (e.g. "Transport
+  // fee account"), so it stays blank until the admin actually wants that.
 
   const onSubmit = (values: FormValues) => setPendingValues(values);
 
@@ -294,14 +285,8 @@ function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () 
             </div>
             <div>
               <Label htmlFor="label">Internal label (optional)</Label>
-              <Input
-                id="label"
-                placeholder="e.g. Transport fee account"
-                {...register('label', { onChange: () => setLabelEdited(true) })}
-              />
-              {!labelEdited && (
-                <p className="mt-1 text-xs text-muted-foreground">Suggested from the bank/branch above -- edit or clear it for a custom mnemonic.</p>
-              )}
+              <Input id="label" placeholder="e.g. Transport fee account" {...register('label')} />
+              <p className="mt-1 text-xs text-muted-foreground">Only if you want a short note to tell this account apart from others in the list below.</p>
               <p className="mt-1 text-xs text-muted-foreground">Just for telling accounts apart in your own list below -- parents/students never see this.</p>
             </div>
             <label className="flex items-start gap-3 rounded-xl border border-border p-4">
