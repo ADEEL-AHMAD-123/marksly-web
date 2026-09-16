@@ -239,14 +239,29 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
   // real Term already implies a period, so typing the label a second time
   // is redundant busywork -- unless the admin wants a custom label instead.
   const [yearEdited, setYearEdited] = useState(!!duplicateFrom);
+  // When there's exactly one term to choose from, a dropdown offering
+  // "that one term" vs. "no term" is a pointless-feeling decision --
+  // replaced below with a single checkbox, pre-checked since linking is
+  // the recommended default. `termTouched` tracks whether the admin has
+  // deliberately unchecked it, so we don't fight their choice.
+  const [termTouched, setTermTouched] = useState(!!duplicateFrom);
 
   useEffect(() => {
     if (open) {
       setNameEdited(!!duplicateFrom);
       setNameRevealed(!!duplicateFrom);
       setYearEdited(!!duplicateFrom);
+      setTermTouched(!!duplicateFrom);
     }
   }, [open, duplicateFrom]);
+
+  const soleTerm = terms.length === 1 ? terms[0] : null;
+
+  useEffect(() => {
+    if (!soleTerm || termTouched) return;
+    setValue('termId', soleTerm.id, { shouldValidate: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [soleTerm?.id, termTouched]);
 
   useEffect(() => {
     if (nameEdited) return;
@@ -415,20 +430,38 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
             </div>
 
             <div className="border-t border-border pt-4">
-              <Label>Term (recommended)</Label>
-              <Controller
-                control={control}
-                name="termId"
-                render={({ field }) => (
-                  <Select value={field.value || 'none'} onValueChange={(v) => field.onChange(v === 'none' ? '' : v)}>
-                    <SelectTrigger><SelectValue placeholder="Link to a real term" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No term (set a custom label below instead)</SelectItem>
-                      {terms.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
+              <Label>Term</Label>
+              {soleTerm ? (
+                <label className="mt-1 flex items-start gap-2.5 rounded-lg border border-border p-3">
+                  <input
+                    type="checkbox"
+                    checked={!!termId}
+                    onChange={(e) => {
+                      setTermTouched(true);
+                      setValue('termId', e.target.checked ? soleTerm.id : '', { shouldValidate: false });
+                    }}
+                    className="mt-0.5 h-4 w-4 rounded border-input text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-foreground">Link to {soleTerm.name}</span>
+                    <span className="block text-xs text-muted-foreground">Recommended -- uncheck only if this structure needs a custom billing-period label instead.</span>
+                  </span>
+                </label>
+              ) : (
+                <Controller
+                  control={control}
+                  name="termId"
+                  render={({ field }) => (
+                    <Select value={field.value || 'none'} onValueChange={(v) => field.onChange(v === 'none' ? '' : v)}>
+                      <SelectTrigger><SelectValue placeholder="Link to a real term" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No term (set a custom label below instead)</SelectItem>
+                        {terms.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              )}
               <p className="mt-1 text-xs text-muted-foreground">
                 Link a semester Term and use a "Per term" charge above for university/college billing — the same engine bills monthly for schools using an academic-year Term.
               </p>
