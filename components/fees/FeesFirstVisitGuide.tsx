@@ -1,12 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Wallet, FileText, Landmark, Receipt, ArrowRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { RootState } from '@/store';
 
 const SLIDES = [
   {
@@ -32,40 +30,25 @@ const SLIDES = [
 ];
 
 /**
- * A one-time, skippable orientation shown the first time an admin with zero
- * fee setup opens this page -- answers "what am I even looking at" before
- * the wizard-style Add-structure/Add-account forms ask anything of them.
- * Dismissal is remembered per-institution in localStorage (same pattern as
- * ThemeProvider.tsx's own use of it) so it never nags again once seen,
- * across whichever admin user opens this browser.
+ * A short, skippable orientation explaining the whole fee loop in plain
+ * language -- answers "what am I even looking at" before the wizard-style
+ * Add-structure/Add-account forms ask anything of the admin. Fully
+ * controlled by the caller (FeesView.tsx decides when to auto-open it once
+ * per institution, and also exposes a permanent "How does this work?" link
+ * that reopens it on demand) rather than hiding its own show/hide logic,
+ * so it's never a one-shot dialog an admin can't get back to.
  */
-export function FeesFirstVisitGuide({ show }: { show: boolean }) {
-  const institutionId = useSelector((s: RootState) => s.auth.user?.institutionId);
-  const [dismissed, setDismissed] = useState(true); // default closed until we've checked storage, to avoid a flash on every load
+export function FeesFirstVisitGuide({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [slide, setSlide] = useState(0);
 
+  // Always start from the beginning on each fresh open, whether that's the
+  // automatic first-visit trigger or a manual "How does this work?" click.
   useEffect(() => {
-    if (!institutionId) return;
-    try {
-      const seen = window.localStorage.getItem(`fees-guide-seen-${institutionId}`);
-      setDismissed(!!seen);
-    } catch {
-      // Private browsing / blocked storage -- fail open to "already seen"
-      // rather than nagging every load with no way to remember dismissal.
-      setDismissed(true);
-    }
-  }, [institutionId]);
+    if (open) setSlide(0);
+  }, [open]);
 
-  const close = () => {
-    setDismissed(true);
-    try {
-      if (institutionId) window.localStorage.setItem(`fees-guide-seen-${institutionId}`, '1');
-    } catch {
-      // Ignore -- worst case it shows again next visit.
-    }
-  };
+  const close = () => onClose();
 
-  const open = show && !dismissed;
   const s = SLIDES[slide];
   const Icon = s.icon;
   const isLast = slide === SLIDES.length - 1;

@@ -9,7 +9,6 @@ import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { InfoNote } from '@/components/ui/info-note';
-import { EmptyState } from '@/components/ui/empty-state';
 import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useGetFeesSummaryQuery, useRunBillingMutation } from '@/store/api/feesApi';
@@ -48,6 +47,28 @@ export function FeesView() {
   const setup = useFeeSetupStatus();
   const accessToken = useSelector((s: RootState) => s.auth.accessToken);
   const [previewingSlip, setPreviewingSlip] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const institutionId = useSelector((s: RootState) => s.auth.user?.institutionId);
+
+  // Auto-open the "how does this work" walkthrough once per institution the
+  // first time it lands on a not-started Fees page -- but only once ever;
+  // after that it's reachable only via the permanent "How does this work?"
+  // link, never forced again. Runs after setup finishes loading so it
+  // doesn't fire on a still-loading page and then again once data resolves.
+  useEffect(() => {
+    if (setup.isLoading || !setup.isNotStarted || !institutionId) return;
+    try {
+      const seenKey = `fees-guide-seen-${institutionId}`;
+      if (!window.localStorage.getItem(seenKey)) {
+        window.localStorage.setItem(seenKey, '1');
+        setGuideOpen(true);
+      }
+    } catch {
+      // Private browsing / blocked storage -- just skip the auto-open;
+      // the "How does this work?" link still opens it manually.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setup.isLoading, setup.isNotStarted, institutionId]);
 
   // Lets an admin see the exact challan a parent will receive -- their own
   // logo/address and whichever bank account is currently default -- with
@@ -127,7 +148,11 @@ export function FeesView() {
     </div>
   );
 
-  // ---- Not started: one dedicated guided page, not three empty tabs ----
+  // ---- Not started: one short intro, then the same Setup tabs everyone
+  // else uses -- NOT a second set of "add" buttons and a second empty
+  // state stacked on top of the tabs' own. The intro's job is orientation
+  // (what is this, how does it work), not duplicating actions the tabs
+  // below already provide. ----
   if (!setup.isLoading && setup.isNotStarted) {
     return (
       <div className="space-y-6">
@@ -135,31 +160,30 @@ export function FeesView() {
           title="Fees"
           description="Manage fee structures, generate challans and record payments."
         />
-        <Card>
-          <EmptyState
-            icon={Wallet}
-            title="Let's set up fee collection"
-            description="Before any challan can go out, add at least one fee structure (what students owe) and one bank account (where they pay it). Both are quick, one-time setup steps."
-            action={
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <Button size="sm" onClick={() => { setInitialSetupTab('structures'); setInitialTopTab('setup'); setAutoOpen(true); }}>
-                  <FileText size={16} /> Add fee structure
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => { setInitialSetupTab('payout'); setInitialTopTab('setup'); setAutoOpen(true); }}>
-                  <Landmark size={16} /> Add bank account
-                </Button>
-                <Button size="sm" variant="ghost" loading={previewingSlip} onClick={handlePreviewSlip}>
-                  <Eye size={16} /> See a sample challan first
-                </Button>
+        <Card className="p-5">
+          <div className="flex items-start gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-soft-foreground">
+              <Wallet size={20} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">Let's set up fee collection</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Before any challan can go out, add at least one fee structure (what students owe) and one bank
+                account (where they pay it) below. Both are quick, one-time setup steps.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
+                <button type="button" onClick={() => setGuideOpen(true)} className="font-medium text-primary hover:underline">
+                  How does this work?
+                </button>
+                <button type="button" onClick={handlePreviewSlip} disabled={previewingSlip} className="font-medium text-primary hover:underline disabled:opacity-50">
+                  {previewingSlip ? 'Generating…' : 'See a sample challan first'}
+                </button>
               </div>
-            }
-          />
+            </div>
+          </div>
         </Card>
 
-        {/* Rendered but scrolled to below the guided empty state, in case the
-            admin wants to jump straight into Setup instead of using the CTAs
-            above -- same tabs, just not the page's primary focus yet. */}
-        <Tabs key={initialSetupTab} defaultValue={initialSetupTab} className="pt-2">
+        <Tabs key={initialSetupTab} defaultValue={initialSetupTab}>
           <TabsList>
             <TabsTrigger value="structures">What you charge</TabsTrigger>
             <TabsTrigger value="payout">Where you get paid</TabsTrigger>
@@ -169,7 +193,7 @@ export function FeesView() {
         </Tabs>
 
         <AdhocInvoiceDialog open={adhocOpen} onClose={() => setAdhocOpen(false)} />
-        <FeesFirstVisitGuide show />
+        <FeesFirstVisitGuide open={guideOpen} onClose={() => setGuideOpen(false)} />
       </div>
     );
   }
@@ -274,8 +298,13 @@ export function FeesView() {
           <p className="mt-2"><strong>Can I undo a mistake?</strong> Payments and invoices are voided or waived, never deleted -- so a correction is always visible, and nothing about money is ever quietly erased.</p>
           <p className="mt-2"><strong>Why do I need a bank account before generating bills?</strong> Every challan needs somewhere real for the parent to pay into -- without one, you'd be sending bills with no payment instructions on them.</p>
           <p className="mt-2"><strong>What's the difference between an invoice and a challan?</strong> They're the same bill -- "invoice" is what you see and manage here; "challan" is the printed/downloadable version a parent actually pays against.</p>
+          <button type="button" onClick={() => setGuideOpen(true)} className="mt-3 font-medium text-primary hover:underline">
+            Replay the "how fees work" walkthrough
+          </button>
         </InfoNote>
       </div>
+
+      <FeesFirstVisitGuide open={guideOpen} onClose={() => setGuideOpen(false)} />
 
       <ConfirmDialog
         open={billingConfirmOpen}
