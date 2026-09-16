@@ -200,7 +200,7 @@ type FormValues = z.infer<typeof schema>;
 
 function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [createAccount, { isLoading }] = useCreatePayoutAccountMutation();
-  const { register, control, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
+  const { register, control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { bankName: '', accountTitle: '', accountNumber: '', iban: '', branch: '', label: '', isDefault: false },
   });
@@ -209,6 +209,23 @@ function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () 
   // before it's committed -- cheap insurance against a typo'd IBAN that
   // would otherwise only surface once a payer can't pay.
   const [pendingValues, setPendingValues] = useState<FormValues | null>(null);
+  // Internal label is optional and just for telling accounts apart in the
+  // list below -- most admins won't bother typing one, so this quietly
+  // suggests "{bank} - {branch}" (or "{bank} - {account title}" if there's
+  // no branch) the moment both are filled in. Still fully editable/clearable,
+  // since a short custom mnemonic like "Transport fee account" is often
+  // more useful than the literal bank/branch combo.
+  const [labelEdited, setLabelEdited] = useState(false);
+  const bankNameWatch = watch('bankName');
+  const branchWatch = watch('branch');
+  const accountTitleWatch = watch('accountTitle');
+
+  useEffect(() => {
+    if (labelEdited) return;
+    if (!bankNameWatch) return;
+    const suffix = branchWatch || accountTitleWatch;
+    setValue('label', suffix ? `${bankNameWatch} - ${suffix}` : bankNameWatch, { shouldValidate: false });
+  }, [labelEdited, bankNameWatch, branchWatch, accountTitleWatch, setValue]);
 
   const onSubmit = (values: FormValues) => setPendingValues(values);
 
@@ -277,7 +294,14 @@ function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () 
             </div>
             <div>
               <Label htmlFor="label">Internal label (optional)</Label>
-              <Input id="label" placeholder="e.g. Transport fee account" {...register('label')} />
+              <Input
+                id="label"
+                placeholder="e.g. Transport fee account"
+                {...register('label', { onChange: () => setLabelEdited(true) })}
+              />
+              {!labelEdited && (
+                <p className="mt-1 text-xs text-muted-foreground">Suggested from the bank/branch above -- edit or clear it for a custom mnemonic.</p>
+              )}
               <p className="mt-1 text-xs text-muted-foreground">Just for telling accounts apart in your own list below -- parents/students never see this.</p>
             </div>
             <label className="flex items-start gap-3 rounded-xl border border-border p-4">

@@ -271,9 +271,20 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
 
   useEffect(() => {
     if (nameEdited) return;
-    if (componentValues && componentValues.length === 1 && componentValues[0]?.name) {
-      setValue('name', componentValues[0].name, { shouldValidate: false });
+    if (!componentValues || componentValues.length === 0) return;
+    const names = componentValues.map((c: any) => (c?.name || '').trim()).filter(Boolean);
+    if (names.length === 0) return;
+    if (names.length === 1) {
+      setValue('name', names[0], { shouldValidate: false });
+      return;
     }
+    // Bundle of 2+ charges: suggest "Tuition + Transport" (up to 3 names,
+    // then "+N more") as a starting point -- still editable, since a
+    // bundle's bill label is often shortened to something like "Term Fee
+    // Package" rather than a literal join of every charge in it.
+    const shown = names.slice(0, 3).join(' + ');
+    const extra = names.length > 3 ? ` +${names.length - 3} more` : '';
+    setValue('name', `${shown}${extra}`, { shouldValidate: false });
   }, [componentValues, nameEdited, setValue]);
 
   useEffect(() => {
@@ -364,7 +375,9 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
                   {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
                   <p className="mt-1 text-xs text-muted-foreground">
                     {isBundle
-                      ? 'This is what parents/students see on the bill for the whole group of charges above -- e.g. "Term Fee Package."'
+                      ? (nameEdited
+                          ? 'This is what parents/students see on the bill for the whole group of charges above.'
+                          : "Suggested from the charges above -- edit it if you'd like something shorter, like \"Term Fee Package.\"")
                       : 'This is what parents/students see on the bill.'}
                   </p>
                 </>
