@@ -134,14 +134,23 @@ export function FeesView() {
     }
   };
 
+  // Three actions of genuinely different weight -- a rare, read-only
+  // preview; an occasional one-off form; and the actual monthly batch job
+  // every institution depends on -- were previously rendered as three
+  // near-identical ghost/secondary buttons in one row, so nothing signaled
+  // which one mattered most. A thin divider now separates "just looking"
+  // from "does something", and the recurring billing run gets the primary
+  // (most prominent) treatment since it's the one thing that has to happen
+  // every month for challans to go out at all.
   const headerActions = (
     <div className="flex flex-wrap items-center justify-end gap-2">
       <Button size="sm" variant="ghost" loading={previewingSlip} onClick={handlePreviewSlip} title="See exactly what a parent or student will receive, with sample data">
         <Eye size={16} /> Preview a sample challan
       </Button>
+      <div className="hidden h-5 w-px bg-border sm:block" />
       <Button size="sm" variant="secondary" onClick={() => setAdhocOpen(true)}><Plus size={16} /> One-off invoice</Button>
       {!setup.isLoading && !setup.isNotStarted && (
-        <Button size="sm" variant="ghost" onClick={() => setBillingConfirmOpen(true)}>
+        <Button size="sm" variant="primary" onClick={() => setBillingConfirmOpen(true)}>
           <RefreshCw size={16} /> Generate this month's bills
         </Button>
       )}

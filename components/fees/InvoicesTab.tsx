@@ -100,18 +100,6 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
   const [detailId, setDetailId] = useState<string | null>(null);
   const debounced = useDebounce(query, 350);
   const accessToken = useSelector((s: RootState) => s.auth.accessToken);
-  const [printingId, setPrintingId] = useState<string | null>(null);
-
-  const handlePrintSlip = async (invoiceId: string) => {
-    setPrintingId(invoiceId);
-    try {
-      await openAuthedPdf(`/fees/invoices/${invoiceId}/slip`, accessToken);
-    } catch (e: any) {
-      toast.error(e?.message || 'Could not generate slip');
-    } finally {
-      setPrintingId(null);
-    }
-  };
 
   const { data: classesRes } = useGetClassesQuery();
   const classes = classesRes?.data ?? [];
@@ -149,32 +137,39 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
           ID Cards/Timetable. */}
       <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <SearchInput
-            value={query}
-            onChange={(v) => { setQuery(v); setPage(1); }}
-            placeholder="Search student, roll no., challan or receipt number…"
-            className="flex-1"
-          />
-          <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
-            <SelectTrigger className="sm:w-44"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="partial">Partial</SelectItem>
-              <SelectItem value="overdue">Overdue</SelectItem>
-              <SelectItem value="paid">Paid</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={classId} onValueChange={(v) => { setClassId(v); setPage(1); }}>
-            <SelectTrigger className="sm:w-44"><SelectValue placeholder="Class" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All classes</SelectItem>
-              {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button variant="ghost" onClick={handleExportCsv} loading={exporting} className="sm:w-auto" title="Export the current filtered list as CSV">
-            <FileDown size={16} /> Export CSV
-          </Button>
+          {/* Filters: scope which invoices are showing. */}
+          <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+            <SearchInput
+              value={query}
+              onChange={(v) => { setQuery(v); setPage(1); }}
+              placeholder="Search student, roll no., challan or receipt number…"
+              className="flex-1"
+            />
+            <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
+              <SelectTrigger className="sm:w-44"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="partial">Partial</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={classId} onValueChange={(v) => { setClassId(v); setPage(1); }}>
+              <SelectTrigger className="sm:w-44"><SelectValue placeholder="Class" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All classes</SelectItem>
+                {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {/* Export is an action on the results, not a filter -- separated
+              with a divider so it doesn't read as a fourth filter control. */}
+          <div className="flex items-center gap-3 sm:border-l sm:border-border sm:pl-3">
+            <Button variant="ghost" onClick={handleExportCsv} loading={exporting} className="w-full sm:w-auto" title="Export the current filtered list as CSV">
+              <FileDown size={16} /> Export CSV
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -215,9 +210,6 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
                       <TableCell><Badge variant={statusBadgeFor(inv.status).variant} title={statusBadgeFor(inv.status).hint}>{statusBadgeFor(inv.status).label}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button size="sm" variant="ghost" loading={printingId === inv.id} onClick={() => handlePrintSlip(inv.id)}>
-                            <Printer size={14} /> Slip
-                          </Button>
                           <Button size="sm" variant="ghost" onClick={() => setDetailId(inv.id)}>Details</Button>
                           {inv.status !== 'paid' && (
                             <Button size="sm" variant="primary" onClick={() => setCollecting(inv)}>Collect</Button>
@@ -245,9 +237,6 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
                 <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
                   <span className="text-muted-foreground">Balance {formatCurrency(inv.balance)}</span>
                   <div className="flex items-center gap-1">
-                    <Button size="sm" variant="ghost" loading={printingId === inv.id} onClick={() => handlePrintSlip(inv.id)}>
-                      <Printer size={14} />
-                    </Button>
                     <Button size="sm" variant="ghost" onClick={() => setDetailId(inv.id)}>Details</Button>
                     {inv.status !== 'paid' && (
                       <Button size="sm" variant="primary" onClick={() => setCollecting(inv)}>Collect</Button>
