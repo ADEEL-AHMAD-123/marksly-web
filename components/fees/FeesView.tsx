@@ -253,48 +253,69 @@ export function FeesView() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Collected this month" value={s ? formatCurrency(s.collectedThisMonth) : '—'} icon={Wallet} tone="success" />
-        <StatCard
-          label="Outstanding"
-          value={s ? formatCurrency(s.outstanding) : '—'}
-          icon={Clock}
-          tone="warning"
-          onClick={() => jumpToCollections('overdue')}
-        />
-        <StatCard
-          label="Pending invoices"
-          value={s ? s.pendingInvoices.toLocaleString('en-PK') : '—'}
-          icon={FileText}
-          tone="primary"
-          onClick={() => jumpToCollections('pending')}
-        />
-      </div>
-
-      <FeeCoveragePanel />
-
       {/* A single row of to-the-point, purpose-named tabs -- Collections
           for the daily work, and Fee Structures / Bank Accounts as their
           own tabs rather than nested one level down inside a generic
           "Setup" tab. The old two-level Collections/Setup->What-you-charge/
           Where-you-get-paid nesting meant an admin saw two stacked pill
           bars just to get to bank accounts; this collapses that into one
-          bar, one click away, same as Collections always was. */}
+          bar, one click away, same as Collections always was.
+
+          Each tab now ALSO only shows what's actually about it -- the
+          Collections stat cards, the Tuition-coverage panel (a Fee
+          Structures setup concern) and the Collections-flavoured FAQ used
+          to render above/below every tab regardless of which one was
+          active, so switching to Bank Accounts still showed "Collected
+          this month" and a Collections FAQ with nothing to do with either
+          tab. That's now scoped to the one tab each belongs to. */}
       <Tabs key={`${initialTopTab}-${tabNonce}`} defaultValue={initialTopTab}>
         <TabsList>
           <TabsTrigger value="collections"><LayoutList size={14} className="mr-1.5" /> Collections</TabsTrigger>
           <TabsTrigger value="structures"><FileStack size={14} className="mr-1.5" /> Fee Structures</TabsTrigger>
           <TabsTrigger value="payout"><Landmark size={14} className="mr-1.5" /> Bank Accounts</TabsTrigger>
         </TabsList>
-        <TabsContent value="collections" className="pt-4">
+        <TabsContent value="collections" className="space-y-4 pt-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <StatCard label="Collected this month" value={s ? formatCurrency(s.collectedThisMonth) : '—'} icon={Wallet} tone="success" />
+            <StatCard
+              label="Outstanding"
+              value={s ? formatCurrency(s.outstanding) : '—'}
+              icon={Clock}
+              tone="warning"
+              onClick={() => jumpToCollections('overdue')}
+            />
+            <StatCard
+              label="Pending invoices"
+              value={s ? s.pendingInvoices.toLocaleString('en-PK') : '—'}
+              icon={FileText}
+              tone="primary"
+              onClick={() => jumpToCollections('pending')}
+            />
+          </div>
           {/* Keyed on the filter so clicking a different stat card forces a
               remount -- InvoicesTab seeds its internal filter state from
               `initialStatus` only once, via useState's lazy initializer, so
               without this key a second click while already on Collections
               would silently do nothing. */}
           <InvoicesTab key={collectionsFilter ?? 'all'} initialStatus={collectionsFilter} />
+          <InfoNote title="New to fee collection? Read this first">
+            <p>
+              Marksly does not collect or hold fee money on your behalf. Challans show your own bank account
+              details so whoever is paying -- a parent or the student -- pays you directly; once you receive a payment, record it right here with the payment proof to keep an auditable record.
+            </p>
+            <p className="mt-3 font-medium text-foreground">A few common questions:</p>
+            <p className="mt-1"><strong>Why doesn't Marksly hold the money itself?</strong> So there's never a delay or a middleman between a payment and your account -- whoever pays, parent or student, pays you directly, the same way they would with a paper challan.</p>
+            <p className="mt-2"><strong>What if I record a payment wrong?</strong> Nothing is silently overwritten. You void the mistaken entry with a reason, then record it correctly -- the full history stays visible under a student's invoice.</p>
+            <p className="mt-2"><strong>Can I undo a mistake?</strong> Payments and invoices are voided or waived, never deleted -- so a correction is always visible, and nothing about money is ever quietly erased.</p>
+            <p className="mt-2"><strong>Why do I need a bank account before generating bills?</strong> Every challan needs somewhere real for the payer -- parent or student -- to pay into -- without one, you'd be sending bills with no payment instructions on them.</p>
+            <p className="mt-2"><strong>What's the difference between an invoice and a challan?</strong> They're the same bill -- "invoice" is what you see and manage here; "challan" is the printed/downloadable version a parent or student actually pays against.</p>
+            <button type="button" onClick={() => setGuideOpen(true)} className="mt-3 font-medium text-primary hover:underline">
+              Replay the "how fees work" walkthrough
+            </button>
+          </InfoNote>
         </TabsContent>
-        <TabsContent value="structures" className="pt-4">
+        <TabsContent value="structures" className="space-y-4 pt-4">
+          <FeeCoveragePanel />
           <StructuresTab autoOpenOnEmpty={autoOpen && initialTopTab === 'structures'} />
         </TabsContent>
         <TabsContent value="payout" className="pt-4">
@@ -303,25 +324,6 @@ export function FeesView() {
       </Tabs>
 
       <AdhocInvoiceDialog open={adhocOpen} onClose={() => setAdhocOpen(false)} />
-
-      <div className="space-y-2">
-        <InfoNote title="New to fee collection? Read this first">
-          <p>
-            Marksly does not collect or hold fee money on your behalf. Challans show your own bank account
-            details so whoever is paying -- a parent or the student -- pays you directly; once you receive a payment, record it under{' '}
-            <strong>Collections</strong> with the payment proof to keep an auditable record.
-          </p>
-          <p className="mt-3 font-medium text-foreground">A few common questions:</p>
-          <p className="mt-1"><strong>Why doesn't Marksly hold the money itself?</strong> So there's never a delay or a middleman between a payment and your account -- whoever pays, parent or student, pays you directly, the same way they would with a paper challan.</p>
-          <p className="mt-2"><strong>What if I record a payment wrong?</strong> Nothing is silently overwritten. You void the mistaken entry with a reason, then record it correctly -- the full history stays visible under a student's invoice.</p>
-          <p className="mt-2"><strong>Can I undo a mistake?</strong> Payments and invoices are voided or waived, never deleted -- so a correction is always visible, and nothing about money is ever quietly erased.</p>
-          <p className="mt-2"><strong>Why do I need a bank account before generating bills?</strong> Every challan needs somewhere real for the payer -- parent or student -- to pay into -- without one, you'd be sending bills with no payment instructions on them.</p>
-          <p className="mt-2"><strong>What's the difference between an invoice and a challan?</strong> They're the same bill -- "invoice" is what you see and manage here; "challan" is the printed/downloadable version a parent or student actually pays against.</p>
-          <button type="button" onClick={() => setGuideOpen(true)} className="mt-3 font-medium text-primary hover:underline">
-            Replay the "how fees work" walkthrough
-          </button>
-        </InfoNote>
-      </div>
 
       <FeesFirstVisitGuide open={guideOpen} onClose={() => setGuideOpen(false)} />
 

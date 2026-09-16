@@ -207,7 +207,7 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
                 </TableHeader>
                 <TableBody>
                   {invoices.map((inv) => (
-                    <TableRow key={inv.id}>
+                    <TableRow key={inv.id} className={inv.status === 'overdue' ? 'bg-danger-soft/30' : undefined}>
                       <TableCell>
                         <p className="font-medium text-foreground">{inv.studentName}</p>
                         <p className="text-xs text-muted-foreground">{inv.rollNumber}</p>
@@ -235,7 +235,7 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
           {/* Mobile */}
           <div className="space-y-3 md:hidden">
             {invoices.map((inv) => (
-              <Card key={inv.id} className="p-4">
+              <Card key={inv.id} className={inv.status === 'overdue' ? 'border-danger/40 bg-danger-soft/20 p-4' : 'p-4'}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-foreground">{inv.studentName}</p>
