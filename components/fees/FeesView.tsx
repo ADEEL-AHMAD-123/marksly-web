@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { InfoNote } from '@/components/ui/info-note';
 import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { useGetFeesSummaryQuery, useRunBillingMutation } from '@/store/api/feesApi';
+import { useGetFeesSummaryQuery, useRunBillingMutation, usePreviewBillingQuery } from '@/store/api/feesApi';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
 import { openAuthedPdf } from '@/lib/downloadFile';
@@ -44,6 +44,15 @@ export function FeesView() {
   const [adhocOpen, setAdhocOpen] = useState(false);
   const [billingConfirmOpen, setBillingConfirmOpen] = useState(false);
   const [runBilling, { isLoading: billingLoading }] = useRunBillingMutation();
+  // Only fetched while the confirm dialog is actually open (`skip`) -- no
+  // point hitting the preview endpoint on every page load for an action
+  // the admin runs once a month.
+  const now = new Date();
+  const { data: previewRes, isFetching: previewLoading } = usePreviewBillingQuery(
+    { month: now.getMonth() + 1, year: now.getFullYear() },
+    { skip: !billingConfirmOpen }
+  );
+  const preview = previewRes?.data;
   const setup = useFeeSetupStatus();
   const accessToken = useSelector((s: RootState) => s.auth.accessToken);
   const [previewingSlip, setPreviewingSlip] = useState(false);
@@ -320,7 +329,23 @@ export function FeesView() {
         onClose={() => setBillingConfirmOpen(false)}
         onConfirm={handleRunBilling}
         title="Generate this month's bills now?"
-        description="Generates this month's invoices across every active fee structure, for every student it applies to. Students who already have an invoice for this cycle are skipped — safe to run more than once."
+        description={
+          <>
+            <p>
+              Generates this month's invoices across every active fee structure, for every student it applies to.
+              Students who already have an invoice for this cycle are skipped — safe to run more than once.
+            </p>
+            <p className="mt-2 font-medium text-foreground">
+              {previewLoading
+                ? 'Checking what this would actually create…'
+                : preview
+                  ? (preview.created > 0
+                      ? `Right now, this would create ${preview.created.toLocaleString('en-PK')} invoice${preview.created === 1 ? '' : 's'} totalling ${formatCurrency(preview.totalAmount)}.`
+                      : "Right now, this wouldn't create anything -- every eligible student already has an invoice for this cycle.")
+                  : null}
+            </p>
+          </>
+        }
         confirmLabel="Run billing"
         tone="warning"
         loading={billingLoading}

@@ -261,6 +261,14 @@ export const feesApi = baseApi.injectEndpoints({
       invalidatesTags: [{ type: 'Fees', id: 'INVOICES' }, { type: 'Fees', id: 'SUMMARY' }, 'Fees'],
     }),
 
+    // Read-only counterpart to runBilling -- same eligibility/proration
+    // logic server-side, just never writes anything. Lets the "Generate
+    // this month's bills" confirm show a real number instead of a blind
+    // confirm. No `invalidatesTags` since nothing changes.
+    previewBilling: builder.query<ApiObject<{ created: number; skipped: number; totalAmount: number; structures: number; month: number; year: number }>, { month: number; year: number }>({
+      query: ({ month, year }) => `/fees/invoices/run-billing/preview?month=${month}&year=${year}`,
+    }),
+
     getInvoiceDetail: builder.query<ApiObject<InvoiceDetail>, string>({
       query: (id) => `/fees/invoices/${id}`,
       providesTags: (_r, _e, id) => [{ type: 'Fees', id: `INVOICE-${id}` }],
@@ -375,6 +383,7 @@ export const {
   useGetInvoicesQuery,
   useGenerateInvoicesMutation,
   useRunBillingMutation,
+  usePreviewBillingQuery,
   useGetInvoiceDetailQuery,
   useAdjustInvoiceMutation,
   useVoidPaymentMutation,
