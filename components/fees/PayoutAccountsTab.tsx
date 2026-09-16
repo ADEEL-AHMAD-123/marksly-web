@@ -18,6 +18,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   useGetPayoutAccountsQuery,
   useCreatePayoutAccountMutation,
@@ -188,19 +189,30 @@ function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () 
     resolver: zodResolver(schema),
     defaultValues: { bankName: '', accountTitle: '', accountNumber: '', iban: '', branch: '', label: '', isDefault: false },
   });
+  // These exact details print on every challan a parent sees, so the first
+  // save of a new account gets one explicit "please double check" stop
+  // before it's committed -- cheap insurance against a typo'd IBAN that
+  // would otherwise only surface once a parent can't pay.
+  const [pendingValues, setPendingValues] = useState<FormValues | null>(null);
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = (values: FormValues) => setPendingValues(values);
+
+  const confirmSave = async () => {
+    if (!pendingValues) return;
     try {
-      await createAccount(values).unwrap();
+      await createAccount(pendingValues).unwrap();
       toast.success('Bank account added');
       reset();
+      setPendingValues(null);
       onClose();
     } catch (e: any) {
       toast.error(getErrorMessage(e, 'Could not add bank account'));
+      setPendingValues(null);
     }
   };
 
   return (
+    <>
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[440px]">
         <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
@@ -238,11 +250,14 @@ function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () 
             <div>
               <Label htmlFor="iban">IBAN</Label>
               <Input id="iban" placeholder="PK36SCBL0000001123456702" className="font-mono" {...register('iban')} />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Found on your chequebook or bank statement — starts with PK, 24 characters. Ask your bank if you're not sure.
+              </p>
               {errors.iban && <p className="mt-1 text-xs text-danger">{errors.iban.message}</p>}
             </div>
             <div>
               <Label htmlFor="branch">Branch (optional)</Label>
-              <Input id="branch" {...register('branch')} />
+              <Input id="branch" placeholder="e.g. Main Boulevard Branch" {...register('branch')} />
             </div>
             <div>
               <Label htmlFor="label">Label (optional)</Label>
@@ -258,11 +273,35 @@ function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () 
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
             <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
-            <Button type="submit" loading={isLoading}>Add account</Button>
+            <Button type="submit">Add account</Button>
           </div>
         </form>
       </SheetContent>
     </Sheet>
+    <ConfirmDialog
+      open={!!pendingValues}
+      onClose={() => setPendingValues(null)}
+      onConfirm={confirmSave}
+      title="Double check these bank details?"
+      description={
+        pendingValues ? (
+          <>
+            This exact text will print on every challan a parent sees, so a typo here means they pay the wrong
+            place. Please confirm:
+            <div className="mt-2 rounded-lg bg-muted p-3 text-xs">
+              <p className="font-medium text-foreground">{pendingValues.bankName} — {pendingValues.accountTitle}</p>
+              <p className="mt-0.5 text-muted-foreground">A/C {pendingValues.accountNumber}</p>
+              <p className="font-mono text-muted-foreground">{pendingValues.iban}</p>
+            </div>
+          </>
+        ) : null
+      }
+      confirmLabel="Yes, save this account"
+      tone="warning"
+      loading={isLoading}
+      icon={Landmark}
+    />
+    </>
   );
 }
 

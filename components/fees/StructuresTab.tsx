@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, X, FileStack, Receipt, Pencil } from 'lucide-react';
+import { Plus, Trash2, X, FileStack, Receipt, Pencil, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,6 +73,10 @@ export function StructuresTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boolean }
   const [addOpen, setAddOpen] = useState(false);
   const [generateFor, setGenerateFor] = useState<FeeStructure | null>(null);
   const [editStructure, setEditStructure] = useState<FeeStructure | null>(null);
+  // Seeds the Add drawer from an existing structure's data (minus its class)
+  // so setting up the same fee for a second/third class doesn't mean
+  // re-learning and re-typing the whole form again.
+  const [duplicateFrom, setDuplicateFrom] = useState<FeeStructure | null>(null);
 
   useEffect(() => {
     if (autoOpenOnEmpty && !isLoading && structures.length === 0) setAddOpen(true);
@@ -125,6 +129,9 @@ export function StructuresTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boolean }
                 <Button variant="secondary" size="sm" onClick={() => setEditStructure(s)}>
                   <Pencil size={15} />
                 </Button>
+                <Button variant="secondary" size="sm" title="Copy this to another class" onClick={() => setDuplicateFrom(s)}>
+                  <Copy size={15} />
+                </Button>
               </div>
             </Card>
           ))}
@@ -132,6 +139,7 @@ export function StructuresTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boolean }
       )}
 
       <AddStructureDrawer open={addOpen} onClose={() => setAddOpen(false)} />
+      <AddStructureDrawer open={!!duplicateFrom} onClose={() => setDuplicateFrom(null)} duplicateFrom={duplicateFrom} />
       <GenerateDrawer structure={generateFor} onClose={() => setGenerateFor(null)} />
       <EditStructureDrawer structure={editStructure} onClose={() => setEditStructure(null)} />
     </div>
@@ -159,7 +167,7 @@ type StructForm = z.infer<typeof structSchema>;
 
 function defaultYear() { const y = new Date().getFullYear(); return `${y}-${y + 1}`; }
 
-function AddStructureDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; onClose: () => void; duplicateFrom?: FeeStructure | null }) {
   const terminology = useTerminology();
   const { data: classesRes } = useGetClassesQuery();
   const classes = classesRes?.data ?? [];
@@ -167,13 +175,30 @@ function AddStructureDrawer({ open, onClose }: { open: boolean; onClose: () => v
 
   const { data: termsRes } = useGetTermsQuery();
   const terms = termsRes?.data ?? [];
-  const defaults: StructForm = {
+  const blankDefaults: StructForm = {
     name: '', academicYear: defaultYear(), termId: '', category: 'tuition', applicabilityMode: 'all-students-in-class',
     classId: '', autoBill: false, dueDay: 10, prorationPolicy: 'full', components: [{ name: 'Tuition', amount: 0, frequency: 'monthly' }],
   };
+  // Everything copies over except classId -- the whole point is picking a
+  // *different* class -- and the name gets a "(copy)" suffix so it's
+  // obviously not the same structure until renamed.
+  const defaults: StructForm = duplicateFrom
+    ? {
+        name: `${duplicateFrom.name} (copy)`,
+        academicYear: duplicateFrom.academicYear,
+        termId: duplicateFrom.termId ?? '',
+        category: duplicateFrom.category,
+        applicabilityMode: duplicateFrom.applicabilityMode,
+        classId: '',
+        autoBill: duplicateFrom.autoBill,
+        dueDay: duplicateFrom.dueDay,
+        prorationPolicy: duplicateFrom.prorationPolicy,
+        components: duplicateFrom.components.map((c) => ({ name: c.name, amount: c.amount, frequency: c.frequency as StructForm['components'][number]['frequency'] })),
+      }
+    : blankDefaults;
   const { register, control, handleSubmit, reset, watch, formState: { errors } } = useForm<StructForm>({
     resolver: zodResolver(structSchema),
-    defaultValues: defaults,
+    values: defaults,
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'components' });
   const applicabilityMode = watch('applicabilityMode');
@@ -181,8 +206,7 @@ function AddStructureDrawer({ open, onClose }: { open: boolean; onClose: () => v
   const onSubmit = async (values: StructForm) => {
     try {
       await createStructure({ ...values, classId: values.classId || undefined, termId: values.termId || undefined }).unwrap();
-      toast.success('Fee structure created');
-      reset(defaults);
+      toast.success(duplicateFrom ? 'Fee structure copied' : 'Fee structure created');
       onClose();
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not create structure');
@@ -194,7 +218,7 @@ function AddStructureDrawer({ open, onClose }: { open: boolean; onClose: () => v
       <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[460px]">
         <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
-            <h2 className="text-lg font-semibold">Add Fee Structure</h2>
+            <h2 className="text-lg font-semibold">{duplicateFrom ? 'Copy Fee Structure' : 'Add Fee Structure'}</h2>
             <SheetClose className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></SheetClose>
           </div>
 
@@ -301,7 +325,7 @@ function AddStructureDrawer({ open, onClose }: { open: boolean; onClose: () => v
                 {fields.map((f, i) => (
                   <div key={f.id} className="flex items-center gap-2">
                     <Input placeholder="Name" className="flex-1" {...register(`components.${i}.name` as const)} />
-                    <Input type="number" placeholder="Amount" className="w-28" {...register(`components.${i}.amount` as const)} />
+                    <Input type="number" placeholder="e.g. 5000" className="w-28" {...register(`components.${i}.amount` as const)} />
                     <Controller
                       control={control}
                       name={`components.${i}.frequency` as const}
@@ -450,7 +474,7 @@ function EditStructureDrawer({ structure, onClose }: { structure: FeeStructure |
                   {fields.map((f, i) => (
                     <div key={f.id} className="flex items-center gap-2">
                       <Input placeholder="Name" className="flex-1" {...register(`components.${i}.name` as const)} />
-                      <Input type="number" placeholder="Amount" className="w-28" {...register(`components.${i}.amount` as const)} />
+                      <Input type="number" placeholder="e.g. 5000" className="w-28" {...register(`components.${i}.amount` as const)} />
                       <Controller
                         control={control}
                         name={`components.${i}.frequency` as const}

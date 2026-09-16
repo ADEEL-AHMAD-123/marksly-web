@@ -100,8 +100,8 @@ export function AdhocInvoiceDialog({ open, onClose }: { open: boolean; onClose: 
 
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
             <p className="text-xs text-muted-foreground">
-              For a fine, breakage charge, or any one-time amount that doesn't fit a regular fee structure. Never
-              affects auto-billing.
+              Use this for a one-off charge -- a fine, a breakage charge, an event fee -- not routine tuition, which
+              is billed automatically from your fee structures under Setup. This never affects that auto-billing.
             </p>
 
             <div className="flex gap-2 rounded-lg bg-muted p-1">

@@ -43,12 +43,17 @@ import {
   type PaymentMethod,
 } from '@/store/api/feesApi';
 
-const statusBadge: Record<InvoiceStatus, { variant: 'warning' | 'primary' | 'success' | 'danger' | 'neutral'; label: string }> = {
-  pending: { variant: 'warning', label: 'Pending' },
-  partial: { variant: 'primary', label: 'Partial' },
-  paid: { variant: 'success', label: 'Paid' },
-  overdue: { variant: 'danger', label: 'Overdue' },
-  waived: { variant: 'neutral', label: 'Waived' },
+/**
+ * `hint` gives every badge a plain-language meaning on hover -- a
+ * first-time admin can't reliably tell "overdue" from "pending" from
+ * color alone, and "waived" isn't self-explanatory at all.
+ */
+const statusBadge: Record<InvoiceStatus, { variant: 'warning' | 'primary' | 'success' | 'danger' | 'neutral'; label: string; hint: string }> = {
+  pending: { variant: 'warning', label: 'Pending', hint: "Not yet due, or the due date has arrived but no payment is recorded yet" },
+  partial: { variant: 'primary', label: 'Partial', hint: "Some payment recorded, but the balance isn't fully paid off yet" },
+  paid: { variant: 'success', label: 'Paid', hint: "Fully paid -- nothing more owed on this invoice" },
+  overdue: { variant: 'danger', label: 'Overdue', hint: "Past its due date with a balance still remaining" },
+  waived: { variant: 'neutral', label: 'Waived', hint: "Forgiven by an admin -- no payment is expected" },
 };
 // Defensive fallback for a status value this map hasn't been updated for --
 // InvoiceStatus is a live enum on the backend model, so a badge lookup must
@@ -178,7 +183,7 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
       ) : isLoading ? (
         <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>
       ) : invoices.length === 0 ? (
-        <Card><EmptyState icon={FileText} title="No invoices found" description="Generate invoices from a fee structure to get started." /></Card>
+        <Card><EmptyState icon={FileText} title="No invoices to show" description="Invoices appear here once a fee structure generates them, or you create a one-off invoice above -- there is nothing missing or broken." /></Card>
       ) : (
         <div className={isFetching ? 'opacity-60' : ''}>
           {/* Desktop */}
@@ -207,7 +212,7 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
                       <TableCell className="text-muted-foreground">{formatDate(inv.dueDate)}</TableCell>
                       <TableCell className="text-foreground">{formatCurrency(inv.netAmount)}</TableCell>
                       <TableCell className="font-medium text-foreground">{formatCurrency(inv.balance)}</TableCell>
-                      <TableCell><Badge variant={statusBadgeFor(inv.status).variant}>{statusBadgeFor(inv.status).label}</Badge></TableCell>
+                      <TableCell><Badge variant={statusBadgeFor(inv.status).variant} title={statusBadgeFor(inv.status).hint}>{statusBadgeFor(inv.status).label}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button size="sm" variant="ghost" loading={printingId === inv.id} onClick={() => handlePrintSlip(inv.id)}>
@@ -235,7 +240,7 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
                     <p className="truncate font-medium text-foreground">{inv.studentName}</p>
                     <p className="text-xs text-muted-foreground">{inv.rollNumber} · {inv.structureName ?? '—'}</p>
                   </div>
-                  <Badge variant={statusBadgeFor(inv.status).variant}>{statusBadgeFor(inv.status).label}</Badge>
+                  <Badge variant={statusBadgeFor(inv.status).variant} title={statusBadgeFor(inv.status).hint}>{statusBadgeFor(inv.status).label}</Badge>
                 </div>
                 <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
                   <span className="text-muted-foreground">Balance {formatCurrency(inv.balance)}</span>
@@ -384,14 +389,14 @@ function CollectPaymentDrawer({ invoice, onClose }: { invoice: Invoice | null; o
               </div>
 
               <div>
-                <Label htmlFor="transactionId">Transaction / Reference (optional)</Label>
-                <Input id="transactionId" {...register('transactionId')} />
+                <Label htmlFor="transactionId">Reference number (optional)</Label>
+                <Input id="transactionId" placeholder="Only for your own records -- not shown to the parent" {...register('transactionId')} />
               </div>
 
               {showChallanField && (
                 <div>
-                  <Label htmlFor="challanNumber">Bank challan number (optional)</Label>
-                  <Input id="challanNumber" placeholder="For reconciling against the physical deposit slip" {...register('challanNumber')} />
+                  <Label htmlFor="challanNumber">Bank slip number (optional)</Label>
+                  <Input id="challanNumber" placeholder="The number printed on the physical deposit slip, if you want to match it later" {...register('challanNumber')} />
                 </div>
               )}
 

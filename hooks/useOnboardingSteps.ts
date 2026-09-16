@@ -100,9 +100,10 @@ export function useOnboardingSteps() {
     },
     {
       label: 'Set up fee structures',
-      href: '/admin/fees',
+      href: '/admin/fees?tab=structures',
       icon: DollarSign,
       done: feeStructureCount > 0,
+      hint: classCount === 0 ? 'Needs at least one class set up first -- fee structures are configured per class.' : undefined,
     },
     // Without a payout account, every fee slip a parent downloads has no
     // "pay to" bank details at all — Marksly never collects the money

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
-  Wallet, Clock, FileText, Plus, RefreshCw, AlertTriangle, Landmark, LayoutList, Settings2,
+  Wallet, Clock, FileText, Plus, RefreshCw, AlertTriangle, Landmark, LayoutList, Settings2, Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
@@ -13,6 +13,9 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useGetFeesSummaryQuery, useRunBillingMutation } from '@/store/api/feesApi';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/store';
+import { openAuthedPdf } from '@/lib/downloadFile';
 import { formatCurrency } from '@/lib/utils';
 import { useFeeSetupStatus } from '@/hooks/useFeeSetupStatus';
 import { InvoicesTab } from './InvoicesTab';
@@ -20,6 +23,7 @@ import { StructuresTab } from './StructuresTab';
 import { PayoutAccountsTab } from './PayoutAccountsTab';
 import { AdhocInvoiceDialog } from './AdhocInvoiceDialog';
 import { FeeCoveragePanel } from './FeeCoveragePanel';
+import { FeesFirstVisitGuide } from './FeesFirstVisitGuide';
 import toast from 'react-hot-toast';
 
 /**
@@ -42,6 +46,23 @@ export function FeesView() {
   const [billingConfirmOpen, setBillingConfirmOpen] = useState(false);
   const [runBilling, { isLoading: billingLoading }] = useRunBillingMutation();
   const setup = useFeeSetupStatus();
+  const accessToken = useSelector((s: RootState) => s.auth.accessToken);
+  const [previewingSlip, setPreviewingSlip] = useState(false);
+
+  // Lets an admin see the exact challan a parent will receive -- their own
+  // logo/address and whichever bank account is currently default -- with
+  // made-up student/amount data, before a single real invoice exists. See
+  // fee.service.ts's generateSampleSlip().
+  const handlePreviewSlip = async () => {
+    setPreviewingSlip(true);
+    try {
+      await openAuthedPdf('/fees/sample-slip', accessToken);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not generate the sample slip');
+    } finally {
+      setPreviewingSlip(false);
+    }
+  };
 
   // Deep-link support: "?tab=payout" (onboarding's "Add a bank account"
   // step) and "?tab=structures" both land inside the consolidated "Setup"
@@ -94,10 +115,13 @@ export function FeesView() {
 
   const headerActions = (
     <div className="flex flex-wrap items-center justify-end gap-2">
+      <Button size="sm" variant="ghost" loading={previewingSlip} onClick={handlePreviewSlip} title="See exactly what a parent will receive, with sample data">
+        <Eye size={16} /> Preview a sample challan
+      </Button>
       <Button size="sm" variant="secondary" onClick={() => setAdhocOpen(true)}><Plus size={16} /> One-off invoice</Button>
       {!setup.isLoading && !setup.isNotStarted && (
         <Button size="sm" variant="ghost" onClick={() => setBillingConfirmOpen(true)}>
-          <RefreshCw size={16} /> Run monthly billing
+          <RefreshCw size={16} /> Generate this month's bills
         </Button>
       )}
     </div>
@@ -124,6 +148,9 @@ export function FeesView() {
                 <Button size="sm" variant="secondary" onClick={() => { setInitialSetupTab('payout'); setInitialTopTab('setup'); setAutoOpen(true); }}>
                   <Landmark size={16} /> Add bank account
                 </Button>
+                <Button size="sm" variant="ghost" loading={previewingSlip} onClick={handlePreviewSlip}>
+                  <Eye size={16} /> See a sample challan first
+                </Button>
               </div>
             }
           />
@@ -134,14 +161,15 @@ export function FeesView() {
             above -- same tabs, just not the page's primary focus yet. */}
         <Tabs key={initialSetupTab} defaultValue={initialSetupTab} className="pt-2">
           <TabsList>
-            <TabsTrigger value="structures">Fee structures</TabsTrigger>
-            <TabsTrigger value="payout">Bank accounts</TabsTrigger>
+            <TabsTrigger value="structures">What you charge</TabsTrigger>
+            <TabsTrigger value="payout">Where you get paid</TabsTrigger>
           </TabsList>
           <TabsContent value="structures" className="pt-4"><StructuresTab autoOpenOnEmpty={autoOpen && initialSetupTab === 'structures'} /></TabsContent>
           <TabsContent value="payout" className="pt-4"><PayoutAccountsTab autoOpenOnEmpty={autoOpen && initialSetupTab === 'payout'} /></TabsContent>
         </Tabs>
 
         <AdhocInvoiceDialog open={adhocOpen} onClose={() => setAdhocOpen(false)} />
+        <FeesFirstVisitGuide show />
       </div>
     );
   }
@@ -222,8 +250,8 @@ export function FeesView() {
         <TabsContent value="setup" className="pt-4">
           <Tabs key={initialSetupTab} defaultValue={initialSetupTab}>
             <TabsList>
-              <TabsTrigger value="structures">Fee structures</TabsTrigger>
-              <TabsTrigger value="payout">Bank accounts</TabsTrigger>
+              <TabsTrigger value="structures">What you charge</TabsTrigger>
+              <TabsTrigger value="payout">Where you get paid</TabsTrigger>
             </TabsList>
             <TabsContent value="structures" className="pt-4"><StructuresTab autoOpenOnEmpty={autoOpen && initialSetupTab === 'structures'} /></TabsContent>
             <TabsContent value="payout" className="pt-4"><PayoutAccountsTab autoOpenOnEmpty={autoOpen && initialSetupTab === 'payout'} /></TabsContent>
@@ -234,12 +262,18 @@ export function FeesView() {
       <AdhocInvoiceDialog open={adhocOpen} onClose={() => setAdhocOpen(false)} />
 
       <div className="space-y-2">
-        <InfoNote title="How fee collection works">
+        <InfoNote title="New to fee collection? Read this first">
           <p>
             Marksly does not collect or hold fee money on your behalf. Challans show your own bank account
             details so parents pay you directly; once you receive a payment, record it under{' '}
             <strong>Collections</strong> with the payment proof to keep an auditable record.
           </p>
+          <p className="mt-3 font-medium text-foreground">A few common questions:</p>
+          <p className="mt-1"><strong>Why doesn't Marksly hold the money itself?</strong> So there's never a delay or a middleman between a parent's payment and your account -- they pay you directly, the same way they would with a paper challan.</p>
+          <p className="mt-2"><strong>What if I record a payment wrong?</strong> Nothing is silently overwritten. You void the mistaken entry with a reason, then record it correctly -- the full history stays visible under a student's invoice.</p>
+          <p className="mt-2"><strong>Can I undo a mistake?</strong> Payments and invoices are voided or waived, never deleted -- so a correction is always visible, and nothing about money is ever quietly erased.</p>
+          <p className="mt-2"><strong>Why do I need a bank account before generating bills?</strong> Every challan needs somewhere real for the parent to pay into -- without one, you'd be sending bills with no payment instructions on them.</p>
+          <p className="mt-2"><strong>What's the difference between an invoice and a challan?</strong> They're the same bill -- "invoice" is what you see and manage here; "challan" is the printed/downloadable version a parent actually pays against.</p>
         </InfoNote>
       </div>
 
@@ -247,7 +281,7 @@ export function FeesView() {
         open={billingConfirmOpen}
         onClose={() => setBillingConfirmOpen(false)}
         onConfirm={handleRunBilling}
-        title="Run monthly billing now?"
+        title="Generate this month's bills now?"
         description="Generates this month's invoices across every active fee structure, for every student it applies to. Students who already have an invoice for this cycle are skipped — safe to run more than once."
         confirmLabel="Run billing"
         tone="warning"
