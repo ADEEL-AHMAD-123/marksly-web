@@ -45,6 +45,19 @@ const CATEGORY_LABEL: Record<FeeCategory, string> = {
   exam: 'Board / Exam Registration',
   misc: 'Miscellaneous',
 };
+
+/** '1st'/'2nd'/'3rd'/'4th'... for a due-day caption -- no existing
+ *  formatting utility in the codebase does this. */
+function ordinalSuffix(n: number): string {
+  const v = n % 100;
+  if (v >= 11 && v <= 13) return 'th';
+  switch (n % 10) {
+    case 1: return 'st';
+    case 2: return 'nd';
+    case 3: return 'rd';
+    default: return 'th';
+  }
+}
 const APPLICABILITY_LABEL: Record<FeeApplicabilityMode, string> = {
   'all-students-in-class': 'All students automatically',
   'opt-in': 'Only opted-in students',
@@ -117,34 +130,60 @@ export function StructuresTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boolean }
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {structures.map((s) => (
-            <Card key={s.id} className={`flex flex-col p-5 ${!s.isActive ? 'opacity-60' : ''}`}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="font-semibold text-foreground">{s.name}</p>
+            <Card key={s.id} className={`flex flex-col p-5 ${!s.isActive ? 'border-dashed opacity-70' : ''}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <p className="font-semibold text-foreground">{s.name}</p>
+                    {/* Inactive was previously just a 4th badge that could
+                        wrap out of view in the badge row below -- now it's
+                        right next to the name (where the eye already lands
+                        first) plus a dashed card border, so a retired
+                        structure can't be mistaken for a live one. */}
+                    {!s.isActive && <Badge variant="neutral">Inactive</Badge>}
+                  </div>
                   <p className="text-xs text-muted-foreground">{s.academicYear} · {s.className ?? 'All classes'}</p>
+                  {/* Category/opt-in are the only two facts that change
+                      what a structure fundamentally IS, so they're the only
+                      pills left -- billing mechanics (auto-bill, due day)
+                      moved to a plain caption line below instead of a 3rd
+                      pill, since a badge implies "category" more than
+                      "schedule". */}
                   <div className="mt-1 flex flex-wrap gap-1">
                     <Badge variant="neutral">{CATEGORY_LABEL[s.category] ?? s.category}</Badge>
                     {s.applicabilityMode === 'opt-in' && <Badge variant="warning">Opt-in</Badge>}
-                    {s.autoBill && <Badge variant="success">Auto-bill · due {s.dueDay}th</Badge>}
-                    {!s.isActive && <Badge variant="neutral">Inactive</Badge>}
                   </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {s.autoBill ? `Bills automatically, due on the ${s.dueDay}${ordinalSuffix(s.dueDay)}` : 'Manual billing only -- generated on request'}
+                  </p>
                 </div>
-                <Badge variant="primary">{formatCurrency(s.total)}</Badge>
+                <Badge variant="primary" className="shrink-0">{formatCurrency(s.total)}</Badge>
               </div>
-              <div className="mt-3 flex-1 space-y-1">
-                {s.components.map((c, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{c.name}</span>
-                    <span className="text-foreground">{formatCurrency(c.amount)}</span>
-                  </div>
-                ))}
-              </div>
+              {/* Redundant for the common single-charge case (the total
+                  badge above already says the same number) -- only worth a
+                  breakdown once there's more than one line to add up. */}
+              {s.components.length > 1 && (
+                <div className="mt-3 flex-1 space-y-1">
+                  {s.components.map((c, i) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{c.name}</span>
+                      <span className="text-foreground">{formatCurrency(c.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="mt-4 flex gap-2">
-                <Button variant="secondary" size="sm" className="flex-1" onClick={() => setGenerateFor(s)}>
-                  <Receipt size={15} /> Generate invoices
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setGenerateFor(s)}
+                  title="Pick any month/term to generate for -- for backfilling a missed period, not the routine monthly run"
+                >
+                  <Receipt size={15} /> Generate for a period…
                 </Button>
                 <Button variant="secondary" size="sm" onClick={() => setEditStructure(s)}>
-                  <Pencil size={15} />
+                  <Pencil size={15} /> Edit
                 </Button>
                 <Button variant="secondary" size="sm" title="Copy this to another class" onClick={() => setDuplicateFrom(s)}>
                   <Copy size={15} />
@@ -391,6 +430,13 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
               )}
             </div>
 
+            {/* Category+Class grouped first -- "what kind of fee, for
+                which class" is the most consequential pair of choices here
+                (it's what FeeCoveragePanel checks per class), so it leads
+                instead of trailing after Category+Applicability. Applies-to
+                now sits directly next to its own opt-in explanation instead
+                of sharing a row with Category, which it has nothing to do
+                with. */}
             <div className="border-t border-border pt-4 grid grid-cols-2 gap-3">
               <div>
                 <Label>Category</Label>
@@ -410,44 +456,44 @@ function AddStructureDrawer({ open, onClose, duplicateFrom }: { open: boolean; o
                 />
               </div>
               <div>
-                <Label>Applies to</Label>
+                <Label>{terminology.classUnit} (optional)</Label>
                 <Controller
                   control={control}
-                  name="applicabilityMode"
+                  name="classId"
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    <Select value={field.value || 'all'} onValueChange={(v) => field.onChange(v === 'all' ? '' : v)}>
+                      <SelectTrigger><SelectValue placeholder={`All ${terminology.classUnitPlural.toLowerCase()}`} /></SelectTrigger>
                       <SelectContent>
-                        {(Object.keys(APPLICABILITY_LABEL) as FeeApplicabilityMode[]).map((m) => (
-                          <SelectItem key={m} value={m}>{APPLICABILITY_LABEL[m]}</SelectItem>
-                        ))}
+                        <SelectItem value="all">All {terminology.classUnitPlural.toLowerCase()}</SelectItem>
+                        {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   )}
                 />
               </div>
             </div>
-            {applicabilityMode === 'opt-in' && (
-              <p className="rounded-lg bg-warning-soft px-3 py-2 text-xs text-warning">
-                Only students you explicitly opt in (from their profile) will be billed for this — nothing is charged automatically. Good for Transport/Hostel.
-              </p>
-            )}
 
             <div className="border-t border-border pt-4">
-              <Label>{terminology.classUnit} (optional)</Label>
+              <Label>Applies to</Label>
               <Controller
                 control={control}
-                name="classId"
+                name="applicabilityMode"
                 render={({ field }) => (
-                  <Select value={field.value || 'all'} onValueChange={(v) => field.onChange(v === 'all' ? '' : v)}>
-                    <SelectTrigger><SelectValue placeholder={`All ${terminology.classUnitPlural.toLowerCase()}`} /></SelectTrigger>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All {terminology.classUnitPlural.toLowerCase()}</SelectItem>
-                      {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      {(Object.keys(APPLICABILITY_LABEL) as FeeApplicabilityMode[]).map((m) => (
+                        <SelectItem key={m} value={m}>{APPLICABILITY_LABEL[m]}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 )}
               />
+              {applicabilityMode === 'opt-in' && (
+                <p className="mt-1.5 rounded-lg bg-warning-soft px-3 py-2 text-xs text-warning">
+                  Only students you explicitly opt in (from their profile) will be billed for this — nothing is charged automatically. Good for Transport/Hostel.
+                </p>
+              )}
             </div>
 
             <div className="border-t border-border pt-4">
@@ -809,6 +855,9 @@ function GenerateDrawer({ structure, onClose }: { structure: FeeStructure | null
                 <p className="font-medium text-foreground">{structure.name}</p>
                 <p className="text-xs text-muted-foreground">{structure.className ?? 'All classes'} · {formatCurrency(structure.total)} each</p>
               </div>
+              <p className="text-xs text-muted-foreground">
+                For this one structure only, for whichever month/year you pick below -- use Collections' "Generate this month's bills" instead when you just want the current month across every structure at once.
+              </p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="month">Month</Label>
