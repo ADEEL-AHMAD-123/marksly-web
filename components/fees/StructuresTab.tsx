@@ -87,9 +87,14 @@ export function StructuresTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boolean }
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Add structure</Button>
-      </div>
+      {/* Same reasoning as PayoutAccountsTab.tsx: this toolbar button only
+          earns its place once there's a list to add to -- the empty state
+          below has its own identical CTA when there's nothing yet. */}
+      {structures.length > 0 && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Add structure</Button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

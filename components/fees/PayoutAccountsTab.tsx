@@ -83,9 +83,15 @@ export function PayoutAccountsTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boole
         </p>
       </InfoNote>
 
-      <div className="flex justify-end">
-        <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Add bank account</Button>
-      </div>
+      {/* The toolbar "Add" button only earns its place once there's a list
+          to add another row to -- while empty, the empty-state card below
+          has its own identical CTA, and showing both stacks two of the
+          same button with nothing between them. */}
+      {accounts.length > 0 && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Add bank account</Button>
+        </div>
+      )}
 
       {isLoading ? (
         <Card className="p-5"><Skeleton className="h-32 w-full" /></Card>
