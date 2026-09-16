@@ -572,13 +572,19 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               <div>
                 <Label htmlFor="rollNumber">Roll number</Label>
                 <Input id="rollNumber" {...register('rollNumber')} />
-                {errors.rollNumber && <p className="mt-1 text-xs text-danger">{errors.rollNumber.message}</p>}
+                {errors.rollNumber ? (
+                  <p className="mt-1 text-xs text-danger">{errors.rollNumber.message}</p>
+                ) : (
+                  <p className="mt-1 text-xs text-muted-foreground">Their seat/attendance number in this class — changes if they move classes.</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="admissionNumber">Admission no.</Label>
                 <Input id="admissionNumber" {...register('admissionNumber')} />
-                {errors.admissionNumber && (
+                {errors.admissionNumber ? (
                   <p className="mt-1 text-xs text-danger">{errors.admissionNumber.message}</p>
+                ) : (
+                  <p className="mt-1 text-xs text-muted-foreground">Their permanent ID from admission — stays the same for as long as they're enrolled.</p>
                 )}
               </div>
             </div>
