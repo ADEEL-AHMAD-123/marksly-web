@@ -21,11 +21,11 @@ const SLIDES = [
   {
     icon: Wallet,
     title: "How fee collection works here",
-    body: "Everything below happens inside this system -- you configure it yourself, directly, with no request or approval needed from Marksly. Marksly never collects, holds, or moves any of the money; parents always pay straight into your own bank account.",
+    body: "Everything below happens inside this system -- you configure it yourself, directly, with no request or approval needed from Marksly. Marksly never collects, holds, or moves any of the money; whoever pays -- a parent, or the student directly -- always pays straight into your own bank account.",
     details: [
       'You decide what to charge and who it applies to.',
       'This system turns that into bills (invoices/challans) automatically.',
-      'Parents pay your bank account directly -- never Marksly.',
+      'Parents or students pay your bank account directly -- never Marksly.',
       'You record each payment yourself once you receive it.',
     ],
   },
@@ -62,28 +62,29 @@ const SLIDES = [
   {
     icon: Landmark,
     title: 'Step 2 — Where you get paid (bank accounts)',
-    body: 'Add at least one of your own real bank accounts under "Where you get paid." This exact bank name, account number and IBAN is what gets printed on every bill a parent receives, so double-check it carefully before saving.',
+    body: 'Add at least one of your own real bank accounts under "Where you get paid." This exact bank name, account number and IBAN is what gets printed on every bill, for whoever is paying it -- a parent or the student -- so double-check it carefully before saving.',
     details: [
       'You can add more than one account, and mark one as the default.',
-      'No bank account on file yet means bills can\'t tell parents where to pay -- so add this before generating real bills.',
+      'No bank account on file yet means bills can\'t tell the payer where to send money -- so add this before generating real bills.',
       'You can preview exactly what the printed bill will look like anytime with "See a sample challan."',
     ],
   },
   {
     icon: Receipt,
-    title: 'Step 3 — Bills generate, parents pay you',
+    title: 'Step 3 — Bills generate, you get paid directly',
     body: 'Once a fee structure and a bank account exist, this system generates the actual bills (called invoices, or challans once printed) for every student they apply to -- automatically, on the schedule you set, or on demand with "Generate this month\'s bills."',
     details: [
       'Each bill shows your institution\'s branding and your bank details.',
-      'A parent pays directly into your account -- the same as a normal bank deposit.',
+      'A parent or the student pays directly into your account -- the same as a normal bank deposit.',
       'One-off charges (a fine, an event fee) don\'t need a fee structure -- use "One-off invoice" instead.',
     ],
   },
   {
     icon: CreditCard,
     title: "Step 4 — Recording a payment you've received",
-    body: 'When a parent actually pays, you record it yourself under Collections -- enter the amount, the method, and a reference if you have one. The invoice\'s status (Pending, Partial, Paid, Overdue) updates automatically from what you record; you never set the status directly.',
+    body: 'When a parent or student actually pays, you record it yourself under Collections -- enter the amount, the method, and a reference if you have one. The invoice\'s status (Pending, Partial, Paid, Overdue) updates automatically from what you record; you never set the status directly.',
     details: [
+      'Works for any payment method -- cash handed in at your office, bank transfer, JazzCash, EasyPaisa, cheque, or online -- not online-only.',
       'A receipt is generated automatically once a payment is recorded.',
       'Paid too much or too little? Record exactly what was received -- overpayment can be banked as credit for next time.',
     ],
@@ -100,7 +101,7 @@ const SLIDES = [
   {
     icon: Check,
     title: "You're ready",
-    body: "That's the whole loop: set up what you charge, add where you get paid, bills generate, parents pay you directly, you record it. You can replay this walkthrough anytime from the \"How does this work?\" link, and preview a sample bill before anything real exists.",
+    body: "That's the whole loop: set up what you charge, add where you get paid, bills generate, whoever is paying -- parent or student -- pays you directly by whatever method suits them, you record it. You can replay this walkthrough anytime from the \"How does this work?\" link, and preview a sample bill before anything real exists.",
     details: [],
   },
 ];

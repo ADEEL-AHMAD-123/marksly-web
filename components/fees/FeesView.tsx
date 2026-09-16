@@ -70,7 +70,7 @@ export function FeesView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setup.isLoading, setup.isNotStarted, institutionId]);
 
-  // Lets an admin see the exact challan a parent will receive -- their own
+  // Lets an admin see the exact challan a parent or student will receive -- their own
   // logo/address and whichever bank account is currently default -- with
   // made-up student/amount data, before a single real invoice exists. See
   // fee.service.ts's generateSampleSlip().
@@ -136,7 +136,7 @@ export function FeesView() {
 
   const headerActions = (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      <Button size="sm" variant="ghost" loading={previewingSlip} onClick={handlePreviewSlip} title="See exactly what a parent will receive, with sample data">
+      <Button size="sm" variant="ghost" loading={previewingSlip} onClick={handlePreviewSlip} title="See exactly what a parent or student will receive, with sample data">
         <Eye size={16} /> Preview a sample challan
       </Button>
       <Button size="sm" variant="secondary" onClick={() => setAdhocOpen(true)}><Plus size={16} /> One-off invoice</Button>
@@ -219,8 +219,8 @@ export function FeesView() {
               <p className="text-sm font-semibold text-foreground">Fee setup is incomplete</p>
               <p className="mt-0.5 text-sm text-muted-foreground">
                 {!setup.hasPayoutAccount
-                  ? "You have fee structures configured but no bank account on file — challans generated now won't tell parents where to pay."
-                  : 'You have a bank account on file but no fee structures yet — nothing will be billed to parents until at least one is added.'}
+                  ? "You have fee structures configured but no bank account on file — challans generated now won't tell parents or students where to pay."
+                  : 'You have a bank account on file but no fee structures yet — nothing will be billed to parents or students until at least one is added.'}
               </p>
               <div className="mt-2">
                 {!setup.hasPayoutAccount ? (
@@ -289,15 +289,15 @@ export function FeesView() {
         <InfoNote title="New to fee collection? Read this first">
           <p>
             Marksly does not collect or hold fee money on your behalf. Challans show your own bank account
-            details so parents pay you directly; once you receive a payment, record it under{' '}
+            details so whoever is paying -- a parent or the student -- pays you directly; once you receive a payment, record it under{' '}
             <strong>Collections</strong> with the payment proof to keep an auditable record.
           </p>
           <p className="mt-3 font-medium text-foreground">A few common questions:</p>
-          <p className="mt-1"><strong>Why doesn't Marksly hold the money itself?</strong> So there's never a delay or a middleman between a parent's payment and your account -- they pay you directly, the same way they would with a paper challan.</p>
+          <p className="mt-1"><strong>Why doesn't Marksly hold the money itself?</strong> So there's never a delay or a middleman between a payment and your account -- whoever pays, parent or student, pays you directly, the same way they would with a paper challan.</p>
           <p className="mt-2"><strong>What if I record a payment wrong?</strong> Nothing is silently overwritten. You void the mistaken entry with a reason, then record it correctly -- the full history stays visible under a student's invoice.</p>
           <p className="mt-2"><strong>Can I undo a mistake?</strong> Payments and invoices are voided or waived, never deleted -- so a correction is always visible, and nothing about money is ever quietly erased.</p>
-          <p className="mt-2"><strong>Why do I need a bank account before generating bills?</strong> Every challan needs somewhere real for the parent to pay into -- without one, you'd be sending bills with no payment instructions on them.</p>
-          <p className="mt-2"><strong>What's the difference between an invoice and a challan?</strong> They're the same bill -- "invoice" is what you see and manage here; "challan" is the printed/downloadable version a parent actually pays against.</p>
+          <p className="mt-2"><strong>Why do I need a bank account before generating bills?</strong> Every challan needs somewhere real for the payer -- parent or student -- to pay into -- without one, you'd be sending bills with no payment instructions on them.</p>
+          <p className="mt-2"><strong>What's the difference between an invoice and a challan?</strong> They're the same bill -- "invoice" is what you see and manage here; "challan" is the printed/downloadable version a parent or student actually pays against.</p>
           <button type="button" onClick={() => setGuideOpen(true)} className="mt-3 font-medium text-primary hover:underline">
             Replay the "how fees work" walkthrough
           </button>

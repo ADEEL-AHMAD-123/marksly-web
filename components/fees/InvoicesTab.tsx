@@ -390,7 +390,7 @@ function CollectPaymentDrawer({ invoice, onClose }: { invoice: Invoice | null; o
 
               <div>
                 <Label htmlFor="transactionId">Reference number (optional)</Label>
-                <Input id="transactionId" placeholder="Only for your own records -- not shown to the parent" {...register('transactionId')} />
+                <Input id="transactionId" placeholder="Only for your own records -- not shown to the parent or student" {...register('transactionId')} />
               </div>
 
               {showChallanField && (

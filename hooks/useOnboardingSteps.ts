@@ -105,7 +105,7 @@ export function useOnboardingSteps() {
       done: feeStructureCount > 0,
       hint: classCount === 0 ? 'Needs at least one class set up first -- fee structures are configured per class.' : undefined,
     },
-    // Without a payout account, every fee slip a parent downloads has no
+    // Without a payout account, every fee slip a parent or student downloads has no
     // "pay to" bank details at all — Marksly never collects the money
     // itself, so this is a hard requirement, not a nice-to-have, and
     // belongs right after fee structures since that's the point an admin
@@ -115,7 +115,7 @@ export function useOnboardingSteps() {
       href: '/admin/fees?tab=payout',
       icon: Landmark,
       done: payoutAccountCount > 0,
-      hint: feeStructureCount > 0 ? "Parents pay directly into this — it's what prints on every fee slip." : 'Needs at least one fee structure set up first.',
+      hint: feeStructureCount > 0 ? "Parents and students pay directly into this — it's what prints on every fee slip." : 'Needs at least one fee structure set up first.',
     },
   ];
 

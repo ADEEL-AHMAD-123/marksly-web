@@ -29,7 +29,7 @@ import {
 import { getErrorMessage } from '@/lib/get-error-message';
 
 /**
- * Where fee challans point parents to pay -- an institution can list
+ * Where fee challans point parents or students to pay -- an institution can list
  * several of its own real bank accounts here; Marksly never touches this
  * money, it only shows these details on the challan (see fee.service.ts's
  * createAdhocInvoices()/createInvoicesFor() payoutAccountId snapshot).
@@ -76,8 +76,8 @@ export function PayoutAccountsTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boole
     <div className="space-y-4">
       <InfoNote title="Where does the money actually go?">
         <p>
-          Marksly never collects or holds fee money. Every challan shows one of these accounts directly, so parents
-          pay your institution's own bank account. Add every account you want to receive fees into, and mark one
+          Marksly never collects or holds fee money. Every challan shows one of these accounts directly, so whoever
+          pays -- a parent or the student -- pays your institution's own bank account. Add every account you want to receive fees into, and mark one
           as the default used when a fee structure doesn't specify otherwise.
         </p>
       </InfoNote>
@@ -108,7 +108,7 @@ export function PayoutAccountsTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boole
             </span>
             <div>
               <p className="text-sm font-medium text-foreground">No bank account on file yet</p>
-              <p className="text-xs text-muted-foreground">Parents need somewhere real to pay -- add one to get started.</p>
+              <p className="text-xs text-muted-foreground">Parents and students need somewhere real to pay -- add one to get started.</p>
             </div>
           </div>
           <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Add bank account</Button>
@@ -204,10 +204,10 @@ function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () 
     resolver: zodResolver(schema),
     defaultValues: { bankName: '', accountTitle: '', accountNumber: '', iban: '', branch: '', label: '', isDefault: false },
   });
-  // These exact details print on every challan a parent sees, so the first
+  // These exact details print on every challan a parent or student sees, so the first
   // save of a new account gets one explicit "please double check" stop
   // before it's committed -- cheap insurance against a typo'd IBAN that
-  // would otherwise only surface once a parent can't pay.
+  // would otherwise only surface once a payer can't pay.
   const [pendingValues, setPendingValues] = useState<FormValues | null>(null);
 
   const onSubmit = (values: FormValues) => setPendingValues(values);
@@ -301,7 +301,7 @@ function AddPayoutAccountDrawer({ open, onClose }: { open: boolean; onClose: () 
       description={
         pendingValues ? (
           <>
-            This exact text will print on every challan a parent sees, so a typo here means they pay the wrong
+            This exact text will print on every challan a parent or student sees, so a typo here means they pay the wrong
             place. Please confirm:
             <div className="mt-2 rounded-lg bg-muted p-3 text-xs">
               <p className="font-medium text-foreground">{pendingValues.bankName} — {pendingValues.accountTitle}</p>
