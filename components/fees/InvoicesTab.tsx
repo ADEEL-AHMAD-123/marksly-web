@@ -98,6 +98,12 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
   const [exporting, setExporting] = useState(false);
   const [collecting, setCollecting] = useState<Invoice | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  // A real "print all challans for a month" endpoint (/fees/bulk-slips)
+  // already exists server-side but had no UI anywhere -- the only bulk
+  // action this list had was Export CSV, even though printing a batch of
+  // slips to hand out after generating bills is a genuinely common
+  // once-a-month task.
+  const [bulkSlipsOpen, setBulkSlipsOpen] = useState(false);
   const debounced = useDebounce(query, 350);
   const accessToken = useSelector((s: RootState) => s.auth.accessToken);
 
@@ -165,7 +171,10 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
           </div>
           {/* Export is an action on the results, not a filter -- separated
               with a divider so it doesn't read as a fourth filter control. */}
-          <div className="flex items-center gap-3 sm:border-l sm:border-border sm:pl-3">
+          <div className="flex items-center gap-2 sm:border-l sm:border-border sm:pl-3">
+            <Button variant="ghost" onClick={() => setBulkSlipsOpen(true)} className="w-full sm:w-auto" title="Print every challan for a month in one PDF">
+              <Printer size={16} /> Print all slips
+            </Button>
             <Button variant="ghost" onClick={handleExportCsv} loading={exporting} className="w-full sm:w-auto" title="Export the current filtered list as CSV">
               <FileDown size={16} /> Export CSV
             </Button>
@@ -263,7 +272,89 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
 
       <CollectPaymentDrawer invoice={collecting} onClose={() => setCollecting(null)} />
       <InvoiceDetailDrawer invoiceId={detailId} onClose={() => setDetailId(null)} />
+      <BulkSlipsDialog open={bulkSlipsOpen} onClose={() => setBulkSlipsOpen(false)} classes={classes} />
     </div>
+  );
+}
+
+const MONTH_LABEL = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/** Prints every challan for a chosen month (optionally scoped to one class)
+ *  into a single PDF -- the batch-printing counterpart to "Generate this
+ *  month's bills", for handing out physical challans after they're
+ *  created. Defaults to the current month/year since that's the case an
+ *  admin lands here for almost every time. */
+function BulkSlipsDialog({ open, onClose, classes }: { open: boolean; onClose: () => void; classes: { id: string; name: string }[] }) {
+  const now = new Date();
+  const [month, setMonth] = useState(String(now.getMonth() + 1));
+  const [year, setYear] = useState(String(now.getFullYear()));
+  const [classId, setClassId] = useState('all');
+  const [loading, setLoading] = useState(false);
+  const accessToken = useSelector((s: RootState) => s.auth.accessToken);
+
+  const submit = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ month, year });
+      if (classId !== 'all') params.set('classId', classId);
+      await openAuthedPdf(`/fees/bulk-slips?${params.toString()}`, accessToken);
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not generate the slips');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[400px]">
+        <div className="flex h-full flex-col">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold">Print all slips</h2>
+            <SheetClose className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></SheetClose>
+          </div>
+          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+            <p className="text-sm text-muted-foreground">
+              Generates one PDF with every challan due for the month below -- handy for printing a batch to hand out right after generating bills.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="bulk-slips-month">Month</Label>
+                <Select value={month} onValueChange={setMonth}>
+                  <SelectTrigger id="bulk-slips-month"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {MONTH_LABEL.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="bulk-slips-year">Year</Label>
+                <Input id="bulk-slips-year" type="number" value={year} onChange={(e) => setYear(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="bulk-slips-class">Class (optional)</Label>
+              <Select value={classId} onValueChange={setClassId}>
+                <SelectTrigger id="bulk-slips-class"><SelectValue placeholder="All classes" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All classes</SelectItem>
+                  {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">Leave as "All classes" to include the whole institution.</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
+            <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button type="button" loading={loading} onClick={submit}><Printer size={16} /> Generate PDF</Button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
