@@ -68,6 +68,7 @@ export interface Invoice {
   id: string;
   studentName: string;
   rollNumber: string;
+  className: string | null;
   structureName: string | null;
   dueDate: string;
   month: number | null;
@@ -234,7 +235,7 @@ export const feesApi = baseApi.injectEndpoints({
 
     getInvoices: builder.query<
       ApiArray<Invoice>,
-      { page?: number; limit?: number; status?: InvoiceStatus; classId?: string; search?: string } | void
+      { page?: number; limit?: number; status?: InvoiceStatus | string; classId?: string; search?: string } | void
     >({
       query: (params) => {
         const s = new URLSearchParams();

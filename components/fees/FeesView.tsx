@@ -157,7 +157,7 @@ export function FeesView() {
       {showPreview && showCollectionsActions && <div className="hidden h-5 w-px bg-border sm:block" />}
       {showCollectionsActions && (
         <>
-          <Button size="sm" variant="secondary" onClick={() => setAdhocOpen(true)}><Plus size={16} /> One-off invoice</Button>
+          <Button size="sm" variant="secondary" onClick={() => setAdhocOpen(true)}><Plus size={16} /> One-time invoice</Button>
           {!setup.isLoading && !setup.isNotStarted && (
             <Button size="sm" variant="primary" onClick={() => setBillingConfirmOpen(true)}>
               <RefreshCw size={16} /> Generate this month's bills

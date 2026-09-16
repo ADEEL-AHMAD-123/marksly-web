@@ -92,7 +92,7 @@ const PAGE_SIZE = 20;
  */
 export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?: string; initialClassId?: string } = {}) {
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState(initialStatus ?? 'all');
+  const [status, setStatus] = useState(initialStatus ?? 'unresolved');
   const [classId, setClassId] = useState(initialClassId ?? 'all');
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
@@ -110,11 +110,13 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
   const { data: classesRes } = useGetClassesQuery();
   const classes = classesRes?.data ?? [];
 
+  const statusParam = status === 'all' ? undefined : status === 'unresolved' ? 'pending,partial,overdue' : status;
+
   const { data, isLoading, isFetching, isError, refetch } = useGetInvoicesQuery({
     page,
     limit: PAGE_SIZE,
     search: debounced || undefined,
-    status: status === 'all' ? undefined : (status as InvoiceStatus),
+    status: statusParam,
     classId: classId === 'all' ? undefined : classId,
   });
 
@@ -123,7 +125,7 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
     try {
       const params = new URLSearchParams();
       if (debounced) params.set('search', debounced);
-      if (status !== 'all') params.set('status', status);
+      if (statusParam) params.set('status', statusParam);
       if (classId !== 'all') params.set('classId', classId);
       await openAuthedDownload(`/fees/invoices/export.csv?${params.toString()}`, accessToken, `invoices-${new Date().toISOString().slice(0, 10)}.csv`);
     } catch (e: any) {
@@ -154,11 +156,13 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
             <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
               <SelectTrigger className="sm:w-44"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="unresolved">Unresolved (default)</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="partial">Partial</SelectItem>
                 <SelectItem value="overdue">Overdue</SelectItem>
                 <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="waived">Waived</SelectItem>
+                <SelectItem value="all">All statuses</SelectItem>
               </SelectContent>
             </Select>
             <Select value={classId} onValueChange={(v) => { setClassId(v); setPage(1); }}>
@@ -197,10 +201,10 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Student</TableHead>
+                    <TableHead>Class</TableHead>
                     <TableHead>Fee</TableHead>
                     <TableHead>Due</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead>Balance</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead />
                   </TableRow>
@@ -212,10 +216,19 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
                         <p className="font-medium text-foreground">{inv.studentName}</p>
                         <p className="text-xs text-muted-foreground">{inv.rollNumber}</p>
                       </TableCell>
+                      <TableCell className="text-muted-foreground">{inv.className ?? '—'}</TableCell>
                       <TableCell className="text-muted-foreground">{inv.structureName ?? '—'}</TableCell>
                       <TableCell className="text-muted-foreground">{formatDate(inv.dueDate)}</TableCell>
-                      <TableCell className="text-foreground">{formatCurrency(inv.netAmount)}</TableCell>
-                      <TableCell className="font-medium text-foreground">{formatCurrency(inv.balance)}</TableCell>
+                      <TableCell className="text-foreground">
+                        {formatCurrency(inv.netAmount)}
+                        {/* Only worth a second number once balance actually
+                            diverges from the full amount (partially paid,
+                            or adjusted) -- otherwise it's the same figure
+                            printed twice. */}
+                        {inv.balance !== inv.netAmount && (
+                          <span className="ml-1.5 text-xs text-muted-foreground">({formatCurrency(inv.balance)} due)</span>
+                        )}
+                      </TableCell>
                       <TableCell><Badge variant={statusBadgeFor(inv.status).variant} title={statusBadgeFor(inv.status).hint}>{statusBadgeFor(inv.status).label}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -239,7 +252,7 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-foreground">{inv.studentName}</p>
-                    <p className="text-xs text-muted-foreground">{inv.rollNumber} · {inv.structureName ?? '—'}</p>
+                    <p className="text-xs text-muted-foreground">{inv.rollNumber} · {inv.className ?? '—'} · {inv.structureName ?? '—'}</p>
                   </div>
                   <Badge variant={statusBadgeFor(inv.status).variant} title={statusBadgeFor(inv.status).hint}>{statusBadgeFor(inv.status).label}</Badge>
                 </div>
