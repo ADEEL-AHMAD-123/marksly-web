@@ -74,20 +74,16 @@ export function PayoutAccountsTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boole
 
   return (
     <div className="space-y-4">
-      <InfoNote title="Where does the money actually go?">
-        <p>
-          Marksly never collects or holds fee money. Every challan shows one of these accounts directly, so whoever
-          pays -- a parent or the student -- pays your institution's own bank account. Add every account you want to receive fees into, and mark one
-          as the default used when a fee structure doesn't specify otherwise.
-        </p>
-      </InfoNote>
-
-      {/* The toolbar "Add" button only earns its place once there's a list
-          to add another row to -- while empty, the empty-state card below
-          has its own identical CTA, and showing both stacks two of the
-          same button with nothing between them. */}
+      {/* A left-aligned section label paired with the "Add" button on the
+          same row, rather than the button floating alone flush-right above
+          a wide empty gap -- that lone-button layout is what made this tab
+          read as visually broken/off-balance. The InfoNote moves to the
+          bottom of the page (see below), matching where Grading Schemes
+          already puts its own reference notes -- a quiet explainer doesn't
+          need top billing above the actual content. */}
       {accounts.length > 0 && (
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-foreground">Your bank accounts</p>
           <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Add bank account</Button>
         </div>
       )}
@@ -170,6 +166,14 @@ export function PayoutAccountsTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boole
           ))}
         </div>
       )}
+
+      <InfoNote title="Where does the money actually go?">
+        <p>
+          Marksly never collects or holds fee money. Every challan shows one of these accounts directly, so whoever
+          pays -- a parent or the student -- pays your institution's own bank account. Add every account you want to receive fees into, and mark one
+          as the default used when a fee structure doesn't specify otherwise.
+        </p>
+      </InfoNote>
 
       <AddPayoutAccountDrawer open={addOpen} onClose={() => setAddOpen(false)} />
       <EditPayoutAccountDrawer account={editAccount} onClose={() => setEditAccount(null)} />

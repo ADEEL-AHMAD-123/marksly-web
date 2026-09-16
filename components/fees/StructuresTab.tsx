@@ -86,11 +86,13 @@ export function StructuresTab({ autoOpenOnEmpty }: { autoOpenOnEmpty?: boolean }
 
   return (
     <div className="space-y-4">
-      {/* Same reasoning as PayoutAccountsTab.tsx: this toolbar button only
-          earns its place once there's a list to add to -- the empty state
-          below has its own identical CTA when there's nothing yet. */}
+      {/* Matches PayoutAccountsTab.tsx's own header+button row -- a
+          left-aligned section label keeps this from being a single button
+          floating flush-right above a wide empty gap. The empty state below
+          has its own identical CTA when there's nothing yet. */}
       {structures.length > 0 && (
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-foreground">Your fee structures</p>
           <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={16} /> Add structure</Button>
         </div>
       )}
