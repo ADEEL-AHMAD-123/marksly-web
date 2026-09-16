@@ -492,6 +492,21 @@ function TermFormSheet({
     setName(`AY ${startYear}-${endYear}`);
   }, [mode, type, startDate, endDate, nameEdited]);
 
+  // Plain-language "runs ~5 months" feedback the moment both dates are
+  // picked -- catches an obviously wrong date (e.g. end before start, or a
+  // typo'd year making it look like an 11-month "semester") before saving,
+  // rather than only after the fact from the terms list.
+  const termDurationLabel = useMemo(() => {
+    if (!startDate || !endDate) return null;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const days = Math.round((end.getTime() - start.getTime()) / 86400000);
+    if (Number.isNaN(days) || days <= 0) return null;
+    if (days < 60) return `${days} day${days === 1 ? '' : 's'}`;
+    const months = Math.round(days / 30.44);
+    return `about ${months} month${months === 1 ? '' : 's'}`;
+  }, [startDate, endDate]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -556,18 +571,6 @@ function TermFormSheet({
           </div>
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
             <div>
-              <Label htmlFor="term-name">Name</Label>
-              <Input
-                id="term-name"
-                value={name}
-                onChange={(e) => { setNameEdited(true); setName(e.target.value); }}
-                placeholder="e.g. Fall 2026"
-              />
-              {mode === 'create' && type === 'academic_year' && !nameEdited && (
-                <p className="mt-1 text-xs text-muted-foreground">Suggested from the dates below — edit it if you'd like something different.</p>
-              )}
-            </div>
-            <div>
               <Label htmlFor="term-type">Type</Label>
               <Select value={type} onValueChange={(v) => setType(v as TermType)}>
                 <SelectTrigger id="term-type"><SelectValue /></SelectTrigger>
@@ -584,6 +587,31 @@ function TermFormSheet({
                 <p className="mt-1.5 flex items-start gap-1 text-xs text-danger">
                   <Lock size={12} className="mt-0.5 shrink-0" /> {typeLockedError}
                 </p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="term-start">Start date</Label>
+                <Input id="term-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="term-end">End date</Label>
+                <Input id="term-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              </div>
+            </div>
+            {termDurationLabel && (
+              <p className="-mt-2 text-xs text-muted-foreground">Runs {termDurationLabel}.</p>
+            )}
+            <div>
+              <Label htmlFor="term-name">Name</Label>
+              <Input
+                id="term-name"
+                value={name}
+                onChange={(e) => { setNameEdited(true); setName(e.target.value); }}
+                placeholder="e.g. Fall 2026"
+              />
+              {mode === 'create' && type === 'academic_year' && !nameEdited && (
+                <p className="mt-1 text-xs text-muted-foreground">Suggested from the dates above — edit it if you'd like something different.</p>
               )}
             </div>
             {/* Only meaningful for a term that ISN'T itself an academic
@@ -623,16 +651,6 @@ function TermFormSheet({
                 </p>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="term-start">Start date</Label>
-                <Input id="term-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="term-end">End date</Label>
-                <Input id="term-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-              </div>
-            </div>
             <div>
               <Label htmlFor="term-status">Status</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as TermStatus)}>
@@ -1368,7 +1386,8 @@ function PercentageLetterEditor({ bands, onChange }: { bands: PercentageLetterBa
   return (
     <div>
       <Label>Grade bands</Label>
-      <div className="space-y-2">
+      <p className="mt-0.5 text-xs text-muted-foreground">The order you list them in doesn't matter -- we rank by "Min %" automatically.</p>
+      <div className="mt-2 space-y-2">
         {bands.map((b, i) => (
           <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="flex items-center gap-2 sm:contents">
@@ -1399,7 +1418,8 @@ function GpaEditor({
     <div className="space-y-4">
       <div>
         <Label>Grade points</Label>
-        <div className="space-y-2">
+        <p className="mt-0.5 text-xs text-muted-foreground">The order you list them in doesn't matter -- we rank by "Min %" automatically.</p>
+        <div className="mt-2 space-y-2">
           {gradePoints.map((g, i) => (
             <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="flex items-center gap-2 sm:contents">
@@ -1434,7 +1454,8 @@ function CambridgeEditor({ bands, onChange }: { bands: CambridgePredictedBand[];
         <span>These bands are for an internal predicted/mock grade only. The official Cambridge grade gets recorded separately per-result once issued.</span>
       </div>
       <Label>Predicted grade bands</Label>
-      <div className="space-y-2">
+      <p className="mt-0.5 text-xs text-muted-foreground">The order you list them in doesn't matter -- we rank by "Min %" automatically.</p>
+      <div className="mt-2 space-y-2">
         {bands.map((b, i) => (
           <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="flex items-center gap-2 sm:contents">
