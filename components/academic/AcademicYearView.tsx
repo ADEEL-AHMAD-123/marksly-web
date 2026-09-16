@@ -485,12 +485,18 @@ function TermFormSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode, term?.id, structure]);
 
+  // An Academic Year's name is now fully computed from its dates -- always,
+  // not just while unedited -- so it can't drift into an inconsistent or
+  // informal label ("ay 26", "New Year 2", etc.). Kept in sync live in both
+  // create and edit mode; the manual `<Input>` only remains for the other
+  // term types (semester/quarter/...), where nothing else in the form
+  // carries an equivalent value to generate a name from.
   useEffect(() => {
-    if (mode !== 'create' || type !== 'academic_year' || nameEdited) return;
+    if (type !== 'academic_year') return;
     const startYear = startDate ? new Date(startDate).getFullYear() : new Date().getFullYear();
     const endYear = endDate ? new Date(endDate).getFullYear() : startYear + 1;
     setName(`AY ${startYear}-${endYear}`);
-  }, [mode, type, startDate, endDate, nameEdited]);
+  }, [type, startDate, endDate]);
 
   // Plain-language "runs ~5 months" feedback the moment both dates are
   // picked -- catches an obviously wrong date (e.g. end before start, or a
@@ -604,14 +610,20 @@ function TermFormSheet({
             )}
             <div>
               <Label htmlFor="term-name">Name</Label>
-              <Input
-                id="term-name"
-                value={name}
-                onChange={(e) => { setNameEdited(true); setName(e.target.value); }}
-                placeholder="e.g. Fall 2026"
-              />
-              {mode === 'create' && type === 'academic_year' && !nameEdited && (
-                <p className="mt-1 text-xs text-muted-foreground">Suggested from the dates above — edit it if you'd like something different.</p>
+              {type === 'academic_year' ? (
+                <>
+                  <p id="term-name" className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
+                    {name || 'AY --'}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">Generated from the dates above -- kept in this format so every academic year is named consistently.</p>
+                </>
+              ) : (
+                <Input
+                  id="term-name"
+                  value={name}
+                  onChange={(e) => { setNameEdited(true); setName(e.target.value); }}
+                  placeholder="e.g. Fall 2026"
+                />
               )}
             </div>
             {/* Only meaningful for a term that ISN'T itself an academic
@@ -1325,7 +1337,7 @@ function GradingSchemesTab({
         </InfoNote>
       </div>
 
-      <GradingSchemeCreateSheet open={createOpen} onClose={onCreateClose} />
+      <GradingSchemeCreateSheet open={createOpen} onClose={onCreateClose} existingSchemes={schemes} />
       <GradingSchemeEditSheet scheme={editScheme} open={!!editScheme} onClose={() => setEditScheme(null)} />
     </div>
   );
@@ -1537,16 +1549,11 @@ function validateSchemeConfig(type: GradingSchemeType, config: GradingSchemeConf
   return null;
 }
 
-function GradingSchemeCreateSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+function GradingSchemeCreateSheet({ open, onClose, existingSchemes }: { open: boolean; onClose: () => void; existingSchemes: GradingScheme[] }) {
   const [createScheme, { isLoading }] = useCreateGradingSchemeMutation();
   const [step, setStep] = useState<'type' | 'config'>('type');
   const [type, setType] = useState<GradingSchemeType>('percentage_letter');
   const [name, setName] = useState('');
-  // Suggests the type's own title as a starting name once it's picked
-  // (e.g. "Percentage-based Grading") -- stops overwriting the moment the
-  // admin types their own value, or if they go back and pick a different
-  // type after already customizing it.
-  const [nameEdited, setNameEdited] = useState(false);
   const [repeatPolicy, setRepeatPolicy] = useState<RepeatPolicy>('replace');
   const [config, setConfig] = useState<GradingSchemeConfig>(seedConfigFor('percentage_letter'));
   const [configError, setConfigError] = useState<string | null>(null);
@@ -1556,18 +1563,30 @@ function GradingSchemeCreateSheet({ open, onClose }: { open: boolean; onClose: (
     setStep('type');
     setType('percentage_letter');
     setName('');
-    setNameEdited(false);
     setRepeatPolicy('replace');
     setConfig(seedConfigFor('percentage_letter'));
     setConfigError(null);
   }, [open]);
 
+  // The name is now fully computed from the type -- never manually typed --
+  // so every scheme gets a formal, consistent label and there's no chance
+  // of a typo or an empty/placeholder name slipping through. When a scheme
+  // of that type already exists, a " (2)", " (3)", etc. suffix is appended
+  // so names stay unique without asking the admin to think one up.
   const pickType = (t: GradingSchemeType) => {
     setType(t);
     setConfig(seedConfigFor(t));
     setConfigError(null);
     setStep('config');
-    if (!nameEdited) setName(SCHEME_TYPE_INFO.find((info) => info.value === t)?.title ?? '');
+    const base = SCHEME_TYPE_INFO.find((info) => info.value === t)?.title ?? 'Grading Scheme';
+    const taken = new Set(existingSchemes.map((s) => s.name));
+    let candidate = base;
+    let n = 2;
+    while (taken.has(candidate)) {
+      candidate = `${base} (${n})`;
+      n += 1;
+    }
+    setName(candidate);
   };
 
   const handleConfigChange = (c: GradingSchemeConfig) => {
@@ -1636,15 +1655,10 @@ function GradingSchemeCreateSheet({ open, onClose }: { open: boolean; onClose: (
               <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
                 <div>
                   <Label htmlFor="scheme-name">Name</Label>
-                  <Input
-                    id="scheme-name"
-                    value={name}
-                    onChange={(e) => { setNameEdited(true); setName(e.target.value); }}
-                    placeholder="e.g. High School Grading"
-                  />
-                  {!nameEdited && (
-                    <p className="mt-1 text-xs text-muted-foreground">Suggested from the type you picked — edit it if you'd like something more specific.</p>
-                  )}
+                  <p id="scheme-name" className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
+                    {name}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">Generated from the type you picked, so every scheme is named consistently.</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">{SCHEME_TYPE_INFO.find((t) => t.value === type)?.title}</Badge>
