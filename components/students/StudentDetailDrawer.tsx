@@ -353,8 +353,8 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                     for pinState (whether the current PIN can even be
                     viewed vs. only reset). */}
                 <div className="mt-5">
-                  <p className="mb-0.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    <KeyRound size={12} /> Student login
+                  <p className="mb-0.5 flex items-center gap-1.5 text-sm font-bold uppercase tracking-wide text-foreground">
+                    <KeyRound size={14} /> Student login
                   </p>
                   <p className="mb-2 text-xs text-muted-foreground">The student can sign in using this Login ID and PIN.</p>
                   <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
@@ -395,7 +395,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                     password directly). Both go through the informed-confirm
                     dialog below rather than firing blind. */}
                 <div ref={guardianLoginRef} className="mt-5 scroll-mt-4">
-                  <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="mb-0.5 text-sm font-bold uppercase tracking-wide text-foreground">
                     Guardian login
                   </p>
                   <p className="mb-2 text-xs text-muted-foreground">
@@ -514,8 +514,8 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                 </div>
 
                 <div className="mt-5">
-                  <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    <Wallet size={12} /> Fee card
+                  <p className="mb-2 flex items-center gap-1.5 text-sm font-bold uppercase tracking-wide text-foreground">
+                    <Wallet size={14} /> Fee card
                   </p>
                   {cardLoading && !card ? (
                     <Skeleton className="h-24 w-full" />
@@ -568,8 +568,8 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                   </div>
                 ) : hasGpaData ? (
                   <div className="mt-5">
-                    <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      <GraduationCap size={12} /> CGPA
+                    <p className="mb-2 flex items-center gap-1.5 text-sm font-bold uppercase tracking-wide text-foreground">
+                      <GraduationCap size={14} /> CGPA
                     </p>
                     <div className="rounded-xl border border-border px-4 py-3">
                       <div className="flex items-center justify-between">

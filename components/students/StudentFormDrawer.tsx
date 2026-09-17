@@ -641,7 +641,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
             </div>
 
             <div className="border-t border-border pt-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="mb-2 text-sm font-bold uppercase tracking-wide text-foreground">
                 Parent / Guardian <span className="font-normal normal-case text-danger">* phone or email required</span>
               </p>
               {isEdit && !originalGuardian && (
@@ -702,7 +702,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 student.service.ts's updateMyContact()/
                 updateMyStudentContactSchema. */}
             <div className="border-t border-border pt-4">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="mb-1 text-sm font-bold uppercase tracking-wide text-foreground">
                 Optional details
               </p>
               <p className="mb-2 text-xs text-muted-foreground">Can be added later by the student themselves from their dashboard, or by a parent.</p>
