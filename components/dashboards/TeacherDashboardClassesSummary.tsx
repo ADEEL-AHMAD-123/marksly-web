@@ -34,12 +34,23 @@ export function TeacherDashboardClassesSummary() {
 
   const sectionCount = classes.reduce((s, c) => s + c.sections.length, 0);
   const studentCount = classes.reduce((s, c) => s + c.sections.reduce((ss, sec) => ss + sec.students, 0), 0);
+  // One section per class is the common case -- showing "2 classes" right
+  // next to "2 sections" then just reads as the same number twice. Fold
+  // that fact into the classes stat's own label instead, and only keep a
+  // separate sections stat when it actually tells you something (section
+  // counts differ across classes).
+  const allSingleSection = classes.every((cls) => cls.sections.length === 1);
 
-  const stats = [
-    { icon: School, label: terminology.classUnitPlural, value: classes.length },
-    { icon: Layers, label: terminology.sectionPlural, value: sectionCount },
-    { icon: Users, label: 'Students', value: studentCount },
-  ];
+  const stats = allSingleSection
+    ? [
+        { icon: School, label: `${terminology.classUnitPlural} (1 ${terminology.section.toLowerCase()} each)`, value: classes.length },
+        { icon: Users, label: 'Students', value: studentCount },
+      ]
+    : [
+        { icon: School, label: terminology.classUnitPlural, value: classes.length },
+        { icon: Layers, label: `Total ${terminology.sectionPlural.toLowerCase()}`, value: sectionCount },
+        { icon: Users, label: 'Students', value: studentCount },
+      ];
 
   return (
     <Card className="flex flex-wrap items-center justify-between gap-4 p-4">
