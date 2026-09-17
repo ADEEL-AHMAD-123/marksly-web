@@ -1,7 +1,7 @@
 'use client';
 
 import { CalendarRange } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useMyTeacherTimetableQuery } from '@/store/api/timetableApi';
@@ -40,6 +40,7 @@ export function TeacherDashboardWeekStrip() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><CalendarRange size={18} /> This week</CardTitle>
+        <CardDescription>How many periods you&apos;re teaching each day</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-5 gap-2">
@@ -54,7 +55,9 @@ export function TeacherDashboardWeekStrip() {
                 )}
               >
                 <p className={cn('text-xs', isToday ? 'font-semibold text-primary-soft-foreground' : 'text-muted-foreground')}>{label}</p>
-                <p className={cn('text-sm font-semibold', isToday ? 'text-primary-soft-foreground' : 'text-foreground')}>{count}</p>
+                <p className={cn('text-sm font-semibold', isToday ? 'text-primary-soft-foreground' : 'text-foreground')}>
+                  {count} <span className="text-[10px] font-normal">{count === 1 ? 'period' : 'periods'}</span>
+                </p>
                 <div className="h-1 w-full overflow-hidden rounded-full bg-card">
                   <div
                     className={cn('h-full rounded-full', isToday ? 'bg-primary' : 'bg-border')}
