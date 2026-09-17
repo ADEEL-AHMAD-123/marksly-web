@@ -31,7 +31,21 @@ async function fetchPdf(path: string, accessToken: string | null): Promise<Respo
  * openAuthedPdf() (see its own comment) since these hit the same kind of
  * Bearer-token-authed, non-JSON endpoint.
  */
-export async function openAuthedDownload(path: string, accessToken: string | null, filename: string): Promise<void> {
+/**
+ * Row-count/truncation metadata a CSV export's response headers may carry
+ * (see fee.controller.ts's exportInvoicesCsv/exportPaymentsCsv) -- lets a
+ * caller toast "exported N of M" or warn about truncation instead of the
+ * admin having to open the file to find out how much they actually got.
+ * Optional because not every openAuthedDownload() caller's endpoint sets
+ * these headers.
+ */
+export interface DownloadMeta {
+  totalCount?: number;
+  returnedCount?: number;
+  truncated?: boolean;
+}
+
+export async function openAuthedDownload(path: string, accessToken: string | null, filename: string): Promise<DownloadMeta> {
   let res = await fetchPdf(path, accessToken);
 
   if (res.status === 401) {
@@ -58,6 +72,11 @@ export async function openAuthedDownload(path: string, accessToken: string | nul
     }
     throw new Error(message);
   }
+
+  const totalCountHeader = res.headers.get('X-Total-Count');
+  const returnedCountHeader = res.headers.get('X-Returned-Count');
+  const truncatedHeader = res.headers.get('X-Truncated');
+
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -67,6 +86,12 @@ export async function openAuthedDownload(path: string, accessToken: string | nul
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
+
+  return {
+    totalCount: totalCountHeader ? Number(totalCountHeader) : undefined,
+    returnedCount: returnedCountHeader ? Number(returnedCountHeader) : undefined,
+    truncated: truncatedHeader === 'true',
+  };
 }
 
 export async function openAuthedPdf(path: string, accessToken: string | null): Promise<void> {

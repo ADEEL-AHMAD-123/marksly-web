@@ -38,10 +38,12 @@ import {
   useVoidInvoiceMutation,
   useGetInvoiceDetailQuery,
   useAdjustInvoiceMutation,
+  usePreviewBulkSlipsQuery,
   type Invoice,
   type InvoiceStatus,
   type PaymentMethod,
 } from '@/store/api/feesApi';
+import type { Section } from '@/store/api/classesApi';
 
 /**
  * `hint` gives every badge a plain-language meaning on hover -- a
@@ -127,11 +129,36 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
       if (debounced) params.set('search', debounced);
       if (statusParam) params.set('status', statusParam);
       if (classId !== 'all') params.set('classId', classId);
-      await openAuthedDownload(`/fees/invoices/export.csv?${params.toString()}`, accessToken, `invoices-${new Date().toISOString().slice(0, 10)}.csv`);
+      const meta = await openAuthedDownload(`/fees/invoices/export.csv?${params.toString()}`, accessToken, `invoices-${new Date().toISOString().slice(0, 10)}.csv`);
+      if (meta.truncated) {
+        toast.error(`Exported the first ${meta.returnedCount?.toLocaleString('en-PK')} of ${meta.totalCount?.toLocaleString('en-PK')} matching invoices -- narrow your filters (status/class/search) for a complete export.`, { duration: 6000 });
+      } else if (meta.returnedCount !== undefined) {
+        toast.success(`Exported ${meta.returnedCount.toLocaleString('en-PK')} invoice${meta.returnedCount === 1 ? '' : 's'}${status !== 'all' ? ` (${status === 'unresolved' ? 'unresolved' : status})` : ''}`);
+      }
     } catch (e: any) {
       toast.error(e?.message || 'Could not export invoices');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const [exportingPayments, setExportingPayments] = useState(false);
+  const handleExportPayments = async () => {
+    setExportingPayments(true);
+    try {
+      const params = new URLSearchParams();
+      if (debounced) params.set('search', debounced);
+      if (classId !== 'all') params.set('classId', classId);
+      const meta = await openAuthedDownload(`/fees/payments/export.csv?${params.toString()}`, accessToken, `payments-${new Date().toISOString().slice(0, 10)}.csv`);
+      if (meta.truncated) {
+        toast.error(`Exported the first ${meta.returnedCount?.toLocaleString('en-PK')} of ${meta.totalCount?.toLocaleString('en-PK')} matching payments -- narrow by class/search for a complete export.`, { duration: 6000 });
+      } else if (meta.returnedCount !== undefined) {
+        toast.success(`Exported ${meta.returnedCount.toLocaleString('en-PK')} payment${meta.returnedCount === 1 ? '' : 's'}`);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not export payments');
+    } finally {
+      setExportingPayments(false);
     }
   };
 
@@ -175,12 +202,15 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
           </div>
           {/* Export is an action on the results, not a filter -- separated
               with a divider so it doesn't read as a fourth filter control. */}
-          <div className="flex items-center gap-2 sm:border-l sm:border-border sm:pl-3">
-            <Button variant="ghost" onClick={() => setBulkSlipsOpen(true)} className="w-full sm:w-auto" title="Print every challan for a month in one PDF">
+          <div className="flex flex-wrap items-center gap-2 sm:border-l sm:border-border sm:pl-3">
+            <Button variant="ghost" onClick={() => setBulkSlipsOpen(true)} className="w-full sm:w-auto" title="Print every unpaid challan for a month in one PDF">
               <Printer size={16} /> Print all slips
             </Button>
-            <Button variant="ghost" onClick={handleExportCsv} loading={exporting} className="w-full sm:w-auto" title="Export the current filtered list as CSV">
+            <Button variant="ghost" onClick={handleExportCsv} loading={exporting} className="w-full sm:w-auto" title="Export the current filtered invoice list as CSV">
               <FileDown size={16} /> Export CSV
+            </Button>
+            <Button variant="ghost" onClick={handleExportPayments} loading={exportingPayments} className="w-full sm:w-auto" title="Export a payment-by-payment record (date, method, receipt #) for reconciling against a bank/gateway statement">
+              <Download size={16} /> Export payments
             </Button>
           </div>
         </div>
@@ -295,25 +325,53 @@ const MONTH_LABEL = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-/** Prints every challan for a chosen month (optionally scoped to one class)
- *  into a single PDF -- the batch-printing counterpart to "Generate this
- *  month's bills", for handing out physical challans after they're
- *  created. Defaults to the current month/year since that's the case an
- *  admin lands here for almost every time. */
-function BulkSlipsDialog({ open, onClose, classes }: { open: boolean; onClose: () => void; classes: { id: string; name: string }[] }) {
+/** Prints every unresolved challan for a chosen month (optionally scoped to
+ *  one class/section) into a single PDF -- the batch-printing counterpart
+ *  to "Generate this month's bills", for handing out physical challans
+ *  after they're created. Defaults to the current month/year since that's
+ *  the case an admin lands here for almost every time. Shows a live
+ *  preview (count + total, and how many already-paid invoices are being
+ *  skipped) before generating, so a wrong month/class pick gets caught
+ *  before a PDF full of the wrong challans gets built. */
+function BulkSlipsDialog({ open, onClose, classes }: { open: boolean; onClose: () => void; classes: { id: string; name: string; sections?: Section[] }[] }) {
   const now = new Date();
   const [month, setMonth] = useState(String(now.getMonth() + 1));
   const [year, setYear] = useState(String(now.getFullYear()));
   const [classId, setClassId] = useState('all');
+  const [sectionId, setSectionId] = useState('all');
+  const [includePaid, setIncludePaid] = useState(false);
   const [loading, setLoading] = useState(false);
   const accessToken = useSelector((s: RootState) => s.auth.accessToken);
+
+  // Reset the section pick whenever the class changes -- a section id from
+  // the previously selected class means nothing once a different class (or
+  // "All classes") is chosen.
+  useEffect(() => { setSectionId('all'); }, [classId]);
+
+  const selectedClass = classes.find((c) => c.id === classId);
+  const sections = selectedClass?.sections ?? [];
+
+  const { data: previewRes, isFetching: previewLoading } = usePreviewBulkSlipsQuery(
+    {
+      month: Number(month),
+      year: Number(year),
+      classId: classId === 'all' ? undefined : classId,
+      sectionId: sectionId === 'all' ? undefined : sectionId,
+      includePaid,
+    },
+    { skip: !open }
+  );
+  const preview = previewRes?.data;
 
   const submit = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ month, year });
       if (classId !== 'all') params.set('classId', classId);
+      if (sectionId !== 'all') params.set('sectionId', sectionId);
+      if (includePaid) params.set('includePaid', 'true');
       await openAuthedPdf(`/fees/bulk-slips?${params.toString()}`, accessToken);
+      toast.success(`Generated ${preview?.count ?? ''} slip${preview?.count === 1 ? '' : 's'} for ${MONTH_LABEL[Number(month) - 1]} ${year}`.trim());
       onClose();
     } catch (e: any) {
       toast.error(e?.message || 'Could not generate the slips');
@@ -324,7 +382,7 @@ function BulkSlipsDialog({ open, onClose, classes }: { open: boolean; onClose: (
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[400px]">
+      <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[420px]">
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <h2 className="text-lg font-semibold">Print all slips</h2>
@@ -332,7 +390,7 @@ function BulkSlipsDialog({ open, onClose, classes }: { open: boolean; onClose: (
           </div>
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
             <p className="text-sm text-muted-foreground">
-              Generates one PDF with every challan due for the month below -- handy for printing a batch to hand out right after generating bills.
+              Generates one PDF with every unpaid challan due for the month below -- handy for printing a batch to hand out right after generating bills.
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -349,21 +407,87 @@ function BulkSlipsDialog({ open, onClose, classes }: { open: boolean; onClose: (
                 <Input id="bulk-slips-year" type="number" value={year} onChange={(e) => setYear(e.target.value)} />
               </div>
             </div>
-            <div>
-              <Label htmlFor="bulk-slips-class">Class (optional)</Label>
-              <Select value={classId} onValueChange={setClassId}>
-                <SelectTrigger id="bulk-slips-class"><SelectValue placeholder="All classes" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All classes</SelectItem>
-                  {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <p className="mt-1 text-xs text-muted-foreground">Leave as "All classes" to include the whole institution.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="bulk-slips-class">Class (optional)</Label>
+                <Select value={classId} onValueChange={setClassId}>
+                  <SelectTrigger id="bulk-slips-class"><SelectValue placeholder="All classes" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All classes</SelectItem>
+                    {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Only worth showing once a class with actual sections is
+                  picked -- most classes/institutions have none, and an
+                  always-visible disabled dropdown would just be clutter. */}
+              {sections.length > 0 && (
+                <div>
+                  <Label htmlFor="bulk-slips-section">Section</Label>
+                  <Select value={sectionId} onValueChange={setSectionId}>
+                    <SelectTrigger id="bulk-slips-section"><SelectValue placeholder="All sections" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All sections</SelectItem>
+                      {sections.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            {classId === 'all' && (
+              <p className="-mt-2 text-xs text-muted-foreground">Leave as "All classes" to include the whole institution.</p>
+            )}
+
+            <label className="flex items-start gap-2.5 rounded-lg border border-border px-3 py-2.5">
+              <input
+                type="checkbox"
+                checked={includePaid}
+                onChange={(e) => setIncludePaid(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-input text-primary focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <span className="text-sm">
+                <span className="block font-medium text-foreground">Include already-paid invoices</span>
+                <span className="block text-xs text-muted-foreground">Off by default -- printing a challan for a settled invoice looks like a new bill to whoever receives it.</span>
+              </span>
+            </label>
+
+            {/* Live preview -- catches a wrong month/class pick (0 results,
+                or a suspiciously large/small count) before committing to
+                generating a PDF, the same way the billing-run preview does
+                for "Generate this month's bills". */}
+            <div className="rounded-lg bg-muted p-3 text-sm">
+              {previewLoading ? (
+                <p className="text-muted-foreground">Checking…</p>
+              ) : !preview ? (
+                <p className="text-muted-foreground">Couldn't load a preview -- generating will still show you exactly what happened.</p>
+              ) : preview.count === 0 ? (
+                <p className="text-warning">
+                  {preview.excludedPaidCount > 0
+                    ? `All ${preview.excludedPaidCount} invoice(s) for this selection are already paid. Turn on "include already-paid" above to print them anyway.`
+                    : "No bills found for this month/class yet -- generate this month's bills first."}
+                </p>
+              ) : (
+                <>
+                  <p className="font-medium text-foreground">
+                    {preview.count} slip{preview.count === 1 ? '' : 's'} -- {formatCurrency(preview.totalAmount)} total
+                  </p>
+                  {preview.excludedPaidCount > 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">{preview.excludedPaidCount} already-paid invoice(s) excluded.</p>
+                  )}
+                  {preview.exceedsLimit && (
+                    <p className="mt-1 text-xs text-danger">
+                      That's over the {preview.limit}-slip limit for one PDF -- narrow by class/section to generate.
+                    </p>
+                  )}
+                </>
+              )}
             </div>
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
             <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button type="button" loading={loading} onClick={submit}><Printer size={16} /> Generate PDF</Button>
+            <Button type="button" loading={loading} disabled={!preview || preview.count === 0 || preview.exceedsLimit} onClick={submit}>
+              <Printer size={16} /> Generate PDF
+            </Button>
           </div>
         </div>
       </SheetContent>

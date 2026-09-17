@@ -270,6 +270,23 @@ export const feesApi = baseApi.injectEndpoints({
       query: ({ month, year }) => `/fees/invoices/run-billing/preview?month=${month}&year=${year}`,
     }),
 
+    // Lets the "Print all slips" dialog show what it's about to generate
+    // (count, total amount, how many already-paid invoices are being
+    // skipped) before committing to a PDF -- same shape of problem
+    // previewBilling above solves for the monthly billing run.
+    previewBulkSlips: builder.query<
+      ApiObject<{ count: number; totalAmount: number; excludedPaidCount: number; exceedsLimit: boolean; limit: number }>,
+      { month: number; year: number; classId?: string; sectionId?: string; includePaid?: boolean }
+    >({
+      query: ({ month, year, classId, sectionId, includePaid }) => {
+        const s = new URLSearchParams({ month: String(month), year: String(year) });
+        if (classId) s.set('classId', classId);
+        if (sectionId) s.set('sectionId', sectionId);
+        if (includePaid) s.set('includePaid', 'true');
+        return `/fees/bulk-slips/preview?${s.toString()}`;
+      },
+    }),
+
     getInvoiceDetail: builder.query<ApiObject<InvoiceDetail>, string>({
       query: (id) => `/fees/invoices/${id}`,
       providesTags: (_r, _e, id) => [{ type: 'Fees', id: `INVOICE-${id}` }],
@@ -385,6 +402,7 @@ export const {
   useGenerateInvoicesMutation,
   useRunBillingMutation,
   usePreviewBillingQuery,
+  usePreviewBulkSlipsQuery,
   useGetInvoiceDetailQuery,
   useAdjustInvoiceMutation,
   useVoidPaymentMutation,
