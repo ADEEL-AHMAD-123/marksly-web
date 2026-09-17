@@ -17,6 +17,7 @@ import { useGetClassesQuery } from '@/store/api/classesApi';
 import {
   useGetAttendanceReportQuery,
   useLazyGetAttendanceReportQuery,
+  useGetAttendanceCoverageTodayQuery,
   type AttendanceStatus,
   type AttendanceReportRow,
 } from '@/store/api/attendanceApi';
@@ -39,6 +40,10 @@ const STATUS_OPTIONS: { value: AttendanceStatus | 'all'; label: string }[] = [
 const statusBadge: Record<AttendanceStatus, 'success' | 'danger' | 'warning' | 'neutral'> = {
   present: 'success', absent: 'danger', late: 'warning', leave: 'neutral',
 };
+// 'leave' overrides the neutral variant above with the same bg-info/
+// text-info-foreground classes AttendanceView.tsx's marking page uses
+// for the identical status, so the two pages agree on its color.
+const LEAVE_BADGE_CLASS = 'bg-info text-info-foreground';
 
 // WhatsApp deep links need full international format with no leading zero
 // (e.g. 923001234567, not 03001234567 or +923001234567). Phone numbers here
@@ -130,6 +135,9 @@ export function AttendanceReportView() {
   const [sectionId, setSectionId] = useState('');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
+
+  const { data: coverageRes, isLoading: loadingCoverage } = useGetAttendanceCoverageTodayQuery(undefined, { skip: isTeacher });
+  const coverage = coverageRes?.data;
 
   const { data: classesRes } = useGetClassesQuery(undefined, { skip: isTeacher });
   const classes = useMemo<{ id: string; name: string; termType: string | null; sections: { id: string; name: string }[] }[]>(() => {
@@ -231,6 +239,22 @@ export function AttendanceReportView() {
 
   return (
     <div className="space-y-6">
+      {/* Today's coverage — independent of the report's own filters (which
+          could be scoped to a single class, a past date, one status): this
+          is always "how much of TODAY is covered institution-wide", the
+          one number a returning admin actually wants before drilling into
+          a specific class/section below. */}
+      {!isTeacher && !loadingCoverage && coverage && coverage.totalSections > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border/70 bg-muted/20 px-3.5 py-2.5 text-sm no-print">
+          <Users size={15} className="shrink-0 text-muted-foreground" />
+          <span className="text-foreground">
+            Today: <strong>{coverage.markedSections}</strong> of <strong>{coverage.totalSections}</strong>{' '}
+            {(coverage.totalSections === 1 ? terminology.section : terminology.sectionPlural).toLowerCase()} marked
+          </span>
+          <span className="text-muted-foreground">· {coverage.presentRate}% present so far</span>
+        </div>
+      )}
+
       {/* Toolbar — purely instrumental (filter the report), kept visually
           lighter than the cards below it, same convention as the admin
           dashboard's Classes/Subjects/ID Cards/Timetable pages. */}
@@ -240,7 +264,10 @@ export function AttendanceReportView() {
             <>Pick a {terminology.classUnit.toLowerCase()} and {sectionLabel.toLowerCase()} below to see records.</>
           ) : (
             <>
-              Showing <Badge variant={statusBadge[status as AttendanceStatus] ?? 'neutral'} className="capitalize">
+              Showing <Badge
+                variant={statusBadge[status as AttendanceStatus] ?? 'neutral'}
+                className={cn('capitalize', status === 'leave' && LEAVE_BADGE_CLASS)}
+              >
                 {status === 'all' ? 'all statuses' : status}
               </Badge> only — change &quot;Status&quot; below to see everyone.
             </>
@@ -289,9 +316,9 @@ export function AttendanceReportView() {
           {!isTeacher && (
             <>
               <div>
-                <Label>{terminology.classUnit}</Label>
+                <Label htmlFor="report-class">{terminology.classUnit} <span className="font-normal normal-case text-danger">*</span></Label>
                 <Select value={classId} onValueChange={(v) => { setClassId(v); setSectionId(''); resetPage(); }}>
-                  <SelectTrigger><SelectValue placeholder={`All ${terminology.classUnitPlural.toLowerCase()}`} /></SelectTrigger>
+                  <SelectTrigger id="report-class"><SelectValue placeholder={`All ${terminology.classUnitPlural.toLowerCase()}`} /></SelectTrigger>
                   <SelectContent>
                     {classes.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -300,9 +327,9 @@ export function AttendanceReportView() {
                 </Select>
               </div>
               <div>
-                <Label>{sectionLabel}</Label>
+                <Label htmlFor="report-section">{sectionLabel} <span className="font-normal normal-case text-danger">*</span></Label>
                 <Select value={sectionId} onValueChange={(v) => { setSectionId(v); resetPage(); }} disabled={!classId}>
-                  <SelectTrigger><SelectValue placeholder={`All ${sectionLabel.toLowerCase()}${sectionLabel.toLowerCase().endsWith('s') ? '' : 's'}`} /></SelectTrigger>
+                  <SelectTrigger id="report-section"><SelectValue placeholder={`All ${sectionLabel.toLowerCase()}${sectionLabel.toLowerCase().endsWith('s') ? '' : 's'}`} /></SelectTrigger>
                   <SelectContent>
                     {sections.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -313,9 +340,9 @@ export function AttendanceReportView() {
             </>
           )}
           <div>
-            <Label>Status</Label>
+            <Label htmlFor="report-status">Status</Label>
             <Select value={status} onValueChange={(v) => { setStatus(v as AttendanceStatus | 'all'); resetPage(); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger id="report-status"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {STATUS_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
@@ -366,7 +393,7 @@ export function AttendanceReportView() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-medium text-foreground">{r.studentName}</p>
-                      <Badge variant={statusBadge[r.status]} className="capitalize">{r.status}</Badge>
+                      <Badge variant={statusBadge[r.status]} className={cn('capitalize', r.status === 'leave' && LEAVE_BADGE_CLASS)}>{r.status}</Badge>
                     </div>
 
                     {/* Labeled fields, not a squashed muted-text line -- an
@@ -376,6 +403,7 @@ export function AttendanceReportView() {
                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
                       <span className="inline-flex items-center gap-1 text-muted-foreground">
                         <Hash size={12} /> Roll {r.rollNumber}
+                        <span className="opacity-70">· Adm# {r.admissionNumber}</span>
                       </span>
                       <span className="inline-flex items-center gap-1 rounded-md bg-primary-soft px-1.5 py-0.5 text-primary-soft-foreground">
                         <LayoutGrid size={12} />
@@ -458,15 +486,13 @@ export function AttendanceReportView() {
         </div>
       )}
 
-      {!isTeacher && (
-        <InfoNote title="What does this report actually show?">
-          <p>
-            It only covers the {terminology.classUnit.toLowerCase()} and {sectionLabel.toLowerCase()} you&apos;ve
-            selected above — pick a different one to see another group, or change &quot;Status&quot; to narrow it
-            down to just one kind of record.
-          </p>
-        </InfoNote>
-      )}
+      <InfoNote title="What does this report actually show?">
+        <p>
+          {isTeacher
+            ? 'This only covers periods you teach — change the date range above, or narrow it down with "Status" to just one kind of record.'
+            : `It only covers the ${terminology.classUnit.toLowerCase()} and ${sectionLabel.toLowerCase()} you've selected above — pick a different one to see another group, or change "Status" to narrow it down to just one kind of record.`}
+        </p>
+      </InfoNote>
     </div>
   );
 }

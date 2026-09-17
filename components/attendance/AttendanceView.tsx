@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Avatar } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { InfoNote } from '@/components/ui/info-note';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { todayStr } from '@/lib/institution-date';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -27,6 +28,7 @@ import { useGetTimetableQuery } from '@/store/api/timetableApi';
 import {
   useGetMyPeriodsQuery,
   useGetRosterQuery,
+  useGetAttendanceCoverageTodayQuery,
   useMarkAttendanceMutation,
   type AttendanceStatus,
 } from '@/store/api/attendanceApi';
@@ -57,6 +59,14 @@ interface PeriodOption {
   startTime: string;
   endTime: string;
   marked?: boolean;
+  // Only ever populated for a TEACHER's own periods (MyPeriod) -- admin
+  // periods come straight from the timetable, which has no per-period
+  // marked/count data at all (see adminPeriods below and the
+  // sectionCoverage fix next to it).
+  present?: number;
+  absent?: number;
+  late?: number;
+  leave?: number;
 }
 
 export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
@@ -101,6 +111,10 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
   // shown every period as an equally-weighted wrapped pill with no way to
   // jump straight to one.
   const [periodQuery, setPeriodQuery] = useState('');
+  // Queued state change + confirm flag for the unsaved-changes guard
+  // below -- null/false means nothing is pending.
+  const [pendingChange, setPendingChange] = useState<(() => void) | null>(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   // ─── Teacher flow: pick from the periods on their own timetable today ────
   // `isLoading` (not `isFetching`) on purpose — now that the app refetches
@@ -157,6 +171,16 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
         endTime: e.endTime,
       }));
   }, [isTeacher, timetableRes, date]);
+
+  const { data: coverageRes } = useGetAttendanceCoverageTodayQuery(
+    { date },
+    { skip: isTeacher || !classId || !sectionId }
+  );
+  const sectionCoverage = useMemo(() => {
+    if (isTeacher) return null;
+    const cls = coverageRes?.data?.classes.find((cl) => cl.classId === classId);
+    return cls?.sections.find((sec) => sec.sectionId === sectionId) ?? null;
+  }, [isTeacher, coverageRes, classId, sectionId]);
 
   const periods = isTeacher ? myPeriods : adminPeriods;
   const loadingPeriods = isTeacher ? loadingMyPeriods : loadingTimetable;
@@ -248,6 +272,19 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
       return curStatus !== s.status || curNote !== (s.note ?? '').trim();
     });
   }, [roster, statuses, notes]);
+
+  // Runs `action` immediately when there's nothing to lose; otherwise
+  // queues it and asks first. Used by every control that would
+  // otherwise silently discard the roster currently on screen.
+  const guardedRun = (action: () => void) => {
+    if (roster && isDirty) {
+      setPendingChange(() => action);
+      setConfirmDiscard(true);
+    } else {
+      action();
+    }
+  };
+  const requestPeriodChange = (id: string) => guardedRun(() => setPeriodId(id));
 
   const applyAllPresent = () => {
     if (!roster) return;
@@ -436,9 +473,9 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
           {!isTeacher && (
             <>
               <div>
-                <Label>{terminology.classUnit}</Label>
-                <Select value={classId} onValueChange={(v) => { setClassId(v); setSectionId(''); }}>
-                  <SelectTrigger><SelectValue placeholder={`Select ${terminology.classUnit.toLowerCase()}`} /></SelectTrigger>
+                <Label htmlFor="attendance-class">{terminology.classUnit} <span className="font-normal normal-case text-danger">*</span></Label>
+                <Select value={classId} onValueChange={(v) => guardedRun(() => { setClassId(v); setSectionId(''); })}>
+                  <SelectTrigger id="attendance-class"><SelectValue placeholder={`Select ${terminology.classUnit.toLowerCase()}`} /></SelectTrigger>
                   <SelectContent>
                     {classes.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -447,9 +484,9 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                 </Select>
               </div>
               <div>
-                <Label>{sectionLabel}</Label>
-                <Select value={sectionId} onValueChange={setSectionId} disabled={!classId}>
-                  <SelectTrigger><SelectValue placeholder={sectionLabel} /></SelectTrigger>
+                <Label htmlFor="attendance-section">{sectionLabel} <span className="font-normal normal-case text-danger">*</span></Label>
+                <Select value={sectionId} onValueChange={(v) => guardedRun(() => setSectionId(v))} disabled={!classId}>
+                  <SelectTrigger id="attendance-section"><SelectValue placeholder={sectionLabel} /></SelectTrigger>
                   <SelectContent>
                     {sections.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -466,7 +503,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
               type="date"
               value={date}
               max={todayStr()}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => { const v = e.target.value; guardedRun(() => setDate(v)); }}
               className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
@@ -486,9 +523,14 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
           <div className="mt-4">
             <div className="flex items-center justify-between gap-2">
               <Label>Period</Label>
-              {periods.length > 0 && (
+              {isTeacher && periods.length > 0 && (
                 <span className="text-xs text-muted-foreground">
-                  {periods.filter((p) => 'marked' in p && p.marked).length} of {periods.length} marked
+                  {periods.filter((p) => p.marked).length} of {periods.length} marked
+                </span>
+              )}
+              {!isTeacher && sectionCoverage && (
+                <span className="text-xs text-muted-foreground">
+                  {sectionCoverage.periodsMarked} of {sectionCoverage.periodsScheduled} periods marked
                 </span>
               )}
             </div>
@@ -522,14 +564,17 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                     })
                     .map((p) => {
                       const selected = periodId === p.periodId;
-                      const marked = 'marked' in p && p.marked;
+                      // Only ever true for a teacher's own periods -- see
+                      // the PeriodOption/adminPeriods comments above for
+                      // why admin periods can't honestly claim this.
+                      const marked = isTeacher && !!p.marked;
                       return (
                         <button
                           key={p.periodId}
                           type="button"
-                          onClick={() => setPeriodId(p.periodId)}
+                          onClick={() => requestPeriodChange(p.periodId)}
                           className={cn(
-                            'flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors',
+                            'flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                             selected ? 'bg-primary-soft' : 'hover:bg-muted/60'
                           )}
                         >
@@ -551,7 +596,19 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                               {isTeacher && p.subject ? `${p.subject} · ` : ''}{p.startTime}–{p.endTime}
                             </span>
                           </span>
-                          {marked && <Badge variant="success" className="shrink-0">Marked</Badge>}
+                          {marked && (
+                            (p.absent || p.late || p.leave) ? (
+                              <span className="shrink-0 text-[11px] text-muted-foreground">
+                                {[
+                                  p.absent ? `${p.absent} absent` : null,
+                                  p.late ? `${p.late} late` : null,
+                                  p.leave ? `${p.leave} leave` : null,
+                                ].filter(Boolean).join(' · ')}
+                              </span>
+                            ) : (
+                              <Badge variant="success" className="shrink-0">Marked</Badge>
+                            )
+                          )}
                           <ChevronRight size={15} className={cn('shrink-0 text-muted-foreground', selected && 'text-primary')} />
                         </button>
                       );
@@ -732,7 +789,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                           setTouched((prev) => new Set(prev).add(s.studentId));
                         }}
                         className={cn(
-                          'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                          'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                           active
                             ? st.active
                             : 'bg-muted text-muted-foreground hover:bg-secondary'
@@ -747,7 +804,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
                     title={notes[s.studentId] ? `Note: ${notes[s.studentId]}` : 'Add a note'}
                     onClick={() => setNoteOpenFor((cur) => (cur === s.studentId ? null : s.studentId))}
                     className={cn(
-                      'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors',
+                      'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                       notes[s.studentId]
                         ? 'bg-primary-soft text-primary-soft-foreground'
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -843,6 +900,15 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
         loading={saving}
         onClose={() => setConfirmSave(null)}
         onConfirm={doSave}
+      />
+      <ConfirmDialog
+        open={confirmDiscard}
+        onClose={() => { setConfirmDiscard(false); setPendingChange(null); }}
+        onConfirm={() => { pendingChange?.(); setPendingChange(null); setConfirmDiscard(false); }}
+        title="Discard unsaved attendance?"
+        tone="warning"
+        confirmLabel="Discard"
+        description="You have unsaved changes to this roster. Switching now will discard them -- nothing has been saved yet."
       />
     </div>
   );
