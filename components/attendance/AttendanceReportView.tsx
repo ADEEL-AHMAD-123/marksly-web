@@ -22,7 +22,7 @@ import {
   type AttendanceReportRow,
 } from '@/store/api/attendanceApi';
 import { useAppSelector } from '@/store/hooks';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
 import { todayStr } from '@/lib/institution-date';
 
@@ -136,8 +136,17 @@ export function AttendanceReportView() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
 
-  const { data: coverageRes, isLoading: loadingCoverage } = useGetAttendanceCoverageTodayQuery(undefined, { skip: isTeacher });
+  // Only meaningful for a single selected day (also the page's default
+  // state) -- for a multi-day range there's no one "today" to summarize,
+  // so the strip is hidden entirely rather than silently ignoring the
+  // range like before.
+  const isSingleDay = dateFrom === dateTo;
+  const { data: coverageRes, isLoading: loadingCoverage } = useGetAttendanceCoverageTodayQuery(
+    isSingleDay ? { date: dateFrom } : undefined,
+    { skip: isTeacher || !isSingleDay },
+  );
   const coverage = coverageRes?.data;
+  const coverageIsToday = coverage?.date === todayStr();
 
   const { data: classesRes } = useGetClassesQuery(undefined, { skip: isTeacher });
   const classes = useMemo<{ id: string; name: string; termType: string | null; sections: { id: string; name: string }[] }[]>(() => {
@@ -239,19 +248,22 @@ export function AttendanceReportView() {
 
   return (
     <div className="space-y-6">
-      {/* Today's coverage — independent of the report's own filters (which
-          could be scoped to a single class, a past date, one status): this
-          is always "how much of TODAY is covered institution-wide", the
-          one number a returning admin actually wants before drilling into
-          a specific class/section below. */}
-      {!isTeacher && !loadingCoverage && coverage && coverage.totalSections > 0 && (
+      {/* Coverage snapshot for the single selected day -- reacts to the
+          date filter below (it's the same date, not a fixed "today"), and
+          only shown when exactly one day is selected since a range has no
+          single day to summarize. "Fully marked" is deliberately distinct
+          from the present-rate, which is computed from whatever periods
+          have been marked so far, complete or not -- otherwise "0 fully
+          marked" next to a nonzero present rate reads as a contradiction. */}
+      {!isTeacher && isSingleDay && !loadingCoverage && coverage && coverage.totalSections > 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border/70 bg-muted/20 px-3.5 py-2.5 text-sm no-print">
           <Users size={15} className="shrink-0 text-muted-foreground" />
           <span className="text-foreground">
-            Today: <strong>{coverage.markedSections}</strong> of <strong>{coverage.totalSections}</strong>{' '}
-            {(coverage.totalSections === 1 ? terminology.section : terminology.sectionPlural).toLowerCase()} marked
+            {coverageIsToday ? 'Today' : formatDate(dateFrom)}: <strong>{coverage.markedSections}</strong> of{' '}
+            <strong>{coverage.totalSections}</strong>{' '}
+            {(coverage.totalSections === 1 ? terminology.section : terminology.sectionPlural).toLowerCase()} fully marked
           </span>
-          <span className="text-muted-foreground">· {coverage.presentRate}% present so far</span>
+          <span className="text-muted-foreground">· {coverage.presentRate}% present in records marked so far</span>
         </div>
       )}
 
