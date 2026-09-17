@@ -397,7 +397,7 @@ export function AttendanceReportView() {
               <div>
                 <Label htmlFor="report-class">{terminology.classUnit} <span className="font-normal normal-case text-danger">*</span></Label>
                 <Select value={classId} onValueChange={(v) => { setClassId(v); setSectionId(''); resetPage(); }}>
-                  <SelectTrigger id="report-class"><SelectValue placeholder={`All ${terminology.classUnitPlural.toLowerCase()}`} /></SelectTrigger>
+                  <SelectTrigger id="report-class"><SelectValue placeholder={`Select a ${terminology.classUnit.toLowerCase()}`} /></SelectTrigger>
                   <SelectContent>
                     {classes.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -408,7 +408,7 @@ export function AttendanceReportView() {
               <div>
                 <Label htmlFor="report-section">{sectionLabel} <span className="font-normal normal-case text-danger">*</span></Label>
                 <Select value={sectionId} onValueChange={(v) => { setSectionId(v); resetPage(); }} disabled={!classId}>
-                  <SelectTrigger id="report-section"><SelectValue placeholder={`All ${sectionLabel.toLowerCase()}${sectionLabel.toLowerCase().endsWith('s') ? '' : 's'}`} /></SelectTrigger>
+                  <SelectTrigger id="report-section"><SelectValue placeholder={classId ? `Select a ${sectionLabel.toLowerCase()}` : `Pick a ${terminology.classUnit.toLowerCase()} first`} /></SelectTrigger>
                   <SelectContent>
                     {sections.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
