@@ -66,11 +66,13 @@ export function AttendanceMarkingStatus() {
                 ? `All attendance marked for ${dateLabel}`
                 : hasOverdue
                 ? `${overduePeriodCount} period${overduePeriodCount === 1 ? '' : 's'} overdue across ${overdue.length} section${overdue.length === 1 ? '' : 's'} — ${dateLabel}`
-                : `Nothing overdue yet — remaining periods for ${dateLabel} haven't finished`}
+                : `${coverage!.markedSections} of ${coverage!.totalSections} section${coverage!.totalSections === 1 ? '' : 's'} marked so far — ${dateLabel}`}
             </p>
             {!nothingScheduled && coverage && (
               <p className="text-xs text-muted-foreground">
-                {coverage.markedSections} of {coverage.totalSections} section{coverage.totalSections === 1 ? '' : 's'} fully marked
+                {fullyMarked || hasOverdue
+                  ? `${coverage.markedSections} of ${coverage.totalSections} section${coverage.totalSections === 1 ? '' : 's'} fully marked`
+                  : `Not overdue — the remaining periods haven't finished yet`}
               </p>
             )}
           </div>
