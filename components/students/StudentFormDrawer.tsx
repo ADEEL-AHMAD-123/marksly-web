@@ -710,7 +710,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Optional details
               </p>
-              <p className="mb-2 text-xs text-muted-foreground">Can be added later from My ID Card.</p>
+              <p className="mb-2 text-xs text-muted-foreground">Can be added later by the student themselves from their dashboard, or by a parent.</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="address">Address <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
