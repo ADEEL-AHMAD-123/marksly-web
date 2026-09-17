@@ -59,8 +59,9 @@ export function TeacherClassesView() {
                 <div className="mt-4 space-y-1.5">
                   {c.sections.map((s) => (
                     <div key={s.id} className="flex flex-wrap items-center gap-1.5">
-                      <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
-                        <Layers size={11} /> {s.name} · {s.students}
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-secondary px-2.5 py-1.5 text-sm font-semibold text-foreground">
+                        <Layers size={13} className="text-muted-foreground" /> {s.name}
+                        <span className="font-normal text-muted-foreground">· {s.students} student{s.students === 1 ? '' : 's'}</span>
                       </span>
                       {/* Which subject(s) this teacher covers in THIS
                           section — without it, a teacher covering Math for
