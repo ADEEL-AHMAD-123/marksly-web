@@ -53,9 +53,9 @@ export function PricingPlans() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4">
+      <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-72 animate-pulse rounded-2xl border border-border bg-card/60" />
+          <div key={i} className="h-72 w-full animate-pulse rounded-2xl border border-border bg-card/60 sm:w-[calc(50%-0.75rem)] xl:w-[calc(25%-1.125rem)]" />
         ))}
       </div>
     );
@@ -95,14 +95,14 @@ export function PricingPlans() {
         </ul>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4">
+      <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
         {plans.map((plan) => {
           const highlight = plan.key === highlightKey;
           const isFree = plan.price === 0;
           return (
             <div
               key={plan.key}
-              className={`relative flex flex-col rounded-2xl border p-4 sm:p-6 ${
+              className={`relative flex w-full flex-col rounded-2xl border p-4 sm:w-[calc(50%-0.75rem)] sm:p-6 xl:w-[calc(25%-1.125rem)] ${
                 highlight ? 'border-accent bg-card shadow-xl ring-1 ring-accent/30' : 'border-border bg-card shadow-sm'
               }`}
             >
