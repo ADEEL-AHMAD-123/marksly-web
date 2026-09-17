@@ -299,76 +299,76 @@ export function AttendanceReportView() {
     <div className="space-y-6">
       {!isTeacher && <AttendanceMarkingStatus />}
 
-      {/* Toolbar — purely instrumental (filter the report), kept visually
-          lighter than the cards below it, same convention as the admin
-          dashboard's Classes/Subjects/ID Cards/Timetable pages. */}
-      <div className="flex items-center justify-between gap-2 no-print">
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          {needsSelection ? (
-            <>Pick a {terminology.classUnit.toLowerCase()} and {sectionLabel.toLowerCase()} below to see records.</>
-          ) : (
-            <>
-              Showing <Badge
-                variant={statusBadge[status as AttendanceStatus] ?? 'neutral'}
-                className={cn('capitalize', status === 'leave' && LEAVE_BADGE_CLASS)}
+      {/* One consolidated filters-and-actions panel — same Card the
+          results below use, so this reads as one part of the page rather
+          than three differently-styled stacked blocks. */}
+      <Card className="space-y-4 p-4 no-print">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            {needsSelection ? (
+              <>Pick a {terminology.classUnit.toLowerCase()} and {sectionLabel.toLowerCase()} below to see records.</>
+            ) : (
+              <>
+                Showing <Badge
+                  variant={statusBadge[status as AttendanceStatus] ?? 'neutral'}
+                  className={cn('capitalize', status === 'leave' && LEAVE_BADGE_CLASS)}
+                >
+                  {status === 'all' ? 'all statuses' : status}
+                </Badge> only — change &quot;Status&quot; below to see everyone.
+              </>
+            )}
+          </p>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5">
+              <button
+                type="button"
+                onClick={() => setView('cards')}
+                aria-label="Card view"
+                aria-pressed={view === 'cards'}
+                title="Card view — one block per record"
+                className={cn(
+                  'rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                  view === 'cards' ? 'bg-muted text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                )}
               >
-                {status === 'all' ? 'all statuses' : status}
-              </Badge> only — change &quot;Status&quot; below to see everyone.
-            </>
-          )}
-        </p>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5">
-            <button
-              type="button"
-              onClick={() => setView('cards')}
-              aria-label="Card view"
-              aria-pressed={view === 'cards'}
-              title="Card view — one block per record"
-              className={cn(
-                'rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                view === 'cards' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              )}
+                <List size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('table')}
+                aria-label="Table view"
+                aria-pressed={view === 'table'}
+                title="Table view — denser, easier to scan a large report"
+                className={cn(
+                  'rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                  view === 'table' ? 'bg-muted text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Table2 size={16} />
+              </button>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={exporting}
+              disabled={needsSelection || total === 0}
+              onClick={handleDownload}
+              title="Download every matching record (not just this page) as a CSV file"
             >
-              <List size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('table')}
-              aria-label="Table view"
-              aria-pressed={view === 'table'}
-              title="Table view — denser, easier to scan a large report"
-              className={cn(
-                'rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                view === 'table' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Table2 size={16} />
-            </button>
+              <Download size={16} /> Download CSV
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => window.print()} disabled={needsSelection || rows.length === 0}>
+              <Printer size={16} /> Print
+            </Button>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            loading={exporting}
-            disabled={needsSelection || total === 0}
-            onClick={handleDownload}
-            title="Download every matching record (not just this page) as a CSV file"
-          >
-            <Download size={16} /> Download CSV
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => window.print()} disabled={needsSelection || rows.length === 0}>
-            <Printer size={16} /> Print
-          </Button>
         </div>
-      </div>
-      <div className="rounded-xl border border-border/70 bg-muted/20 p-4 no-print">
-        <div className="mb-3">
-          <SearchInput
-            value={searchInput}
-            onChange={setSearchInput}
-            placeholder="Find a student by name, roll no. or admission no…"
-          />
-        </div>
+
+        <SearchInput
+          value={searchInput}
+          onChange={setSearchInput}
+          placeholder="Find a student by name, roll no. or admission no…"
+        />
+
         <div className={cn('grid grid-cols-1 gap-3', isTeacher ? 'sm:grid-cols-3' : 'sm:grid-cols-5')}>
           <div>
             <Label htmlFor="from">From date</Label>
@@ -430,40 +430,45 @@ export function AttendanceReportView() {
             </Select>
           </div>
         </div>
-      </div>
+      </Card>
 
-      {!isTeacher && !needsSelection && selectedClass && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground no-print">
-          <span className="inline-flex items-center gap-1 rounded-md bg-primary-soft px-2 py-1 text-primary-soft-foreground">
-            <LayoutGrid size={12} />
-            {selectedClass.name}{selectedSection ? ` – ${selectedSection.name}` : ''}
-          </span>
+      {/* One summary line instead of two stacked ones — class/section and
+          subject/time context (when it's not already per-record below),
+          followed by the present/absent/late/leave breakdown for the
+          current filter. */}
+      {!needsSelection && !isLoading && !isError && (
+        <div className="flex flex-wrap items-center gap-2 text-xs no-print">
+          {!isTeacher && selectedClass && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-primary-soft px-2 py-1 text-primary-soft-foreground">
+              <LayoutGrid size={12} />
+              {selectedClass.name}{selectedSection ? ` – ${selectedSection.name}` : ''}
+            </span>
+          )}
           {uniformSubjectTime?.subject && (
-            <span className="inline-flex items-center gap-1"><BookOpen size={12} /> {uniformSubjectTime.subject}</span>
+            <span className="inline-flex items-center gap-1 text-muted-foreground"><BookOpen size={12} /> {uniformSubjectTime.subject}</span>
           )}
           {uniformSubjectTime?.startTime && (
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex items-center gap-1 text-muted-foreground">
               <Clock size={12} /> {uniformSubjectTime.startTime}{uniformSubjectTime.endTime ? `–${uniformSubjectTime.endTime}` : ''}
             </span>
           )}
-        </div>
-      )}
-
-      {!needsSelection && !isLoading && !isError && total > 0 && status === 'all' && statusCounts && (
-        <div className="flex flex-wrap items-center gap-2 text-xs no-print">
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-success-soft px-2 py-1 text-success-soft-foreground">
-            <span className="h-1.5 w-1.5 rounded-full bg-success" /> {statusCounts.present} present
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-danger-soft px-2 py-1 text-danger-soft-foreground">
-            <span className="h-1.5 w-1.5 rounded-full bg-danger" /> {statusCounts.absent} absent
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-warning-soft px-2 py-1 text-warning-soft-foreground">
-            <span className="h-1.5 w-1.5 rounded-full bg-warning" /> {statusCounts.late} late
-          </span>
-          <span className={cn('inline-flex items-center gap-1.5 rounded-md px-2 py-1', LEAVE_BADGE_CLASS)}>
-            <span className="h-1.5 w-1.5 rounded-full bg-info-foreground" /> {statusCounts.leave} leave
-          </span>
-          <span className="text-muted-foreground">— for the {total} record{total === 1 ? '' : 's'} matching the filters above</span>
+          {total > 0 && status === 'all' && statusCounts && (
+            <>
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-success-soft px-2 py-1 text-success-soft-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-success" /> {statusCounts.present} present
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-danger-soft px-2 py-1 text-danger-soft-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-danger" /> {statusCounts.absent} absent
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-warning-soft px-2 py-1 text-warning-soft-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-warning" /> {statusCounts.late} late
+              </span>
+              <span className={cn('inline-flex items-center gap-1.5 rounded-md px-2 py-1', LEAVE_BADGE_CLASS)}>
+                <span className="h-1.5 w-1.5 rounded-full bg-info-foreground" /> {statusCounts.leave} leave
+              </span>
+              <span className="text-muted-foreground">({total} record{total === 1 ? '' : 's'})</span>
+            </>
+          )}
         </div>
       )}
 
@@ -520,7 +525,10 @@ export function AttendanceReportView() {
                     <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{r.date}</td>
                     <td className="px-3 py-2.5">
                       <div className="font-medium text-foreground">{r.studentName}</div>
-                      <div className="text-xs text-muted-foreground">Roll {r.rollNumber}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Roll {r.rollNumber}
+                        {r.guardians.length > 0 && ` · ${r.guardians.map((g) => g.name).filter(Boolean).join(', ')}`}
+                      </div>
                     </td>
                     {isTeacher && (
                       <td className="whitespace-nowrap px-3 py-2.5">{r.className}{r.sectionName ? ` – ${r.sectionName}` : ''}</td>
@@ -554,6 +562,11 @@ export function AttendanceReportView() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-medium text-foreground">{r.studentName}</p>
+                      {r.guardians.length > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          · {r.guardians.map((g) => g.name).filter(Boolean).join(', ')}
+                        </span>
+                      )}
                       <Badge variant={statusBadge[r.status]} className={cn('capitalize', r.status === 'leave' && LEAVE_BADGE_CLASS)}>{r.status}</Badge>
                     </div>
 

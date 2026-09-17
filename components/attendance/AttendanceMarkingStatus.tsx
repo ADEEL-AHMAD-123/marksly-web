@@ -55,7 +55,7 @@ export function AttendanceMarkingStatus() {
             <p className="truncate text-sm font-medium text-foreground">
               {allMarked
                 ? `All attendance marked for ${dateLabel}`
-                : `${unmarkedPeriodCount} period${unmarkedPeriodCount === 1 ? '' : 's'} still need attendance — ${dateLabel}`}
+                : `${unmarkedPeriodCount} period${unmarkedPeriodCount === 1 ? '' : 's'} still need attendance across ${unmarked.length} section${unmarked.length === 1 ? '' : 's'} — ${dateLabel}`}
             </p>
             <p className="text-xs text-muted-foreground">
               {coverage.markedSections} of {coverage.totalSections} sections fully marked
@@ -81,7 +81,7 @@ export function AttendanceMarkingStatus() {
       </button>
 
       {expanded && !allMarked && (
-        <div className="divide-y divide-border border-t border-border">
+        <div className="max-h-80 divide-y divide-border overflow-y-auto border-t border-border">
           {unmarked.map((u, i) => (
             <div key={i} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
