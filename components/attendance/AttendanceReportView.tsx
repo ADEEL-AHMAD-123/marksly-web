@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ChevronLeft, ChevronRight, ChevronDown, MessageCircle, Phone, Users, Printer, Download, LayoutGrid, Clock, BookOpen, Hash, Filter, UserCheck } from 'lucide-react';
+import { AlertCircle, ChevronLeft, ChevronRight, ChevronDown, MessageCircle, Phone, Users, Printer, Download, LayoutGrid, Clock, BookOpen, Hash, Filter, UserCheck, List, Table2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -128,6 +128,44 @@ function downloadCsv(filename: string, csv: string) {
   URL.revokeObjectURL(url);
 }
 
+/** Collapsed guardian-contact menu — same trigger used by both the card
+ * and table layouts below, so there's exactly one place that knows how
+ * to reach a student's guardians. Renders nothing when there are none. */
+function GuardianContactMenu({ guardians }: { guardians: AttendanceReportRow['guardians'] }) {
+  if (guardians.length === 0) return null;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="secondary" size="sm">
+          <Phone size={13} />
+          Contact{guardians.length > 1 ? ` (${guardians.length})` : ''}
+          <ChevronDown size={13} className="text-muted-foreground" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {guardians.map((g, gi) => (
+          <div key={gi}>
+            {gi > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuLabel>{g.name || 'Guardian'}{g.phone ? ` · ${g.phone}` : ''}</DropdownMenuLabel>
+            {g.phone ? (
+              <>
+                <DropdownMenuItem onSelect={() => window.open(waLink(g.phone!), '_blank', 'noopener,noreferrer')}>
+                  <MessageCircle size={14} className="text-success" /> WhatsApp
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => { window.location.href = `tel:${g.phone}`; }}>
+                  <Phone size={14} className="text-primary" /> Call
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <DropdownMenuItem disabled>No phone on file</DropdownMenuItem>
+            )}
+          </div>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function AttendanceReportView() {
   const terminology = useTerminology();
   const role = useAppSelector((s) => s.auth.user?.role);
@@ -141,6 +179,7 @@ export function AttendanceReportView() {
   const [searchInput, setSearchInput] = useState('');
   const search = useDebounce(searchInput, 350);
   const [page, setPage] = useState(1);
+  const [view, setView] = useState<'cards' | 'table'>('cards');
   const PAGE_SIZE = 50;
 
   // Only meaningful for a single selected day (also the page's default
@@ -298,6 +337,34 @@ export function AttendanceReportView() {
           )}
         </p>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5">
+            <button
+              type="button"
+              onClick={() => setView('cards')}
+              aria-label="Card view"
+              aria-pressed={view === 'cards'}
+              title="Card view — one block per record"
+              className={cn(
+                'rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                view === 'cards' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <List size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('table')}
+              aria-label="Table view"
+              aria-pressed={view === 'table'}
+              title="Table view — denser, easier to scan a large report"
+              className={cn(
+                'rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                view === 'table' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Table2 size={16} />
+            </button>
+          </div>
           <Button
             variant="secondary"
             size="sm"
@@ -435,6 +502,45 @@ export function AttendanceReportView() {
         </Card>
       ) : (
         <div className={cn(isFetching && 'opacity-60')}>
+        {view === 'table' ? (
+          <div className="overflow-x-auto rounded-xl border border-border/70">
+            <table className="w-full min-w-[860px] text-left text-sm">
+              <thead className="bg-muted/40 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="whitespace-nowrap px-3 py-2">Date</th>
+                  <th className="px-3 py-2">Student</th>
+                  <th className="whitespace-nowrap px-3 py-2">{terminology.classUnit} / {sectionLabel}</th>
+                  <th className="whitespace-nowrap px-3 py-2">Subject &amp; time</th>
+                  <th className="whitespace-nowrap px-3 py-2">Status</th>
+                  <th className="whitespace-nowrap px-3 py-2">Marked by</th>
+                  <th className="whitespace-nowrap px-3 py-2 no-print">Contact</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border bg-card">
+                {rows.map((r, i) => (
+                  <tr key={i} className="align-top hover:bg-muted/20">
+                    <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{r.date}</td>
+                    <td className="px-3 py-2.5">
+                      <div className="font-medium text-foreground">{r.studentName}</div>
+                      <div className="text-xs text-muted-foreground">Roll {r.rollNumber} · Adm# {r.admissionNumber}</div>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5">{r.className}{r.sectionName ? ` – ${r.sectionName}` : ''}</td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
+                      {r.subject ?? '—'}{r.startTime ? ` · ${r.startTime}${r.endTime ? `–${r.endTime}` : ''}` : ''}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <Badge variant={statusBadge[r.status]} className={cn('capitalize', r.status === 'leave' && LEAVE_BADGE_CLASS)}>{r.status}</Badge>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{r.teacherName ?? '—'}</td>
+                    <td className="px-3 py-2.5 no-print">
+                      <GuardianContactMenu guardians={r.guardians} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
         <div className="space-y-4">
           {groupedByDate.map((group) => (
             <Card key={group.date} className="divide-y divide-border overflow-hidden p-0">
@@ -484,35 +590,7 @@ export function AttendanceReportView() {
 
                   {r.guardians.length > 0 && (
                     <div className="no-print">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="secondary" size="sm">
-                            <Phone size={13} />
-                            Contact{r.guardians.length > 1 ? ` (${r.guardians.length})` : ''}
-                            <ChevronDown size={13} className="text-muted-foreground" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {r.guardians.map((g, gi) => (
-                            <div key={gi}>
-                              {gi > 0 && <DropdownMenuSeparator />}
-                              <DropdownMenuLabel>{g.name || 'Guardian'}{g.phone ? ` · ${g.phone}` : ''}</DropdownMenuLabel>
-                              {g.phone ? (
-                                <>
-                                  <DropdownMenuItem onSelect={() => window.open(waLink(g.phone!), '_blank', 'noopener,noreferrer')}>
-                                    <MessageCircle size={14} className="text-success" /> WhatsApp
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onSelect={() => { window.location.href = `tel:${g.phone}`; }}>
-                                    <Phone size={14} className="text-primary" /> Call
-                                  </DropdownMenuItem>
-                                </>
-                              ) : (
-                                <DropdownMenuItem disabled>No phone on file</DropdownMenuItem>
-                              )}
-                            </div>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <GuardianContactMenu guardians={r.guardians} />
                     </div>
                   )}
                 </div>
@@ -520,6 +598,7 @@ export function AttendanceReportView() {
             </Card>
           ))}
         </div>
+        )}
 
         <div className="mt-4 flex items-center justify-between no-print">
           <p className="text-sm text-muted-foreground">
