@@ -336,6 +336,7 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                       always be blank and could be misread as the student's
                       own contact info if ever populated by mistake. */}
                   <Row label="Gender" value={s.gender} />
+                  <Row label="Date of birth" value={s.dateOfBirth ? formatDate(s.dateOfBirth) : null} />
                   <Row label="Blood group" value={s.bloodGroup} />
                   <Row label="Address" value={s.address} />
                   <Row label="City" value={s.city} />

@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { StudentCreatedDialog } from '@/components/students/StudentCreatedDialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -31,6 +31,7 @@ import {
   useResendStudentCredentialsMutation,
   useResetStudentPinMutation,
   useResetGuardianPinMutation,
+  useGetSectionRosterQuery,
   type StudentListItem,
 } from '@/store/api/studentsApi';
 
@@ -73,9 +74,20 @@ const baseSchema = z.object({
     .refine((v) => !v || isValidPhoneNumber(v), 'Enter a valid phone number'),
   parentName: z.string().optional(),
   parentEmail: z.string().email('Enter a valid email address').optional().or(z.literal('')),
+  // Optional everywhere — the ID card and detail view can show it, but
+  // nothing blocks saving without it (matches the backend's own
+  // dateOfBirth.optional(), see student.validator.ts).
+  dateOfBirth: z
+    .string()
+    .optional()
+    .refine((v) => !v || new Date(v) <= new Date(), 'Date of birth cannot be in the future'),
 });
+// Message corrected to describe what the rule actually checks: phone alone
+// isn't enough (a guardian needs a usable login), but email alone IS fine
+// on its own — the label/helper text below say the same thing now instead
+// of implying email is always mandatory.
 const schema = baseSchema.refine((d) => !d.parentPhone || !!d.parentEmail, {
-  message: 'Guardian email is required when adding a guardian',
+  message: 'Add an email too — a guardian needs an email if a phone number is entered',
   path: ['parentEmail'],
 });
 
@@ -167,6 +179,14 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   // Holds the submitted form values while we wait for the admin to confirm
   // the guardian-contact-change warning; cleared once they confirm or cancel.
   const [pendingGuardianChange, setPendingGuardianChange] = useState<Form | null>(null);
+  // A filled-out form (especially a brand-new student, which has no other
+  // copy of this data anywhere) used to be discarded silently by closing
+  // the drawer — the X button, clicking outside, and Cancel all skipped
+  // straight to onClose() with no warning. Now anything dirty routes
+  // through a confirm step first; a pristine form (nothing typed, or an
+  // edit closed without changes) still closes immediately.
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const requestClose = () => (isDirty ? setConfirmDiscard(true) : onClose());
 
   const {
     register,
@@ -176,18 +196,20 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
     watch,
     setValue,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<Form>({
     resolver: zodResolver(activeSchema),
     defaultValues: {
       firstName: '', lastName: '',
       rollNumber: '', admissionNumber: '', classId: '', sectionId: '', gender: 'male',
       parentPhone: '', parentName: '', parentEmail: '',
-      address: '', city: '', bloodGroup: '', nationalIdNumber: '',
+      address: '', city: '', bloodGroup: '', nationalIdNumber: '', dateOfBirth: '',
     },
   });
 
   const selectedClassId = watch('classId');
+  const selectedSectionId = watch('sectionId');
+  const rollNumberValue = watch('rollNumber');
   const selectedClass = useMemo(() => classes.find((c) => c.id === selectedClassId), [classes, selectedClassId]);
   const sections = selectedClass?.sections ?? [];
   // Once a class is actually picked, prefer its own term's wording (e.g. a
@@ -205,6 +227,23 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
     const cls = classes.find((c) => c.name === student.className);
     return cls?.sections.find((s) => s.name === student.section)?.id;
   }, [student, classes]);
+
+  // Same-section roster, fetched only once a class+section is actually
+  // picked — lets the roll number field flag a collision immediately
+  // instead of only after a full submit round trip comes back with
+  // DUPLICATE_ROLL from the server (which still runs too, as the real
+  // source of truth against any race).
+  const { data: rosterRes } = useGetSectionRosterQuery(
+    { classId: selectedClassId, sectionId: selectedSectionId },
+    { skip: !selectedClassId || !selectedSectionId }
+  );
+  const rollNumberTaken = useMemo(() => {
+    const roll = rollNumberValue?.trim().toLowerCase();
+    if (!roll) return false;
+    return (rosterRes?.data?.students ?? []).some(
+      (st) => st.rollNumber.trim().toLowerCase() === roll && st.id !== student?.id
+    );
+  }, [rosterRes, rollNumberValue, student?.id]);
 
   // Prefill on open
   useEffect(() => {
@@ -234,6 +273,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         city: student.city ?? '',
         bloodGroup: student.bloodGroup ?? '',
         nationalIdNumber: student.nationalIdNumber ?? '',
+        dateOfBirth: student.dateOfBirth ? student.dateOfBirth.slice(0, 10) : '',
         parentPhone: guardianPhone,
         parentName: guardianName,
         parentEmail: guardianEmail,
@@ -254,11 +294,12 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         rollNumber: '', admissionNumber: '',
         classId: onlyClass?.id ?? '', sectionId: onlySection?.id ?? '', gender: 'male',
         parentPhone: '', parentName: '', parentEmail: '',
-        address: '', city: '', bloodGroup: '', nationalIdNumber: '',
+        address: '', city: '', bloodGroup: '', nationalIdNumber: '', dateOfBirth: '',
       });
       setOriginalGuardian(null);
     }
     setPendingGuardianChange(null);
+    setConfirmDiscard(false);
   }, [open, student, classes, reset]);
 
   const noClasses = classes.length === 0;
@@ -293,7 +334,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   // reset) keeps using the single TempPasswordDialog/queue above, since
   // those are one-off, not a "just created two logins at once" moment.
   const [createdInfo, setCreatedInfo] = useState<{
-    studentName: string; systemId: string; studentPin: string;
+    studentName: string; systemId: string; studentPin: string; studentUserId?: string | null;
     guardian?: { name: string; pin: string; emailed: boolean } | null;
   } | null>(null);
 
@@ -315,7 +356,8 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   };
 
   const doSubmit = async (values: Form) => {
-    const { parentPhone, parentName, parentEmail, ...core } = values;
+    const { parentPhone, parentName, parentEmail, dateOfBirth, ...restCore } = values;
+    const core = { ...restCore, dateOfBirth: dateOfBirth || undefined };
     try {
       if (isEdit && student) {
         const res = await updateStudent({ id: student.id, body: core }).unwrap();
@@ -378,6 +420,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
             studentName: `${core.firstName} ${core.lastName}`,
             systemId: res.data.systemId || '',
             studentPin: res.data.pin,
+            studentUserId: res.data.userId,
             guardian: res.data.guardianPin
               ? { name: parentName || 'Parent', pin: res.data.guardianPin, emailed: true }
               : null,
@@ -472,14 +515,19 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
 
   return (
     <>
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+    <Sheet open={open} onOpenChange={(o) => !o && requestClose()}>
       <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[460px]">
         <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <h2 className="text-lg font-semibold">{isEdit ? 'Edit Student' : 'Add Student'}</h2>
-            <SheetClose className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+            <button
+              type="button"
+              onClick={requestClose}
+              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Close"
+            >
               <X size={18} />
-            </SheetClose>
+            </button>
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
@@ -518,9 +566,9 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                     variant="secondary"
                     size="sm"
                     loading={resettingGuardianPin}
-                    disabled={resettingGuardianPin || !student.guardianPhone}
+                    disabled={resettingGuardianPin || !originalGuardian}
                     onClick={onResetGuardianPin}
-                    title={!student.guardianPhone ? 'No parent/guardian account on file' : undefined}
+                    title={!originalGuardian ? 'No parent/guardian account on file' : undefined}
                   >
                     <KeyRound size={14} /> Reset guardian PIN
                   </Button>
@@ -529,9 +577,9 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                     variant="secondary"
                     size="sm"
                     loading={resending && resendingTarget === 'parent'}
-                    disabled={resending || !student.guardianPhone}
+                    disabled={resending || !originalGuardian}
                     onClick={() => onResendCredentials('parent')}
-                    title={!student.guardianPhone ? 'No parent/guardian account on file' : undefined}
+                    title={!originalGuardian ? 'No parent/guardian account on file' : undefined}
                   >
                     <KeyRound size={14} /> Email parent login details
                   </Button>
@@ -557,12 +605,12 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="firstName">First name</Label>
+                <Label htmlFor="firstName">First name <span className="font-normal normal-case text-danger">*</span></Label>
                 <Input id="firstName" {...register('firstName')} />
                 {errors.firstName && <p className="mt-1 text-xs text-danger">{errors.firstName.message}</p>}
               </div>
               <div>
-                <Label htmlFor="lastName">Last name</Label>
+                <Label htmlFor="lastName">Last name <span className="font-normal normal-case text-danger">*</span></Label>
                 <Input id="lastName" {...register('lastName')} />
                 {errors.lastName && <p className="mt-1 text-xs text-danger">{errors.lastName.message}</p>}
               </div>
@@ -570,16 +618,18 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="rollNumber">Roll number</Label>
+                <Label htmlFor="rollNumber">Roll number <span className="font-normal normal-case text-danger">*</span></Label>
                 <Input id="rollNumber" {...register('rollNumber')} />
                 {errors.rollNumber ? (
                   <p className="mt-1 text-xs text-danger">{errors.rollNumber.message}</p>
+                ) : rollNumberTaken ? (
+                  <p className="mt-1 text-xs text-danger">This roll number is already used in this class/section.</p>
                 ) : (
                   <p className="mt-1 text-xs text-muted-foreground">Their seat/attendance number in this class — changes if they move classes.</p>
                 )}
               </div>
               <div>
-                <Label htmlFor="admissionNumber">Admission no.</Label>
+                <Label htmlFor="admissionNumber">Admission no. <span className="font-normal normal-case text-danger">*</span></Label>
                 <Input id="admissionNumber" {...register('admissionNumber')} />
                 {errors.admissionNumber ? (
                   <p className="mt-1 text-xs text-danger">{errors.admissionNumber.message}</p>
@@ -591,7 +641,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>{terminology.classUnit}</Label>
+                <Label htmlFor="classId">{terminology.classUnit} <span className="font-normal normal-case text-danger">*</span></Label>
                 <Controller
                   control={control}
                   name="classId"
@@ -600,7 +650,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                       value={field.value}
                       onValueChange={(v) => { field.onChange(v); setValue('sectionId', ''); }}
                     >
-                      <SelectTrigger><SelectValue placeholder={`Select ${terminology.classUnit.toLowerCase()}`} /></SelectTrigger>
+                      <SelectTrigger id="classId"><SelectValue placeholder={`Select ${terminology.classUnit.toLowerCase()}`} /></SelectTrigger>
                       <SelectContent>
                         {classes.map((c) => (
                           <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -612,13 +662,13 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 {errors.classId && <p className="mt-1 text-xs text-danger">{errors.classId.message}</p>}
               </div>
               <div>
-                <Label>{sectionLabel}</Label>
+                <Label htmlFor="sectionId">{sectionLabel} <span className="font-normal normal-case text-danger">*</span></Label>
                 <Controller
                   control={control}
                   name="sectionId"
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange} disabled={!selectedClassId}>
-                      <SelectTrigger><SelectValue placeholder={sectionLabel} /></SelectTrigger>
+                      <SelectTrigger id="sectionId"><SelectValue placeholder={sectionLabel} /></SelectTrigger>
                       <SelectContent>
                         {sections.map((s) => {
                           // Occupancy shown, not enforced here -- a full
@@ -651,13 +701,13 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
             </div>
 
             <div>
-              <Label>Gender</Label>
+              <Label htmlFor="gender">Gender <span className="font-normal normal-case text-danger">*</span></Label>
               <Controller
                 control={control}
                 name="gender"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                    <SelectTrigger id="gender"><SelectValue placeholder="Select gender" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="male">Male</SelectItem>
                       <SelectItem value="female">Female</SelectItem>
@@ -667,6 +717,17 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 )}
               />
               {errors.gender && <p className="mt-1 text-xs text-danger">{errors.gender.message}</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="dateOfBirth">Date of birth <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
+              <Input
+                id="dateOfBirth"
+                type="date"
+                max={new Date().toISOString().slice(0, 10)}
+                {...register('dateOfBirth')}
+              />
+              {errors.dateOfBirth && <p className="mt-1 text-xs text-danger">{errors.dateOfBirth.message}</p>}
             </div>
 
             <div>
@@ -700,7 +761,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
 
             <div className="border-t border-border pt-4">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Parent / Guardian <span className="font-normal normal-case text-danger">(required)</span>
+                Parent / Guardian <span className="font-normal normal-case text-danger">* phone or email required</span>
               </p>
               {isEdit && !originalGuardian && (
                 <p className="-mt-1 mb-2 text-xs text-muted-foreground">
@@ -785,13 +846,13 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                   <Input id="city" {...register('city')} />
                 </div>
                 <div>
-                  <Label>Blood Group <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
+                  <Label htmlFor="bloodGroup">Blood Group <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
                   <Controller
                     control={control}
                     name="bloodGroup"
                     render={({ field }) => (
                       <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger><SelectValue placeholder="Select blood group" /></SelectTrigger>
+                        <SelectTrigger id="bloodGroup"><SelectValue placeholder="Select blood group" /></SelectTrigger>
                         <SelectContent>
                           {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((g) => (
                             <SelectItem key={g} value={g}>{g}</SelectItem>
@@ -806,10 +867,8 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
-            <SheetClose asChild>
-              <Button type="button" variant="secondary">Cancel</Button>
-            </SheetClose>
-            <Button type="submit" loading={creating || updating || updatingGuardianContact} disabled={noClasses}>
+            <Button type="button" variant="secondary" onClick={requestClose}>Cancel</Button>
+            <Button type="submit" loading={creating || updating || updatingGuardianContact} disabled={noClasses || rollNumberTaken}>
               {isEdit ? 'Save changes' : 'Add student'}
             </Button>
           </div>
@@ -832,7 +891,20 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
         studentName={createdInfo.studentName}
         systemId={createdInfo.systemId}
         studentPin={createdInfo.studentPin}
+        studentUserId={createdInfo.studentUserId}
         guardian={createdInfo.guardian}
+      />
+    )}
+
+    {confirmDiscard && (
+      <ConfirmDialog
+        open={confirmDiscard}
+        onClose={() => setConfirmDiscard(false)}
+        onConfirm={() => { setConfirmDiscard(false); onClose(); }}
+        title="Discard changes?"
+        tone="warning"
+        confirmLabel="Discard"
+        description="You have unsaved changes to this student. Closing now will discard them."
       />
     )}
 

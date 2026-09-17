@@ -4,6 +4,8 @@ import { useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Check, Copy, PartyPopper, KeyRound, UserRound, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { PhotoUpload } from '@/components/shared/PhotoUpload';
 
 interface Props {
   open: boolean;
@@ -11,6 +13,12 @@ interface Props {
   studentName: string;
   systemId: string;
   studentPin: string;
+  /** The freshly-created student's underlying User id — lets this dialog
+   *  offer a photo upload immediately, instead of the old flow where a
+   *  brand-new student had no userId yet (photo upload is gated on it) and
+   *  the admin had to save, close, then reopen the same student in Edit
+   *  mode just to add a picture. */
+  studentUserId?: string | null;
   /** Absent when this student was added with no guardian linked yet. */
   guardian?: {
     name: string;
@@ -33,7 +41,7 @@ interface Props {
  * read/copy/hand over in one go, e.g. printing an ID card or texting both to
  * a parent.
  */
-export function StudentCreatedDialog({ open, onClose, studentName, systemId, studentPin, guardian }: Props) {
+export function StudentCreatedDialog({ open, onClose, studentName, systemId, studentPin, studentUserId, guardian }: Props) {
   const [copied, setCopied] = useState(false);
 
   const copyAll = async () => {
@@ -74,6 +82,21 @@ export function StudentCreatedDialog({ open, onClose, studentName, systemId, stu
           </DialogPrimitive.Description>
 
           <div className="mt-4 space-y-3">
+            {studentUserId && (
+              <div className="rounded-xl border border-dashed border-border p-3.5">
+                <Label className="text-xs">Photo <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Add it now for the ID card, or skip it — it can be added anytime from Edit.
+                </p>
+                <div className="mt-2">
+                  <PhotoUpload
+                    userId={studentUserId}
+                    size="md"
+                    initials={studentName.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()}
+                  />
+                </div>
+              </div>
+            )}
             <div className="rounded-xl border border-border bg-muted/50 p-3.5">
               <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <UserRound size={12} /> Student

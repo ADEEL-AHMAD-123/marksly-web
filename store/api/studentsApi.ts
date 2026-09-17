@@ -42,6 +42,10 @@ export interface StudentListItem {
   admissionDate: string | null;
   guardianName: string | null;
   guardianPhone: string | null;
+  // Only present on getStudent (single-record fetch), same as guardianEmail
+  // below — the list endpoint doesn't project it. ISO date string; see
+  // student.service.ts's getById().
+  dateOfBirth?: string | null;
   // Only present on getStudent (single-record fetch) — see student.service.ts's
   // getById(). Lets the edit form prefill an existing guardian's email,
   // which guardianName/guardianPhone alone never covered.
