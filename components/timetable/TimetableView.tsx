@@ -597,74 +597,61 @@ export function TimetableView() {
         </>
       )}
 
-      {/* Help — placed after the actual tool, same bottom-of-page pattern as
-          ID Cards and Academic Terms & Grading, not before it. */}
+      {/* Help — split into focused, single-question notes instead of one
+          long scroll, same convention as AcademicYearView/ID Cards — each
+          InfoNote answers exactly one thing and stays collapsed until asked
+          for. Points that the grid itself now explains visually (hover
+          icons are always visible; the trailing row is labeled "+ New
+          time") were dropped rather than restated in prose. */}
       <div className="space-y-2 no-print">
         <InfoNote
-          title="Set these up first, or the timetable will have gaps"
+          title="Set up your subjects first, or the timetable will have gaps"
           link={{ href: '/admin/subjects', label: 'Go to Subjects' }}
         >
           <p>
-            A timetable is built per {terminology.classUnit.toLowerCase()} and {sectionLabel.toLowerCase()}, so both
-            need to exist before you can add a single period — and each period needs a subject to pick from, so{' '}
-            <strong>add your subjects first</strong> or the subject dropdown here will be empty.
+            A timetable is built per {terminology.classUnit.toLowerCase()} and {sectionLabel.toLowerCase()} — add
+            your subjects first, or the dropdown here will be empty. If a {sectionLabel.toLowerCase()} has no period
+            scheduled for today, teachers won&apos;t see anything to mark attendance for — attendance is always
+            taken against a specific period, not just a date.
           </p>
+        </InfoNote>
+        <InfoNote title="What do the colors and warnings mean?">
           <p>
-            If a {terminology.classUnit.toLowerCase()} or {sectionLabel.toLowerCase()} has{' '}
-            <strong>no period scheduled for today</strong>, teachers won&apos;t see anything to mark attendance for
-            on that day — attendance is always taken against a specific period, not just a date. Add the missing
-            period here to fix it.
+            Each subject gets its own color, so a busy week reads at a glance. A dashed, uncolored slot is a
+            deliberate <strong>free period</strong> (no subject picked). A colored slot with a yellow &quot;No
+            teacher&quot; note is a real gap — assign a teacher to that subject on the Subjects page to clear it.
           </p>
+        </InfoNote>
+        <InfoNote title="Why is there no teacher field to fill in?">
           <p>
-            Each subject gets its own color in the grid above, so a busy week reads at a glance — the same subject
-            always shows the same color everywhere it appears. A dashed, uncolored slot is a deliberate{' '}
-            <strong>free period</strong> (no subject picked when it was added) rather than a subject with a color;
-            a solid slot with a yellow &quot;No teacher&quot; note is a real gap worth fixing — that subject has no
-            teacher assigned yet on the Subjects page.
+            A period&apos;s teacher is always resolved automatically from whichever teacher the Subject is assigned
+            to for that {terminology.classUnit.toLowerCase()} and {sectionLabel.toLowerCase()}. To change who teaches
+            a period, update the assignment on the <strong>Subjects</strong> page instead — every period using
+            that subject picks up the change automatically.
           </p>
+        </InfoNote>
+        <InfoNote title="Why did adding or editing a period get rejected?">
           <p>
-            Hover any period for its edit (pencil) and remove (trash) icons — removing one always asks you to
-            confirm first and explains what it affects, so it can&apos;t happen by accident. Each day&apos;s column
-            header has its own <strong>+</strong> (add a period there) and copy icon (copy that day&apos;s whole
-            schedule onto other days) buttons. There&apos;s always one extra blank row waiting right after the last
-            one — every cell in it works exactly like any other empty cell, so starting a brand-new time slot (an
-            8th period after a week that&apos;s only ever had 7, say) never needs a different button to find.
+            Two periods can&apos;t overlap for the same {sectionLabel.toLowerCase()}. A period is also rejected if
+            its teacher is already teaching a different {sectionLabel.toLowerCase()} at an overlapping time, even on
+            a different {terminology.classUnit.toLowerCase()} — one teacher can&apos;t be in two places at once.
           </p>
+        </InfoNote>
+        <InfoNote title="What happens when I copy a day to other days?">
           <p>
-            <strong>Why is there no teacher field to fill in?</strong> A period&apos;s teacher is never set here —
-            it&apos;s always resolved automatically from whichever teacher the Subject is assigned to for that{' '}
-            {terminology.classUnit.toLowerCase()} and {sectionLabel.toLowerCase()}, shown read-only when you add or
-            edit a period. To change who teaches a period, update the teacher assignment on the{' '}
-            <strong>Subjects</strong> page instead — every period using that subject picks up the change
-            automatically, nothing needs to be re-saved here.
+            Every period from that day is recreated on each day you pick, at the same time and subject — the
+            teacher is freshly resolved for each, never copied as-is. Anything that would conflict with something
+            already on a target day is skipped, never overwritten, and you&apos;ll see exactly which ones afterward.
           </p>
+        </InfoNote>
+        <InfoNote
+          title="Need to close for a holiday instead?"
+          link={{ href: '/admin/notices', label: 'Go to Notices › Holidays' }}
+        >
           <p>
-            <strong>Why did adding or editing a period get rejected?</strong> Two periods can&apos;t overlap for the
-            same {sectionLabel.toLowerCase()} — you&apos;ll be told to pick a different time or day. A period can
-            also be rejected if its teacher is already teaching a different {sectionLabel.toLowerCase()} at an
-            overlapping time, even on a different {terminology.classUnit.toLowerCase()} — one teacher can&apos;t be
-            in two places at once, so the earlier assignment needs to move first.
-          </p>
-          <p>
-            <strong>Why does {DAYS[6]} always show, but not {DAYS[0]}?</strong> Monday through {DAYS[6]} are always
-            shown as columns — even with nothing in them yet — since most schools here run a six-day week and need
-            somewhere to add that first period. {DAYS[0]} only appears once at least one period is actually added to
-            it, so an institution that&apos;s always closed on {DAYS[0]} doesn&apos;t get a permanently empty column.
-          </p>
-          <p>
-            <strong>What actually happens when you copy a day to others?</strong> Every period from that day is
-            recreated on each day you pick, at the same time and with the same subject — the teacher isn&apos;t
-            copied over directly, it&apos;s re-resolved from the Subject&apos;s assignment the same way a brand-new
-            period would be, so it can never end up stale even if the assignment changes later. Any period that
-            would conflict with something already on a target day is skipped (never overwritten), and you&apos;ll
-            see exactly which ones in the results afterward.
-          </p>
-          <p>
-            <strong>Marking a specific date off?</strong> That&apos;s now managed from <strong>Notices &rsaquo; Holidays</strong>,
-            not here — it closes a real calendar date (a public holiday, a weather closure, a staff-training day),
-            either for the whole institution or just one class. It doesn&apos;t touch the weekly schedule below at
-            all — Monday&apos;s periods stay exactly as built — it only stops attendance from being taken on that
-            date until the holiday is removed again.
+            Closing a specific calendar date — a public holiday, a weather closure, a staff-training day — is
+            managed from Notices, not here. It stops attendance from being taken that day without touching your
+            weekly schedule at all.
           </p>
         </InfoNote>
       </div>
