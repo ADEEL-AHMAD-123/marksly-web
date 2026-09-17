@@ -521,7 +521,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
               )}
               {!isTeacher && sectionCoverage && (
                 <span className="text-xs text-muted-foreground">
-                  {sectionCoverage.periodsMarked} of {sectionCoverage.periodsScheduled} periods marked
+                  {sectionCoverage.periodsMarked} of {sectionCoverage.periodsScheduled} period{sectionCoverage.periodsScheduled === 1 ? '' : 's'} marked
                 </span>
               )}
             </div>

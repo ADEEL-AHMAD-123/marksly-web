@@ -70,7 +70,7 @@ export function AttendanceMarkingStatus() {
             </p>
             {!nothingScheduled && coverage && (
               <p className="text-xs text-muted-foreground">
-                {coverage.markedSections} of {coverage.totalSections} sections fully marked
+                {coverage.markedSections} of {coverage.totalSections} section{coverage.totalSections === 1 ? '' : 's'} fully marked
               </p>
             )}
           </div>
