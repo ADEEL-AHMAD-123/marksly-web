@@ -46,6 +46,7 @@ import {
 } from '@/store/api/usersApi';
 import { ImportCsvDrawer } from '@/components/ui/import-csv-drawer';
 import { DomainConfirmDialog } from '@/components/users/DomainConfirmDialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { PhotoUpload } from '@/components/shared/PhotoUpload';
 import { StaffDetailDrawer } from './StaffDetailDrawer';
 import { EditCardDetailsDialog } from '@/components/students/EditCardDetailsDialog';
@@ -688,9 +689,15 @@ function AddStaffDrawer({
   const [createUser, { isLoading: creating }] = useCreateUserMutation();
   const [updateUser, { isLoading: updating }] = useUpdateUserMutation();
   const isLoading = creating || updating;
-  const [createdInfo, setCreatedInfo] = useState<{ name: string; systemId: string | null; pin: string; role: ManageableRole } | null>(null);
+  const [createdInfo, setCreatedInfo] = useState<{ name: string; systemId: string | null; pin: string; role: ManageableRole; userId?: string; initials?: string } | null>(null);
   const [domainIssue, setDomainIssue] = useState<{ domain: string; email: string } | null>(null);
-  const { register, control, handleSubmit, reset, getValues, formState: { errors } } = useForm<StaffForm>({
+  // A filled-out add/edit form used to be discarded silently on close (the
+  // X button, clicking outside, and Cancel all skipped straight to
+  // onClose()) — same fix as StudentFormDrawer.tsx: anything dirty routes
+  // through a confirm step first.
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const requestClose = () => (isDirty ? setConfirmDiscard(true) : onClose());
+  const { register, control, handleSubmit, reset, getValues, formState: { errors, isDirty } } = useForm<StaffForm>({
     resolver: zodResolver(schema),
     defaultValues: {
       firstName: '', lastName: '', phone: '', email: '', role: defaultRole,
@@ -734,6 +741,7 @@ function AddStaffDrawer({
             address: '', nationalIdNumber: '',
           }
     );
+    setConfirmDiscard(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
 
@@ -759,6 +767,8 @@ function AddStaffDrawer({
         systemId: res.data.systemId,
         pin: res.data.pin,
         role: values.role,
+        userId: res.data.id,
+        initials: getInitials(values.firstName, values.lastName),
       });
     } catch (e: any) {
       if (!isEditing && getErrorCode(e) === 'EMAIL_DOMAIN_UNVERIFIED') {
@@ -776,12 +786,19 @@ function AddStaffDrawer({
 
   return (
     <>
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+    <Sheet open={open} onOpenChange={(o) => !o && requestClose()}>
       <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[440px]">
         <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <h2 className="text-lg font-semibold">{isEditing ? `Edit ${roleLabel(editing.role)}` : 'Add account'}</h2>
-            <SheetClose className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></SheetClose>
+            <button
+              type="button"
+              onClick={requestClose}
+              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
           </div>
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
             {isEditing && editing && (
@@ -797,7 +814,7 @@ function AddStaffDrawer({
               </div>
             )}
 
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-sm font-bold uppercase tracking-wide text-foreground">
               Core details
             </p>
 
@@ -823,25 +840,25 @@ function AddStaffDrawer({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="firstName">First name</Label>
+                <Label htmlFor="firstName">First name <span className="font-normal normal-case text-danger">*</span></Label>
                 <Input id="firstName" {...register('firstName')} />
                 {errors.firstName && <p className="mt-1 text-xs text-danger">{errors.firstName.message}</p>}
               </div>
               <div>
-                <Label htmlFor="lastName">Last name</Label>
+                <Label htmlFor="lastName">Last name <span className="font-normal normal-case text-danger">*</span></Label>
                 <Input id="lastName" {...register('lastName')} />
                 {errors.lastName && <p className="mt-1 text-xs text-danger">{errors.lastName.message}</p>}
               </div>
             </div>
 
             <div>
-              <Label>Gender <span className="font-normal normal-case text-danger">*</span></Label>
+              <Label htmlFor="gender">Gender <span className="font-normal normal-case text-danger">*</span></Label>
               <Controller
                 control={control}
                 name="gender"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                    <SelectTrigger id="gender"><SelectValue placeholder="Select gender" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="male">Male</SelectItem>
                       <SelectItem value="female">Female</SelectItem>
@@ -906,7 +923,7 @@ function AddStaffDrawer({
                 <p className="mt-1 text-xs text-danger">{errors.nationalIdNumber.message}</p>
               )}
               <p className="mt-1 text-xs text-muted-foreground">
-                Required to create the account — if it&apos;s wrong or changes later, {roleLabel(isEditing ? editing.role : defaultRole).toLowerCase()} can correct it themselves from their own My ID Card page.
+                Can be corrected later by {roleLabel(isEditing ? editing.role : defaultRole).toLowerCase()} from their own My ID Card page.
               </p>
             </div>
 
@@ -918,16 +935,11 @@ function AddStaffDrawer({
                 joining date stay admin-managed only — there's no self-service
                 mutation for either, so that promise isn't made here. */}
             <div className="border-t border-border pt-4">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="mb-1 text-sm font-bold uppercase tracking-wide text-foreground">
                 Optional details
               </p>
-              <p className="mb-2 flex items-start gap-1.5 text-xs text-muted-foreground">
-                <span aria-hidden>💡</span>
-                <span>
-                  Address doesn&apos;t need to be filled in now — the {roleLabel(isEditing ? editing.role : defaultRole).toLowerCase()} can add or
-                  update it anytime from their own dashboard&apos;s <span className="font-medium text-foreground">My ID Card</span> page.
-                  Designation and joining date are set by the school only.
-                </span>
+              <p className="mb-2 text-xs text-muted-foreground">
+                Address can be added later by the {roleLabel(isEditing ? editing.role : defaultRole).toLowerCase()} themselves from their dashboard. Designation and joining date are set by the school only.
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -947,7 +959,7 @@ function AddStaffDrawer({
             </div>
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
-            <SheetClose asChild><Button type="button" variant="secondary">Cancel</Button></SheetClose>
+            <Button type="button" variant="secondary" onClick={requestClose}>Cancel</Button>
             <Button type="submit" loading={isLoading}>{isEditing ? 'Save changes' : 'Add'}</Button>
           </div>
         </form>
@@ -962,6 +974,20 @@ function AddStaffDrawer({
         systemId={createdInfo.systemId ?? undefined}
         pin={createdInfo.pin}
         roleLabel={roleLabel(createdInfo.role)}
+        photoUserId={createdInfo.userId}
+        photoInitials={createdInfo.initials}
+      />
+    )}
+
+    {confirmDiscard && (
+      <ConfirmDialog
+        open={confirmDiscard}
+        onClose={() => setConfirmDiscard(false)}
+        onConfirm={() => { setConfirmDiscard(false); onClose(); }}
+        title="Discard changes?"
+        tone="warning"
+        confirmLabel="Discard"
+        description="You have unsaved changes to this account. Closing now will discard them."
       />
     )}
 

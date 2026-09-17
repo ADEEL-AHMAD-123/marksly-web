@@ -159,8 +159,8 @@ export function StaffDetailDrawer({ member, open, onClose, onEdit }: Props) {
                 {/* Login — same reveal/reset pattern as StudentDetailDrawer's
                     Student login section, reusing useStaffPinReveal. */}
                 <div className="mt-5">
-                  <p className="mb-0.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    <KeyRound size={12} /> Login
+                  <p className="mb-0.5 flex items-center gap-1.5 text-sm font-bold uppercase tracking-wide text-foreground">
+                    <KeyRound size={14} /> Login
                   </p>
                   <p className="mb-2 text-xs text-muted-foreground">This account signs in using its Login ID and PIN.</p>
                   <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
@@ -199,8 +199,8 @@ export function StaffDetailDrawer({ member, open, onClose, onEdit }: Props) {
                     plus a resend action, mirroring the row's old
                     StaffEmailBadge but with the full picture in one place. */}
                 <div className="mt-5">
-                  <p className="mb-0.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    <Mail size={12} /> Email delivery
+                  <p className="mb-0.5 flex items-center gap-1.5 text-sm font-bold uppercase tracking-wide text-foreground">
+                    <Mail size={14} /> Email delivery
                   </p>
                   <p className="mb-2 text-xs text-muted-foreground">
                     Email is only a convenience for handing over the PIN — it never blocks sign-in.

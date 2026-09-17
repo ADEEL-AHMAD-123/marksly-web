@@ -4,6 +4,8 @@ import { useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Check, Copy, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { PhotoUpload } from '@/components/shared/PhotoUpload';
 
 interface Props {
   open: boolean;
@@ -27,6 +29,12 @@ interface Props {
    *  like the wrong person's credentials. Omit when the name alone is
    *  unambiguous (e.g. creating a teacher/staff account for themselves). */
   roleLabel?: string;
+  /** When set, offers a photo upload right in this dialog — for a
+   *  brand-new account that has no other UI surface to add one yet (unlike
+   *  editing an existing record, where a Photo field already exists on the
+   *  edit form). Pass the just-created User's own id. */
+  photoUserId?: string;
+  photoInitials?: string;
 }
 
 /**
@@ -47,7 +55,7 @@ interface Props {
  * student.service.ts's getStudentPin()). The copy below reflects that,
  * rather than implying this is the only chance to record it.
  */
-export function TempPasswordDialog({ open, onClose, name, phone, tempPassword, systemId, pin, emailed, roleLabel }: Props) {
+export function TempPasswordDialog({ open, onClose, name, phone, tempPassword, systemId, pin, emailed, roleLabel, photoUserId, photoInitials }: Props) {
   const [copied, setCopied] = useState(false);
   const isPin = pin !== undefined;
   const idLabel = isPin ? 'Login ID' : 'Phone';
@@ -101,6 +109,16 @@ export function TempPasswordDialog({ open, onClose, name, phone, tempPassword, s
                     ? ' You can change it anytime from this student’s details, under Guardian login.'
                     : ''}</>}
           </DialogPrimitive.Description>
+
+          {photoUserId && (
+            <div className="mt-4 rounded-xl border border-dashed border-border p-3.5">
+              <Label className="text-xs">Photo <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
+              <p className="mt-0.5 text-xs text-muted-foreground">Add it now, or skip it — it can be added anytime from Edit.</p>
+              <div className="mt-2">
+                <PhotoUpload userId={photoUserId} size="md" initials={photoInitials} />
+              </div>
+            </div>
+          )}
 
           <div className="mt-4 space-y-2 rounded-xl border border-border bg-muted/50 p-3.5">
             {showIdRow && (
