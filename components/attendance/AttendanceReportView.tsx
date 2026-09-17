@@ -522,26 +522,28 @@ export function AttendanceReportView() {
               <tbody className="divide-y divide-border bg-card">
                 {rows.map((r, i) => (
                   <tr key={i} className="align-top hover:bg-muted/20">
-                    <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{r.date}</td>
+                    <td className="whitespace-nowrap px-3 py-2.5 font-medium text-foreground">{r.date}</td>
                     <td className="px-3 py-2.5">
                       <div className="font-medium text-foreground">{r.studentName}</div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-foreground">
                         Roll {r.rollNumber}
-                        {r.guardians.length > 0 && ` · ${r.guardians.map((g) => g.name).filter(Boolean).join(', ')}`}
+                        {r.guardians.length > 0 && (
+                          <span className="text-muted-foreground"> · {r.guardians.map((g) => g.name).filter(Boolean).join(', ')}</span>
+                        )}
                       </div>
                     </td>
                     {isTeacher && (
                       <td className="whitespace-nowrap px-3 py-2.5">{r.className}{r.sectionName ? ` – ${r.sectionName}` : ''}</td>
                     )}
                     {!uniformSubjectTime && (
-                      <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
+                      <td className="whitespace-nowrap px-3 py-2.5 text-foreground">
                         {r.subject ?? '—'}{r.startTime ? ` · ${r.startTime}${r.endTime ? `–${r.endTime}` : ''}` : ''}
                       </td>
                     )}
                     <td className="px-3 py-2.5">
                       <Badge variant={statusBadge[r.status]} className={cn('capitalize', r.status === 'leave' && LEAVE_BADGE_CLASS)}>{r.status}</Badge>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{r.teacherName ?? '—'}</td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-foreground">{r.teacherName ?? '—'}</td>
                     <td className="px-3 py-2.5 no-print">
                       <GuardianContactMenu guardians={r.guardians} />
                     </td>
@@ -554,8 +556,8 @@ export function AttendanceReportView() {
         <div className="space-y-4">
           {groupedByDate.map((group) => (
             <Card key={group.date} className="divide-y divide-border overflow-hidden p-0">
-              <div className="bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {group.date} <span className="font-normal normal-case">· {group.rows.length} record{group.rows.length === 1 ? '' : 's'}</span>
+              <div className="bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-foreground">
+                {group.date} <span className="font-normal normal-case text-muted-foreground">· {group.rows.length} record{group.rows.length === 1 ? '' : 's'}</span>
               </div>
               {group.rows.map((r, i) => (
                 <div key={i} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
@@ -575,8 +577,8 @@ export function AttendanceReportView() {
                         "Class" and "Period" to jump out, not to be inferred
                         from an unlabeled string of dots. */}
                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
-                      <span className="inline-flex items-center gap-1 text-muted-foreground">
-                        <Hash size={12} /> Roll {r.rollNumber}
+                      <span className="inline-flex items-center gap-1 text-foreground">
+                        <Hash size={12} className="text-muted-foreground" /> Roll {r.rollNumber}
                       </span>
                       {isTeacher && (
                         <span className="inline-flex items-center gap-1 rounded-md bg-primary-soft px-1.5 py-0.5 text-primary-soft-foreground">
@@ -585,18 +587,18 @@ export function AttendanceReportView() {
                         </span>
                       )}
                       {!uniformSubjectTime && r.subject && (
-                        <span className="inline-flex items-center gap-1 text-muted-foreground">
-                          <BookOpen size={12} /> {r.subject}
+                        <span className="inline-flex items-center gap-1 text-foreground">
+                          <BookOpen size={12} className="text-muted-foreground" /> {r.subject}
                         </span>
                       )}
                       {!uniformSubjectTime && r.startTime && (
-                        <span className="inline-flex items-center gap-1 text-muted-foreground">
-                          <Clock size={12} /> {r.startTime}{r.endTime ? `–${r.endTime}` : ''}
+                        <span className="inline-flex items-center gap-1 text-foreground">
+                          <Clock size={12} className="text-muted-foreground" /> {r.startTime}{r.endTime ? `–${r.endTime}` : ''}
                         </span>
                       )}
                       {r.teacherName && (
-                        <span className="inline-flex items-center gap-1 text-muted-foreground">
-                          <UserCheck size={12} /> Marked by {r.teacherName}
+                        <span className="inline-flex items-center gap-1 text-foreground">
+                          <UserCheck size={12} className="text-muted-foreground" /> Marked by {r.teacherName}
                         </span>
                       )}
                     </div>
