@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import {
   GraduationCap, CalendarCheck, Wallet, FileText, CalendarClock,
-  CreditCard, MessageSquare, ArrowRight, Users, LayoutDashboard, Bell,
+  CreditCard, ArrowRight, Users, LayoutDashboard, Bell,
 } from 'lucide-react';
 
 export function HomeFeatures() {
@@ -63,12 +63,12 @@ export function HomeFeatures() {
           <div className="rounded-2xl border border-border bg-card p-3.5 transition-shadow hover:shadow-md sm:p-5 md:col-span-2">
             <div className="flex items-center gap-2 sm:gap-2.5">
               <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary sm:h-8 sm:w-8">
-                <MessageSquare aria-hidden size={15} className="sm:hidden" />
-                <MessageSquare aria-hidden size={16} className="hidden sm:block" />
+                <LayoutDashboard aria-hidden size={15} className="sm:hidden" />
+                <LayoutDashboard aria-hidden size={16} className="hidden sm:block" />
               </span>
-              <h3 className="text-xs font-semibold sm:text-sm">WhatsApp &amp; SMS</h3>
+              <h3 className="text-xs font-semibold sm:text-sm">Parent &amp; student portal</h3>
             </div>
-            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-xs">Attendance alerts and fee reminders, delivered where parents already are.</p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-xs">Attendance, results and fee dues, checked directly by every family.</p>
           </div>
 
           {/* fees — pairs with WhatsApp above on mobile, still a full feature

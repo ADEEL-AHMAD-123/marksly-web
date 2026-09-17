@@ -61,8 +61,8 @@ export default function PrivacyPage() {
 
         <Section title="3. How we use this data">
           <ul className="list-disc space-y-1.5 pl-5">
-            <li>To operate the core product — attendance, exams, fees, timetables, ID cards, and messaging, exactly as configured by the institution.</li>
-            <li>To send transactional communications: fee reminders, exam results, attendance alerts, payment receipts and account notices, via email, WhatsApp, or SMS as configured.</li>
+            <li>To operate the core product — attendance, exams, fees, timetables, ID cards, and notices, exactly as configured by the institution.</li>
+            <li>To send transactional communications: fee reminders, exam results, attendance alerts, payment receipts and account notices, via email.</li>
             <li>To process payments through our payment gateway partners, and to send fee receipts.</li>
             <li>To maintain the security of accounts (login monitoring, rate-limiting suspicious activity) and to investigate abuse.</li>
             <li>To improve the product — we do not sell personal data, and we do not use student or guardian data for advertising.</li>
@@ -78,7 +78,6 @@ export default function PrivacyPage() {
             <li><strong>Safepay, JazzCash and EasyPaisa</strong> — for processing card and mobile-wallet payments.</li>
             <li><strong>Resend</strong> — for sending transactional emails (verification, receipts, notifications).</li>
             <li><strong>Cloudinary</strong> — for storing uploaded photos (e.g. student ID photos).</li>
-            <li><strong>Meta (WhatsApp Business API) and SMS providers</strong> — for delivering parent notifications an institution chooses to send.</li>
           </ul>
           <p>We do not sell, rent, or otherwise share personal data with third parties for their own marketing purposes.</p>
         </Section>

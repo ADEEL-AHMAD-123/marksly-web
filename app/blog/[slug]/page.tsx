@@ -25,7 +25,7 @@ const RELATED_LINKS: Record<string, { href: string; label: string; description: 
     { href: '/college-management-system-pakistan', label: 'College management system in Pakistan', description: 'Explore exams, sections and reporting for colleges.' },
   ],
   'whatsapp-for-parent-communication-in-pakistan': [
-    { href: '/features#messaging', label: 'Parent messaging features', description: 'See how attendance alerts, fee reminders and notices reach parents by WhatsApp and SMS.' },
+    { href: '/features#inbox', label: 'Notifications & inbox', description: 'See how attendance alerts, fee reminders and notices reach every family through their dashboard.' },
     { href: '/features#notices', label: 'Notices & announcements', description: 'Target a class, a role, or the whole institution — with holidays posted automatically.' },
   ],
   'reducing-late-fee-payments-schools': [

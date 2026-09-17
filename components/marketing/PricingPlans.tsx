@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Check, ArrowRight, AlertTriangle, MessageCircle } from 'lucide-react';
+import { Check, ArrowRight, AlertTriangle } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { useGetPublicPlansQuery, type Plan } from '@/store/api/plansApi';
 
@@ -142,16 +142,6 @@ export function PricingPlans() {
             </div>
           );
         })}
-      </div>
-
-      {/* WhatsApp/SMS — mentioned once, honestly, as a pay-as-you-go add-on
-          available on every paid plan (not a per-tier checkmark, since it
-          isn't actually locked to any specific tier in the product). */}
-      <div className="mt-4 flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/40 p-4 text-center sm:mt-6 sm:flex-row sm:justify-center sm:gap-3 sm:p-5">
-        <MessageCircle aria-hidden size={18} className="shrink-0 text-accent" />
-        <p className="text-[13px] text-muted-foreground sm:text-sm">
-          <span className="font-medium text-foreground">SMS & WhatsApp messaging</span> is available as a pay-as-you-go add-on on any paid plan — buy credits only if and when you need them.
-        </p>
       </div>
 
       {/* Custom / Enterprise-scale plan — a distinct, prominently styled CTA

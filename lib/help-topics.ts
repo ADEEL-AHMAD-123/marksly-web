@@ -99,21 +99,11 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     slug: 'notices-holidays', category: 'Notices & holidays', icon: 'bell',
     items: [
-      { q: 'What’s the difference between a notice and a message?', a: 'A notice posts inside Marksly itself — on the dashboard every parent, student and staff member already sees — and can optionally also go out by WhatsApp or SMS. A message (WhatsApp/SMS) reaches parents outside the app directly.' },
+      { q: 'How is a notice different from an in-app alert?', a: 'A notice posts inside Marksly itself — on the dashboard every parent, student and staff member already sees — and can be targeted to a class, a role, or the whole institution.' },
       { q: 'Who can a notice be targeted to?', a: 'A specific class or section, a role (e.g. all teachers), or the whole institution — whoever actually needs to see it.' },
       { q: 'Do holidays show up as notices automatically?', a: 'Yes — adding a holiday posts a matching notice automatically, so it appears on every dashboard without being entered twice.' },
       { q: 'Can a notice expire?', a: 'Yes — set an expiry date and it quietly stops showing itself once it’s past, so old notices don’t clutter anyone’s dashboard.' },
-      { q: 'Is there an in-app notification inbox, separate from notices and messaging?', a: 'Yes — every account has a personal inbox for updates specific to them (an attendance alert, a published result, an account change), so nothing depends on a notice or a WhatsApp message being seen in time.' },
-    ],
-  },
-  {
-    slug: 'messaging', category: 'WhatsApp & SMS messaging', icon: 'message-square',
-    items: [
-      { q: 'Do you support WhatsApp and SMS?', a: 'Yes. Once your provider keys are connected, you can send attendance alerts, fee reminders, and notices to parents and staff via WhatsApp or SMS, with a full delivery log.' },
-      { q: 'Can I send messages in a language other than English?', a: 'Message text is free-form, so you can type and send a notice in any language. The dashboard interface itself is English only.' },
-      { q: 'What if a message fails to deliver?', a: 'Failed deliveries are flagged in the message log so you know immediately, rather than assuming a notice reached a parent when it didn’t.' },
-      { q: 'Can I message a single class instead of the whole institution?', a: 'Yes — you can target a message to a specific class or section, or send it institution-wide.' },
-      { q: 'Is WhatsApp/SMS included in the price, or extra?', a: 'It’s a pay-as-you-go add-on available on any paid plan — you buy credits only if and when you need them, rather than paying for messaging capacity you don’t use.' },
+      { q: 'Is there an in-app notification inbox, separate from notices?', a: 'Yes — every account has a personal inbox for updates specific to them (an attendance alert, a published result, an account change), so nothing depends on a notice being seen in time.' },
     ],
   },
   {

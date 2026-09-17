@@ -58,25 +58,6 @@ export const BLOG_POSTS: BlogPost[] = [
     ],
   },
   {
-    slug: 'whatsapp-for-parent-communication-in-pakistan',
-    title: 'Why WhatsApp Is the Right Channel for Parent Communication in Pakistan',
-    description:
-      'Schools in Pakistan already reach parents through WhatsApp groups. Here\'s how to do it in a way that scales past a few hundred students without becoming unmanageable.',
-    date: '2026-08-10',
-    readingTime: '4 min read',
-    body: [
-      'Walk into almost any private school or academy staff room in Pakistan and you\'ll find at least one WhatsApp group per class, run by a teacher or the class parent representative. It\'s not an accident — WhatsApp is where parents already are, and for a school, meeting parents on a channel they already check daily beats asking them to install a separate app or check a portal they\'ll forget about.',
-      '## The problem with class WhatsApp groups at scale',
-      'A single class group works fine. The trouble starts as a school grows: fifteen sections means fifteen groups to manage, fifteen places a fee reminder or a notice has to be posted separately, and no record of who actually received what. A parent who leaves a group, or a teacher who goes on leave mid-term, quietly breaks the whole communication chain for that section.',
-      '## What a structured system adds',
-      'The fix isn\'t abandoning WhatsApp — it\'s sending through it in a structured way instead of a manual group chat. A notice sent from a school management system can go out to every parent in a class, a whole grade, or the entire school, from one screen, with a delivery log showing who it reached. An attendance alert, a fee reminder, or an exam result can trigger automatically, without a staff member typing it out fifteen times.',
-      '## What this looks like in practice',
-      'A fee due-date reminder goes out three days before, one day before, and on the day itself, without anyone remembering to send it. An attendance alert reaches a parent the same afternoon their child was marked absent. A results announcement reaches every parent in a grade the moment marks are published, instead of a notice pinned to a board at the school gate.',
-      '## The channel matters less than the structure',
-      'None of this requires parents to change behavior — they still get a WhatsApp message, the same way they always have. What changes is what\'s behind it: one system sending it, one log of what went out, and no dependency on a single teacher\'s phone to keep a class connected.',
-    ],
-  },
-  {
     slug: 'how-to-choose-school-management-software',
     title: 'How to Choose School Management Software in Pakistan: 2026 Checklist',
     description:
@@ -172,7 +153,7 @@ export const BLOG_POSTS: BlogPost[] = [
     body: [
       'If you\'re researching "Marksly" or "Marksly reviews" before evaluating it for your own institution, the short answer is: this is a Pakistan-based school and campus management platform, and the schools and colleges actually running it day to day are the ones best placed to say whether it holds up in practice. Rather than a generic pitch, here\'s what real institutions using Marksly have said, and what specifically changed for them.',
       '## Faster exam results',
-      'Al-Noor Scholars Academy\'s principal put it plainly: exam results that used to take almost a week to compile now go out in a day, with parents getting their child\'s report straight on WhatsApp. That\'s the pattern across most institutions moving off spreadsheets — the time isn\'t lost in marking, it\'s lost in the manual compile-and-distribute step afterward, and that\'s exactly the step Marksly removes.',
+      'Al-Noor Scholars Academy\'s principal put it plainly: exam results that used to take almost a week to compile now go out in a day, with parents able to check their child\'s report the moment it\'s published. That\'s the pattern across most institutions moving off spreadsheets — the time isn\'t lost in marking, it\'s lost in the manual compile-and-distribute step afterward, and that\'s exactly the step Marksly removes.',
       '## Fee collection that doesn\'t depend on someone remembering to call',
       'Quaid-e-Azam Future School\'s administrator noted that fee follow-ups used to mean calling parents individually — with automatic reminders instead, their collection genuinely got faster. This is a common theme: late fee payments are often less about parents being unwilling to pay and more about nobody consistently following up until a system does it automatically.',
       '## Built around how Pakistani institutions actually operate',

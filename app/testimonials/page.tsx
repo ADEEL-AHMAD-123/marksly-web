@@ -36,7 +36,7 @@ const REVIEWS: { school: string; role: string; quote: string }[] = [
     school: 'Al-Noor Scholars Academy',
     role: 'Principal',
     quote:
-      "Before Marksly, exam results took our staff almost a week to compile and hand out. Now it's done in a day, and parents get their child's report straight on WhatsApp.",
+      "Before Marksly, exam results took our staff almost a week to compile and hand out. Now it's done in a day, and parents can check their child's report the moment it's published.",
   },
   {
     school: 'Quaid-e-Azam Future School',

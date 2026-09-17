@@ -40,7 +40,7 @@ export default function TermsPage() {
         <Section title="1. The service">
           <p>
             Marksly provides software for managing attendance, fees, exams and results, timetables, student records,
-            ID cards, and parent communication (WhatsApp/SMS/email). Features vary by plan; current plans and limits
+            ID cards, and a parent &amp; student portal. Features vary by plan; current plans and limits
             are shown on our{' '}
             <a href="/pricing" className="text-primary hover:underline">pricing page</a>.
           </p>
@@ -69,7 +69,6 @@ export default function TermsPage() {
           <ul className="list-disc space-y-1.5 pl-5">
             <li>Subscription fees are billed monthly (or per the billing cycle shown at checkout) via Safepay, bank transfer, or another supported method.</li>
             <li>An institution that enables automatic renewal authorizes Marksly to charge its saved card each billing cycle; automatic renewal can be turned off at any time from the billing page.</li>
-            <li>Add-on purchases (such as WhatsApp message credit packs) are pre-paid and non-refundable once messages have been sent against them.</li>
             <li>If a payment fails, we will notify the institution and attempt to retry automatically before the account is marked past due; continued non-payment may result in restricted access to paid features until resolved.</li>
             <li>Refunds for subscription payments are considered on a case-by-case basis — contact <a href="mailto:support@marksly.pk" className="text-primary hover:underline">support@marksly.pk</a>.</li>
           </ul>
@@ -97,7 +96,7 @@ export default function TermsPage() {
         <Section title="7. Availability">
           <p>
             We aim for high reliability but do not guarantee uninterrupted access — scheduled maintenance, third-party
-            outages (payment gateways, WhatsApp/SMS providers, hosting) or unforeseen issues can affect availability.
+            outages (payment gateways, hosting) or unforeseen issues can affect availability.
             We will make reasonable efforts to communicate significant planned downtime in advance.
           </p>
         </Section>

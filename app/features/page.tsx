@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   GraduationCap, CalendarCheck, Wallet, FileText, CalendarClock,
-  CreditCard, MessageSquare, BarChart2, ShieldCheck, ArrowRight, Check,
-  Settings, Users2, Bell, Headphones, LayoutDashboard, BookOpen,
+  CreditCard, MessageSquare, LayoutDashboard, BarChart2, ShieldCheck, ArrowRight, Check,
+  Settings, Users2, Bell, Headphones, BookOpen,
   Layers, Inbox,
 } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
@@ -146,17 +146,6 @@ const FEATURES: Feature[] = [
     visual: 'portal', plan: 'Starter',
   },
   {
-    slug: 'messaging', icon: MessageSquare, title: 'Parent messaging',
-    desc: 'Attendance alerts, fee reminders and notices, sent via WhatsApp or SMS — where parents already are.',
-    bullets: [
-      'Attendance alerts and fee reminders',
-      'Sent to a single class, a section, or the whole institution',
-      'Full delivery log per message',
-      'Sent automatically or on demand',
-    ],
-    visual: 'messaging', plan: 'Growth',
-  },
-  {
     slug: 'id-cards', icon: CreditCard, title: 'ID cards',
     desc: 'Printable student and staff ID cards with a scannable QR code, generated class by class — and verifiable by anyone, instantly, no login required.',
     bullets: [
@@ -194,9 +183,9 @@ const FEATURES: Feature[] = [
     desc: 'Every account — admin, teacher, parent, student or accountant — gets a personal inbox for the things that matter specifically to them, separate from broadcast notices.',
     bullets: [
       'Personal updates land here automatically — an attendance alert, a published result, an account change',
-      'Nothing gets missed in a WhatsApp thread — every notification is also visible from inside the dashboard',
+      'Personal and broadcast updates both land in the same place — nothing quietly missed between them',
       'Read and unread are tracked per person, so nothing quietly slips by',
-      'Works alongside Notices and WhatsApp/SMS, not instead of them — the same update can reach all three',
+      'Works alongside Notices, not instead of them — the same update can reach both',
     ],
     visual: 'inbox', plan: 'Starter',
   },
@@ -221,7 +210,7 @@ const HOW_IT_WORKS = [
 
 const PAKISTAN = [
   { icon: Wallet, title: 'Pay the way you already do', desc: 'Families pay you directly — cash, bank transfer, JazzCash, EasyPaisa or a printed challan — and you record it in Marksly in a few taps.' },
-  { icon: MessageSquare, title: 'WhatsApp & SMS', desc: 'Reach every parent where they already are.' },
+  { icon: LayoutDashboard, title: 'One dashboard, every family', desc: 'Parents and students check attendance, results and fee dues themselves, any time.' },
   { icon: Headphones, title: 'Real human support', desc: 'Reach a real person by WhatsApp or email — not a ticket queue.' },
   { icon: ShieldCheck, title: 'Secure & multi-tenant', desc: 'Each institution’s data is isolated and protected, with role-based access throughout.' },
 ];

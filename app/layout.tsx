@@ -12,7 +12,7 @@ const SITE_URL = 'https://marksly.pk';
 // Kept under ~160 chars — Bing/Google truncate longer descriptions in the
 // SERP snippet, and Bing Webmaster Tools flags anything longer as an error.
 const DEFAULT_DESCRIPTION =
-  'Marksly is a Pakistan-based school management platform for academies, schools and colleges — attendance, fees, exams, timetable, ID cards and WhatsApp/SMS parent messaging.';
+  'Marksly is a Pakistan-based school management platform for academies, schools and colleges — attendance, fees, exams, timetable, ID cards and a parent & student portal.';
 // A same-named but unrelated school-management company (marksly.in)
 // operates in India — every title/description here leads with "Marksly
 // Pakistan" or otherwise says "Pakistan" explicitly, so Google (and AI

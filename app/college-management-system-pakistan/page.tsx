@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   CalendarClock, Wallet, FileText, Users2, BarChart2,
-  ArrowRight, Check, ShieldCheck, Building2, MessageSquare,
+  ArrowRight, Check, ShieldCheck, Building2, LayoutDashboard,
 } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
@@ -50,13 +50,13 @@ const MODULES = [
   { icon: Wallet, title: 'Fee collection', desc: 'Set up your bank account and fee structures once; Marksly generates challans and tracks dues — students pay you directly via cash, bank transfer, JazzCash or EasyPaisa.' },
   { icon: Users2, title: 'Multi-section & multi-campus', desc: 'Manage several classes, sections or campuses from one login, with role-based access for every staff member.' },
   { icon: BarChart2, title: 'Reports', desc: 'Live dashboards across attendance, fees and results — know your numbers without asking anyone.' },
-  { icon: MessageSquare, title: 'Communication', desc: 'Notices, fee reminders and attendance alerts sent to students and parents by WhatsApp or SMS.' },
+  { icon: LayoutDashboard, title: 'Student portal', desc: 'Every student gets their own dashboard for attendance, results, fee dues and notices — no more asking the office.' },
 ];
 
 const WHY_PAKISTAN = [
   'Handles the scale of a college — hundreds of students across multiple sections and departments',
   'Students pay you directly the way they already do — cash, bank transfer, JazzCash, EasyPaisa or challan — with no third party in between',
-  'WhatsApp and SMS communication — no separate app required for students or parents',
+  'PKR pricing throughout, with no foreign card or currency needed',
   'PKR pricing, with a free plan to trial before committing',
   'Role-based access for admins, department heads, teachers and accountants',
 ];
