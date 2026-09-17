@@ -389,6 +389,129 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                   </div>
                 </div>
 
+                {/* Guardian login — folded in from the old Email Delivery
+                    Status page: status of the guardian's welcome email,
+                    plus the two recovery actions (resend, or hand over a
+                    password directly). Both go through the informed-confirm
+                    dialog below rather than firing blind. */}
+                <div ref={guardianLoginRef} className="mt-5 scroll-mt-4">
+                  <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Guardian login
+                  </p>
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    The parent can sign in using either their phone number or email, along with this PIN.
+                  </p>
+                  {!contactStatus?.guardian ? (
+                    <div className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-sm text-muted-foreground">
+                      <UserX size={14} /> No guardian account on file.
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-border px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-medium text-foreground">{contactStatus.guardian.name}</p>
+                        {contactStatus.guardian.email ? (
+                          <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                            <Mail size={11} /> {contactStatus.guardian.email}
+                          </span>
+                        ) : (
+                          <span className="flex shrink-0 items-center gap-1 text-xs text-warning">
+                            <MailWarning size={11} /> No email on file
+                          </span>
+                        )}
+                      </div>
+                      {contactStatus.guardian.phone && (
+                        <p className="mt-0.5 text-xs text-muted-foreground" dir="ltr">{contactStatus.guardian.phone}</p>
+                      )}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {contactStatus.guardian.hasLoggedIn ? 'Has signed in before.' : 'Has not signed in yet.'}
+                      </p>
+
+                      {/* PIN — same reveal-on-demand pattern as the
+                          student's own Login section above, since it's now
+                          the exact same login mechanism (phone/email + PIN
+                          instead of a real password). */}
+                      <div className="mt-2.5 flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-muted-foreground">PIN</span>
+                          {contactStatus.guardian.pinState === 'guardian_set' ? (
+                            <span className="text-xs text-muted-foreground" title="This guardian changed their own PIN — only viewable by resetting it.">
+                              (self-set, not viewable)
+                            </span>
+                          ) : revealedGuardianPin !== undefined ? (
+                            <span className="font-mono text-sm font-medium text-foreground">{revealedGuardianPin}</span>
+                          ) : (
+                            <span className="font-mono text-sm text-muted-foreground">••••</span>
+                          )}
+                          {contactStatus.guardian.pinState !== 'guardian_set' && (
+                            <button
+                              type="button"
+                              disabled={revealingGuardianPin}
+                              onClick={toggleGuardianPinReveal}
+                              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                              aria-label={revealedGuardianPin !== undefined ? 'Hide PIN' : 'Reveal PIN'}
+                            >
+                              {revealedGuardianPin !== undefined ? <EyeOff size={13} /> : <Eye size={13} />}
+                            </button>
+                          )}
+                        </div>
+                        <Button variant="secondary" size="sm" onClick={openResetGuardianPinConfirm}>
+                          <KeyRound size={13} /> Reset
+                        </Button>
+                      </div>
+
+                      {/* Delivery status of the most recent login-details
+                          email — informational only now (doesn't gate or
+                          verify login, see the PIN redesign), but still the
+                          "why" behind the "Email delivery failed" badge on
+                          the Students table row: exactly when it was
+                          sent/attempted, to which address, and (when it
+                          failed) the actual error so the admin isn't left
+                          guessing before deciding to resend. */}
+                      {contactStatus.guardian.emailLog && (
+                        <div
+                          className={cn(
+                            'mt-2.5 rounded-lg px-3 py-2 text-xs',
+                            contactStatus.guardian.emailLog.status === 'failed' || contactStatus.guardian.emailLog.status === 'bounced'
+                              ? 'bg-danger-soft text-danger'
+                              : contactStatus.guardian.emailLog.status === 'delayed'
+                                ? 'bg-warning-soft text-warning'
+                                : 'bg-muted/60 text-muted-foreground'
+                          )}
+                        >
+                          <div className="flex items-center gap-1.5 font-medium">
+                            {contactStatus.guardian.emailLog.status === 'failed' || contactStatus.guardian.emailLog.status === 'bounced' ? (
+                              <MailWarning size={12} className="shrink-0" />
+                            ) : (
+                              <Mail size={12} className="shrink-0" />
+                            )}
+                            {EMAIL_LOG_STATUS_LABEL[contactStatus.guardian.emailLog.status]}
+                            {contactStatus.guardian.emailLog.isResend && <span className="font-normal opacity-80">(resend)</span>}
+                          </div>
+                          <p className="mt-1 opacity-90">
+                            To {contactStatus.guardian.emailLog.to} · {formatDate(contactStatus.guardian.emailLog.sentAt)}
+                          </p>
+                          {contactStatus.guardian.emailLog.error && (
+                            // Plain-language explanation as the primary text
+                            // — the raw provider error (meant for a
+                            // developer, not an admin) is still available on
+                            // hover for anyone who needs it for real
+                            // troubleshooting. See lib/friendly-email-error.ts.
+                            <p className="mt-1" title={contactStatus.guardian.emailLog.error}>
+                              {friendlyEmailError(contactStatus.guardian.emailLog.error)}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="mt-2.5 flex items-center gap-2">
+                        <Button variant="secondary" size="sm" onClick={openResendConfirm}>
+                          <Send size={13} /> Email login details
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="mt-5">
                   <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     <Wallet size={12} /> Fee card
@@ -514,144 +637,6 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                   </div>
                 ) : null}
 
-                {s.guardians?.length > 0 && (
-                  <div className="mt-5">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Guardians
-                    </p>
-                    <div className="space-y-2">
-                      {s.guardians.map((g: any) => (
-                        <div key={g.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
-                          <span className="text-foreground">{g.name}</span>
-                          <span className="text-muted-foreground">{g.phone}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Guardian login — folded in from the old Email Delivery
-                    Status page: status of the guardian's welcome email,
-                    plus the two recovery actions (resend, or hand over a
-                    password directly). Both go through the informed-confirm
-                    dialog below rather than firing blind. */}
-                <div ref={guardianLoginRef} className="mt-5 scroll-mt-4">
-                  <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Guardian login
-                  </p>
-                  <p className="mb-2 text-xs text-muted-foreground">
-                    The parent can sign in using either their phone number or email, along with this PIN.
-                  </p>
-                  {!contactStatus?.guardian ? (
-                    <div className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-sm text-muted-foreground">
-                      <UserX size={14} /> No guardian account on file.
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-border px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium text-foreground">{contactStatus.guardian.name}</p>
-                        {contactStatus.guardian.email ? (
-                          <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                            <Mail size={11} /> {contactStatus.guardian.email}
-                          </span>
-                        ) : (
-                          <span className="flex shrink-0 items-center gap-1 text-xs text-warning">
-                            <MailWarning size={11} /> No email on file
-                          </span>
-                        )}
-                      </div>
-                      {contactStatus.guardian.phone && (
-                        <p className="mt-0.5 text-xs text-muted-foreground" dir="ltr">{contactStatus.guardian.phone}</p>
-                      )}
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {contactStatus.guardian.hasLoggedIn ? 'Has signed in before.' : 'Has not signed in yet.'}
-                      </p>
-
-                      {/* PIN — same reveal-on-demand pattern as the
-                          student's own Login section above, since it's now
-                          the exact same login mechanism (phone/email + PIN
-                          instead of a real password). */}
-                      <div className="mt-2.5 flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-muted-foreground">PIN</span>
-                          {contactStatus.guardian.pinState === 'guardian_set' ? (
-                            <span className="text-xs text-muted-foreground" title="This guardian changed their own PIN — only viewable by resetting it.">
-                              (self-set, not viewable)
-                            </span>
-                          ) : revealedGuardianPin !== undefined ? (
-                            <span className="font-mono text-sm font-medium text-foreground">{revealedGuardianPin}</span>
-                          ) : (
-                            <span className="font-mono text-sm text-muted-foreground">••••</span>
-                          )}
-                          {contactStatus.guardian.pinState !== 'guardian_set' && (
-                            <button
-                              type="button"
-                              disabled={revealingGuardianPin}
-                              onClick={toggleGuardianPinReveal}
-                              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-                              aria-label={revealedGuardianPin !== undefined ? 'Hide PIN' : 'Reveal PIN'}
-                            >
-                              {revealedGuardianPin !== undefined ? <EyeOff size={13} /> : <Eye size={13} />}
-                            </button>
-                          )}
-                        </div>
-                        <Button variant="secondary" size="sm" onClick={openResetGuardianPinConfirm}>
-                          <KeyRound size={13} /> Reset
-                        </Button>
-                      </div>
-
-                      {/* Delivery status of the most recent login-details
-                          email — informational only now (doesn't gate or
-                          verify login, see the PIN redesign), but still the
-                          "why" behind the "Email delivery failed" badge on
-                          the Students table row: exactly when it was
-                          sent/attempted, to which address, and (when it
-                          failed) the actual error so the admin isn't left
-                          guessing before deciding to resend. */}
-                      {contactStatus.guardian.emailLog && (
-                        <div
-                          className={cn(
-                            'mt-2.5 rounded-lg px-3 py-2 text-xs',
-                            contactStatus.guardian.emailLog.status === 'failed' || contactStatus.guardian.emailLog.status === 'bounced'
-                              ? 'bg-danger-soft text-danger'
-                              : contactStatus.guardian.emailLog.status === 'delayed'
-                                ? 'bg-warning-soft text-warning'
-                                : 'bg-muted/60 text-muted-foreground'
-                          )}
-                        >
-                          <div className="flex items-center gap-1.5 font-medium">
-                            {contactStatus.guardian.emailLog.status === 'failed' || contactStatus.guardian.emailLog.status === 'bounced' ? (
-                              <MailWarning size={12} className="shrink-0" />
-                            ) : (
-                              <Mail size={12} className="shrink-0" />
-                            )}
-                            {EMAIL_LOG_STATUS_LABEL[contactStatus.guardian.emailLog.status]}
-                            {contactStatus.guardian.emailLog.isResend && <span className="font-normal opacity-80">(resend)</span>}
-                          </div>
-                          <p className="mt-1 opacity-90">
-                            To {contactStatus.guardian.emailLog.to} · {formatDate(contactStatus.guardian.emailLog.sentAt)}
-                          </p>
-                          {contactStatus.guardian.emailLog.error && (
-                            // Plain-language explanation as the primary text
-                            // — the raw provider error (meant for a
-                            // developer, not an admin) is still available on
-                            // hover for anyone who needs it for real
-                            // troubleshooting. See lib/friendly-email-error.ts.
-                            <p className="mt-1" title={contactStatus.guardian.emailLog.error}>
-                              {friendlyEmailError(contactStatus.guardian.emailLog.error)}
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="mt-2.5 flex items-center gap-2">
-                        <Button variant="secondary" size="sm" onClick={openResendConfirm}>
-                          <Send size={13} /> Email login details
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
               </>
             )}
           </div>

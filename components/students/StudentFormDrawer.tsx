@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X, AlertCircle, KeyRound } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import en from 'react-phone-number-input/locale/en.json';
@@ -28,9 +28,6 @@ import {
   useCreateStudentMutation,
   useUpdateStudentMutation,
   useUpdateGuardianContactMutation,
-  useResendStudentCredentialsMutation,
-  useResetStudentPinMutation,
-  useResetGuardianPinMutation,
   useGetSectionRosterQuery,
   type StudentListItem,
 } from '@/store/api/studentsApi';
@@ -161,10 +158,6 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
   const [createStudent, { isLoading: creating }] = useCreateStudentMutation();
   const [updateStudent, { isLoading: updating }] = useUpdateStudentMutation();
   const [updateGuardianContact, { isLoading: updatingGuardianContact }] = useUpdateGuardianContactMutation();
-  const [resendCredentials, { isLoading: resending }] = useResendStudentCredentialsMutation();
-  const [resetPin, { isLoading: resettingPin }] = useResetStudentPinMutation();
-  const [resetGuardianPin, { isLoading: resettingGuardianPin }] = useResetGuardianPinMutation();
-  const [resendingTarget, setResendingTarget] = useState<'student' | 'parent' | null>(null);
   // An existing guardian already satisfies "someone can be reached" even if
   // this edit leaves the guardian fields blank — see makeSchema.
   const activeSchema = useMemo(
@@ -444,75 +437,6 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
     }
   };
 
-  const onResendCredentials = async (target: 'student' | 'parent') => {
-    if (!student) return;
-    setResendingTarget(target);
-    try {
-      const res = await resendCredentials({ id: student.id, target }).unwrap();
-      setTempPasswordQueue((q) => [...q, target === 'parent'
-        ? {
-            kind: 'guardianPin',
-            name: student.guardianName || 'Parent',
-            pin: res.data.pin || '',
-            emailed: true,
-            roleLabel: 'Parent',
-          }
-        : {
-            kind: 'password',
-            name: `${student.firstName} ${student.lastName}`,
-            phone: student.phone ?? '',
-            tempPassword: res.data.tempPassword || '',
-            emailed: true,
-          }]);
-      toast.success(`New login details sent to ${res.data.sentTo}`);
-    } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Could not resend credentials'));
-    } finally {
-      setResendingTarget(null);
-    }
-  };
-
-  const onResetPin = async () => {
-    if (!student) return;
-    try {
-      const res = await resetPin({ id: student.id }).unwrap();
-      setTempPasswordQueue((q) => [...q, {
-        kind: 'pin',
-        name: `${student.firstName} ${student.lastName}`,
-        systemId: student.systemId || '',
-        pin: res.data.pin,
-      }]);
-      toast.success('PIN reset');
-    } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Could not reset PIN'));
-    }
-  };
-
-  // Same reveal-on-reset pattern as onResetPin above, for the guardian
-  // instead — matches StudentDetailDrawer's "Reset guardian PIN" action so
-  // the result is shown the same way (one-time reveal card) regardless of
-  // which drawer the admin used to trigger it.
-  const onResetGuardianPin = async () => {
-    if (!student) return;
-    const guardianUserId = student.guardians?.[0]?.id;
-    try {
-      const res = await resetGuardianPin({ id: student.id, guardianUserId }).unwrap();
-      setTempPasswordQueue((q) => [...q, {
-        kind: 'guardianPin',
-        name: res.data.guardianName,
-        pin: res.data.pin,
-        emailed: false,
-        roleLabel: 'Parent',
-      }]);
-      toast.success('Guardian PIN reset');
-      if (res.data.siblingCount > 0) {
-        toast(`Also updates login for ${res.data.siblingCount} other linked ${res.data.siblingCount === 1 ? 'child' : 'children'}`, { icon: 'ℹ️' });
-      }
-    } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Could not reset guardian PIN'));
-    }
-  };
-
   return (
     <>
     <Sheet open={open} onOpenChange={(o) => !o && requestClose()}>
@@ -544,47 +468,11 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               </div>
             )}
             {isEdit && student && (
-              <div className="border-b border-border pb-4">
-                <Label>Login credentials</Label>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  The student signs in with their ID card&apos;s Login ID and a PIN; the parent signs in with their
-                  phone or email plus their own PIN. Resetting either one replaces it immediately.
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    loading={resettingPin}
-                    disabled={resettingPin}
-                    onClick={onResetPin}
-                  >
-                    <KeyRound size={14} /> Reset student PIN
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    loading={resettingGuardianPin}
-                    disabled={resettingGuardianPin || !originalGuardian}
-                    onClick={onResetGuardianPin}
-                    title={!originalGuardian ? 'No parent/guardian account on file' : undefined}
-                  >
-                    <KeyRound size={14} /> Reset guardian PIN
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    loading={resending && resendingTarget === 'parent'}
-                    disabled={resending || !originalGuardian}
-                    onClick={() => onResendCredentials('parent')}
-                    title={!originalGuardian ? 'No parent/guardian account on file' : undefined}
-                  >
-                    <KeyRound size={14} /> Email parent login details
-                  </Button>
-                </div>
-              </div>
+              <p className="rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-xs text-muted-foreground">
+                Need to reset this student&apos;s or guardian&apos;s PIN, or resend login details? Do that from the
+                student list&apos;s <span className="font-medium text-foreground">View</span> panel — this form is
+                just for editing their details.
+              </p>
             )}
             {noClasses && (
               <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning-soft px-3.5 py-3 text-sm text-warning">
