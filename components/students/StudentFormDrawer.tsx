@@ -649,11 +649,6 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                   This student has no guardian on file yet — add one below.
                 </p>
               )}
-              {isEdit && originalGuardian && (
-                <p className="-mt-1 mb-2 text-xs text-muted-foreground">
-                  Changing the phone or email below changes this guardian&apos;s login — you&apos;ll be asked to confirm.
-                </p>
-              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="parentPhone">Parent phone</Label>
