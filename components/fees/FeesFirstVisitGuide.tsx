@@ -40,7 +40,7 @@ const SLIDES = [
   },
   {
     icon: FileText,
-    title: 'Step 1 — What you charge (fee structures)',
+    title: 'Step 1 — Fee Structures (what you charge)',
     body: 'A "fee structure" is just a named amount you charge -- e.g. Monthly Tuition, Transport, Admission Fee. You create these yourself under the "Fee Structures" tab; nobody else sets this for you.',
     details: [
       'Give it a name, a category (Tuition, Transport, Library, etc.), and an amount.',
@@ -61,7 +61,7 @@ const SLIDES = [
   },
   {
     icon: Landmark,
-    title: 'Step 2 — Where you get paid (bank accounts)',
+    title: 'Step 2 — Bank Accounts (where you get paid)',
     body: 'Add at least one of your own real bank accounts under "Bank Accounts." This exact bank name, account number and IBAN is what gets printed on every bill, for whoever is paying it -- a parent or the student -- so double-check it carefully before saving.',
     details: [
       'You can add more than one account, and mark one as the default.',
@@ -76,7 +76,7 @@ const SLIDES = [
     details: [
       'Each bill shows your institution\'s branding and your bank details.',
       'A parent or the student pays directly into your account -- the same as a normal bank deposit.',
-      'One-off charges (a fine, an event fee) don\'t need a fee structure -- use "One-off invoice" instead.',
+      'One-off charges (a fine, an event fee) don\'t need a fee structure -- use "One-time invoice" instead.',
     ],
   },
   {

@@ -28,10 +28,11 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 /**
- * One-off invoices — a fine, a breakage charge, a one-time event — fully
- * separate from the structured recurring billing engine (see
- * fee.service.ts's createAdhocInvoices()). Targets one student, several
- * picked individually, or a whole class at once.
+ * One-time invoices (labeled "One-off invoice" earlier in this codebase's
+ * history -- the UI button is now "One-time invoice") — a fine, a breakage
+ * charge, a one-time event — fully separate from the structured recurring
+ * billing engine (see fee.service.ts's createAdhocInvoices()). Targets one
+ * student, several picked individually, or a whole class at once.
  */
 export function AdhocInvoiceDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const terminology = useTerminology();

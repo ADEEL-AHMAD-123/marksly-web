@@ -221,7 +221,7 @@ export function InvoicesTab({ initialStatus, initialClassId }: { initialStatus?:
       ) : isLoading ? (
         <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>
       ) : invoices.length === 0 ? (
-        <Card><EmptyState icon={FileText} title="No invoices to show" description="Invoices appear here once a fee structure generates them, or you create a one-off invoice above -- there is nothing missing or broken." /></Card>
+        <Card><EmptyState icon={FileText} title="No invoices to show" description="Invoices appear here once a fee structure generates them, or you create a one-time invoice above -- there is nothing missing or broken." /></Card>
       ) : (
         <div className={isFetching ? 'opacity-60' : ''}>
           {/* Desktop */}

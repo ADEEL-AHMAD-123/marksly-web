@@ -103,7 +103,7 @@ const FEATURES: Feature[] = [
     desc: 'Add your own bank account(s) and fee structures once, and Marksly generates challans with your bank details on them — parents and students pay you directly, the same way they always have, and you record each payment as it comes in.',
     bullets: [
       'Fee structures with discounts, fines and per-student customisation, scoped to a class or the whole institution',
-      'Monthly billing generates every challan automatically; one-off invoices and backfilled periods are just as easy',
+      'Monthly billing generates every challan automatically; one-time invoices and backfilled periods are just as easy',
       'Marksly never collects or holds the money itself — challans show your own bank account so payments go straight to you, with no middleman or delay',
       'Record a payment (cash, bank transfer, JazzCash, EasyPaisa, cheque) in a few taps — a receipt and full history are generated for you automatically',
       'Waive or void a fee with a reason on record — never a silent edit to what a family owes',
