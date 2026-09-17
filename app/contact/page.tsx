@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { Mail, MessageCircle, Clock } from 'lucide-react';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
@@ -97,8 +98,12 @@ export default function ContactPage() {
 
       <section className="pb-14 sm:pb-20">
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-5 lg:grid-cols-[1.3fr_1fr] lg:gap-10">
-          {/* Form — the primary path, shown first on every breakpoint */}
-          <ContactForm />
+          {/* Form — the primary path, shown first on every breakpoint.
+              Suspense is required here because ContactForm reads
+              ?reason=setup-call via useSearchParams(). */}
+          <Suspense fallback={<div className="h-[520px] w-full animate-pulse rounded-2xl border border-border bg-card" />}>
+            <ContactForm />
+          </Suspense>
 
           {/* Direct channels + response times — secondary, alongside the form */}
           <div className="space-y-4 sm:space-y-5">

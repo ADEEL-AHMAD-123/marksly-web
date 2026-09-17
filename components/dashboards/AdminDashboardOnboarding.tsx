@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, CheckCircle2, type LucideIcon } from 'lucide-react';
+import { ArrowRight, CheckCircle2, PhoneCall, type LucideIcon } from 'lucide-react';
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
 } from '@/components/ui/card';
@@ -147,6 +147,15 @@ export function OnboardingCard({
       </CardHeader>
       <CardContent>
         <OnboardingChecklist steps={steps} nextStepHref={nextStepHref} />
+        {variant === 'new' && (
+          <Link
+            href="/contact?reason=setup-call"
+            className="mt-3 flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-border px-3 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary sm:text-sm"
+          >
+            <PhoneCall aria-hidden size={14} />
+            Prefer help getting set up? Book a free setup call
+          </Link>
+        )}
       </CardContent>
     </Card>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Check, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Check, ArrowRight, AlertTriangle, PhoneCall } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { useGetPublicPlansQuery, type Plan } from '@/store/api/plansApi';
 
@@ -154,6 +154,30 @@ export function PricingPlans() {
           admins can also submit this same request from inside their own
           billing page (see requestCustomPlanSchema / PlanRequest — resolved
           by a superadmin from Superadmin -> Plan requests). */}
+      {/* Free setup call — a self-serve, non-WhatsApp way to ask for help
+          getting started, sitting alongside (not instead of) the manual
+          outreach the team also does. Anyone can request one regardless of
+          institution size, unlike the custom-quote box below it. */}
+      <div className="mt-6 flex flex-col items-center justify-between gap-3 rounded-2xl border border-border bg-card/60 p-5 text-center sm:mt-8 sm:flex-row sm:p-6 sm:text-left">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary-soft-foreground">
+            <PhoneCall aria-hidden size={16} />
+          </span>
+          <div>
+            <h3 className="text-sm font-semibold sm:text-base">Not sure where to start?</h3>
+            <p className="mt-0.5 text-[13px] text-muted-foreground sm:text-sm">
+              Book a free setup call and we&apos;ll walk you through getting your institution ready.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/contact?reason=setup-call"
+          className={`${buttonVariants({ variant: 'outline' })} w-full shrink-0 border-2 sm:w-auto`}
+        >
+          Book a free setup call <ArrowRight aria-hidden size={16} />
+        </Link>
+      </div>
+
       <div className="relative mt-6 flex flex-col items-center justify-between gap-4 rounded-2xl border-2 border-accent/60 bg-gradient-to-br from-accent/10 via-card to-card p-5 text-center shadow-md sm:mt-8 sm:flex-row sm:p-7 sm:text-left">
         <span className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-accent-foreground shadow sm:left-6 sm:text-xs">
           For large institutions

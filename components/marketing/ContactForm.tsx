@@ -1,17 +1,26 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { Send, CheckCircle2 } from 'lucide-react';
+import { Send, CheckCircle2, PhoneCall } from 'lucide-react';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import en from 'react-phone-number-input/locale/en.json';
 import { useSubmitContactMutation } from '@/store/api/contactApi';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+
+// Marketing pages and the admin dashboard both link here with
+// ?reason=setup-call so a visitor doesn't have to explain from scratch —
+// the message is pre-filled and a small badge confirms what they're
+// requesting. No backend schema change: it rides in the same free-text
+// message field the form already sends.
+const SETUP_CALL_MESSAGE =
+  "I'd like to book a free setup call to get my institution set up on Marksly.";
 
 const schema = z.object({
   name: z.string().trim().min(2, 'Enter your name'),
@@ -38,6 +47,8 @@ const fieldCls = (err?: boolean) =>
   );
 
 export function ContactForm() {
+  const searchParams = useSearchParams();
+  const isSetupCallRequest = searchParams.get('reason') === 'setup-call';
   const [submitted, setSubmitted] = useState(false);
   const [submitContact, { isLoading }] = useSubmitContactMutation();
   const {
@@ -46,7 +57,11 @@ export function ContactForm() {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<Form>({ resolver: zodResolver(schema), mode: 'onTouched' });
+  } = useForm<Form>({
+    resolver: zodResolver(schema),
+    mode: 'onTouched',
+    defaultValues: isSetupCallRequest ? { message: SETUP_CALL_MESSAGE } : undefined,
+  });
 
   const onSubmit = async (data: Form) => {
     try {
@@ -86,6 +101,12 @@ export function ContactForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7" noValidate>
+      {isSetupCallRequest && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg bg-primary-soft px-3 py-2 text-xs font-medium text-primary-soft-foreground sm:text-sm">
+          <PhoneCall aria-hidden size={14} />
+          Requesting a free setup call — we’ve started your message below, edit it as you like.
+        </div>
+      )}
       {/* Honeypot — hidden from real users, catches basic bots. */}
       <input
         type="text"
