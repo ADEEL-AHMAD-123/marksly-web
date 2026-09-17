@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Clock, Users } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { useGetAttendanceCoverageTodayQuery } from '@/store/api/attendanceApi';
 import { formatDate } from '@/lib/utils';
@@ -28,13 +28,17 @@ export function AttendanceMarkingStatus() {
   // would otherwise misleadingly read as "0 marked".
   if (isLoading || !coverage || coverage.totalSections === 0) return null;
 
-  const unmarked = coverage.classes.flatMap((c) =>
+  // unmarkedPeriods is already time-gated server-side (a period only
+  // shows up here once it's actually over) -- so this list is the
+  // OVERDUE set, not "everything not yet marked".
+  const overdue = coverage.classes.flatMap((c) =>
     c.sections
       .filter((s) => s.unmarkedPeriods.length > 0)
       .map((s) => ({ className: c.className, sectionName: s.sectionName, periods: s.unmarkedPeriods }))
   );
-  const unmarkedPeriodCount = unmarked.reduce((n, u) => n + u.periods.length, 0);
-  const allMarked = unmarked.length === 0;
+  const overduePeriodCount = overdue.reduce((n, u) => n + u.periods.length, 0);
+  const fullyMarked = coverage.markedSections === coverage.totalSections;
+  const hasOverdue = overdue.length > 0;
   const dateLabel = date === todayStr() ? 'today' : formatDate(date);
 
   return (
@@ -46,16 +50,20 @@ export function AttendanceMarkingStatus() {
         className="flex w-full items-center justify-between gap-3 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <div className="flex min-w-0 items-center gap-2.5">
-          {allMarked ? (
+          {fullyMarked ? (
             <CheckCircle2 size={18} className="shrink-0 text-success" />
-          ) : (
+          ) : hasOverdue ? (
             <AlertTriangle size={18} className="shrink-0 text-warning" />
+          ) : (
+            <Clock size={18} className="shrink-0 text-muted-foreground" />
           )}
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-foreground">
-              {allMarked
+              {fullyMarked
                 ? `All attendance marked for ${dateLabel}`
-                : `${unmarkedPeriodCount} period${unmarkedPeriodCount === 1 ? '' : 's'} still need attendance across ${unmarked.length} section${unmarked.length === 1 ? '' : 's'} — ${dateLabel}`}
+                : hasOverdue
+                ? `${overduePeriodCount} period${overduePeriodCount === 1 ? '' : 's'} overdue across ${overdue.length} section${overdue.length === 1 ? '' : 's'} — ${dateLabel}`
+                : `Nothing overdue yet — remaining periods for ${dateLabel} haven't finished`}
             </p>
             <p className="text-xs text-muted-foreground">
               {coverage.markedSections} of {coverage.totalSections} sections fully marked
@@ -80,9 +88,9 @@ export function AttendanceMarkingStatus() {
         </div>
       </button>
 
-      {expanded && !allMarked && (
+      {expanded && hasOverdue && (
         <div className="max-h-80 divide-y divide-border overflow-y-auto border-t border-border">
-          {unmarked.map((u, i) => (
+          {overdue.map((u, i) => (
             <div key={i} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                 <Users size={14} className="text-muted-foreground" />
