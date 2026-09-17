@@ -200,6 +200,7 @@ export function AttendanceReportView() {
   const rows = data?.data ?? [];
   const total = data?.meta?.total ?? 0;
   const totalPages = data?.meta?.totalPages ?? 1;
+  const statusCounts = data?.meta?.statusCounts;
 
   const [triggerReport, { isFetching: exporting }] = useLazyGetAttendanceReportQuery();
 
@@ -382,6 +383,24 @@ export function AttendanceReportView() {
           </div>
         </div>
       </div>
+
+      {!needsSelection && !isLoading && !isError && total > 0 && status === 'all' && statusCounts && (
+        <div className="flex flex-wrap items-center gap-2 text-xs no-print">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-success-soft px-2 py-1 text-success-soft-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-success" /> {statusCounts.present} present
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-danger-soft px-2 py-1 text-danger-soft-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-danger" /> {statusCounts.absent} absent
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-warning-soft px-2 py-1 text-warning-soft-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-warning" /> {statusCounts.late} late
+          </span>
+          <span className={cn('inline-flex items-center gap-1.5 rounded-md px-2 py-1', LEAVE_BADGE_CLASS)}>
+            <span className="h-1.5 w-1.5 rounded-full bg-info-foreground" /> {statusCounts.leave} leave
+          </span>
+          <span className="text-muted-foreground">— for the {total} record{total === 1 ? '' : 's'} matching the filters above</span>
+        </div>
+      )}
 
       {needsSelection ? (
         <Card>

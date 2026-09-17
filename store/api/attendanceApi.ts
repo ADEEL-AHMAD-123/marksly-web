@@ -35,7 +35,15 @@ interface ApiArray<T> {
   success: boolean;
   data: T[];
   message: string;
-  meta?: { page?: number; limit?: number; total?: number; totalPages?: number };
+  meta?: {
+    page?: number;
+    limit?: number;
+    total?: number;
+    totalPages?: number;
+    // Present/absent/late/leave breakdown for the report's own current
+    // filter (not just the page on screen) -- see getAttendanceReport.
+    statusCounts?: { present: number; absent: number; late: number; leave: number };
+  };
 }
 
 export interface AttendanceCoverageSection {
