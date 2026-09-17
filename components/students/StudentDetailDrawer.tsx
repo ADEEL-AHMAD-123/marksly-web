@@ -486,9 +486,10 @@ export function StudentDetailDrawer({ studentId, open, onClose, onEdit, focus }:
                             )}
                             {EMAIL_LOG_STATUS_LABEL[contactStatus.guardian.emailLog.status]}
                             {contactStatus.guardian.emailLog.isResend && <span className="font-normal opacity-80">(resend)</span>}
+                            <span className="font-normal opacity-80">· {formatDate(contactStatus.guardian.emailLog.sentAt)}</span>
                           </div>
                           <p className="mt-1 opacity-90">
-                            To {contactStatus.guardian.emailLog.to} · {formatDate(contactStatus.guardian.emailLog.sentAt)}
+                            To {contactStatus.guardian.emailLog.to}
                           </p>
                           {contactStatus.guardian.emailLog.error && (
                             // Plain-language explanation as the primary text
