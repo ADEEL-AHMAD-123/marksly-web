@@ -467,13 +467,6 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 </div>
               </div>
             )}
-            {isEdit && student && (
-              <p className="rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-xs text-muted-foreground">
-                Need to reset this student&apos;s or guardian&apos;s PIN, or resend login details? Do that from the
-                student list&apos;s <span className="font-medium text-foreground">View</span> panel — this form is
-                just for editing their details.
-              </p>
-            )}
             {noClasses && (
               <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning-soft px-3.5 py-3 text-sm text-warning">
                 <AlertCircle size={17} className="mt-0.5 shrink-0" />
@@ -513,7 +506,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 ) : rollNumberTaken ? (
                   <p className="mt-1 text-xs text-danger">This roll number is already used in this class/section.</p>
                 ) : (
-                  <p className="mt-1 text-xs text-muted-foreground">Their seat/attendance number in this class — changes if they move classes.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Changes if they move classes.</p>
                 )}
               </div>
               <div>
@@ -522,7 +515,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 {errors.admissionNumber ? (
                   <p className="mt-1 text-xs text-danger">{errors.admissionNumber.message}</p>
                 ) : (
-                  <p className="mt-1 text-xs text-muted-foreground">Their permanent ID from admission — stays the same for as long as they're enrolled.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Stays the same for as long as they&apos;re enrolled.</p>
                 )}
               </div>
             </div>
@@ -643,7 +636,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 <p className="mt-1 text-xs text-danger">{errors.nationalIdNumber.message}</p>
               )}
               <p className="mt-1 text-xs text-muted-foreground">
-                Required to create the account — if it&apos;s wrong or changes later, the student or parent can correct it themselves from their own My ID Card page.
+                Can be corrected later from My ID Card if it&apos;s wrong.
               </p>
             </div>
 
@@ -717,13 +710,7 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Optional details
               </p>
-              <p className="mb-2 flex items-start gap-1.5 text-xs text-muted-foreground">
-                <span aria-hidden>💡</span>
-                <span>
-                  None of these need to be filled in now — the student or parent can add or update any of them
-                  anytime from their own dashboard&apos;s <span className="font-medium text-foreground">My ID Card</span> page.
-                </span>
-              </p>
+              <p className="mb-2 text-xs text-muted-foreground">Can be added later from My ID Card.</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="address">Address <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
