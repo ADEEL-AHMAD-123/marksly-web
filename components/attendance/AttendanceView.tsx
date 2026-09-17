@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
   CalendarCheck, CheckCheck, AlertCircle, Users, Clock, Search, StickyNote, AlertTriangle,
-  CheckCircle2, PencilLine, ChevronRight,
+  CheckCircle2, PencilLine, ChevronRight, LayoutGrid, ClipboardList,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
@@ -36,6 +36,8 @@ import { useAppSelector } from '@/store/hooks';
 import { cn, getInitials } from '@/lib/utils';
 import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
 import { AttendanceReportView } from './AttendanceReportView';
+import { AttendanceMarkingStatus } from './AttendanceMarkingStatus';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const STATUSES: { key: AttendanceStatus; label: string; active: string }[] = [
   { key: 'present', label: 'Present', active: 'bg-success text-success-foreground' },
@@ -369,7 +371,7 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
   // for logging purposes) rather than on the report tab the admin would
   // otherwise start on.
   const hasLinkedTarget = Boolean(linkedClassId && linkedSectionId);
-  const [tab, setTab] = useState<'mark' | 'report'>(
+  const [tab, setTab] = useState<'mark' | 'report' | 'coverage'>(
     isTeacher || hasLinkedTarget ? 'mark' : 'report'
   );
   const [adminOverride, setAdminOverride] = useState(!isTeacher && hasLinkedTarget);
@@ -383,58 +385,35 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
             ? tab === 'mark' ? 'Mark attendance for a specific period.' : 'Attendance by date, class and period, with guardian contact details.'
             : tab === 'mark'
               ? 'Taking attendance directly as an admin, on behalf of the class\'s own teacher.'
-              : 'Attendance is marked by teachers, period by period. Review it here across your institution and export it whenever you need to.'
-        }
-        actions={
-          isTeacher ? undefined : tab === 'mark' ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => { setTab('report'); setAdminOverride(false); }}
-            >
-              ← Back to report
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => { setTab('mark'); setAdminOverride(true); }}
-            >
-              <CalendarCheck size={16} /> Take attendance
-            </Button>
-          )
+              : tab === 'coverage'
+                ? 'Check which teachers haven\'t marked attendance yet, for today or any past date.'
+                : 'Attendance is marked by teachers, period by period. Review it here across your institution and export it whenever you need to.'
         }
       />
 
-      {isTeacher && (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setTab('mark')}
-            className={cn(
-              'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-              tab === 'mark' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary'
-            )}
-          >
-            Mark attendance
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('report')}
-            className={cn(
-              'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-              tab === 'report' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary'
-            )}
-          >
-            Attendance report
-          </button>
-        </div>
-      )}
+      {/* A real tab bar (same component/convention as the Fees page)
+          instead of the old ad-hoc "Back to report"/"Take attendance"
+          header button plus a separate pair of plain toggle buttons for
+          teachers. Also gives admins a dedicated Coverage tab for "who
+          hasn't marked yet" instead of that panel sitting as its own
+          always-visible strip above the report. */}
+      <Tabs value={tab} onValueChange={(v) => setTab(v as 'mark' | 'report' | 'coverage')}>
+        <TabsList>
+          {isTeacher ? (
+            <>
+              <TabsTrigger value="mark">Mark attendance</TabsTrigger>
+              <TabsTrigger value="report">Attendance report</TabsTrigger>
+            </>
+          ) : (
+            <>
+              <TabsTrigger value="report"><LayoutGrid size={14} className="mr-1.5" /> Report</TabsTrigger>
+              <TabsTrigger value="coverage"><ClipboardList size={14} className="mr-1.5" /> Coverage</TabsTrigger>
+              <TabsTrigger value="mark"><CalendarCheck size={14} className="mr-1.5" /> Take attendance</TabsTrigger>
+            </>
+          )}
+        </TabsList>
 
-      {tab === 'report' ? (
-        <>
+      <TabsContent value="report" className="space-y-4">
           <AttendanceReportView />
           {/* One explanation, at the bottom, after the content -- same
               convention as every other admin page (Classes, Subjects,
@@ -452,9 +431,21 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
               </p>
             </InfoNote>
           )}
-        </>
-      ) : (
-        <>
+      </TabsContent>
+
+      {!isTeacher && (
+        <TabsContent value="coverage" className="space-y-4">
+          <AttendanceMarkingStatus />
+          <InfoNote title="What counts as overdue?">
+            <p>
+              A period only shows up here once its scheduled end time has passed with no attendance recorded for it
+              — nothing is flagged before a class has even finished.
+            </p>
+          </InfoNote>
+        </TabsContent>
+      )}
+
+      <TabsContent value="mark" className="space-y-4">
         {!isTeacher && adminOverride && (
           <div className="flex items-start gap-2.5 rounded-lg border border-border/70 bg-primary-soft px-3.5 py-3 text-sm text-primary-soft-foreground">
             <AlertTriangle size={17} className="mt-0.5 shrink-0" />
@@ -886,8 +877,8 @@ export function AttendanceView({ title = 'Attendance' }: { title?: string }) {
           </InfoNote>
         </div>
       ))}
-        </>
-      )}
+      </TabsContent>
+      </Tabs>
 
       <ConfirmAllPresentDialog
         open={confirmAllPresent}

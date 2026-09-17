@@ -27,7 +27,6 @@ import {
 } from '@/store/api/attendanceApi';
 import { useAppSelector } from '@/store/hooks';
 import { cn } from '@/lib/utils';
-import { AttendanceMarkingStatus } from './AttendanceMarkingStatus';
 import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
 import { todayStr } from '@/lib/institution-date';
 
@@ -297,8 +296,6 @@ export function AttendanceReportView() {
 
   return (
     <div className="space-y-6">
-      {!isTeacher && <AttendanceMarkingStatus />}
-
       {/* One consolidated filters-and-actions panel — same Card the
           results below use, so this reads as one part of the page rather
           than three differently-styled stacked blocks. */}
