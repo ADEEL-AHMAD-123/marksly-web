@@ -47,7 +47,7 @@ const SERVICE_JSON_LD = {
 const MODULES = [
   { icon: Layers, title: 'One system, every level', desc: 'The same platform runs academies, schools, colleges and universities — configured around your own classes, sections and departments.' },
   { icon: FileText, title: 'Admissions to results', desc: 'Student records, exams and results tracked end to end, with a full history kept per student.' },
-  { icon: Wallet, title: 'Finance', desc: 'Fee structures, billing, discounts, dues and receipts — with JazzCash, EasyPaisa, bank transfer and challans.' },
+  { icon: Wallet, title: 'Finance', desc: 'Fee structures, billing, discounts, dues and receipts — challans carry your own bank details, so families pay you directly via cash, bank transfer, JazzCash or EasyPaisa.' },
   { icon: Network, title: 'Multi-institution ready', desc: 'Role-based access across admins, teachers, accountants and parents, isolated per institution.' },
   { icon: BarChart2, title: 'Live reporting', desc: 'Attendance, fees and results in one dashboard — updated as data comes in, not at end of term.' },
   { icon: MessageSquare, title: 'Communication', desc: 'WhatsApp and SMS alerts for attendance, fees and notices — reaching parents where they already are.' },
@@ -55,7 +55,7 @@ const MODULES = [
 
 const WHY_PAKISTAN = [
   'One ERP that adapts to academies, schools, colleges and universities alike',
-  'Local payment methods: JazzCash, EasyPaisa, bank transfer and challans',
+  'Families pay directly via the methods they already use — cash, bank transfer, JazzCash, EasyPaisa and challans — with no third party touching the money',
   'WhatsApp and SMS communication built in — no separate app needed for parents',
   'PKR pricing, with a free plan for institutions up to 50 students',
   'Data isolated and role-protected per institution, with real human support',
@@ -64,7 +64,7 @@ const WHY_PAKISTAN = [
 const FAQ = [
   { q: 'What is an education management system?', a: 'An education management system (also called an education ERP) is software that centralizes admissions, attendance, exams, fees, timetable, and communication for an educational institution, replacing manual processes and disconnected tools.' },
   { q: 'Does Marksly work for universities, not just schools?', a: 'Yes — Marksly is configured around your own classes, sections and departments, so the same platform works for academies, schools, colleges, and universities.' },
-  { q: 'What makes it suitable for Pakistan specifically?', a: 'Local payment methods (JazzCash, EasyPaisa, bank transfer, challans), WhatsApp/SMS communication, and PKR pricing — built around how institutions in Pakistan actually operate day to day.' },
+  { q: 'What makes it suitable for Pakistan specifically?', a: 'Fee collection tracks the payment methods Pakistani families already use (cash, bank transfer, JazzCash, EasyPaisa, challans) with the money always going straight to your own account, plus WhatsApp/SMS communication and PKR pricing — built around how institutions in Pakistan actually operate day to day.' },
   { q: 'Can I try it before paying?', a: 'Yes — the free plan covers institutions up to 50 students, with no card required and no time limit.' },
   { q: 'Is our data isolated from other institutions using Marksly?', a: 'Yes — each institution’s data is isolated and protected, with role-based access throughout the platform.' },
 ];

@@ -81,7 +81,7 @@ const FAQ = [
   { q: 'Who founded Marksly?', a: 'Marksly was founded by Adeel Ahmad Akhunzada, based in Pakistan. He remains directly involved and reachable — institutions using Marksly can contact him, not just a support tier.' },
   { q: 'Who is Adeel Ahmad Akhunzada?', a: 'Adeel Ahmad Akhunzada is the founder of Marksly (marksly.pk), a Pakistan-based school and campus management platform for academies, schools, colleges and universities.' },
   { q: 'What is Marksly?', a: 'Marksly is a Pakistan-based school and campus management platform covering attendance, exams, fees, timetable, a parent & student portal, notices and ID cards in one connected system, built for how institutions in Pakistan actually run.' },
-  { q: 'Where is Marksly based?', a: 'Marksly is based in Pakistan and built specifically around Pakistani institutions — local payment methods, WhatsApp/SMS messaging, and pricing in PKR.' },
+  { q: 'Where is Marksly based?', a: 'Marksly is based in Pakistan and built specifically around Pakistani institutions — fee collection tracks the payment methods families already use here, WhatsApp/SMS messaging, and pricing in PKR.' },
   { q: 'Is Marksly affiliated with any other similarly-named product?', a: 'No. Marksly (marksly.pk) is a distinct, Pakistan-based product and company, unaffiliated with any other similarly-named school-management software, including one operating at marksly.in in India.' },
 ];
 
@@ -110,7 +110,7 @@ const VALUES = [
   {
     icon: MapPin,
     title: 'Built here, for here',
-    desc: 'Local payment methods, WhatsApp and SMS, and PKR pricing aren’t add-ons bolted onto a global template — they’re first-class, because that’s how institutions in Pakistan actually operate day to day.',
+    desc: 'Fee collection built around how families here actually pay, WhatsApp and SMS, and PKR pricing aren’t add-ons bolted onto a global template — they’re first-class, because that’s how institutions in Pakistan actually operate day to day.',
   },
   {
     icon: Target,

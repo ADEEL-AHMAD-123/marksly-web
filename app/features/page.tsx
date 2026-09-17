@@ -100,31 +100,18 @@ const FEATURES: Feature[] = [
   },
   {
     slug: 'fees', icon: Wallet, title: 'Fees & invoices',
-    desc: 'Fee structures, monthly billing, discounts and dues — tracked automatically, with receipts generated for you and a clear audit trail for every adjustment.',
+    desc: 'Add your own bank account(s) and fee structures once, and Marksly generates challans with your bank details on them — parents and students pay you directly, the same way they always have, and you record each payment as it comes in.',
     bullets: [
-      'Fee structures with discounts, fines and per-student customisation',
-      'Monthly billing and automatic receipts, with edits to a structure applied going forward',
+      'Fee structures with discounts, fines and per-student customisation, scoped to a class or the whole institution',
+      'Monthly billing generates every challan automatically; one-off invoices and backfilled periods are just as easy',
+      'Marksly never collects or holds the money itself — challans show your own bank account so payments go straight to you, with no middleman or delay',
+      'Record a payment (cash, bank transfer, JazzCash, EasyPaisa, cheque) in a few taps — a receipt and full history are generated for you automatically',
       'Waive or void a fee with a reason on record — never a silent edit to what a family owes',
-      'Outstanding-dues view per class, plus full payment history per student',
+      'Print every unpaid challan for a month in one PDF, or export invoices/payments as CSV for reconciliation',
+      'Admin sets up structures, bank accounts and billing; an accountant role can record and manage payments without touching anything else; parents and students only ever see and download their own challans',
     ],
     visual: 'fees', plan: 'Starter',
   },
-  // Online fee payments — commented out for now rather than deleted; the
-  // card/JazzCash/EasyPaisa checkout exists in the product but isn't ready
-  // to advertise publicly yet. Re-enable by uncommenting this entry (and
-  // its matching quick-jump/FeatureVisual 'payments' case, both untouched)
-  // once it's ready to go live on the marketing site.
-  // {
-  //   slug: 'payments', icon: Landmark, title: 'Online fee payments',
-  //   desc: 'Parents pay school fees online in a few taps — the invoice is marked paid automatically, with no manual reconciliation on your end.',
-  //   bullets: [
-  //     'Card, JazzCash, EasyPaisa and bank transfer, all from the parent portal',
-  //     'Invoices update to "paid" the moment a payment settles — no admin has to record it by hand',
-  //     'A digital receipt is generated and delivered automatically for every successful payment',
-  //     'Refunds, disputes and failed payments are tracked and reconciled, not silently dropped',
-  //   ],
-  //   visual: 'payments', plan: 'Starter',
-  // },
   {
     slug: 'students', icon: GraduationCap, title: 'Student records',
     desc: 'Admissions, profiles, classes and sections — one record per student, not scattered across registers, with terms and academic years to keep every year properly separated.',
@@ -233,7 +220,7 @@ const HOW_IT_WORKS = [
 ];
 
 const PAKISTAN = [
-  { icon: Wallet, title: 'Local payments', desc: 'JazzCash, EasyPaisa, bank transfer and challans — the methods your families already use.' },
+  { icon: Wallet, title: 'Pay the way you already do', desc: 'Families pay you directly — cash, bank transfer, JazzCash, EasyPaisa or a printed challan — and you record it in Marksly in a few taps.' },
   { icon: MessageSquare, title: 'WhatsApp & SMS', desc: 'Reach every parent where they already are.' },
   { icon: Headphones, title: 'Real human support', desc: 'Reach a real person by WhatsApp or email — not a ticket queue.' },
   { icon: ShieldCheck, title: 'Secure & multi-tenant', desc: 'Each institution’s data is isolated and protected, with role-based access throughout.' },
@@ -343,7 +330,7 @@ export default function FeaturesPage() {
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-xs font-semibold uppercase tracking-wide text-accent">Made to fit</p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Built around how you already work</h2>
-            <p className="mt-3 text-sm text-sidebar-muted sm:text-base">The payment methods and channels your families actually use.</p>
+            <p className="mt-3 text-sm text-sidebar-muted sm:text-base">The payment methods and channels your families already use — recorded in a few taps, never routed through a middleman.</p>
           </div>
           <div className="mt-8 grid grid-cols-1 gap-4 sm:mt-12 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
             {PAKISTAN.map((f) => (

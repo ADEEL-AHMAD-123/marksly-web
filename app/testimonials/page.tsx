@@ -48,7 +48,7 @@ const REVIEWS: { school: string; role: string; quote: string }[] = [
     school: 'Iqbal Heights School',
     role: 'Principal',
     quote:
-      "What I liked most is that it's actually built for how we work in Pakistan — JazzCash and EasyPaisa just work, no explaining to parents how to pay.",
+      "What I liked most is that it's actually built for how we work in Pakistan — parents keep paying us the same way they always have, JazzCash, EasyPaisa or bank transfer, and it's on the record the moment we log it. No new payment habit to explain to anyone.",
   },
   {
     school: 'The Knowledge Gate School',

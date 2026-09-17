@@ -47,7 +47,7 @@ const SERVICE_JSON_LD = {
 const MODULES = [
   { icon: CalendarClock, title: 'Timetable & sections', desc: 'Build weekly schedules per class and section — every teacher sees exactly what they teach, with no clashing periods.' },
   { icon: FileText, title: 'Exams & results', desc: 'Marks entry on a fast grid, grades calculated automatically, results published straight to students.' },
-  { icon: Wallet, title: 'Fee collection', desc: 'Fee structures, discounts, and dues tracked automatically — JazzCash, EasyPaisa, bank transfer and challans supported.' },
+  { icon: Wallet, title: 'Fee collection', desc: 'Set up your bank account and fee structures once; Marksly generates challans and tracks dues — students pay you directly via cash, bank transfer, JazzCash or EasyPaisa.' },
   { icon: Users2, title: 'Multi-section & multi-campus', desc: 'Manage several classes, sections or campuses from one login, with role-based access for every staff member.' },
   { icon: BarChart2, title: 'Reports', desc: 'Live dashboards across attendance, fees and results — know your numbers without asking anyone.' },
   { icon: MessageSquare, title: 'Communication', desc: 'Notices, fee reminders and attendance alerts sent to students and parents by WhatsApp or SMS.' },
@@ -55,7 +55,7 @@ const MODULES = [
 
 const WHY_PAKISTAN = [
   'Handles the scale of a college — hundreds of students across multiple sections and departments',
-  'Local payment methods your students already use: JazzCash, EasyPaisa, bank transfer and challans',
+  'Students pay you directly the way they already do — cash, bank transfer, JazzCash, EasyPaisa or challan — with no third party in between',
   'WhatsApp and SMS communication — no separate app required for students or parents',
   'PKR pricing, with a free plan to trial before committing',
   'Role-based access for admins, department heads, teachers and accountants',
@@ -64,7 +64,7 @@ const WHY_PAKISTAN = [
 const FAQ = [
   { q: 'What is a college management system?', a: 'A college management system is software that manages admissions, timetable, exams, fees, and communication for a college or campus in one platform, replacing manual registers and disconnected spreadsheets.' },
   { q: 'Can Marksly handle multiple sections or campuses?', a: 'Yes — Marksly is built for multi-section institutions, letting admins manage several classes, sections or campuses from a single login with role-based access per staff member.' },
-  { q: 'Does Marksly support local payment methods?', a: 'Yes — fee collection supports JazzCash, EasyPaisa, bank transfer and challans, alongside PKR-based pricing for the platform itself.' },
+  { q: 'Does Marksly support local payment methods?', a: 'Yes — fee collection tracks payments made via JazzCash, EasyPaisa, bank transfer, cash and challans. Marksly never collects the money itself; challans show your own bank account so students pay you directly, and you record each payment as it comes in.' },
   { q: 'Is there a free plan to try it first?', a: 'Yes — Marksly offers a free plan for up to 50 students with no card required, so you can trial it before upgrading.' },
   { q: 'How is this different from a school management system?', a: 'The same platform covers both — Marksly works as a school, college, or university management system depending on how you configure classes, sections and departments.' },
 ];

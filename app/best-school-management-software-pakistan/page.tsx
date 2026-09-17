@@ -41,7 +41,7 @@ const CRITERIA = [
     icon: Wallet,
     title: 'Local payment support',
     lookFor: 'Can parents actually pay the way they already do — JazzCash, EasyPaisa, bank transfer, or a printed challan — without a foreign card?',
-    marksly: 'Built in: JazzCash, EasyPaisa, bank transfer and challans, with PKR pricing throughout.',
+    marksly: 'Add your own bank account, generate a challan, and families pay you directly — cash, bank transfer, JazzCash or EasyPaisa. You record it in a few taps; PKR pricing throughout.',
   },
   {
     icon: MessageSquare,
@@ -78,15 +78,15 @@ const CRITERIA = [
 const FAQ = [
   {
     q: 'What is the best school management software in Pakistan?',
-    a: 'It depends on what your institution needs most. If local payment methods (JazzCash, EasyPaisa, bank transfer, challans), WhatsApp/SMS parent communication, transparent PKR pricing, and a genuinely free tier to try first matter to you, Marksly is built specifically around those requirements for the Pakistani market.',
+    a: 'It depends on what your institution needs most. If tracking fee payments the way families already pay (cash, bank transfer, JazzCash, EasyPaisa, challans) without you handing your bank details to a third party, WhatsApp/SMS parent communication, transparent PKR pricing, and a genuinely free tier to try first matter to you, Marksly is built specifically around those requirements for the Pakistani market.',
   },
   {
     q: 'How is Marksly different from a generic international school ERP?',
-    a: 'Many school ERPs are built for markets where card payments and app-based parent portals are the norm. Marksly is built around how institutions in Pakistan actually operate — local payment rails, WhatsApp/SMS instead of a mandatory parent app, and PKR pricing from the start.',
+    a: 'Many school ERPs are built for markets where card payments and app-based parent portals are the norm. Marksly is built around how institutions in Pakistan actually operate — families pay the school directly via the methods they already use, WhatsApp/SMS instead of a mandatory parent app, and PKR pricing from the start.',
   },
   {
     q: 'What should I check before choosing any school management system, not just Marksly?',
-    a: 'Confirm: it supports the payment methods your families use, it reaches parents through a channel they already check, pricing is published and fits your budget with no forced annual contract, it fits your curriculum/grading structure without a rebuild, and you can reach real support quickly during peak periods like exams.',
+    a: 'Confirm: it tracks the payment methods your families already use without routing the money through a third party, it reaches parents through a channel they already check, pricing is published and fits your budget with no forced annual contract, it fits your curriculum/grading structure without a rebuild, and you can reach real support quickly during peak periods like exams.',
   },
   {
     q: 'Can I try Marksly before switching from spreadsheets or another system?',

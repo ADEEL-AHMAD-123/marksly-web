@@ -3,7 +3,7 @@ import { Check, MessageCircle, QrCode, Bell, ShieldCheck, Wallet, Layers, UserCo
 export type VisualKind =
   | 'attendance' | 'exams' | 'timetable' | 'fees'
   | 'students' | 'messaging' | 'idcard' | 'reports'
-  | 'portal' | 'payments' | 'notices' | 'academics' | 'staff'
+  | 'portal' | 'notices' | 'academics' | 'staff'
   | 'subjects' | 'inbox';
 
 /**
@@ -224,26 +224,6 @@ export function FeatureVisual({ kind }: { kind: VisualKind }) {
           <div className="mt-3 flex items-center gap-2 rounded-lg bg-accent/10 px-3 py-2 text-xs font-semibold text-accent">
             <ShieldCheck aria-hidden size={14} /> One login for every child, on any device
           </div>
-        </Frame>
-      );
-
-    case 'payments':
-      return (
-        <Frame>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pay Bilal&apos;s fee — Rs 4,500</p>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {['Card', 'JazzCash', 'EasyPaisa', 'Bank'].map((m) => (
-              <div key={m} className="flex items-center justify-center rounded-lg border border-border px-2 py-2.5 text-[11px] font-medium">
-                {m}
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-success-soft px-3 py-2.5 text-xs font-medium text-success">
-            <Check aria-hidden size={14} strokeWidth={3} /> Paid — receipt sent automatically
-          </div>
-          <p className="mt-2.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Wallet aria-hidden size={12} /> Invoice marked paid instantly — no manual entry needed
-          </p>
         </Frame>
       );
 

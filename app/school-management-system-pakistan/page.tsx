@@ -47,14 +47,14 @@ const SERVICE_JSON_LD = {
 const MODULES = [
   { icon: CalendarCheck, title: 'Attendance', desc: 'Teachers mark attendance from any device — admins see it live, parents get absentee alerts automatically.' },
   { icon: FileText, title: 'Exams & results', desc: 'Marks entry on a fast grid, grades calculated automatically, results published straight to parents.' },
-  { icon: Wallet, title: 'Fees & invoices', desc: 'Fee structures, monthly billing, discounts and dues — with JazzCash, EasyPaisa, bank transfer and challans.' },
+  { icon: Wallet, title: 'Fees & invoices', desc: 'Set up your bank account and fee structures once; Marksly generates the challans, and families pay you directly — cash, bank transfer, JazzCash or EasyPaisa.' },
   { icon: GraduationCap, title: 'Student records', desc: 'Admissions, profiles, classes and sections — bulk CSV import for your existing registers.' },
   { icon: MessageSquare, title: 'Parent communication', desc: 'Attendance alerts, fee reminders and notices sent by WhatsApp or SMS — where parents already are.' },
   { icon: CreditCard, title: 'ID cards', desc: 'Printable student ID cards with a scannable QR code, generated class by class.' },
 ];
 
 const WHY_PAKISTAN = [
-  'Local payment methods your families already use: JazzCash, EasyPaisa, bank transfer and challans',
+  'Families pay you directly the way they already do — cash, bank transfer, JazzCash, EasyPaisa or challan — no third party ever touches the money',
   'WhatsApp and SMS messaging — no app download required for parents',
   'Works for Matric, Cambridge (O/A Level), and Aga Khan board schools alike',
   'Pricing in PKR, with a free plan for schools up to 50 students',
@@ -63,7 +63,7 @@ const WHY_PAKISTAN = [
 
 const FAQ = [
   { q: 'What is a school management system?', a: 'A school management system is software that replaces registers, spreadsheets and manual fee collection with one connected platform — covering admissions, attendance, exams, fees, timetable and parent communication.' },
-  { q: 'Is Marksly built specifically for schools in Pakistan?', a: 'Yes. Marksly supports local payment methods (JazzCash, EasyPaisa, bank transfer, challans), WhatsApp/SMS parent messaging, and pricing in PKR — built around how Pakistani schools actually operate.' },
+  { q: 'Is Marksly built specifically for schools in Pakistan?', a: 'Yes. Fee collection tracks the payment methods Pakistani families already use — cash, bank transfer, JazzCash, EasyPaisa and printed challans — with families paying the school directly and no online checkout in between, plus WhatsApp/SMS parent messaging and pricing in PKR.' },
   { q: 'Does it work for Matric and Cambridge system schools?', a: 'Yes — Marksly is curriculum-agnostic. You define your own classes, sections, subjects and grading scheme, so it works whether you follow a provincial board, Cambridge, or Aga Khan.' },
   { q: 'Is there a free plan?', a: 'Yes — free for up to 50 students, no card required, with no time limit.' },
   { q: 'How long does setup take?', a: 'Most schools are set up — classes, sections, and a fee structure — in under 10 minutes, and staff can start marking attendance the same day.' },

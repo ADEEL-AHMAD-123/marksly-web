@@ -42,16 +42,37 @@ export const HELP_TOPICS: HelpTopic[] = [
     ],
   },
   {
-    slug: 'fees-billing', category: 'Fees & billing', icon: 'wallet',
+    // Marksly's OWN subscription billing (how your institution pays
+    // Marksly) -- kept deliberately separate from 'fee-collection' below
+    // (how families pay YOUR institution). Mixing the two in one topic
+    // was actively confusing: "what happens if a payment fails" read as
+    // if it were about a parent's fee payment when it was actually about
+    // a subscription card charge.
+    slug: 'subscription-billing', category: 'Your Marksly subscription', icon: 'wallet',
     items: [
       { q: 'How does subscription billing work?', a: 'Growth-plan subscriptions are billed monthly through a secure card checkout, with optional auto-renewal so you don’t have to remember to pay each month. Bank transfer is also available if you’d rather pay manually.' },
       { q: 'Can I turn off auto-renewal?', a: 'Yes — go to your Billing settings and disable auto-renewal at any time. Your saved card is removed from our system when you do.' },
-      { q: 'How do parents pay student fees?', a: 'You record fee payments however your institution already collects them — cash, bank transfer, JazzCash, or EasyPaisa — and Marksly tracks invoices, dues, and receipts for you.' },
       { q: 'What happens if a payment fails?', a: 'Failed auto-renewal charges are retried automatically over the following week. If it still doesn’t go through, your account moves to a grace period rather than being cut off immediately, and you’ll be notified by email.' },
       { q: 'Do you offer annual billing?', a: 'Yes — annual billing is available on the Growth and Institution plans at a discount. Contact us and we’ll set it up for you.' },
-      { q: 'Will I get a receipt for every payment?', a: 'Yes — a receipt is generated automatically for every successful payment and sent to your billing email.' },
-      { q: 'Can a fee be waived or corrected after it’s issued?', a: 'Yes — an admin can waive an invoice or void a payment, each with a reason recorded. Nothing about what a family owes changes silently; every adjustment is on the record.' },
+      { q: 'Will I get a receipt for every payment?', a: 'Yes — a receipt is generated automatically for every successful subscription payment and sent to your billing email.' },
       { q: 'What happens if my institution goes over its student limit?', a: 'We’ll let you know before you hit the limit so you can upgrade — access is never cut off without warning.' },
+    ],
+  },
+  {
+    // How YOUR institution collects fees from families — a different
+    // question from the one above. This reflects the redesigned fee
+    // module: bank-account-backed challans, manual recording, no
+    // in-app checkout, and the roles behind each step.
+    slug: 'fee-collection', category: 'Collecting fees from families', icon: 'wallet',
+    items: [
+      { q: 'How does fee collection actually work?', a: 'You add your own bank account and set up your fee structures once. Marksly then generates challans showing what’s due and your bank details — families pay you directly, the same way they always have (cash, bank transfer, JazzCash, EasyPaisa, cheque), and you record each payment as it comes in. Marksly tracks invoices, dues, receipts and a full history for you.' },
+      { q: 'Does Marksly collect or hold the fee money itself?', a: 'No. Marksly never touches the money — challans carry your own bank account so whoever is paying, a parent or the student, pays your institution directly. There’s no online checkout, no gateway, and no delay waiting for funds to reach you.' },
+      { q: 'Who can set up fee structures and bank accounts?', a: 'An institution admin. Bank accounts and fee structures live on their own tabs (Bank Accounts, Fee Structures) inside Fees, separate from day-to-day Collections, so setup doesn’t get mixed in with recording payments.' },
+      { q: 'Who can record a payment day to day?', a: 'An admin, or a staff member with the accountant role — accountants see and manage fees, invoices and payments, but nothing outside that scope (no exam grading, no attendance, etc.).' },
+      { q: 'What can parents and students see?', a: 'Their own portal shows every invoice/challan for their children — amount due, due date, status and payment history — downloadable and printable at any time. They view and pay outside the app; they don’t record payments themselves.' },
+      { q: 'How do bills get generated — manually every time?', a: 'No — “Generate this month’s bills” runs the monthly billing for every active fee structure in one action. You can also generate for a single structure and a specific period (useful for backfilling a missed month), or create a one-time invoice for a one-off charge.' },
+      { q: 'Can I print or export a batch of challans/invoices at once?', a: 'Yes — “Print all slips” generates one PDF with every unpaid challan for a chosen month (optionally scoped to a class or section) so you can hand out a batch after generating bills. Export CSV and Export payments give you the same data as a spreadsheet, for reporting or reconciling against a bank statement.' },
+      { q: 'Can a fee be waived or corrected after it’s issued?', a: 'Yes — an admin can waive an invoice or void a payment, each with a reason recorded. Nothing about what a family owes changes silently; every adjustment is on the record.' },
     ],
   },
   {

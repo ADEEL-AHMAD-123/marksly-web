@@ -1,7 +1,7 @@
 import { Globe2, Zap, ShieldCheck } from 'lucide-react';
 
 const DIFFERENTIATORS = [
-  { n: '01', icon: Globe2, title: 'Built for how schools actually run', desc: 'Local payment rails and WhatsApp/SMS built in — not a global template with a translation bolted on.' },
+  { n: '01', icon: Globe2, title: 'Built for how schools actually run', desc: 'Fee tracking for the payment methods families already use, plus WhatsApp/SMS built in — not a global template with a translation bolted on.' },
   { n: '02', icon: Zap, title: 'Set up in minutes, not weeks', desc: 'No implementation team, no onboarding calls required. Create your institution and start using it today.' },
   { n: '03', icon: ShieldCheck, title: 'Your data, isolated and safe', desc: 'Every institution runs in its own isolated space, with role-based access controlling exactly who sees what.' },
 ];

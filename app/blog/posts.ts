@@ -11,6 +11,31 @@ export interface BlogPost {
 
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: 'how-fee-collection-works-in-marksly',
+    title: 'How Fee Collection Actually Works in Marksly (And Who Does What)',
+    description:
+      'A plain walkthrough of Marksly\'s fee module: how challans get generated, why Marksly never touches the money, and exactly what each role -- admin, accountant, parent, student -- can do.',
+    date: '2026-09-16',
+    readingTime: '6 min read',
+    body: [
+      'A lot of the confusion around school "fee management" software comes down to one unstated assumption: that the software collects the money. Marksly doesn\'t, and that\'s deliberate, not a missing feature. Here\'s the actual model, step by step, and what each role in your institution can and can\'t do within it.',
+      '## The one-time setup: a bank account and a fee structure',
+      'Before any challan can go out, an institution admin does two things once: add at least one bank account (the account families will actually pay into), and create at least one fee structure (what a class or the whole institution owes -- tuition, transport, hostel, an admission fee, whatever applies). Both live on their own tabs inside Fees -- Bank Accounts and Fee Structures -- kept separate from the day-to-day Collections tab so setup never gets mixed in with recording payments. A fee structure can be scoped to one class or the whole institution, billed automatically every month or generated on request, and can include discounts or per-student customization.',
+      '## Generating bills',
+      'Once setup is done, "Generate this month\'s bills" runs the monthly billing across every active, auto-billed fee structure in one action, creating a challan for every student it applies to. For a structure that bills less often, or a period you need to backfill, you can generate for just that one structure and pick the exact month. A one-time invoice covers a genuine one-off charge -- a fine, a specific event fee -- without needing a whole structure built around it.',
+      '## What a challan actually is, and how it gets paid',
+      'A challan is the printed or downloadable version of an invoice, carrying the amount due, the due date, and your institution\'s own bank account details. A parent or student pays that amount directly into your account -- cash, bank transfer, JazzCash, EasyPaisa, cheque, whatever your institution already accepts -- exactly the way they would with a paper challan from any bank. Marksly is never in that transaction. There\'s no checkout screen, no payment gateway, and no waiting for funds to clear through a third party before they reach you. The money goes straight from the payer to your account, the same day, every time.',
+      '## Recording a payment',
+      'Once a payment arrives -- however it arrived -- an admin or a staff member with the accountant role records it against the invoice: the amount, the method, the date, and an optional transaction or receipt reference. That single action updates the invoice status (pending, partial, paid, or overdue if the due date has passed), generates a receipt automatically, and adds the payment to that student\'s full history. Nothing about what a family owes is ever silently edited -- if a payment was recorded wrong, it\'s voided with a reason and recorded correctly, and if a fee is genuinely forgiven, it\'s waived with a reason. Both stay visible in the record permanently.',
+      '## What each role can actually do',
+      'An admin has the full picture: setting up bank accounts and fee structures, generating and backfilling bills, recording and correcting payments, and running bulk actions. An accountant role covers the day-to-day of Collections -- recording payments, viewing invoices and dues -- scoped so it never touches exam grading, attendance, or anything outside fees. A parent or student only ever sees their own (or their child\'s) invoices in their own portal: amount due, due date, status, and full payment history, downloadable and printable at any time. They can see exactly what\'s owed and what\'s been paid, but they don\'t record a payment themselves -- that stays a staff action, so there\'s always a single, auditable source of truth for what actually happened.',
+      '## Handling more than one invoice at a time',
+      'For the batch work that comes with running a whole institution\'s worth of billing, two actions cover it: "Print all slips" generates one PDF containing every unpaid challan for a chosen month, optionally narrowed to one class or section -- built for the once-a-month task of handing out a stack of physical challans after generating bills, and it skips already-paid invoices by default so a settled family never receives what looks like a fresh bill. Export CSV and Export payments give you the same underlying data as a spreadsheet -- one row per invoice, or one row per individual payment with its method, date and receipt number -- for reporting to a board, or reconciling against your own bank statement.',
+      '## Why it works this way',
+      'The short version: whoever is paying, pays your institution directly, with no delay and no middleman between the payment and your account -- the same guarantee a paper challan has always given, just without the paperwork. Marksly\'s job is to make what happens around that payment -- generating the challan, tracking who\'s paid and who hasn\'t, keeping receipts and a correction trail, and reaching parents automatically before a due date -- effortless, without ever putting itself between a family and the school\'s bank account.',
+    ],
+  },
+  {
     slug: 'moving-from-registers-to-digital-attendance',
     title: 'Digital Attendance System for Schools in Pakistan: A Practical Guide',
     description:
@@ -151,7 +176,7 @@ export const BLOG_POSTS: BlogPost[] = [
       '## Fee collection that doesn\'t depend on someone remembering to call',
       'Quaid-e-Azam Future School\'s administrator noted that fee follow-ups used to mean calling parents individually — with automatic reminders instead, their collection genuinely got faster. This is a common theme: late fee payments are often less about parents being unwilling to pay and more about nobody consistently following up until a system does it automatically.',
       '## Built around how Pakistani institutions actually operate',
-      'Iqbal Heights School\'s principal highlighted something specific to the Pakistani market: JazzCash and EasyPaisa "just work," with no need to explain to parents how to pay. A lot of school software is built for a different market first and adapted later — for an institution here, whether local payment rails and WhatsApp are first-class from day one, not an afterthought, is a real practical difference.',
+      'Iqbal Heights School\'s principal highlighted something specific to the Pakistani market: parents keep paying JazzCash, EasyPaisa or bank transfer directly, the way they always have, and it\'s recorded in Marksly the moment it happens — no new payment habit to explain to anyone. A lot of school software is built for a different market first and adapted later — for an institution here, whether that fits how payments actually happen day to day, not an afterthought, is a real practical difference.',
       '## An easy switch from paper',
       'The Knowledge Gate School\'s head of administration described moving from paper registers to Marksly for attendance as "the easiest transition of any system we\'ve tried," with teachers picking it up in a day. Crescent College of Excellence\'s administrator made a similar point about exam scheduling and multi-section management — going from a spreadsheet-based process to one system their staff actually enjoy using.',
       '## Less manual work at reporting time',
