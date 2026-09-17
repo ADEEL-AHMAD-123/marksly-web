@@ -281,21 +281,37 @@ export function FeesView() {
         </TabsList>
         <TabsContent value="collections" className="space-y-4 pt-4">
           <InvoicesTab />
-          <InfoNote title="New to fee collection? Read this first">
-            <p>
-              Marksly does not collect or hold fee money on your behalf. Challans show your own bank account
-              details so whoever is paying -- a parent or the student -- pays you directly; once you receive a payment, record it right here with the payment proof to keep an auditable record.
+          {/* Once setup is actually complete, this admin has already been
+              through the full walkthrough (or dismissed it) -- repeating
+              the whole FAQ here every visit is redundant with the one-click
+              replay right below it. The full explainer (money flow +
+              5 Q&A) is worth keeping ONLY while setup is still partial,
+              since that's exactly when "why do I need a bank account
+              before generating bills" etc. actually matters. */}
+          {setup.isPartial ? (
+            <InfoNote title="New to fee collection? Read this first">
+              <p>
+                Marksly does not collect or hold fee money on your behalf. Challans show your own bank account
+                details so whoever is paying -- a parent or the student -- pays you directly; once you receive a payment, record it right here with the payment proof to keep an auditable record.
+              </p>
+              <p className="mt-3 font-medium text-foreground">A few common questions:</p>
+              <p className="mt-1"><strong>Why doesn't Marksly hold the money itself?</strong> So there's never a delay or a middleman between a payment and your account -- whoever pays, parent or student, pays you directly, the same way they would with a paper challan.</p>
+              <p className="mt-2"><strong>What if I record a payment wrong?</strong> Nothing is silently overwritten. You void the mistaken entry with a reason, then record it correctly -- the full history stays visible under a student's invoice.</p>
+              <p className="mt-2"><strong>Can I undo a mistake?</strong> Payments and invoices are voided or waived, never deleted -- so a correction is always visible, and nothing about money is ever quietly erased.</p>
+              <p className="mt-2"><strong>Why do I need a bank account before generating bills?</strong> Every challan needs somewhere real for the payer -- parent or student -- to pay into -- without one, you'd be sending bills with no payment instructions on them.</p>
+              <p className="mt-2"><strong>What's the difference between an invoice and a challan?</strong> They're the same bill -- "invoice" is what you see and manage here; "challan" is the printed/downloadable version a parent or student actually pays against.</p>
+              <button type="button" onClick={() => setGuideOpen(true)} className="mt-3 font-medium text-primary hover:underline">
+                Replay the "how fees work" walkthrough
+              </button>
+            </InfoNote>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Need a refresher on how fee collection works?{' '}
+              <button type="button" onClick={() => setGuideOpen(true)} className="font-medium text-primary hover:underline">
+                Replay the walkthrough
+              </button>
             </p>
-            <p className="mt-3 font-medium text-foreground">A few common questions:</p>
-            <p className="mt-1"><strong>Why doesn't Marksly hold the money itself?</strong> So there's never a delay or a middleman between a payment and your account -- whoever pays, parent or student, pays you directly, the same way they would with a paper challan.</p>
-            <p className="mt-2"><strong>What if I record a payment wrong?</strong> Nothing is silently overwritten. You void the mistaken entry with a reason, then record it correctly -- the full history stays visible under a student's invoice.</p>
-            <p className="mt-2"><strong>Can I undo a mistake?</strong> Payments and invoices are voided or waived, never deleted -- so a correction is always visible, and nothing about money is ever quietly erased.</p>
-            <p className="mt-2"><strong>Why do I need a bank account before generating bills?</strong> Every challan needs somewhere real for the payer -- parent or student -- to pay into -- without one, you'd be sending bills with no payment instructions on them.</p>
-            <p className="mt-2"><strong>What's the difference between an invoice and a challan?</strong> They're the same bill -- "invoice" is what you see and manage here; "challan" is the printed/downloadable version a parent or student actually pays against.</p>
-            <button type="button" onClick={() => setGuideOpen(true)} className="mt-3 font-medium text-primary hover:underline">
-              Replay the "how fees work" walkthrough
-            </button>
-          </InfoNote>
+          )}
         </TabsContent>
         <TabsContent value="structures" className="space-y-4 pt-4">
           <FeeCoveragePanel />
