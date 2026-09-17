@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, X, BookOpen, Trash2, Pencil, ChevronLeft, ChevronRight, Filter, Check, UserPlus, AlertTriangle } from 'lucide-react';
+import { Plus, X, BookOpen, Trash2, Pencil, ChevronLeft, ChevronRight, Filter, Check, UserPlus, AlertTriangle, Archive, ArrowUp, ArrowDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
@@ -41,6 +41,23 @@ import { useTerminology } from '@/lib/terminology';
 
 const PAGE_SIZE = 10;
 
+// Sortable columns in the desktop table — kept to fields that are plain
+// scalars on Subject (name/code/className/creditHours/enrolledCount).
+// Teacher and Type aren't included: a subject can have several
+// per-section teachers, and Type is a two-value toggle better filtered
+// than sorted.
+type SortKey = 'name' | 'code' | 'className' | 'creditHours' | 'enrolledCount';
+
+function sortValue(s: Subject, key: SortKey): string | number | null {
+  switch (key) {
+    case 'name': return s.name;
+    case 'code': return s.code;
+    case 'className': return s.className;
+    case 'creditHours': return s.creditHours;
+    case 'enrolledCount': return s.enrolledCount;
+  }
+}
+
 export function SubjectsView() {
   const terminology = useTerminology();
   const { data, isLoading } = useGetSubjectsQuery();
@@ -50,8 +67,19 @@ export function SubjectsView() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [unassignedOnly, setUnassignedOnly] = useState(false);
+  // Deactivated subjects (isActive:false) are real records kept for
+  // historical exams/results/report cards — hidden from the everyday
+  // list by default, same convention as ClassesView's archived classes.
+  const [showInactive, setShowInactive] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
   const [deleteSubject, { isLoading: deleting }] = useDeleteSubjectMutation();
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir('asc'); }
+  };
 
   // A subject counts as "unassigned"/needs-attention when:
   // - it has multiple sections and AT LEAST ONE has no effective teacher
@@ -62,17 +90,29 @@ export function SubjectsView() {
       ? s.sectionCoverage.some((r) => !r.teacherId)
       : !s.teacherId;
   const unassignedCount = useMemo(() => subjects.filter(isUnassigned).length, [subjects]);
+  const inactiveCount = useMemo(() => subjects.filter((s) => !s.isActive).length, [subjects]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let rows = subjects;
+    let rows = showInactive ? subjects : subjects.filter((s) => s.isActive);
     if (unassignedOnly) rows = rows.filter(isUnassigned);
-    if (!q) return rows;
-    return rows.filter((s) =>
-      [s.name, s.code, s.className, s.teacherName, ...s.sectionCoverage.map((r) => r.teacherName)]
-        .some((v) => (v ?? '').toLowerCase().includes(q))
-    );
-  }, [subjects, query, unassignedOnly]);
+    if (q) {
+      rows = rows.filter((s) =>
+        [s.name, s.code, s.className, s.teacherName, ...s.sectionCoverage.map((r) => r.teacherName)]
+          .some((v) => (v ?? '').toLowerCase().includes(q))
+      );
+    }
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      const av = sortValue(a, sortKey);
+      const bv = sortValue(b, sortKey);
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+      return String(av).localeCompare(String(bv)) * dir;
+    });
+  }, [subjects, query, unassignedOnly, showInactive, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageSafe = Math.min(page, totalPages);
@@ -121,6 +161,19 @@ export function SubjectsView() {
             <AlertTriangle size={12} /> {unassignedCount} unassigned {unassignedOnly ? '· showing only these' : ''}
           </button>
         )}
+        {inactiveCount > 0 && (
+          <button
+            type="button"
+            onClick={() => { setShowInactive((v) => !v); setPage(1); }}
+            className={`ml-2 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              showInactive
+                ? 'border-border bg-muted text-foreground'
+                : 'border-border text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            <Archive size={12} /> {inactiveCount} deactivated {showInactive ? '· showing' : '· hidden'}
+          </button>
+        )}
       </div>
 
       {isLoading ? (
@@ -136,26 +189,30 @@ export function SubjectsView() {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>{terminology.classUnit}</TableHead>
+                    <TableHead><SortButton label="Subject" col="name" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} /></TableHead>
+                    <TableHead><SortButton label="Code" col="code" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} /></TableHead>
+                    <TableHead><SortButton label={terminology.classUnit} col="className" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} /></TableHead>
+                    <TableHead><SortButton label="Credit hrs" col="creditHours" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} /></TableHead>
                     <TableHead>Teacher</TableHead>
+                    <TableHead><SortButton label="Enrolled" col="enrolledCount" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} /></TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paged.map((s) => (
-                    <TableRow key={s.id}>
+                    <TableRow key={s.id} className={!s.isActive ? 'opacity-70' : undefined}>
                       <TableCell className="font-medium text-foreground">
                         {s.name}
-                        {s.creditHours != null && (
-                          <span className="ml-1 font-normal text-muted-foreground">({s.creditHours} cr.)</span>
+                        {!s.isActive && (
+                          <Badge variant="neutral" className="ml-1.5"><Archive size={11} /> Deactivated</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{s.code ?? '—'}</TableCell>
                       <TableCell className="text-muted-foreground">{s.className ?? `All ${terminology.classUnitPlural.toLowerCase()}`}</TableCell>
+                      <TableCell className="text-muted-foreground">{s.creditHours ?? '—'}</TableCell>
                       <TableCell><TeacherCell subject={s} /></TableCell>
+                      <TableCell className="text-muted-foreground">{s.enrolledCount}</TableCell>
                       <TableCell><Badge variant={s.isElective ? 'warning' : 'neutral'}>{s.isElective ? 'Elective' : 'Core'}</Badge></TableCell>
                       <TableCell className="text-right">
                         {confirmId === s.id ? (
@@ -188,16 +245,19 @@ export function SubjectsView() {
 
           <div className="space-y-3 md:hidden">
             {paged.map((s) => (
-              <Card key={s.id} className="p-4">
+              <Card key={s.id} className={!s.isActive ? 'p-4 opacity-70' : 'p-4'}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-foreground">
                       {s.name}
                       {s.creditHours != null && <span className="font-normal text-muted-foreground"> ({s.creditHours} cr.)</span>}
                     </p>
-                    <p className="text-xs text-muted-foreground">{s.code ? `${s.code} · ` : ''}{s.className ?? `All ${terminology.classUnitPlural.toLowerCase()}`}{s.teacherName ? ` · ${s.teacherName}` : ''}</p>
+                    <p className="text-xs text-muted-foreground">{s.code ? `${s.code} · ` : ''}{s.className ?? `All ${terminology.classUnitPlural.toLowerCase()}`}{s.teacherName ? ` · ${s.teacherName}` : ''}{` · ${s.enrolledCount} enrolled`}</p>
                   </div>
-                  <Badge variant={s.isElective ? 'warning' : 'neutral'}>{s.isElective ? 'Elective' : 'Core'}</Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge variant={s.isElective ? 'warning' : 'neutral'}>{s.isElective ? 'Elective' : 'Core'}</Badge>
+                    {!s.isActive && <Badge variant="neutral"><Archive size={11} /> Deactivated</Badge>}
+                  </div>
                 </div>
                 <div className="mt-2"><TeacherCell subject={s} /></div>
                 <div className="mt-3 flex items-center justify-between gap-1.5 border-t border-border pt-3">
@@ -259,6 +319,24 @@ export function SubjectsView() {
       <SubjectDrawer open={open} subject={null} onClose={() => setOpen(false)} />
       <SubjectDrawer open={!!editing} subject={editing} onClose={() => setEditing(null)} />
     </div>
+  );
+}
+
+// A column header that doubles as a sort toggle — shows the active
+// column's direction, and defaults new columns to ascending.
+function SortButton({
+  label, col, sortKey, sortDir, onClick,
+}: { label: string; col: SortKey; sortKey: SortKey; sortDir: 'asc' | 'desc'; onClick: (col: SortKey) => void }) {
+  const active = sortKey === col;
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(col)}
+      className={`inline-flex items-center gap-1 ${active ? 'text-foreground' : 'hover:text-foreground'}`}
+    >
+      {label}
+      {active && (sortDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
+    </button>
   );
 }
 
@@ -385,6 +463,9 @@ const schema = z.object({
     (v) => (v === '' || v === null || v === undefined ? undefined : v),
     z.coerce.number().min(0).max(20).optional()
   ),
+  // Only meaningful when editing — create() has no isActive input at all
+  // (a brand-new subject is always active), same convention as Class.
+  isActive: z.boolean().optional(),
 });
 type SubjectForm = z.infer<typeof schema>;
 
@@ -407,9 +488,10 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
 
   const { register, control, handleSubmit, reset, watch, setValue, formState: { errors, dirtyFields } } = useForm<SubjectForm>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', code: '', classId: '', teacherId: '', isElective: false, creditHours: undefined },
+    defaultValues: { name: '', code: '', classId: '', teacherId: '', isElective: false, creditHours: undefined, isActive: true },
   });
   const isElective = watch('isElective');
+  const isActive = watch('isActive');
   const classId = watch('classId');
   const name = watch('name');
   const fallbackTeacherId = watch('teacherId');
@@ -476,10 +558,11 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
         teacherId: subject.teacherId ?? '',
         isElective: subject.isElective,
         creditHours: subject.creditHours ?? undefined,
+        isActive: subject.isActive,
       });
       setSectionTeacherMap(Object.fromEntries(subject.sectionTeachers.map((r) => [r.sectionId, r.teacherId])));
     } else {
-      reset({ name: '', code: '', classId: '', teacherId: '', isElective: false, creditHours: undefined });
+      reset({ name: '', code: '', classId: '', teacherId: '', isElective: false, creditHours: undefined, isActive: true });
       setSectionTeacherMap({});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -531,6 +614,7 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
       sectionTeachers,
       isElective: values.isElective ?? false,
       creditHours: values.creditHours,
+      ...(isEdit ? { isActive: values.isActive } : {}),
     };
 
     try {
@@ -719,6 +803,25 @@ function SubjectDrawer({ open, subject, onClose }: { open: boolean; subject: Sub
                   : 'Leave unchecked for a core subject — every student in this class is automatically included, with no request or approval needed.'}
               </p>
             </div>
+
+            {isEdit && (
+              <div className="rounded-lg border border-border p-3">
+                <label className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={isActive ?? true}
+                    onChange={(e) => setValue('isActive', e.target.checked)}
+                    className="h-4 w-4 rounded border-input accent-[hsl(var(--primary))]"
+                  />
+                  Active
+                </label>
+                <p className="mt-1 pl-6 text-xs text-muted-foreground">
+                  {isActive
+                    ? 'Uncheck to deactivate this subject — it drops out of the everyday list (still reachable via the "deactivated" filter) without deleting anything. Past exams, results and report cards that reference it are unaffected.'
+                    : 'Deactivated — hidden from the everyday list. Check this again to bring it back into active use.'}
+                </p>
+              </div>
+            )}
           </div>
           <div className="flex items-center justify-between gap-2 border-t border-border px-5 py-4">
             <p className="text-xs text-danger">
