@@ -7,7 +7,7 @@ import { useAppSelector } from '@/store/hooks';
 import { cn, getInitials } from '@/lib/utils';
 import { NAV_ITEMS } from './nav-items';
 import { LogoMark } from '@/components/brand/Logo';
-import { useGetMyInstitutionQuery } from '@/store/api/institutionApi';
+import { useGetMyInstitutionOverviewQuery } from '@/store/api/institutionApi';
 
 interface SidebarNavProps {
   collapsed?: boolean;
@@ -48,7 +48,10 @@ export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }:
   // that feels owned. Skipped entirely for superadmin so this query never
   // fires for a role that has no institutionId to look up.
   const isSuperadmin = role === 'superadmin';
-  const { data: institutionRes } = useGetMyInstitutionQuery(undefined, { skip: isSuperadmin });
+  // /institutions/me/overview, not /institutions/me -- the latter is
+  // admin-only server-side, so every other role would otherwise 403 here
+  // and silently fall back to the generic Marksly wordmark below.
+  const { data: institutionRes } = useGetMyInstitutionOverviewQuery(undefined, { skip: isSuperadmin });
   const institution = institutionRes?.data;
 
   return (
