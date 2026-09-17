@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { AlertCircle, ChevronLeft, ChevronRight, MessageCircle, Phone, Users, Printer, Download, LayoutGrid, Clock, BookOpen, Hash, Filter } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { AlertCircle, ChevronLeft, ChevronRight, ChevronDown, MessageCircle, Phone, Users, Printer, Download, LayoutGrid, Clock, BookOpen, Hash, Filter, UserCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,9 +10,14 @@ import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { InfoNote } from '@/components/ui/info-note';
+import { SearchInput } from '@/components/ui/search-input';
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { useDebounce } from '@/hooks/useDebounce';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import {
   useGetAttendanceReportQuery,
@@ -133,6 +138,8 @@ export function AttendanceReportView() {
   const [status, setStatus] = useState<AttendanceStatus | 'all'>('all');
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const search = useDebounce(searchInput, 350);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
 
@@ -184,6 +191,7 @@ export function AttendanceReportView() {
       classId: isTeacher ? undefined : classId || undefined,
       sectionId: isTeacher ? undefined : sectionId || undefined,
       status: status === 'all' ? undefined : status,
+      search: search || undefined,
       page,
       limit: PAGE_SIZE,
     },
@@ -210,6 +218,7 @@ export function AttendanceReportView() {
         classId: isTeacher ? undefined : classId || undefined,
         sectionId: isTeacher ? undefined : sectionId || undefined,
         status: status === 'all' ? undefined : status,
+        search: search || undefined,
         page: 1,
         limit: total,
       }).unwrap();
@@ -228,6 +237,8 @@ export function AttendanceReportView() {
   // e.g. from "All statuses" to "Absent" while sitting on page 4 of the
   // wider result set could land on an empty or out-of-range page.
   const resetPage = () => setPage(1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { resetPage(); }, [search]);
 
   // Grouped by date (within the current page only — pagination stays
   // server-side) so a multi-day range reads as scannable per-day sections
@@ -302,9 +313,16 @@ export function AttendanceReportView() {
         </div>
       </div>
       <div className="rounded-xl border border-border/70 bg-muted/20 p-4 no-print">
+        <div className="mb-3">
+          <SearchInput
+            value={searchInput}
+            onChange={setSearchInput}
+            placeholder="Find a student by name, roll no. or admission no…"
+          />
+        </div>
         <div className={cn('grid grid-cols-1 gap-3', isTeacher ? 'sm:grid-cols-3' : 'sm:grid-cols-5')}>
           <div>
-            <Label htmlFor="from">From</Label>
+            <Label htmlFor="from">From date</Label>
             <input
               id="from"
               type="date"
@@ -315,7 +333,7 @@ export function AttendanceReportView() {
             />
           </div>
           <div>
-            <Label htmlFor="to">To</Label>
+            <Label htmlFor="to">To date</Label>
             <input
               id="to"
               type="date"
@@ -389,7 +407,11 @@ export function AttendanceReportView() {
           <EmptyState
             icon={Users}
             title="No matching records"
-            description="Try a wider date range or a different status."
+            description={
+              search
+                ? `Nothing found for "${search}" — check the spelling, or clear the search to see everyone in this range.`
+                : 'Try a wider date range or a different status.'
+            }
           />
         </Card>
       ) : (
@@ -431,37 +453,47 @@ export function AttendanceReportView() {
                           <Clock size={12} /> {r.startTime}{r.endTime ? `–${r.endTime}` : ''}
                         </span>
                       )}
+                      {r.teacherName && (
+                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                          <UserCheck size={12} /> Marked by {r.teacherName}
+                        </span>
+                      )}
                     </div>
 
                     {r.note && <p className="mt-1.5 text-xs text-muted-foreground">Note: {r.note}</p>}
                   </div>
 
                   {r.guardians.length > 0 && (
-                    <div className="flex flex-wrap gap-2 no-print">
-                      {r.guardians.map((g, gi) => (
-                        <div key={gi} className="flex items-center gap-2 rounded-lg border border-border bg-muted px-2.5 py-1.5 text-xs">
-                          <span className="text-foreground">{g.name || 'Guardian'}</span>
-                          {g.phone && (
-                            <>
-                              <span className="text-muted-foreground">{g.phone}</span>
-                              <a
-                                href={waLink(g.phone)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1 rounded-md bg-success-soft px-2 py-1 text-success-soft-foreground hover:opacity-90"
-                              >
-                                <MessageCircle size={12} /> WhatsApp
-                              </a>
-                              <a
-                                href={`tel:${g.phone}`}
-                                className="flex items-center gap-1 rounded-md bg-primary-soft px-2 py-1 text-primary-soft-foreground hover:opacity-90"
-                              >
-                                <Phone size={12} /> Call
-                              </a>
-                            </>
-                          )}
-                        </div>
-                      ))}
+                    <div className="no-print">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="secondary" size="sm">
+                            <Phone size={13} />
+                            Contact{r.guardians.length > 1 ? ` (${r.guardians.length})` : ''}
+                            <ChevronDown size={13} className="text-muted-foreground" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {r.guardians.map((g, gi) => (
+                            <div key={gi}>
+                              {gi > 0 && <DropdownMenuSeparator />}
+                              <DropdownMenuLabel>{g.name || 'Guardian'}{g.phone ? ` · ${g.phone}` : ''}</DropdownMenuLabel>
+                              {g.phone ? (
+                                <>
+                                  <DropdownMenuItem onSelect={() => window.open(waLink(g.phone!), '_blank', 'noopener,noreferrer')}>
+                                    <MessageCircle size={14} className="text-success" /> WhatsApp
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => { window.location.href = `tel:${g.phone}`; }}>
+                                    <Phone size={14} className="text-primary" /> Call
+                                  </DropdownMenuItem>
+                                </>
+                              ) : (
+                                <DropdownMenuItem disabled>No phone on file</DropdownMenuItem>
+                              )}
+                            </div>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   )}
                 </div>
@@ -470,9 +502,11 @@ export function AttendanceReportView() {
           ))}
         </div>
 
-        {totalPages > 1 && (
-          <div className="mt-4 flex items-center justify-between no-print">
-            <p className="text-sm text-muted-foreground">Page {page} of {totalPages} · {total} record{total === 1 ? '' : 's'}</p>
+        <div className="mt-4 flex items-center justify-between no-print">
+          <p className="text-sm text-muted-foreground">
+            {total} record{total === 1 ? '' : 's'}{totalPages > 1 ? ` · page ${page} of ${totalPages}` : ''}
+          </p>
+          {totalPages > 1 && (
             <div className="flex items-center gap-1">
               <Button
                 variant="secondary"
@@ -493,8 +527,8 @@ export function AttendanceReportView() {
                 <ChevronRight size={16} />
               </Button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
         </div>
       )}
 

@@ -105,6 +105,10 @@ export interface AttendanceReportRow {
   admissionNumber: string;
   status: AttendanceStatus;
   note: string;
+  // Who actually took this attendance -- null for older records recorded
+  // before this was tracked, or if the marking teacher's account was
+  // since removed.
+  teacherName: string | null;
   guardians: { name: string; phone: string | null }[];
 }
 
@@ -115,6 +119,9 @@ export interface AttendanceReportParams {
   sectionId?: string;
   status?: AttendanceStatus;
   termId?: string;
+  // Student name / roll number / admission number, matched server-side
+  // before pagination -- see attendance.validator.ts.
+  search?: string;
   // Server-paginated (see attendance.validator.ts's attendanceReportQuerySchema)
   // — a wide date range across a whole institution can return thousands of
   // period-marks, so this is no longer returned as one unbounded array.
@@ -165,6 +172,7 @@ export const attendanceApi = baseApi.injectEndpoints({
           sectionId: params?.sectionId,
           status: params?.status,
           termId: params?.termId,
+          search: params?.search,
           page: params?.page != null ? String(params.page) : undefined,
           limit: params?.limit != null ? String(params.limit) : undefined,
         })}`,
