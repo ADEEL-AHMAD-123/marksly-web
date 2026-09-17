@@ -13,7 +13,6 @@ import { TeacherDashboardWeekStrip } from '@/components/dashboards/TeacherDashbo
 import { TeacherDashboardClassesSummary } from '@/components/dashboards/TeacherDashboardClassesSummary';
 import { TeacherDashboardExamsQueue } from '@/components/dashboards/TeacherDashboardExamsQueue';
 import { DashboardNotices } from '@/components/dashboards/DashboardNotices';
-import { DashboardSchoolCard } from '@/components/dashboards/DashboardSchoolCard';
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -35,19 +34,23 @@ function greeting(): string {
  *     TeacherDashboardClassesSummary's comment).
  *  3. Task layer (left/wide column on desktop, top of stack on mobile) —
  *     today's schedule + quick actions: what to DO right now.
- *  4. Context layer (right/narrow column, lower on mobile) — school info,
- *     notices: reference material, glanced at rather than acted on. Kept
+ *  4. Context layer (right/narrow column, lower on mobile) — notices:
+ *     reference material, glanced at rather than acted on. Kept
  *     deliberately light now that the stats strip moved out — this column
  *     never needs to lay out more than one thing per row, so it can't run
- *     into the same width problem again.
+ *     into the same width problem again. Used to also carry
+ *     DashboardSchoolCard (institution logo/name + institution-wide
+ *     teacher/student counts) here, but that's static info a teacher
+ *     already knows just by working there and isn't why anyone opens this
+ *     page — dropped from the populated dashboard. It still appears in
+ *     TeacherDashboardEmptyState, where it earns its place keeping a
+ *     brand-new teacher's zero-classes dashboard from looking structurally
+ *     empty.
  * The two-column split isn't just visual — it's action items vs. reference
  * data, so the wider column always carries more visual weight.
  *
  * Each widget independently hides itself (`return null`) when it has
- * nothing real to show, EXCEPT DashboardSchoolCard, which always has
- * something (the institution always exists) — that's what keeps the page
- * from ever looking structurally empty even when a teacher has zero classes
- * or nothing scheduled today; see TeacherDashboardEmptyState for the
+ * nothing real to show; see TeacherDashboardEmptyState for the
  * zero-classes case specifically.
  */
 export function TeacherDashboard() {
@@ -80,7 +83,6 @@ export function TeacherDashboard() {
               <TeacherDashboardExamsQueue />
             </div>
             <div className="space-y-6">
-              <DashboardSchoolCard />
               <DashboardNotices noticesHref="/teacher/notices" />
             </div>
           </div>
