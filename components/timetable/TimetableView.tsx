@@ -358,7 +358,7 @@ export function TimetableView() {
                                 title={`Add a period on ${day}`}
                                 aria-label={`Add a period on ${day}`}
                                 onClick={() => openAdd(String(idx))}
-                                className="no-print rounded-md p-1 font-normal text-muted-foreground hover:bg-muted hover:text-foreground"
+                                className="no-print rounded-md p-1 font-normal text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                               >
                                 <Plus size={14} />
                               </button>
@@ -368,7 +368,7 @@ export function TimetableView() {
                                     type="button"
                                     title={`Copy ${day} to other days`}
                                     aria-label={`More actions for ${day}`}
-                                    className="no-print rounded-md p-1 font-normal text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    className="no-print rounded-md p-1 font-normal text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                                   >
                                     <Copy size={13} />
                                   </button>
@@ -467,7 +467,7 @@ export function TimetableView() {
                                       title="Edit period"
                                       aria-label="Edit period"
                                       onClick={() => openEdit(entry)}
-                                      className="rounded-md bg-card p-1 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground"
+                                      className="rounded-md bg-card p-1 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                                     >
                                       <Pencil size={11} />
                                     </button>
@@ -476,7 +476,7 @@ export function TimetableView() {
                                       title="Remove period"
                                       aria-label="Remove period"
                                       onClick={() => setPendingDelete(entry)}
-                                      className="rounded-md bg-card p-1 text-muted-foreground shadow-sm hover:bg-danger-soft hover:text-danger"
+                                      className="rounded-md bg-card p-1 text-muted-foreground shadow-sm hover:bg-danger-soft hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                                     >
                                       <Trash2 size={11} />
                                     </button>
@@ -498,7 +498,7 @@ export function TimetableView() {
                                   onClick={() => openAdd(String(idx), { startTime: row.startTime, endTime: row.endTime })}
                                   title={`Add a period on ${day} at ${row.startTime}`}
                                   aria-label={`Add period on ${day} at ${row.startTime}`}
-                                  className="no-print flex h-full min-h-[2.5rem] w-full items-center justify-center rounded-lg text-muted-foreground/35 transition-colors hover:bg-muted hover:text-foreground"
+                                  className="no-print flex h-full min-h-[2.5rem] w-full items-center justify-center rounded-lg text-muted-foreground/35 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                                 >
                                   <Plus size={14} />
                                 </button>
@@ -529,7 +529,7 @@ export function TimetableView() {
                           onClick={() => openAdd(String(idx))}
                           title={`Add a period on ${day}`}
                           aria-label={`Add period on ${day}`}
-                          className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                         >
                           <Plus size={15} />
                         </button>
@@ -539,7 +539,7 @@ export function TimetableView() {
                             onClick={() => setCopyDayIdx(idx)}
                             title={`Copy ${day} to other days`}
                             aria-label={`Copy ${day} to other days`}
-                            className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                           >
                             <Copy size={14} />
                           </button>
@@ -582,8 +582,8 @@ export function TimetableView() {
                                   </p>
                                 ) : null}
                               </div>
-                              <button onClick={() => openEdit(e)} title="Edit period" aria-label="Edit period" className="no-print rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"><Pencil size={14} /></button>
-                              <button onClick={() => setPendingDelete(e)} title="Remove period" aria-label="Remove period" className="no-print rounded-lg p-1.5 text-muted-foreground hover:bg-danger-soft hover:text-danger"><Trash2 size={15} /></button>
+                              <button onClick={() => openEdit(e)} title="Edit period" aria-label="Edit period" className="no-print rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"><Pencil size={14} /></button>
+                              <button onClick={() => setPendingDelete(e)} title="Remove period" aria-label="Remove period" className="no-print rounded-lg p-1.5 text-muted-foreground hover:bg-danger-soft hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"><Trash2 size={15} /></button>
                             </li>
                           );
                         })}
@@ -901,7 +901,7 @@ function PeriodDrawer({
               </div>
             </div>
             <div>
-              <Label htmlFor="period-subject">Subject</Label>
+              <Label htmlFor="period-subject">Subject <span className="font-normal text-muted-foreground">(optional)</span></Label>
               {/* Radix Select can't have an item with an empty-string value,
                   so "no subject" uses a 'none' sentinel translated back to
                   '' at the state boundary — same pattern as Academic Terms &
@@ -1060,7 +1060,7 @@ function CopyDayDialog({
                       key={day}
                       type="button"
                       onClick={() => toggle(idx)}
-                      className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors ${
+                      className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                         targets.has(idx)
                           ? 'border-primary bg-primary-soft text-primary-soft-foreground'
                           : 'border-border text-foreground hover:bg-muted'
