@@ -22,12 +22,12 @@ import { useGetClassesQuery } from '@/store/api/classesApi';
 import {
   useGetAttendanceReportQuery,
   useLazyGetAttendanceReportQuery,
-  useGetAttendanceCoverageTodayQuery,
   type AttendanceStatus,
   type AttendanceReportRow,
 } from '@/store/api/attendanceApi';
 import { useAppSelector } from '@/store/hooks';
-import { cn, formatDate } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { AttendanceMarkingStatus } from './AttendanceMarkingStatus';
 import { useTerminology, getTerminologyForTermType } from '@/lib/terminology';
 import { todayStr } from '@/lib/institution-date';
 
@@ -138,7 +138,7 @@ function GuardianContactMenu({ guardians }: { guardians: AttendanceReportRow['gu
       <DropdownMenuTrigger asChild>
         <Button variant="secondary" size="sm">
           <Phone size={13} />
-          Contact{guardians.length > 1 ? ` (${guardians.length})` : ''}
+          Guardian contact{guardians.length > 1 ? ` (${guardians.length})` : ''}
           <ChevronDown size={13} className="text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
@@ -182,18 +182,6 @@ export function AttendanceReportView() {
   const [view, setView] = useState<'cards' | 'table'>('cards');
   const PAGE_SIZE = 50;
 
-  // Only meaningful for a single selected day (also the page's default
-  // state) -- for a multi-day range there's no one "today" to summarize,
-  // so the strip is hidden entirely rather than silently ignoring the
-  // range like before.
-  const isSingleDay = dateFrom === dateTo;
-  const { data: coverageRes, isLoading: loadingCoverage } = useGetAttendanceCoverageTodayQuery(
-    isSingleDay ? { date: dateFrom } : undefined,
-    { skip: isTeacher || !isSingleDay },
-  );
-  const coverage = coverageRes?.data;
-  const coverageIsToday = coverage?.date === todayStr();
-
   const { data: classesRes } = useGetClassesQuery(undefined, { skip: isTeacher });
   const classes = useMemo<{ id: string; name: string; termType: string | null; sections: { id: string; name: string }[] }[]>(() => {
     if (isTeacher) return [];
@@ -207,6 +195,7 @@ export function AttendanceReportView() {
   }, [isTeacher, classesRes]);
   const selectedClass = useMemo(() => classes.find((c) => c.id === classId), [classes, classId]);
   const sections = selectedClass?.sections ?? [];
+  const selectedSection = useMemo(() => sections.find((s) => s.id === sectionId), [sections, sectionId]);
   const sectionLabel = getTerminologyForTermType(selectedClass?.termType)?.section ?? terminology.section;
 
   // Admin/staff must pick a specific class AND section before we run any
@@ -280,6 +269,15 @@ export function AttendanceReportView() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { resetPage(); }, [search]);
 
+  const uniformSubjectTime = useMemo(() => {
+    if (rows.length === 0) return null;
+    const first = rows[0];
+    const allSame = rows.every(
+      (r) => r.subject === first.subject && r.startTime === first.startTime && r.endTime === first.endTime
+    );
+    return allSame ? { subject: first.subject, startTime: first.startTime, endTime: first.endTime } : null;
+  }, [rows]);
+
   // Grouped by date (within the current page only — pagination stays
   // server-side) so a multi-day range reads as scannable per-day sections
   // instead of one flat list repeating the same date string on every row.
@@ -299,24 +297,7 @@ export function AttendanceReportView() {
 
   return (
     <div className="space-y-6">
-      {/* Coverage snapshot for the single selected day -- reacts to the
-          date filter below (it's the same date, not a fixed "today"), and
-          only shown when exactly one day is selected since a range has no
-          single day to summarize. "Fully marked" is deliberately distinct
-          from the present-rate, which is computed from whatever periods
-          have been marked so far, complete or not -- otherwise "0 fully
-          marked" next to a nonzero present rate reads as a contradiction. */}
-      {!isTeacher && isSingleDay && !loadingCoverage && coverage && coverage.totalSections > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border/70 bg-muted/20 px-3.5 py-2.5 text-sm no-print">
-          <Users size={15} className="shrink-0 text-muted-foreground" />
-          <span className="text-foreground">
-            {coverageIsToday ? 'Today' : formatDate(dateFrom)}: <strong>{coverage.markedSections}</strong> of{' '}
-            <strong>{coverage.totalSections}</strong>{' '}
-            {(coverage.totalSections === 1 ? terminology.section : terminology.sectionPlural).toLowerCase()} fully marked
-          </span>
-          <span className="text-muted-foreground">· {coverage.presentRate}% present in records marked so far</span>
-        </div>
-      )}
+      {!isTeacher && <AttendanceMarkingStatus />}
 
       {/* Toolbar — purely instrumental (filter the report), kept visually
           lighter than the cards below it, same convention as the admin
@@ -451,6 +432,23 @@ export function AttendanceReportView() {
         </div>
       </div>
 
+      {!isTeacher && !needsSelection && selectedClass && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground no-print">
+          <span className="inline-flex items-center gap-1 rounded-md bg-primary-soft px-2 py-1 text-primary-soft-foreground">
+            <LayoutGrid size={12} />
+            {selectedClass.name}{selectedSection ? ` – ${selectedSection.name}` : ''}
+          </span>
+          {uniformSubjectTime?.subject && (
+            <span className="inline-flex items-center gap-1"><BookOpen size={12} /> {uniformSubjectTime.subject}</span>
+          )}
+          {uniformSubjectTime?.startTime && (
+            <span className="inline-flex items-center gap-1">
+              <Clock size={12} /> {uniformSubjectTime.startTime}{uniformSubjectTime.endTime ? `–${uniformSubjectTime.endTime}` : ''}
+            </span>
+          )}
+        </div>
+      )}
+
       {!needsSelection && !isLoading && !isError && total > 0 && status === 'all' && statusCounts && (
         <div className="flex flex-wrap items-center gap-2 text-xs no-print">
           <span className="inline-flex items-center gap-1.5 rounded-md bg-success-soft px-2 py-1 text-success-soft-foreground">
@@ -509,11 +507,11 @@ export function AttendanceReportView() {
                 <tr>
                   <th className="whitespace-nowrap px-3 py-2">Date</th>
                   <th className="px-3 py-2">Student</th>
-                  <th className="whitespace-nowrap px-3 py-2">{terminology.classUnit} / {sectionLabel}</th>
-                  <th className="whitespace-nowrap px-3 py-2">Subject &amp; time</th>
+                  {isTeacher && <th className="whitespace-nowrap px-3 py-2">{terminology.classUnit} / {sectionLabel}</th>}
+                  {!uniformSubjectTime && <th className="whitespace-nowrap px-3 py-2">Subject &amp; time</th>}
                   <th className="whitespace-nowrap px-3 py-2">Status</th>
                   <th className="whitespace-nowrap px-3 py-2">Marked by</th>
-                  <th className="whitespace-nowrap px-3 py-2 no-print">Contact</th>
+                  <th className="whitespace-nowrap px-3 py-2 no-print">Guardian contact</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border bg-card">
@@ -522,12 +520,16 @@ export function AttendanceReportView() {
                     <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{r.date}</td>
                     <td className="px-3 py-2.5">
                       <div className="font-medium text-foreground">{r.studentName}</div>
-                      <div className="text-xs text-muted-foreground">Roll {r.rollNumber} · Adm# {r.admissionNumber}</div>
+                      <div className="text-xs text-muted-foreground">Roll {r.rollNumber}</div>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5">{r.className}{r.sectionName ? ` – ${r.sectionName}` : ''}</td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
-                      {r.subject ?? '—'}{r.startTime ? ` · ${r.startTime}${r.endTime ? `–${r.endTime}` : ''}` : ''}
-                    </td>
+                    {isTeacher && (
+                      <td className="whitespace-nowrap px-3 py-2.5">{r.className}{r.sectionName ? ` – ${r.sectionName}` : ''}</td>
+                    )}
+                    {!uniformSubjectTime && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
+                        {r.subject ?? '—'}{r.startTime ? ` · ${r.startTime}${r.endTime ? `–${r.endTime}` : ''}` : ''}
+                      </td>
+                    )}
                     <td className="px-3 py-2.5">
                       <Badge variant={statusBadge[r.status]} className={cn('capitalize', r.status === 'leave' && LEAVE_BADGE_CLASS)}>{r.status}</Badge>
                     </td>
@@ -562,18 +564,19 @@ export function AttendanceReportView() {
                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
                       <span className="inline-flex items-center gap-1 text-muted-foreground">
                         <Hash size={12} /> Roll {r.rollNumber}
-                        <span className="opacity-70">· Adm# {r.admissionNumber}</span>
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded-md bg-primary-soft px-1.5 py-0.5 text-primary-soft-foreground">
-                        <LayoutGrid size={12} />
-                        {r.className}{r.sectionName ? ` – ${r.sectionName}` : ''}
-                      </span>
-                      {r.subject && (
+                      {isTeacher && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-primary-soft px-1.5 py-0.5 text-primary-soft-foreground">
+                          <LayoutGrid size={12} />
+                          {r.className}{r.sectionName ? ` – ${r.sectionName}` : ''}
+                        </span>
+                      )}
+                      {!uniformSubjectTime && r.subject && (
                         <span className="inline-flex items-center gap-1 text-muted-foreground">
                           <BookOpen size={12} /> {r.subject}
                         </span>
                       )}
-                      {r.startTime && (
+                      {!uniformSubjectTime && r.startTime && (
                         <span className="inline-flex items-center gap-1 text-muted-foreground">
                           <Clock size={12} /> {r.startTime}{r.endTime ? `–${r.endTime}` : ''}
                         </span>

@@ -46,6 +46,14 @@ interface ApiArray<T> {
   };
 }
 
+export interface UnmarkedPeriod {
+  periodId: string | null;
+  subject: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  teacherName: string | null;
+}
+
 export interface AttendanceCoverageSection {
   sectionId: string;
   sectionName: string;
@@ -57,6 +65,9 @@ export interface AttendanceCoverageSection {
   absent: number;
   late: number;
   leave: number;
+  // Exact periods still needing attendance for this section/date, with
+  // who teaches each one -- empty once fully marked.
+  unmarkedPeriods: UnmarkedPeriod[];
 }
 
 export interface AttendanceCoverageClass {
