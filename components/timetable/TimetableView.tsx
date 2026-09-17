@@ -239,6 +239,7 @@ export function TimetableView() {
     return { members: new Set([`${startTime}-${endTime}`]), startTime, endTime };
   }, [timeRows]);
   const displayRows = useMemo(() => [...timeRows, nextBlankRow], [timeRows, nextBlankRow]);
+  const isBlankRow = (row: TimeRow) => row === nextBlankRow;
 
   const byDay = useMemo(() => {
     const m: Record<number, TimetableEntry[]> = {};
@@ -389,10 +390,24 @@ export function TimetableView() {
                   </thead>
                   <tbody>
                     {displayRows.map((row) => (
-                      <tr key={Array.from(row.members).sort().join('|')} className="border-b border-border last:border-b-0">
-                        <td className="border-r border-border px-3 py-2 align-top text-xs font-medium text-foreground">
-                          {row.startTime}–{row.endTime}
-                        </td>
+                      <tr
+                        key={Array.from(row.members).sort().join('|')}
+                        className={
+                          isBlankRow(row)
+                            ? 'border-t-2 border-dashed border-border last:border-b-0'
+                            : 'border-b border-border last:border-b-0'
+                        }
+                      >
+                        {isBlankRow(row) ? (
+                          <td className="border-r border-border px-3 py-2 align-top text-xs text-muted-foreground/70">
+                            <span className="flex items-center gap-1"><Plus size={11} /> New time</span>
+                            <span className="mt-0.5 block">{row.startTime}–{row.endTime}</span>
+                          </td>
+                        ) : (
+                          <td className="border-r border-border px-3 py-2 align-top text-xs font-medium text-foreground">
+                            {row.startTime}–{row.endTime}
+                          </td>
+                        )}
                         {visibleDays.map(({ day, idx }) => {
                           const entry = cellFor(idx, row);
                           const entryTimeDiffers = entry
@@ -483,7 +498,7 @@ export function TimetableView() {
                                   onClick={() => openAdd(String(idx), { startTime: row.startTime, endTime: row.endTime })}
                                   title={`Add a period on ${day} at ${row.startTime}`}
                                   aria-label={`Add period on ${day} at ${row.startTime}`}
-                                  className="no-print flex h-full min-h-[2.5rem] w-full items-center justify-center rounded-lg text-muted-foreground/0 transition-colors hover:bg-muted hover:text-muted-foreground"
+                                  className="no-print flex h-full min-h-[2.5rem] w-full items-center justify-center rounded-lg text-muted-foreground/35 transition-colors hover:bg-muted hover:text-foreground"
                                 >
                                   <Plus size={14} />
                                 </button>
