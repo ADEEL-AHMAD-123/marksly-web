@@ -218,6 +218,12 @@ export function TimetableView() {
   const { data, isFetching } = useGetTimetableQuery({ classId, sectionId }, { skip: !ready });
   const entries = useMemo(() => data?.data ?? [], [data]);
 
+  // Whether at least one period has been added yet — several of the
+  // bottom FAQ notes only make sense once there's something in the grid
+  // for them to explain (colors/warnings to look at, a day worth
+  // copying); the "set up your subjects" note is the mirror image, only
+  // useful before that first period exists.
+  const hasEntries = entries.length > 0;
   const visibleDays = useVisibleDays(entries);
   const realTimeRows = useTimeRows(entries);
   // Fall back to one synthetic starter row so the grid itself is what an
@@ -604,24 +610,28 @@ export function TimetableView() {
           icons are always visible; the trailing row is labeled "+ New
           time") were dropped rather than restated in prose. */}
       <div className="space-y-2 no-print">
-        <InfoNote
-          title="Set up your subjects first, or the timetable will have gaps"
-          link={{ href: '/admin/subjects', label: 'Go to Subjects' }}
-        >
-          <p>
-            A timetable is built per {terminology.classUnit.toLowerCase()} and {sectionLabel.toLowerCase()} — add
-            your subjects first, or the dropdown here will be empty. If a {sectionLabel.toLowerCase()} has no period
-            scheduled for today, teachers won&apos;t see anything to mark attendance for — attendance is always
-            taken against a specific period, not just a date.
-          </p>
-        </InfoNote>
-        <InfoNote title="What do the colors and warnings mean?">
-          <p>
-            Each subject gets its own color, so a busy week reads at a glance. A dashed, uncolored slot is a
-            deliberate <strong>free period</strong> (no subject picked). A colored slot with a yellow &quot;No
-            teacher&quot; note is a real gap — assign a teacher to that subject on the Subjects page to clear it.
-          </p>
-        </InfoNote>
+        {!hasEntries && (
+          <InfoNote
+            title="Set up your subjects first, or the timetable will have gaps"
+            link={{ href: '/admin/subjects', label: 'Go to Subjects' }}
+          >
+            <p>
+              A timetable is built per {terminology.classUnit.toLowerCase()} and {sectionLabel.toLowerCase()} — add
+              your subjects first, or the dropdown here will be empty. If a {sectionLabel.toLowerCase()} has no
+              period scheduled for today, teachers won&apos;t see anything to mark attendance for — attendance is
+              always taken against a specific period, not just a date.
+            </p>
+          </InfoNote>
+        )}
+        {hasEntries && (
+          <InfoNote title="What do the colors and warnings mean?">
+            <p>
+              Each subject gets its own color, so a busy week reads at a glance. A dashed, uncolored slot is a
+              deliberate <strong>free period</strong> (no subject picked). A colored slot with a yellow &quot;No
+              teacher&quot; note is a real gap — assign a teacher to that subject on the Subjects page to clear it.
+            </p>
+          </InfoNote>
+        )}
         <InfoNote title="Why is there no teacher field to fill in?">
           <p>
             A period&apos;s teacher is always resolved automatically from whichever teacher the Subject is assigned
@@ -637,13 +647,16 @@ export function TimetableView() {
             a different {terminology.classUnit.toLowerCase()} — one teacher can&apos;t be in two places at once.
           </p>
         </InfoNote>
-        <InfoNote title="What happens when I copy a day to other days?">
-          <p>
-            Every period from that day is recreated on each day you pick, at the same time and subject — the
-            teacher is freshly resolved for each, never copied as-is. Anything that would conflict with something
-            already on a target day is skipped, never overwritten, and you&apos;ll see exactly which ones afterward.
-          </p>
-        </InfoNote>
+        {hasEntries && (
+          <InfoNote title="What happens when I copy a day to other days?">
+            <p>
+              Every period from that day is recreated on each day you pick, at the same time and subject — the
+              teacher is freshly resolved for each, never copied as-is. Anything that would conflict with something
+              already on a target day is skipped, never overwritten, and you&apos;ll see exactly which ones
+              afterward.
+            </p>
+          </InfoNote>
+        )}
         <InfoNote
           title="Need to close for a holiday instead?"
           link={{ href: '/admin/notices', label: 'Go to Notices › Holidays' }}
