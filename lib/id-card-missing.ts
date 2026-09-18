@@ -82,3 +82,27 @@ export function staffCardMissingKeys(
   if (!member.profilePhoto) keys.push('photo');
   return keys;
 }
+
+/**
+ * Of everything a card CAN be missing, only these two actually make it
+ * useless as identification -- a photo (so a guard/teacher can match face to
+ * card) and a national ID number (so it can be checked against an official
+ * document). Address, blood group, and parent/guardian info are genuinely
+ * optional: useful, but a card without them still identifies the person
+ * fine. This is the line between "renders with a blank" (fine, see the
+ * warning banner) and "should not be printed or downloaded at all" (see
+ * cardBlockingMissingKeys / the admin card preview and bulk-print flows).
+ *
+ * Respects the institution's own `showNationalId` setting implicitly: when
+ * that's off, studentCardMissingKeys/staffCardMissingKeys never add
+ * 'nationalId' to the list in the first place, so a card can never be
+ * blocked over a field the institution deliberately hides.
+ */
+export const REQUIRED_CARD_KEYS: ReadonlySet<string> = new Set(['photo', 'nationalId']);
+
+/** Narrows a missing-keys list (from studentCardMissingKeys/staffCardMissingKeys)
+ *  down to just the ones that block issuing the card. Empty result = the
+ *  card is complete enough to print/download; non-empty = it should not be. */
+export function cardBlockingMissingKeys(missingKeys: string[]): string[] {
+  return missingKeys.filter((k) => REQUIRED_CARD_KEYS.has(k));
+}

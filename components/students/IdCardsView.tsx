@@ -28,7 +28,7 @@ import { ReissueCardsConfirmDialog } from '@/components/students/ReissueCardsCon
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { getErrorMessage } from '@/lib/get-error-message';
 import { IdCardMissingFieldsBanner, type IdCardMissingFieldItem } from '@/components/shared/IdCardMissingFieldsBanner';
-import { idCardFieldLabel, studentCardMissingKeys } from '@/lib/id-card-missing';
+import { idCardFieldLabel, studentCardMissingKeys, cardBlockingMissingKeys, REQUIRED_CARD_KEYS } from '@/lib/id-card-missing';
 import { PrintAllCardsDialog } from '@/components/shared/PrintAllCardsDialog';
 
 export function IdCardsView() {
@@ -152,24 +152,35 @@ export function IdCardsView() {
         </div>
       )}
 
-      {sheet && (
-        <PrintAllCardsDialog
-          open={printAllOpen}
-          onClose={() => setPrintAllOpen(false)}
-          title={`Print all cards — ${sheet.className ?? ''}${sheet.section ? ` — ${sheet.section}` : ''}`}
-          subtitle={`${roster.length} active student${roster.length === 1 ? '' : 's'}, front side only`}
-          warning={(() => {
-            const n = roster.filter((s) => studentCardMissingKeys(s, sheet.institution.settings?.idCard).length > 0).length;
-            return n > 0 ? `${n} of ${roster.length} student${roster.length === 1 ? '' : 's'} ${n === 1 ? 'is' : 'are'} missing card info (photo, address, blood group, or ${nationalIdLabelForInstitutionType(sheet.institution.type)}) — those cards will print with blanks.` : undefined;
-          })()}
-          items={roster}
-          keyOf={(s) => s.id}
-          renderCard={(s) => (
-            <IdCardItem student={s} institution={sheet.institution} className={sheet.className} section={sheet.section} termName={sheet.termName} />
-          )}
-          downloadFileName={`${([sheet.className, sheet.section].filter(Boolean).join('-') || 'students').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-id-cards.pdf`}
-        />
-      )}
+      {sheet && (() => {
+        const issuable = roster.filter((s) => cardBlockingMissingKeys(studentCardMissingKeys(s, sheet.institution.settings?.idCard)).length === 0);
+        const blockedCount = roster.length - issuable.length;
+        const optionalMissingCount = issuable.filter((s) => studentCardMissingKeys(s, sheet.institution.settings?.idCard).length > 0).length;
+        const warningParts: string[] = [];
+        if (blockedCount > 0) {
+          warningParts.push(
+            `${blockedCount} of ${roster.length} student${roster.length === 1 ? '' : 's'} ${blockedCount === 1 ? 'is' : 'are'} missing a photo or ${nationalIdLabelForInstitutionType(sheet.institution.type)} and ${blockedCount === 1 ? 'was' : 'were'} left out of this batch — add ${blockedCount === 1 ? 'that' : 'their'} info, then print individually.`
+          );
+        }
+        if (optionalMissingCount > 0) {
+          warningParts.push(`${optionalMissingCount} more ${optionalMissingCount === 1 ? 'is' : 'are'} missing optional info (address, blood group, or parent info) and will print with blanks.`);
+        }
+        return (
+          <PrintAllCardsDialog
+            open={printAllOpen}
+            onClose={() => setPrintAllOpen(false)}
+            title={`Print all cards — ${sheet.className ?? ''}${sheet.section ? ` — ${sheet.section}` : ''}`}
+            subtitle={`${issuable.length} of ${roster.length} active student${roster.length === 1 ? '' : 's'}, front side only`}
+            warning={warningParts.length > 0 ? warningParts.join(' ') : undefined}
+            items={issuable}
+            keyOf={(s) => s.id}
+            renderCard={(s) => (
+              <IdCardItem student={s} institution={sheet.institution} className={sheet.className} section={sheet.section} termName={sheet.termName} />
+            )}
+            downloadFileName={`${([sheet.className, sheet.section].filter(Boolean).join('-') || 'students').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-id-cards.pdf`}
+          />
+        );
+      })()}
 
       <ReissueCardsConfirmDialog
         open={reissueOpen}
@@ -263,7 +274,9 @@ function StudentRosterList({
       ) : (
       <div className="divide-y divide-border">
         {filtered.map((s) => {
-          const missing = studentCardMissingKeys(s, settings).length > 0;
+          const missingKeys = studentCardMissingKeys(s, settings);
+          const blocked = cardBlockingMissingKeys(missingKeys).length > 0;
+          const missing = missingKeys.length > 0;
           return (
             <button
               key={s.id}
@@ -280,8 +293,11 @@ function StudentRosterList({
                 />
                 {missing && (
                   <span
-                    title="Missing card info"
-                    className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-warning"
+                    title={blocked ? 'Missing photo or national ID — card cannot be issued yet' : 'Missing card info'}
+                    className={cn(
+                      'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card',
+                      blocked ? 'bg-danger' : 'bg-warning'
+                    )}
                   />
                 )}
               </div>
@@ -374,11 +390,14 @@ function StudentIdCardPreview({
   // parent/guardian info and photo alongside national ID/dates/blood
   // group, so there's no longer a separate "go edit the full profile"
   // detour: one dialog, one PATCH, the same record either way.
-  const missingItems: IdCardMissingFieldItem[] = studentCardMissingKeys(student, settings).map((key) => ({
+  const studentMissingKeys = studentCardMissingKeys(student, settings);
+  const missingItems: IdCardMissingFieldItem[] = studentMissingKeys.map((key) => ({
     key,
     label: idCardFieldLabel(key, nationalIdLabel),
+    required: REQUIRED_CARD_KEYS.has(key),
     action: { type: 'cardDetails', onClick: () => setEditOpen(true) },
   }));
+  const canIssue = cardBlockingMissingKeys(studentMissingKeys).length === 0;
 
   return (
     <>
@@ -397,10 +416,24 @@ function StudentIdCardPreview({
         <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
           <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
         </Button>
-        <Button size="sm" variant="outline" loading={downloading} onClick={handleDownload}>
+        <Button
+          size="sm"
+          variant="outline"
+          loading={downloading}
+          disabled={!canIssue}
+          title={canIssue ? undefined : 'Add a photo and national ID number before downloading this card'}
+          onClick={handleDownload}
+        >
           <Download size={15} /> Download card
         </Button>
-        <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print card</Button>
+        <Button
+          size="sm"
+          disabled={!canIssue}
+          title={canIssue ? undefined : 'Add a photo and national ID number before printing this card'}
+          onClick={() => window.print()}
+        >
+          <Printer size={16} /> Print card
+        </Button>
       </div>
       {isRevoked && (
         <div className="flex items-center gap-2.5 rounded-lg border border-danger/40 bg-danger-soft px-3.5 py-3 text-sm text-danger no-print">
@@ -416,8 +449,17 @@ function StudentIdCardPreview({
           backdrop and generous padding so it unmistakably reads as "the
           product," not just another panel the same weight as the picker
           toolbar above it. Backdrop/padding are no-print so the printed
-          output stays exactly the card, nothing extra. */}
-      <div id={printSuppressed ? undefined : 'id-card-print'} className="flex justify-center rounded-2xl bg-muted/30 p-6 sm:p-10">
+          output stays exactly the card, nothing extra. When the card isn't
+          issuable yet, the backdrop switches to a danger tint with a
+          matching ring so "this one's not ready" is obvious even at a
+          glance, not just from the banner text above it. */}
+      <div
+        id={printSuppressed ? undefined : 'id-card-print'}
+        className={cn(
+          'flex justify-center rounded-2xl p-6 sm:p-10',
+          canIssue ? 'bg-muted/30' : 'bg-danger-soft/50 ring-1 ring-inset ring-danger/30'
+        )}
+      >
         <div className="w-full max-w-md space-y-4">
           {/* On screen, only the flipped-to face shows; on print, both
               always render regardless of which one was showing. */}

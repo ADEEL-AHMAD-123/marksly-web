@@ -28,7 +28,7 @@ import { ReissueCardsConfirmDialog } from '@/components/students/ReissueCardsCon
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { getErrorMessage } from '@/lib/get-error-message';
 import { IdCardMissingFieldsBanner, type IdCardMissingFieldItem } from '@/components/shared/IdCardMissingFieldsBanner';
-import { idCardFieldLabel, staffCardMissingKeys } from '@/lib/id-card-missing';
+import { idCardFieldLabel, staffCardMissingKeys, cardBlockingMissingKeys, REQUIRED_CARD_KEYS } from '@/lib/id-card-missing';
 import { PrintAllCardsDialog } from '@/components/shared/PrintAllCardsDialog';
 
 const ROLE_FILTERS: { value: StaffCardRole | 'all'; label: string }[] = [
@@ -197,22 +197,33 @@ export function StaffIdCardsView() {
         </p>
       )}
 
-      {sheet && (
-        <PrintAllCardsDialog
-          open={printAllOpen}
-          onClose={() => setPrintAllOpen(false)}
-          title={`Print all cards — ${roleCountLabel === 'staff' ? 'All roles' : ROLE_STYLE[roleParam as StaffCardRole]?.label ?? roleCountLabel}`}
-          subtitle={`${roster.length} active member${roster.length === 1 ? '' : 's'}, front side only`}
-          warning={(() => {
-            const n = roster.filter((s) => staffCardMissingKeys(s, sheet.institution.settings?.idCard).length > 0).length;
-            return n > 0 ? `${n} of ${roster.length} member${roster.length === 1 ? '' : 's'} ${n === 1 ? 'is' : 'are'} missing card info (photo, address, or CNIC) — those cards will print with blanks.` : undefined;
-          })()}
-          items={roster}
-          keyOf={(s) => s.id}
-          renderCard={(s) => <StaffIdCardItem member={s} institution={sheet.institution} />}
-          downloadFileName={`${roleParam.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-id-cards.pdf`}
-        />
-      )}
+      {sheet && (() => {
+        const issuable = roster.filter((s) => cardBlockingMissingKeys(staffCardMissingKeys(s, sheet.institution.settings?.idCard)).length === 0);
+        const blockedCount = roster.length - issuable.length;
+        const optionalMissingCount = issuable.filter((s) => staffCardMissingKeys(s, sheet.institution.settings?.idCard).length > 0).length;
+        const warningParts: string[] = [];
+        if (blockedCount > 0) {
+          warningParts.push(
+            `${blockedCount} of ${roster.length} member${roster.length === 1 ? '' : 's'} ${blockedCount === 1 ? 'is' : 'are'} missing a photo or CNIC and ${blockedCount === 1 ? 'was' : 'were'} left out of this batch — add ${blockedCount === 1 ? 'that' : 'their'} info, then print individually.`
+          );
+        }
+        if (optionalMissingCount > 0) {
+          warningParts.push(`${optionalMissingCount} more ${optionalMissingCount === 1 ? 'is' : 'are'} missing an address and will print with a blank.`);
+        }
+        return (
+          <PrintAllCardsDialog
+            open={printAllOpen}
+            onClose={() => setPrintAllOpen(false)}
+            title={`Print all cards — ${roleCountLabel === 'staff' ? 'All roles' : ROLE_STYLE[roleParam as StaffCardRole]?.label ?? roleCountLabel}`}
+            subtitle={`${issuable.length} of ${roster.length} active member${roster.length === 1 ? '' : 's'}, front side only`}
+            warning={warningParts.length > 0 ? warningParts.join(' ') : undefined}
+            items={issuable}
+            keyOf={(s) => s.id}
+            renderCard={(s) => <StaffIdCardItem member={s} institution={sheet.institution} />}
+            downloadFileName={`${roleParam.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-id-cards.pdf`}
+          />
+        );
+      })()}
 
       <ReissueCardsConfirmDialog
         open={reissueOpen}
@@ -299,7 +310,9 @@ function StaffRosterList({
       <div className="divide-y divide-border">
         {filtered.map((s) => {
           const style = ROLE_STYLE[s.role] ?? ROLE_STYLE.staff;
-          const missing = staffCardMissingKeys(s, settings).length > 0;
+          const missingKeys = staffCardMissingKeys(s, settings);
+          const blocked = cardBlockingMissingKeys(missingKeys).length > 0;
+          const missing = missingKeys.length > 0;
           return (
             <button
               key={s.id}
@@ -316,8 +329,11 @@ function StaffRosterList({
                 />
                 {missing && (
                   <span
-                    title="Missing card info"
-                    className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-warning"
+                    title={blocked ? 'Missing photo or CNIC — card cannot be issued yet' : 'Missing card info'}
+                    className={cn(
+                      'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card',
+                      blocked ? 'bg-danger' : 'bg-warning'
+                    )}
                   />
                 )}
               </div>
@@ -399,11 +415,14 @@ function StaffIdCardPreview({
   // — no more routing address to the full staff profile page, since the
   // dialog covers address (and photo) directly and PATCHes the same
   // record either way (see EditCardDetailsDialog.tsx).
-  const missingItems: IdCardMissingFieldItem[] = staffCardMissingKeys(member, settings).map((key) => ({
+  const staffMissingKeys = staffCardMissingKeys(member, settings);
+  const missingItems: IdCardMissingFieldItem[] = staffMissingKeys.map((key) => ({
     key,
     label: idCardFieldLabel(key, nationalIdLabel),
+    required: REQUIRED_CARD_KEYS.has(key),
     action: { type: 'cardDetails', onClick: () => setEditOpen(true) },
   }));
+  const canIssue = cardBlockingMissingKeys(staffMissingKeys).length === 0;
 
   return (
     <>
@@ -422,10 +441,24 @@ function StaffIdCardPreview({
         <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
           <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
         </Button>
-        <Button size="sm" variant="outline" loading={downloading} onClick={handleDownload}>
+        <Button
+          size="sm"
+          variant="outline"
+          loading={downloading}
+          disabled={!canIssue}
+          title={canIssue ? undefined : 'Add a photo and CNIC number before downloading this card'}
+          onClick={handleDownload}
+        >
           <Download size={15} /> Download card
         </Button>
-        <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print card</Button>
+        <Button
+          size="sm"
+          disabled={!canIssue}
+          title={canIssue ? undefined : 'Add a photo and CNIC number before printing this card'}
+          onClick={() => window.print()}
+        >
+          <Printer size={16} /> Print card
+        </Button>
       </div>
       {isRevoked && (
         <div className="flex items-center gap-2.5 rounded-lg border border-danger/40 bg-danger-soft px-3.5 py-3 text-sm text-danger no-print">
@@ -437,9 +470,15 @@ function StaffIdCardPreview({
         </div>
       )}
       <IdCardMissingFieldsBanner items={missingItems} />
-      {/* Same "this card IS the point of the page" treatment as
-          IdCardsView.tsx's student preview — see that file's comment. */}
-      <div id={printSuppressed ? undefined : 'id-card-print'} className="flex justify-center rounded-2xl bg-muted/30 p-6 sm:p-10">
+      {/* Same "this card IS the point of the page" / "not ready yet" tinting
+          as IdCardsView.tsx's student preview — see that file's comment. */}
+      <div
+        id={printSuppressed ? undefined : 'id-card-print'}
+        className={cn(
+          'flex justify-center rounded-2xl p-6 sm:p-10',
+          canIssue ? 'bg-muted/30' : 'bg-danger-soft/50 ring-1 ring-inset ring-danger/30'
+        )}
+      >
         <div className="w-full max-w-md space-y-4">
           <div ref={frontRef} className={cn(showBack ? 'hidden print:block' : 'block')}>
             <StaffIdCardItem member={member} institution={institution} />
