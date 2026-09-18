@@ -242,17 +242,25 @@ export const usersApi = baseApi.injectEndpoints({
     // Self-service — uploading/removing one's OWN profile photo, used by
     // the "My ID Card" page for every role, not just admin acting on
     // someone else's behalf (that's uploadUserPhoto/removeUserPhoto above).
+    // Shared MyPhotoUploader (see MyIdCardView.tsx) calls this same endpoint
+    // for BOTH staff and students, but only invalidated 'MyContact' — the
+    // tag staff's getMyCard (this file) provides. A student's own card
+    // query (studentsApi.ts's getMyStudentCard) provides 'MyStudentContact'
+    // instead, a different tag entirely, so a student uploading a new photo
+    // got a successful upload with no refetch: the card kept showing the
+    // old photo until something else happened to invalidate that tag.
+    // Invalidating both here covers whichever role actually called it.
     uploadMyPhoto: builder.mutation<ApiObject<{ profilePhoto: string }>, { file: File }>({
       query: ({ file }) => {
         const formData = new FormData();
         formData.append('photo', file);
         return { url: '/users/me/photo', method: 'POST', body: formData };
       },
-      invalidatesTags: ['MyContact'],
+      invalidatesTags: ['MyContact', 'MyStudentContact'],
     }),
     removeMyPhoto: builder.mutation<ApiObject<{ profilePhoto: null }>, void>({
       query: () => ({ url: '/users/me/photo', method: 'DELETE' }),
-      invalidatesTags: ['MyContact'],
+      invalidatesTags: ['MyContact', 'MyStudentContact'],
     }),
     deleteUser: builder.mutation<ApiObject<{ id: string }>, string>({
       query: (id) => ({ url: `/users/${id}`, method: 'DELETE' }),
