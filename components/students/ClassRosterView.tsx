@@ -11,14 +11,12 @@ import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
   Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
 import { TempPasswordDialog } from '@/components/ui/temp-password-dialog';
 import { Input } from '@/components/ui/input';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { ClassSectionFilter } from '@/components/shared/ClassSectionFilter';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useMyClassesQuery } from '@/store/api/portalApi';
 import {
@@ -72,7 +70,6 @@ export function ClassRosterView({ mode, embedded }: Props) {
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
   const selectedClass = useMemo(() => classes.find((c) => c.id === classId), [classes, classId]);
-  const sections = selectedClass?.sections ?? [];
   const sectionLabel = getTerminologyForTermType(selectedClass?.termType)?.section ?? terminology.section;
   const ready = !!classId && !!sectionId;
 
@@ -142,19 +139,17 @@ export function ClassRosterView({ mode, embedded }: Props) {
           the admin dashboard's Classes/Subjects/ID Cards/Timetable pages. */}
       <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div>
-            <Label>{terminology.classUnit}</Label>
-            <Select value={classId} onValueChange={(v) => { setClassId(v); setSectionId(''); }}>
-              <SelectTrigger><SelectValue placeholder={`Select ${terminology.classUnit.toLowerCase()}`} /></SelectTrigger>
-              <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>{sectionLabel}</Label>
-            <Select value={sectionId} onValueChange={setSectionId} disabled={!classId}>
-              <SelectTrigger><SelectValue placeholder={sectionLabel} /></SelectTrigger>
-              <SelectContent>{sections.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-            </Select>
+          <div className="sm:col-span-2">
+            <Label>{terminology.classUnit} &amp; {sectionLabel}</Label>
+            <ClassSectionFilter
+              classes={classes}
+              classId={classId}
+              sectionId={sectionId}
+              onChange={(cId, sId) => { setClassId(cId); setSectionId(sId); }}
+              classLabel={terminology.classUnit}
+              sectionLabel={sectionLabel}
+              placeholder={`Select ${terminology.classUnit.toLowerCase()} & ${sectionLabel.toLowerCase()}`}
+            />
           </div>
           {isAdmin && (
             <div className="flex items-end">

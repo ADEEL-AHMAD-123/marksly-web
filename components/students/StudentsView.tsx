@@ -19,6 +19,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { SearchInput } from '@/components/ui/search-input';
+import { ClassSectionFilter } from '@/components/shared/ClassSectionFilter';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   useGetStudentsQuery,
@@ -106,12 +107,15 @@ export function StudentsView() {
   const [page, setPage] = useState(1);
   const debouncedQuery = useDebounce(query, 350);
   const filtersActive =
-    !!debouncedQuery || status !== 'all' || !!classId || guardianEmailStatus !== 'all';
+    !!debouncedQuery || status !== 'all' || !!classId || !!sectionId || guardianEmailStatus !== 'all';
 
+  // This page's own route only ever admits admin/staff (see AdminLayout's
+  // RoleGuard) — teachers get their own scoped "Students" page instead
+  // (ClassRosterView, mode="teacher", restricted server-side to their
+  // assigned sections) — so every class in the institution is always the
+  // right list to offer here.
   const { data: classesRes } = useGetClassesQuery();
   const classes: ClassOption[] = classesRes?.data ?? [];
-  const selectedClass = useMemo(() => classes.find((c) => c.id === classId), [classes, classId]);
-  const sections = selectedClass?.sections ?? [];
 
   // Needs-attention counts — folded in from the old Email Delivery Status
   // page, so an admin sees "3 guardians never got their login" right here
@@ -280,28 +284,17 @@ export function StudentsView() {
               placeholder="Search by student, guardian name/phone, roll or admission no…"
             />
           </div>
-          <Select value={classId || 'all'} onValueChange={(v) => { setClassId(v === 'all' ? '' : v); setSectionId(''); setPage(1); }}>
-            <SelectTrigger className="sm:w-40">
-              <SelectValue placeholder={terminology.classUnit} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All {terminology.classUnit}</SelectItem>
-              {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select
-            value={sectionId || 'all'}
-            onValueChange={(v) => { setSectionId(v === 'all' ? '' : v); setPage(1); }}
-            disabled={!classId}
-          >
-            <SelectTrigger className="sm:w-36">
-              <SelectValue placeholder="Section" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All sections</SelectItem>
-              {sections.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <ClassSectionFilter
+            classes={classes}
+            classId={classId}
+            sectionId={sectionId}
+            onChange={(cId, sId) => { setClassId(cId); setSectionId(sId); setPage(1); }}
+            classLabel={terminology.classUnit}
+            sectionLabel="Section"
+            allowAll
+            placeholder={`All ${terminology.classUnit}`}
+            className="sm:w-56"
+          />
           <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
             <SelectTrigger className="sm:w-40">
               <SelectValue placeholder="Status" />
