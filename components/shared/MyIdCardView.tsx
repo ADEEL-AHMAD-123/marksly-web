@@ -135,7 +135,7 @@ import { PhotoCropModal } from '@/components/shared/PhotoCropModal';
 import { StaffIdCardItem, staffBackRows } from '@/components/staff/StaffIdCardsView';
 import { IdCardItem, studentBackRows } from '@/components/students/IdCardsView';
 import { cn, formatNationalId } from '@/lib/utils';
-import { useTerminology, nationalIdLabelForInstitutionType } from '@/lib/terminology';
+import { useTerminology, nationalIdLabelForInstitutionType, officeLabelForInstitutionType } from '@/lib/terminology';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -396,7 +396,12 @@ function StaffMyIdCard() {
                 <StaffIdCardItem member={card} institution={card.institution} />
               </div>
               <div ref={backRef} className={cn(showBack ? 'block' : 'hidden print:block')}>
-                <IdCardBack institution={card.institution} qrValue={card.qr} rows={staffBackRows(card)} />
+                <IdCardBack
+                  institution={card.institution}
+                  qrValue={card.qr}
+                  rows={staffBackRows(card)}
+                  officeLabel={officeLabelForInstitutionType(card.institution?.type)}
+                />
               </div>
             </div>
           </div>
@@ -779,6 +784,7 @@ function StudentMyIdCard() {
                   qrValue={card.qr}
                   validityLabel={card.termName ?? termLabel}
                   rows={studentBackRows(card, card.institution.settings?.idCard?.showBloodGroup ?? true)}
+                  officeLabel={officeLabelForInstitutionType(card.institution?.type)}
                 />
               </div>
             </div>

@@ -128,5 +128,9 @@ export const ID_CARD_ROLE_COLORS = {
   teacher: '#0d3b36', // dark teal/green
   staff: '#4a3220', // dark amber/brown
   accountant: '#2e1065', // dark indigo/purple
-  admin: '#4a0f16', // dark maroon/red
+  // Was a dark maroon/red -- same hue family as the app's
+  // bg-danger-soft/text-danger tokens, so an admin's card visually read as
+  // a warning/danger card rather than a badge of seniority. Dark bronze/
+  // gold instead.
+  admin: '#4a3c05',
 } as const;

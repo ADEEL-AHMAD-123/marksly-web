@@ -18,6 +18,7 @@ import { useGetStaffIdCardsQuery, useReissueStaffCardsMutation, type StaffCardRo
 import {
   CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS, idCardNameSizeClass, formatCardDate, ID_CARD_ROLE_COLORS,
 } from '@/components/shared/idCardPrint';
+import { officeLabelForInstitutionType } from '@/lib/terminology';
 import { IdCardBack, type IdCardBackRow } from '@/components/shared/IdCardBack';
 import { IdCardCredit } from '@/components/shared/IdCardCredit';
 import { cn } from '@/lib/utils';
@@ -46,7 +47,10 @@ const ROLE_STYLE: Record<StaffCardRole, { accent: string; bandColor: string; sof
   teacher: { accent: 'border-accent', bandColor: ID_CARD_ROLE_COLORS.teacher, soft: 'bg-accent/15 text-accent-foreground', icon: BookOpen, label: 'Teacher' },
   staff: { accent: 'border-success', bandColor: ID_CARD_ROLE_COLORS.staff, soft: 'bg-success-soft text-success', icon: Briefcase, label: 'Staff' },
   accountant: { accent: 'border-warning', bandColor: ID_CARD_ROLE_COLORS.accountant, soft: 'bg-warning-soft text-warning', icon: Landmark, label: 'Accountant' },
-  admin: { accent: 'border-danger', bandColor: ID_CARD_ROLE_COLORS.admin, soft: 'bg-danger-soft text-danger', icon: ShieldCheck, label: 'Admin' },
+  // Was border-danger/bg-danger-soft -- the same red family the app uses
+  // for warnings/errors elsewhere, so an admin's card visually read as a
+  // danger/alert card rather than a badge of seniority.
+  admin: { accent: 'border-secondary', bandColor: ID_CARD_ROLE_COLORS.admin, soft: 'bg-secondary text-secondary-foreground', icon: ShieldCheck, label: 'Admin' },
 };
 
 export function StaffIdCardsView() {
@@ -379,6 +383,7 @@ function StaffIdCardPreview({
               qrValue={member.qr}
               validityLabel={formatCardDate(member.cardExpiryDate)}
               rows={staffBackRows(member)}
+              officeLabel={officeLabelForInstitutionType(institution.type)}
             />
           </div>
         </div>
@@ -597,7 +602,7 @@ export const StaffIdCardItem = memo(function StaffIdCardItem({
           </div>
 
           <dl className="mt-auto grid grid-cols-2 gap-x-3 gap-y-1.5 text-[9.5px] leading-tight">
-            <Field label="Staff ID" value={member.systemId} />
+            <Field label="Employee ID" value={member.systemId} />
             {member.phone && <Field label="Mobile" value={member.phone} />}
             {showNationalId && member.nationalIdNumber && (
               <Field label="CNIC No." value={member.nationalIdNumber} className="col-span-2" />
@@ -605,7 +610,7 @@ export const StaffIdCardItem = memo(function StaffIdCardItem({
           </dl>
 
           {(issued || expiry) && (
-            <p className="text-[7.5px] leading-tight text-muted-foreground">
+            <p className="text-[8px] font-medium leading-tight text-foreground/80">
               {issued ? `Issued ${issued}` : ''}{issued && expiry ? ' | ' : ''}{expiry ? `Valid until ${expiry}` : ''}
             </p>
           )}
@@ -618,7 +623,7 @@ export const StaffIdCardItem = memo(function StaffIdCardItem({
         {/* QR side panel — same sizing/mechanics as student cards */}
         <div className="flex shrink-0 flex-col items-center justify-center gap-1 border-l border-border pl-3">
           <QRCode value={member.qr} size={80} />
-          <p className="text-center text-[6.5px] leading-tight text-muted-foreground">Scan to verify</p>
+          <p className="text-center text-[7px] font-medium leading-tight text-foreground/70">Scan to verify</p>
         </div>
       </div>
     </div>

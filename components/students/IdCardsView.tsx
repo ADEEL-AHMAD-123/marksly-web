@@ -16,7 +16,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { QRCode } from '@/components/ui/qr-code';
 import { useGetClassesQuery } from '@/store/api/classesApi';
 import { useGetIdCardsQuery, useReissueStudentCardsMutation, type IdCard, type IdCardInstitution } from '@/store/api/studentsApi';
-import { useTerminology, getTerminologyForTermType, nationalIdLabelForInstitutionType } from '@/lib/terminology';
+import { useTerminology, getTerminologyForTermType, nationalIdLabelForInstitutionType, officeLabelForInstitutionType } from '@/lib/terminology';
 import {
   CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS, idCardNameSizeClass, formatCardDate, ID_CARD_ROLE_COLORS,
 } from '@/components/shared/idCardPrint';
@@ -372,6 +372,7 @@ function StudentIdCardPreview({
               qrValue={student.qr}
               validityLabel={termName ?? termLabel}
               rows={studentBackRows(student, settings?.showBloodGroup ?? true)}
+              officeLabel={officeLabelForInstitutionType(institution.type)}
             />
           </div>
         </div>
@@ -596,7 +597,7 @@ export const IdCardItem = memo(function IdCardItem({
             )}
             <div className="min-w-0">
               <p className="truncate text-[14px] font-bold leading-tight text-foreground">{student.name}</p>
-              <p className="truncate text-[10px] text-muted-foreground">{className ?? '—'}{section ? ` · ${section}` : ''}</p>
+              <p className="truncate text-[10.5px] font-medium text-foreground">{className ?? '—'}{section ? ` · ${section}` : ''}</p>
               {showBloodGroup && student.bloodGroup && (
                 <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-danger-soft px-1.5 py-0.5 text-[8px] font-semibold text-danger">
                   <Droplet size={8} /> {student.bloodGroup}
@@ -606,15 +607,15 @@ export const IdCardItem = memo(function IdCardItem({
           </div>
 
           <dl className="mt-auto grid grid-cols-2 gap-x-3 gap-y-1.5 text-[9.5px] leading-tight">
-            <Field label="Login ID" value={student.systemId} />
-            <Field label={`Roll No. (${className ?? 'Class'})`} value={student.rollNumber} />
+            <Field label="Student ID" value={student.systemId} />
+            <Field label="Roll No." value={student.rollNumber} />
             {showNationalId && student.nationalIdNumber && (
               <Field label={`${nationalIdLabel} No.`} value={student.nationalIdNumber} className="col-span-2" />
             )}
           </dl>
 
           {(issued || expiry) && (
-            <p className="text-[7.5px] leading-tight text-muted-foreground">
+            <p className="text-[8px] font-medium leading-tight text-foreground/80">
               {issued ? `Issued ${issued}` : ''}{issued && expiry ? ' | ' : ''}{expiry ? `Valid until ${expiry}` : ''}
             </p>
           )}
@@ -627,7 +628,7 @@ export const IdCardItem = memo(function IdCardItem({
         {/* QR side panel — minimum ~2cm on-screen equivalent so it prints scannable at real card size */}
         <div className="flex shrink-0 flex-col items-center justify-center gap-1 border-l border-border pl-3">
           <QRCode value={student.qr} size={80} />
-          <p className="text-center text-[6.5px] leading-tight text-muted-foreground">Scan to verify</p>
+          <p className="text-center text-[7px] font-medium leading-tight text-foreground/70">Scan to verify</p>
         </div>
       </div>
     </div>

@@ -137,6 +137,18 @@ export function nationalIdLabelForInstitutionType(
   return 'Form B';
 }
 
+/**
+ * Terminology-aware wording for "where a found ID card should be returned"
+ * (printed on the card back) — was hardcoded as "school office" regardless
+ * of institution type, which reads oddly for a college/university.
+ */
+export function officeLabelForInstitutionType(
+  institutionType: 'school' | 'college' | 'university' | 'academy' | string | undefined | null
+): string {
+  if (institutionType === 'college' || institutionType === 'university') return 'campus office';
+  return 'school office';
+}
+
 /** Convenience hook — reads the current institution's type and returns the
  *  matching national-ID label ("Form B" vs "CNIC"), same
  *  useGetMyInstitutionQuery source as useTerminology() above. */

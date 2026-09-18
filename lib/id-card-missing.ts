@@ -22,7 +22,7 @@ export function idCardFieldLabel(key: string, nationalIdLabel = 'Form B'): strin
     case 'photo':
       return 'Photo';
     default:
-      // Unknown/未-mapped backend key — fall back to something readable
+      // Unknown/unmapped backend key — fall back to something readable
       // rather than a raw camelCase string.
       return key
         .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -41,3 +41,44 @@ export function idCardFieldLabel(key: string, nationalIdLabel = 'Form B'): strin
  * i.e. not something the signed-in person has a mutation for.
  */
 export const SELF_FIXABLE_MISSING_KEYS: ReadonlySet<string> = new Set(['address', 'bloodGroup', 'nationalId']);
+
+/**
+ * Single source of truth for "what's missing on this student's card,"
+ * shared by the roster list's warning dot AND the single-card preview's
+ * missing-fields banner (IdCardsView.tsx) — previously each recomputed its
+ * own slightly different check (the roster list never looked at photo at
+ * all), so a photo-less student could show no warning in the list but a
+ * missing-photo badge on the card itself. One function, used both places,
+ * so the two can never drift apart again.
+ */
+export function studentCardMissingKeys(
+  student: {
+    bloodGroup?: string | null;
+    address?: string | null;
+    city?: string | null;
+    parentName?: string | null;
+    nationalIdNumber?: string | null;
+    profilePhoto?: string | null;
+  },
+  settings?: { showBloodGroup?: boolean; showNationalId?: boolean } | null
+): string[] {
+  const keys: string[] = [];
+  if ((settings?.showBloodGroup ?? true) && !student.bloodGroup) keys.push('bloodGroup');
+  if (!student.address && !student.city) keys.push('address');
+  if (!student.parentName) keys.push('parentInfo');
+  if ((settings?.showNationalId ?? true) && !student.nationalIdNumber) keys.push('nationalId');
+  if (!student.profilePhoto) keys.push('photo');
+  return keys;
+}
+
+/** Same idea as studentCardMissingKeys, for staff (StaffIdCardsView.tsx). */
+export function staffCardMissingKeys(
+  member: { address?: string | null; nationalIdNumber?: string | null; profilePhoto?: string | null },
+  settings?: { showNationalId?: boolean } | null
+): string[] {
+  const keys: string[] = [];
+  if (!member.address) keys.push('address');
+  if ((settings?.showNationalId ?? true) && !member.nationalIdNumber) keys.push('nationalId');
+  if (!member.profilePhoto) keys.push('photo');
+  return keys;
+}
