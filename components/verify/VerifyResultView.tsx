@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { CheckCircle2, ShieldAlert, ShieldOff, GraduationCap } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, ShieldOff, ShieldX, GraduationCap } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import type { VerifyResult } from '@/app/verify/[code]/page';
 
@@ -12,7 +12,9 @@ export function VerifyResultView({ result }: { result: VerifyResult }) {
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
         {result.valid ? (
-          isActive ? (
+          result.revoked ? (
+            <RevokedState result={result} />
+          ) : isActive ? (
             <ValidActiveState result={result} />
           ) : (
             <ValidInactiveState result={result} />
@@ -59,6 +61,42 @@ function ValidActiveState({ result }: { result: Extract<VerifyResult, { valid: t
       <h1 className="text-xl font-bold tracking-tight text-foreground">Valid ID Card</h1>
       <p className="mx-auto mt-1.5 max-w-xs text-sm text-muted-foreground">
         This is a valid ID card issued by {result.institutionName ?? 'the institution'}.
+      </p>
+
+      <div className="my-6 h-px bg-border" />
+
+      <InstitutionBadge name={result.institutionName ?? 'Institution'} logoUrl={result.institutionLogoUrl} />
+
+      <div className="rounded-xl border border-border bg-background p-4 text-left">
+        {isStudent ? (
+          <>
+            <Row label="Student" value={result.studentName} />
+            <Row label="Class" value={result.className} />
+            <Row label="Section" value={result.sectionName} />
+          </>
+        ) : (
+          <>
+            <Row label="Name" value={result.personName} />
+            <Row label="Role" value={result.role} className="capitalize" />
+            <Row label="Department" value={result.department} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RevokedState({ result }: { result: Extract<VerifyResult, { valid: true }> }) {
+  const isStudent = result.type === 'student';
+  return (
+    <div className="text-center">
+      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-danger-soft text-danger">
+        <ShieldX size={32} />
+      </div>
+      <h1 className="text-xl font-bold tracking-tight text-foreground">Card Reported Lost or Stolen</h1>
+      <p className="mx-auto mt-1.5 max-w-xs text-sm text-muted-foreground">
+        {result.institutionName ?? 'The institution'} has reported this specific card as no longer valid. Do not
+        accept it as identification — contact the institution directly if you have questions.
       </p>
 
       <div className="my-6 h-px bg-border" />

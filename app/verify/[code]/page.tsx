@@ -26,6 +26,7 @@ export type VerifyResult =
       className: string | null;
       sectionName: string | null;
       status: string;
+      revoked: boolean;
     }
   | {
       valid: true;
@@ -36,6 +37,7 @@ export type VerifyResult =
       role: string;
       department: string | null;
       status: 'active' | 'inactive';
+      revoked: boolean;
     };
 
 async function fetchVerification(code: string): Promise<VerifyResult> {
