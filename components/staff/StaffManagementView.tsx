@@ -656,11 +656,18 @@ export function ResendLoginEmailDialog({
 const schema = z.object({
   firstName: z.string().min(1, 'Required'),
   lastName: z.string().min(1, 'Required'),
+  // Phone is the one contact field that's actually required — it's how the
+  // account is looked up/created and how they log in day to day (matches
+  // createUserSchema's own phoneField()).
   phone: z
     .string()
     .min(1, 'Enter a valid phone number')
     .refine((v) => isValidPhoneNumber(v), 'Enter a valid phone number'),
-  email: z.string().email('Enter a valid email address'),
+  // Optional — only needed for self-service PIN recovery (forgotPassword()
+  // is email-only; there's no phone/SMS reset path). Without one, an admin
+  // resets their PIN instead; they can also add it themselves later from
+  // Settings. Matches createUserSchema's own email.optional().
+  email: z.string().trim().toLowerCase().email('Enter a valid email address').optional().or(z.literal('')),
   role: z.enum(['teacher', 'staff', 'accountant']),
   gender: z.enum(['male', 'female', 'other'], {
     errorMap: () => ({ message: 'Select a gender' }),
@@ -747,18 +754,23 @@ function AddStaffDrawer({
 
   const submit = async (values: StaffForm, confirmUnverifiedEmail?: boolean) => {
     const label = roleLabel(values.role);
+    // Email is optional — an empty string from the input should mean
+    // "no email", not a value that fails the backend's own email() format
+    // check. Blank stays blank for editing.email's local re-seed state,
+    // but never leaves the form as ''.
+    const email = values.email?.trim() || undefined;
     try {
       if (isEditing) {
         // Role is fixed once created — only the base contact/card fields
         // are ever sent on update, matching the backend's update() which
         // never accepts a role change.
         const { role: _role, ...rest } = values;
-        await updateUser({ id: editing.id, body: rest }).unwrap();
+        await updateUser({ id: editing.id, body: { ...rest, email } }).unwrap();
         toast.success(`${label} updated`);
         onClose();
         return;
       }
-      const res = await createUser({ ...values, confirmUnverifiedEmail }).unwrap();
+      const res = await createUser({ ...values, email, confirmUnverifiedEmail }).unwrap();
       toast.success(`${label} added`);
       setDomainIssue(null);
       onClose();
@@ -892,12 +904,14 @@ function AddStaffDrawer({
               {errors.phone && <p className="mt-1 text-xs text-danger">{errors.phone.message}</p>}
             </div>
             <div>
-              <Label htmlFor="email">Email <span className="font-normal normal-case text-danger">*</span></Label>
+              <Label htmlFor="email">Email <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>
               <Input id="email" type="email" dir="ltr" {...register('email')} />
               {errors.email && <p className="mt-1 text-xs text-danger">{errors.email.message}</p>}
-              {!isEditing && (
-                <p className="mt-1 text-xs text-muted-foreground">A Login ID and PIN are generated automatically and emailed to this address — shown once here as well right after saving.</p>
-              )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                {!isEditing && 'A Login ID and PIN are generated automatically and shown here right after saving. '}
+                Without an email, only an admin can reset their PIN if they forget it — they can add one themselves
+                later from Settings.
+              </p>
             </div>
             <div>
               <Label htmlFor="nationalIdNumber">CNIC Number <span className="font-normal normal-case text-danger">*</span></Label>

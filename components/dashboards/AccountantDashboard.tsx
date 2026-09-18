@@ -12,6 +12,7 @@ import { buttonVariants } from '@/components/ui/button-variants';
 import { useGetFeesSummaryQuery, useGetInvoicesQuery } from '@/store/api/feesApi';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { DashboardNoticeBanner } from '@/components/dashboards/DashboardNoticeBanner';
+import { DashboardEmailNudge } from '@/components/dashboards/DashboardEmailNudge';
 import { DashboardNotices } from '@/components/dashboards/DashboardNotices';
 import { DashboardSchoolCard } from '@/components/dashboards/DashboardSchoolCard';
 
@@ -40,6 +41,7 @@ export function AccountantDashboard() {
   return (
     <div className="space-y-6">
       <DashboardNoticeBanner noticesHref="/accountant/notices" />
+      <DashboardEmailNudge />
 
       <PageHeader
         title="Accountant Dashboard"

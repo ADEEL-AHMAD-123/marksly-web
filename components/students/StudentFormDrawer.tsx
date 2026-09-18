@@ -79,14 +79,13 @@ const baseSchema = z.object({
     .optional()
     .refine((v) => !v || new Date(v) <= new Date(), 'Date of birth cannot be in the future'),
 });
-// Message corrected to describe what the rule actually checks: phone alone
-// isn't enough (a guardian needs a usable login), but email alone IS fine
-// on its own — the label/helper text below say the same thing now instead
-// of implying email is always mandatory.
-const schema = baseSchema.refine((d) => !d.parentPhone || !!d.parentEmail, {
-  message: 'Add an email too — a guardian needs an email if a phone number is entered',
-  path: ['parentEmail'],
-});
+// Email is genuinely optional here now — not required alongside phone
+// either (matches the backend's createStudentSchema/user.model.ts, which
+// only require email for admin/superadmin). A guardian with no email just
+// has no self-service PIN-reset path until they or an admin add one later
+// (see the helper text below the fields, and Settings' Email address card
+// for how they'd add it themselves).
+const schema = baseSchema;
 
 /**
  * Cross-field "someone needs to be reachable" rule, mirroring the backend's
@@ -692,15 +691,20 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                   <Input id="parentName" {...register('parentName')} />
                 </div>
                 <div className="col-span-2">
-                  <Label htmlFor="parentEmail">Parent email</Label>
+                  <Label htmlFor="parentEmail">Parent email <span className="font-normal text-muted-foreground">(optional)</span></Label>
                   <Input id="parentEmail" type="email" dir="ltr" {...register('parentEmail')} />
                   {errors.parentEmail && <p className="mt-1 text-xs text-danger">{errors.parentEmail.message}</p>}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Without an email, only an admin can reset this parent&apos;s PIN if they forget it — they can add one
+                    themselves later from Settings.
+                  </p>
                 </div>
               </div>
               {!originalGuardian && (
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   If this phone already has a parent account, the student is added to it. Otherwise a new account is
-                  created — make sure the phone and email really belong to the parent, since they&apos;ll sign in with them.
+                  created — make sure the phone (and email, if given) really belong to the parent, since they&apos;ll sign
+                  in with them.
                 </p>
               )}
             </div>

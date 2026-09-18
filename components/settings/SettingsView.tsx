@@ -208,32 +208,43 @@ function ProfileTab() {
         </CardContent>
       </Card>
 
-      <EmailChangeCard currentEmail={user?.email ?? ''} />
+      <EmailChangeCard currentEmail={user?.email ?? ''} isPinBased={user?.role !== 'admin' && user?.role !== 'superadmin'} />
     </div>
   );
 }
 
 /* ── Email change ──────────────────────────────────────────────────────────
    Deliberately its own card/form, not a field on the profile form above —
-   changing the email needs the current password re-entered and only takes
-   effect once a confirmation link sent to the NEW address is clicked (see
-   auth.service.ts's requestEmailChange()/confirmEmailChange()). Folding
-   that into a plain "Save changes" button would either need to always
-   demand a password for an unrelated name/phone edit, or silently skip the
-   password check — this keeps the two clearly separate instead. */
+   changing the email needs the current credential re-entered and only
+   takes effect once a confirmation link sent to the NEW address is clicked
+   (see auth.service.ts's requestEmailChange()/confirmEmailChange()).
+   Folding that into a plain "Save changes" button would either need to
+   always demand a credential for an unrelated name/phone edit, or silently
+   skip the check — this keeps the two clearly separate instead.
+
+   Also doubles as the ONLY way a teacher/staff/accountant/parent adds an
+   email in the first place, now that email is optional for every role
+   except admin/superadmin (see user.model.ts) — "Currently ... not set"
+   below already reads correctly for that case with no extra branching
+   needed; the one thing that DOES need to change per role is the
+   credential label/copy, since those roles authenticate with a PIN, not a
+   real password, and `comparePassword()` on the backend already accepts
+   either (same passwordHash column either way — see
+   auth.service.ts's requestEmailChange()). */
 const emailChangeSchema = z.object({
   newEmail: z.string().trim().toLowerCase().email('Enter a valid email address'),
-  currentPassword: z.string().min(1, 'Enter your current password'),
+  currentPassword: z.string().min(1, 'Required'),
 });
 type EmailChangeForm = z.infer<typeof emailChangeSchema>;
 
-function EmailChangeCard({ currentEmail }: { currentEmail: string }) {
+function EmailChangeCard({ currentEmail, isPinBased }: { currentEmail: string; isPinBased: boolean }) {
   const [requestEmailChange, { isLoading }] = useRequestEmailChangeMutation();
   const [sent, setSent] = useState<string | null>(null);
   const { register, handleSubmit, reset, formState: { errors } } = useForm<EmailChangeForm>({
     resolver: zodResolver(emailChangeSchema),
     defaultValues: { newEmail: '', currentPassword: '' },
   });
+  const credentialLabel = isPinBased ? 'PIN' : 'password';
 
   const onSubmit = async (values: EmailChangeForm) => {
     try {
@@ -241,7 +252,7 @@ function EmailChangeCard({ currentEmail }: { currentEmail: string }) {
       setSent(values.newEmail);
       reset();
     } catch (e: any) {
-      toast.error(e?.data?.error?.message || 'Could not request email change');
+      toast.error(e?.data?.error?.message || `Could not request email change`);
     }
   };
 
@@ -251,26 +262,38 @@ function EmailChangeCard({ currentEmail }: { currentEmail: string }) {
         <CardTitle className="text-lg">Email address</CardTitle>
         <CardDescription>
           Currently <span className="font-medium text-foreground">{currentEmail || 'not set'}</span> — this is also
-          where password-reset links are sent, so changing it requires your current password and confirming you own
-          the new inbox.
+          {isPinBased
+            ? ' where a PIN-reset link would be sent if you ever forget it (only an admin can reset it otherwise), so setting or changing it requires your current PIN and confirming you own the new inbox.'
+            : ' where password-reset links are sent, so changing it requires your current password and confirming you own the new inbox.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 pt-0">
         {sent ? (
           <p className="rounded-lg border border-success/30 bg-success-soft px-3.5 py-3 text-sm text-success">
             Check <span className="font-medium">{sent}</span> for a confirmation link — your email won&apos;t change
-            until you click it.
+            (or be set) until you click it.
           </p>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div>
-              <Label htmlFor="newEmail">New email address</Label>
+              <Label htmlFor="newEmail">{currentEmail ? 'New email address' : 'Email address'}</Label>
               <Input id="newEmail" type="email" dir="ltr" {...register('newEmail')} />
               {errors.newEmail && <p className="mt-1 text-xs text-danger">{errors.newEmail.message}</p>}
             </div>
             <div>
-              <Label htmlFor="emailChangePassword">Current password</Label>
-              <PasswordInput id="emailChangePassword" autoComplete="current-password" {...register('currentPassword')} />
+              <Label htmlFor="emailChangePassword">Current {credentialLabel}</Label>
+              {isPinBased ? (
+                <Input
+                  id="emailChangePassword"
+                  type="password"
+                  inputMode="numeric"
+                  dir="ltr"
+                  placeholder="4-6 digits"
+                  {...register('currentPassword')}
+                />
+              ) : (
+                <PasswordInput id="emailChangePassword" autoComplete="current-password" {...register('currentPassword')} />
+              )}
               {errors.currentPassword && <p className="mt-1 text-xs text-danger">{errors.currentPassword.message}</p>}
             </div>
             <div className="flex justify-end">

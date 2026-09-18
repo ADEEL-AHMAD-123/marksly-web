@@ -119,9 +119,22 @@ export function ForgotPasswordView() {
         </Button>
       </form>
 
+      {/* Teacher/staff/accountant/parent/student accounts can have no email
+          on file at all now (email is only required for admin/superadmin —
+          see user.model.ts) — reset is still email-only, since there's no
+          phone/SMS path (see this file's schema comment above). Previously
+          that just failed silently: the generic "if an account exists..."
+          message showed regardless, with nothing actually sent, and no way
+          to tell the difference from a genuine typo. This says so plainly
+          instead of leaving it to be discovered as a dead end. */}
+      <p className="mt-4 text-center text-xs text-muted-foreground">
+        No email on file? Only your school admin can reset your PIN — ask them from Login IDs &amp; PINs, or add an
+        email yourself from Settings once you&apos;re signed in.
+      </p>
+
       <Link
         href="/login"
-        className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+        className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
       >
         <ArrowLeft size={15} /> Back to sign in
       </Link>

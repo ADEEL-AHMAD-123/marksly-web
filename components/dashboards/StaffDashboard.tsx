@@ -11,6 +11,7 @@ import { TodaysAttendanceCard } from '@/components/dashboards/AdminDashboardAtte
 import { DashboardAlertBanner } from '@/components/dashboards/DashboardAlertBanner';
 import { DashboardNoticeBanner } from '@/components/dashboards/DashboardNoticeBanner';
 import { DashboardIdCardNudge } from '@/components/dashboards/DashboardIdCardNudge';
+import { DashboardEmailNudge } from '@/components/dashboards/DashboardEmailNudge';
 import { StaffDashboardQuickActions } from '@/components/dashboards/StaffDashboardQuickActions';
 import { DashboardSchoolCard } from '@/components/dashboards/DashboardSchoolCard';
 import { DashboardNotices } from '@/components/dashboards/DashboardNotices';
@@ -70,6 +71,7 @@ export function StaffDashboard() {
       />
 
       <DashboardIdCardNudge />
+      <DashboardEmailNudge />
 
       <AdminDashboardStats
         totalStudents={totalStudents}

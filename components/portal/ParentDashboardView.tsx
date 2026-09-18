@@ -13,6 +13,7 @@ import { ParentDashboardChildCard } from '@/components/portal/ParentDashboardChi
 import { ParentDashboardEmptyState } from '@/components/dashboards/ParentDashboardEmptyState';
 import { ParentDashboardExamsNudge } from '@/components/dashboards/ParentDashboardExamsNudge';
 import { DashboardNoticeBanner } from '@/components/dashboards/DashboardNoticeBanner';
+import { DashboardEmailNudge } from '@/components/dashboards/DashboardEmailNudge';
 import { DashboardNotices } from '@/components/dashboards/DashboardNotices';
 import { DashboardSchoolCard } from '@/components/dashboards/DashboardSchoolCard';
 
@@ -36,6 +37,7 @@ export function ParentDashboardView() {
   return (
     <div className="space-y-6">
       <DashboardNoticeBanner noticesHref="/parent/notices" />
+      <DashboardEmailNudge />
       {/* Live/upcoming/missed online exams across every child — rendered
           above the loading/empty-state branches below so it shows the
           moment there's anything to see, same placement rationale as the

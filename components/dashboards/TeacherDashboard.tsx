@@ -6,6 +6,7 @@ import { useAppSelector } from '@/store/hooks';
 import { useMyClassesQuery } from '@/store/api/portalApi';
 import { TeacherDashboardEmptyState } from '@/components/dashboards/TeacherDashboardEmptyState';
 import { DashboardIdCardNudge } from '@/components/dashboards/DashboardIdCardNudge';
+import { DashboardEmailNudge } from '@/components/dashboards/DashboardEmailNudge';
 import { DashboardNoticeBanner } from '@/components/dashboards/DashboardNoticeBanner';
 import { TeacherDashboardQuickActions } from '@/components/dashboards/TeacherDashboardQuickActions';
 import { TeacherDashboardToday } from '@/components/dashboards/TeacherDashboardToday';
@@ -67,6 +68,7 @@ export function TeacherDashboard() {
 
       <DashboardNoticeBanner noticesHref="/teacher/notices" />
       <DashboardIdCardNudge />
+      <DashboardEmailNudge />
 
       {classesLoading ? (
         <Skeleton className="h-40 w-full rounded-2xl" />

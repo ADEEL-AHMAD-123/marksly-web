@@ -76,7 +76,10 @@ export interface CreateUserBody {
   firstName: string;
   lastName: string;
   phone: string;
-  email: string;
+  // Optional — only needed for self-service PIN recovery; matches
+  // user.model.ts/createUserSchema, which only require email for
+  // admin/superadmin.
+  email?: string;
   role: ManageableRole;
   // Set on a resubmit after the backend flags EMAIL_DOMAIN_UNVERIFIED and
   // the admin confirms the address is correct anyway.
