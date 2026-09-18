@@ -229,10 +229,39 @@ function StudentRosterList({
   settings?: { showNationalId: boolean; showBloodGroup: boolean } | null;
   onSelect: (id: string) => void;
 }) {
+  // A section can run 60-150+ students -- the fast path for a known name
+  // is the picker above, but this browse list previously had no filter of
+  // its own at all, so finding one specific person meant scrolling a flat,
+  // unbounded list. A plain client-side filter is enough here (still a
+  // single section's roster, not the whole institution).
+  const [query, setQuery] = useState('');
+  const filtered = query.trim()
+    ? roster.filter((s) => {
+        const q = query.trim().toLowerCase();
+        return s.name.toLowerCase().includes(q) || s.rollNumber.toLowerCase().includes(q);
+      })
+    : roster;
+
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm no-print">
+    <div className="space-y-2 no-print">
+      {roster.length > 8 && (
+        <div className="relative">
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter by name or roll number…"
+            className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        </div>
+      )}
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      {filtered.length === 0 ? (
+        <p className="px-4 py-6 text-center text-sm text-muted-foreground">No matching students.</p>
+      ) : (
       <div className="divide-y divide-border">
-        {roster.map((s) => {
+        {filtered.map((s) => {
           const missing = studentCardMissingKeys(s, settings).length > 0;
           return (
             <button
@@ -263,6 +292,8 @@ function StudentRosterList({
             </button>
           );
         })}
+      </div>
+      )}
       </div>
     </div>
   );

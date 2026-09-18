@@ -269,10 +269,34 @@ function StaffRosterList({
   settings?: { showNationalId: boolean } | null;
   onSelect: (id: string) => void;
 }) {
+  // Same reasoning as StudentRosterList's filter -- "All roles" across a
+  // larger institution can be a long flat list with no way to narrow it
+  // beyond the role dropdown above.
+  const [query, setQuery] = useState('');
+  const filtered = query.trim()
+    ? roster.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()))
+    : roster;
+
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm no-print">
+    <div className="space-y-2 no-print">
+      {roster.length > 8 && (
+        <div className="relative">
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter by name…"
+            className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        </div>
+      )}
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      {filtered.length === 0 ? (
+        <p className="px-4 py-6 text-center text-sm text-muted-foreground">No matching staff.</p>
+      ) : (
       <div className="divide-y divide-border">
-        {roster.map((s) => {
+        {filtered.map((s) => {
           const style = ROLE_STYLE[s.role] ?? ROLE_STYLE.staff;
           const missing = staffCardMissingKeys(s, settings).length > 0;
           return (
@@ -306,6 +330,8 @@ function StaffRosterList({
             </button>
           );
         })}
+      </div>
+      )}
       </div>
     </div>
   );
