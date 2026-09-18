@@ -2,7 +2,7 @@
 
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff, Search, X, UserCircle, Phone, MapPin, RotateCw, Pencil, RefreshCw, ChevronRight, Download } from 'lucide-react';
+import { Printer, CreditCard as IdCardIcon, GraduationCap, Briefcase, Landmark, ShieldCheck, BookOpen, ImageOff, Search, X, UserCircle, Phone, MapPin, RotateCw, Pencil, RefreshCw, ChevronRight, Download, ShieldX } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select';
 import { Avatar } from '@/components/ui/avatar';
 import { QRCode } from '@/components/ui/qr-code';
-import { useGetStaffIdCardsQuery, useReissueStaffCardsMutation, type StaffCardRole, type StaffIdCard, type StaffIdCardInstitution } from '@/store/api/usersApi';
+import { useGetStaffIdCardsQuery, useReissueStaffCardsMutation, useSetStaffCardRevokedMutation, type StaffCardRole, type StaffIdCard, type StaffIdCardInstitution } from '@/store/api/usersApi';
 import {
   CARD_WIDTH_MM, CARD_HEIGHT_MM, ID_CARD_PRINT_CSS, idCardNameSizeClass, formatCardDate, ID_CARD_ROLE_COLORS,
 } from '@/components/shared/idCardPrint';
@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { EditCardDetailsDialog } from '@/components/students/EditCardDetailsDialog';
 import { ReissueCardsConfirmDialog } from '@/components/students/ReissueCardsConfirmDialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { getErrorMessage } from '@/lib/get-error-message';
 import { IdCardMissingFieldsBanner, type IdCardMissingFieldItem } from '@/components/shared/IdCardMissingFieldsBanner';
 import { idCardFieldLabel, staffCardMissingKeys } from '@/lib/id-card-missing';
@@ -321,7 +322,14 @@ function StaffRosterList({
                 )}
               </div>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-foreground">{s.name}</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="truncate text-sm font-medium text-foreground">{s.name}</span>
+                  {s.cardRevoked && (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-danger-soft px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-danger">
+                      <ShieldX size={9} /> Revoked
+                    </span>
+                  )}
+                </span>
                 <span className={cn('mt-0.5 inline-flex w-fit items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide', style.soft)}>
                   {style.label}
                 </span>
@@ -352,10 +360,23 @@ function StaffIdCardPreview({
   const [showBack, setShowBack] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [revokeConfirmOpen, setRevokeConfirmOpen] = useState(false);
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
   const nationalIdLabel = 'CNIC';
   const settings = institution.settings?.idCard;
+  const [setCardRevoked, { isLoading: revokeSaving }] = useSetStaffCardRevokedMutation();
+  const isRevoked = !!member.cardRevoked;
+
+  const handleToggleRevoke = async () => {
+    try {
+      await setCardRevoked({ userId: member.id, revoked: !isRevoked }).unwrap();
+      toast.success(isRevoked ? 'Revocation cleared — this card verifies as valid again' : 'Card marked as lost/stolen — it will now show as revoked when scanned');
+      setRevokeConfirmOpen(false);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not update the card'));
+    }
+  };
 
   const handleDownload = async () => {
     if (!frontRef.current) return;
@@ -386,7 +407,15 @@ function StaffIdCardPreview({
 
   return (
     <>
-      <div className="no-print flex items-center justify-end gap-2">
+      <div className="no-print flex flex-wrap items-center justify-end gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className={isRevoked ? undefined : 'text-danger hover:bg-danger-soft hover:text-danger'}
+          onClick={() => setRevokeConfirmOpen(true)}
+        >
+          {isRevoked ? <><ShieldCheck size={14} /> Clear revocation</> : <><ShieldX size={14} /> Report lost/stolen</>}
+        </Button>
         <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
           <Pencil size={14} /> Edit card details
         </Button>
@@ -398,6 +427,15 @@ function StaffIdCardPreview({
         </Button>
         <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print card</Button>
       </div>
+      {isRevoked && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-danger/40 bg-danger-soft px-3.5 py-3 text-sm text-danger no-print">
+          <ShieldX size={17} className="shrink-0" />
+          <span>
+            This card is marked as lost/stolen — anyone scanning it now sees &quot;reported lost or stolen&quot;
+            instead of a valid confirmation. Re-issuing a fresh card also clears this automatically.
+          </span>
+        </div>
+      )}
       <IdCardMissingFieldsBanner items={missingItems} />
       {/* Same "this card IS the point of the page" treatment as
           IdCardsView.tsx's student preview — see that file's comment. */}
@@ -435,6 +473,21 @@ function StaffIdCardPreview({
           }}
         />
       )}
+      <ConfirmDialog
+        open={revokeConfirmOpen}
+        onClose={() => setRevokeConfirmOpen(false)}
+        onConfirm={handleToggleRevoke}
+        loading={revokeSaving}
+        tone={isRevoked ? 'default' : 'warning'}
+        icon={isRevoked ? ShieldCheck : ShieldX}
+        title={isRevoked ? 'Clear this card\'s revocation?' : 'Report this card as lost or stolen?'}
+        description={
+          isRevoked
+            ? `${member.name}'s card will verify as valid again when scanned.`
+            : `Anyone scanning ${member.name}'s current card will see it flagged as lost/stolen instead of a valid confirmation. This doesn't change the card's issue/expiry dates or generate a new card — use "Re-issue" for that.`
+        }
+        confirmLabel={isRevoked ? 'Clear revocation' : 'Report lost/stolen'}
+      />
     </>
   );
 }
