@@ -204,6 +204,11 @@ export interface IdCard {
   nationalIdNumber?: string | null;
   cardIssueDate?: string | null;
   cardExpiryDate?: string | null;
+  /** Lost/stolen-card flag -- distinct from expiry. See
+   *  student.service.ts's setCardRevoked(). Optional/defaulting to false
+   *  for backward compatibility with any cached response from before this
+   *  field existed. */
+  cardRevoked?: boolean;
 }
 
 export interface MyStudentContactInfo {
@@ -545,6 +550,13 @@ export const studentsApi = baseApi.injectEndpoints({
       invalidatesTags: [{ type: 'Students', id: 'LIST' }, 'Students'],
     }),
 
+    // Admin-only lost/stolen-card toggle for one student. See
+    // student.service.ts's setCardRevoked().
+    setStudentCardRevoked: builder.mutation<ApiObject<{ id: string; cardRevoked: boolean }>, { studentId: string; revoked: boolean }>({
+      query: ({ studentId, revoked }) => ({ url: `/students/${studentId}/card-revoke`, method: 'PATCH', body: { revoked } }),
+      invalidatesTags: [{ type: 'Students', id: 'LIST' }, 'Students', 'MyStudentContact'],
+    }),
+
     // Self-service — "My ID Card" page, for the student themself (or their
     // parent — pass studentId when the account has more than one child).
     getMyStudentContact: builder.query<ApiObject<MyStudentContactInfo>, { studentId?: string } | void>({
@@ -599,6 +611,7 @@ export const {
   useLazyExportSectionRosterQuery,
   useGetIdCardsQuery,
   useReissueStudentCardsMutation,
+  useSetStudentCardRevokedMutation,
   useGetMyStudentContactQuery,
   useUpdateMyStudentContactMutation,
   useGetMyStudentCardQuery,

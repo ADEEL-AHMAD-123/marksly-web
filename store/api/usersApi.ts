@@ -105,6 +105,11 @@ export interface StaffIdCard {
   nationalIdNumber?: string | null;
   cardIssueDate?: string | null;
   cardExpiryDate?: string | null;
+  /** Lost/stolen-card flag -- distinct from expiry. See
+   *  user.service.ts's setCardRevoked(). Optional/defaulting to false for
+   *  backward compatibility with any cached response from before this
+   *  field existed. */
+  cardRevoked?: boolean;
 }
 
 export interface MyContactInfo {
@@ -213,6 +218,12 @@ export const usersApi = baseApi.injectEndpoints({
       query: (body) => ({ url: '/users/reissue-cards', method: 'POST', body }),
       invalidatesTags: [{ type: 'Users', id: 'LIST' }, 'Users'],
     }),
+    // Admin-only lost/stolen-card toggle for one staff member. See
+    // user.service.ts's setCardRevoked().
+    setStaffCardRevoked: builder.mutation<ApiObject<{ id: string; cardRevoked: boolean }>, { userId: string; revoked: boolean }>({
+      query: ({ userId, revoked }) => ({ url: `/users/${userId}/card-revoke`, method: 'PATCH', body: { revoked } }),
+      invalidatesTags: [{ type: 'Users', id: 'LIST' }, 'Users', 'MyContact'],
+    }),
     // Self-service — "My ID Card" page. Scoped to the caller's own account
     // via the JWT, not an :id param — any logged-in staff-type user can use
     // these on themself, unlike updateUser above (admin-only, any user).
@@ -297,6 +308,7 @@ export const {
   useRemoveUserPhotoMutation,
   useGetStaffIdCardsQuery,
   useReissueStaffCardsMutation,
+  useSetStaffCardRevokedMutation,
   useGetMyContactQuery,
   useUpdateMyContactMutation,
   useGetMyCardQuery,
