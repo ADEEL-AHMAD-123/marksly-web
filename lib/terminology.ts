@@ -1,4 +1,5 @@
 import { useGetMyInstitutionQuery } from '@/store/api/institutionApi';
+import { useAppSelector } from '@/store/hooks';
 
 export type AcademicStructure = 'yearly' | 'semester' | 'short_session' | 'custom';
 
@@ -117,7 +118,17 @@ export function getTerminologyForTermType(termType: string | null | undefined): 
  *  to generic school-language defaults while loading or if the query
  *  hasn't resolved yet, so labels are never blank/undefined. */
 export function useTerminology(): Terminology {
-  const { data } = useGetMyInstitutionQuery();
+  // GET /institutions/me is admin-only server-side — every other role
+  // (teacher, staff, student, accountant...) calling it always got a 403.
+  // That was harmless in effect (getTerminology(undefined) below already
+  // falls back to the same generic defaults a failed request left it with)
+  // but it fired on every page load of every non-admin-accessible screen
+  // that uses this hook — attendance, classes, dashboards, ID cards, and
+  // more — which between them cover most of the app for a non-admin.
+  // Skipping the request outright for non-admins removes that console
+  // noise/wasted round-trip without changing behavior at all.
+  const role = useAppSelector((s) => s.auth.user?.role);
+  const { data } = useGetMyInstitutionQuery(undefined, { skip: role !== 'admin' });
   return getTerminology(data?.data?.academicStructure);
 }
 

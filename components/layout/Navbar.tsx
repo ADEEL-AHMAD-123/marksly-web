@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher';
 import { Avatar } from '@/components/ui/avatar';
 import { LogoMark } from '@/components/brand/Logo';
-import { useGetMyInstitutionQuery } from '@/store/api/institutionApi';
+import { useGetMyInstitutionOverviewQuery } from '@/store/api/institutionApi';
 import { getInitials } from '@/lib/utils';
 import { roleHome, ROLE_LABELS } from '@/lib/role-routes';
 import { useLayout } from './layout-context';
@@ -36,7 +36,13 @@ export function Navbar() {
   // generic Marksly mark in the collapsed bar and the school's own logo
   // the moment the drawer opens, which would look like a glitch.
   const isSuperadmin = user?.role === 'superadmin';
-  const { data: institutionRes } = useGetMyInstitutionQuery(undefined, { skip: isSuperadmin });
+  // GET /institutions/me is admin-only server-side, but this bar renders
+  // for every institution role — teacher/staff/student/accountant all got
+  // a 403 here on every single page load. The overview endpoint carries
+  // everything this bar actually uses (name + logoUrl) and is open to any
+  // institution role; see SidebarNav.tsx's identical fix for its own
+  // drawer header.
+  const { data: institutionRes } = useGetMyInstitutionOverviewQuery(undefined, { skip: isSuperadmin });
   const institution = institutionRes?.data;
 
   const handleLogout = async () => {
