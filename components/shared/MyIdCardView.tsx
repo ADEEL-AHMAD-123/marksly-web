@@ -46,6 +46,28 @@ const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 // EditCardDetailsDialog, so a self-service edit dialog and an admin edit
 // dialog feel like the same product instead of two different ideas of what
 // a form looks like.
+/** Before/after review shown right before a self-service edit is saved —
+ *  so "Save" never silently commits a typo or an accidental blank; the
+ *  person sees exactly what's about to change and can back out. Only
+ *  fields that actually changed are listed. */
+interface FieldChange { label: string; before: string; after: string }
+
+function ChangeSummary({ changes }: { changes: FieldChange[] }) {
+  return (
+    <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3">
+      {changes.map((c) => (
+        <div key={c.label} className="flex items-start justify-between gap-3 text-sm">
+          <span className="shrink-0 text-muted-foreground">{c.label}</span>
+          <span className="text-right font-medium text-foreground">
+            {c.before && <span className="mr-1 text-muted-foreground line-through">{c.before}</span>}
+            {c.after || '—'}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function FormDialog({
   open, onClose, icon: Icon, title, children, footer,
 }: {
@@ -221,10 +243,15 @@ export function MyIdCardView() {
  *  button, not shown inline, so it doesn't push the rest of the page
  *  around while closed. */
 function EditMyStaffDetailsDialog({
-  open, onClose, currentAddress, currentNationalId,
-}: { open: boolean; onClose: () => void; currentAddress: string | null; currentNationalId: string | null }) {
+  open, onClose, currentAddress, currentNationalId, currentPhone,
+}: {
+  open: boolean; onClose: () => void;
+  currentAddress: string | null; currentNationalId: string | null; currentPhone: string | null;
+}) {
+  const [step, setStep] = useState<'edit' | 'confirm'>('edit');
   const [address, setAddress] = useState(currentAddress ?? '');
   const [nationalId, setNationalId] = useState(currentNationalId ?? '');
+  const [phone, setPhone] = useState(currentPhone ?? '');
   const [nationalIdError, setNationalIdError] = useState<string | null>(null);
   const [updateContact, { isLoading: saving }] = useUpdateMyContactMutation();
 
@@ -233,19 +260,40 @@ function EditMyStaffDetailsDialog({
   // (and abandoned) the first time instead of what's actually saved.
   useEffect(() => {
     if (open) {
+      setStep('edit');
       setAddress(currentAddress ?? '');
       setNationalId(currentNationalId ?? '');
+      setPhone(currentPhone ?? '');
       setNationalIdError(null);
     }
-  }, [open, currentAddress, currentNationalId]);
+  }, [open, currentAddress, currentNationalId, currentPhone]);
 
-  const onSubmit = async () => {
+  const changes: FieldChange[] = [
+    { label: 'Address', before: currentAddress ?? '', after: address.trim() },
+    { label: 'Phone', before: currentPhone ?? '', after: phone.trim() },
+    { label: 'CNIC Number', before: currentNationalId ?? '', after: nationalId },
+  ].filter((c) => c.before !== c.after);
+
+  const handleReview = () => {
     if (nationalId && !/^\d{5}-\d{7}-\d$/.test(nationalId)) {
       setNationalIdError('Enter a valid CNIC in the format 42101-1234567-1');
       return;
     }
+    if (changes.length === 0) {
+      toast('No changes to save');
+      onClose();
+      return;
+    }
+    setStep('confirm');
+  };
+
+  const onConfirm = async () => {
     try {
-      await updateContact({ address: address.trim(), nationalIdNumber: nationalId || undefined }).unwrap();
+      await updateContact({
+        address: address.trim(),
+        phone: phone.trim() || undefined,
+        nationalIdNumber: nationalId || undefined,
+      }).unwrap();
       toast.success('Details saved');
       onClose();
     } catch (e) {
@@ -257,34 +305,54 @@ function EditMyStaffDetailsDialog({
     <FormDialog
       open={open}
       onClose={onClose}
-      icon={MapPin}
-      title="Edit my details"
+      icon={step === 'confirm' ? Pencil : MapPin}
+      title={step === 'confirm' ? 'Review your changes' : 'Edit my details'}
       footer={
-        <>
-          <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
-          <Button size="sm" loading={saving} onClick={onSubmit}>Save</Button>
-        </>
+        step === 'confirm' ? (
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setStep('edit')}>Back</Button>
+            <Button size="sm" loading={saving} onClick={onConfirm}>Confirm & save</Button>
+          </>
+        ) : (
+          <>
+            <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
+            <Button size="sm" onClick={handleReview}>Review changes</Button>
+          </>
+        )
       }
     >
-      <div>
-        <Label htmlFor="edit-my-address">Address</Label>
-        <Input id="edit-my-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House #, street, area" />
-      </div>
-      <div>
-        <Label htmlFor="edit-my-nid">CNIC Number</Label>
-        <Input
-          id="edit-my-nid"
-          dir="ltr"
-          placeholder="42101-1234567-1"
-          inputMode="numeric"
-          value={nationalId}
-          onChange={(e) => { setNationalId(formatNationalId(e.target.value)); setNationalIdError(null); }}
-        />
-        {nationalIdError && <p className="mt-1 text-xs text-danger">{nationalIdError}</p>}
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Designation and joining date are managed by your school — ask your admin to update those.
-      </p>
+      {step === 'confirm' ? (
+        <>
+          <p className="text-sm text-muted-foreground">This is what will change on your profile and ID card:</p>
+          <ChangeSummary changes={changes} />
+        </>
+      ) : (
+        <>
+          <div>
+            <Label htmlFor="edit-my-address">Address</Label>
+            <Input id="edit-my-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House #, street, area" />
+          </div>
+          <div>
+            <Label htmlFor="edit-my-phone">Phone</Label>
+            <Input id="edit-my-phone" dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03xxxxxxxxx" />
+          </div>
+          <div>
+            <Label htmlFor="edit-my-nid">CNIC Number</Label>
+            <Input
+              id="edit-my-nid"
+              dir="ltr"
+              placeholder="42101-1234567-1"
+              inputMode="numeric"
+              value={nationalId}
+              onChange={(e) => { setNationalId(formatNationalId(e.target.value)); setNationalIdError(null); }}
+            />
+            {nationalIdError && <p className="mt-1 text-xs text-danger">{nationalIdError}</p>}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Designation and joining date are managed by your school — ask your admin to update those.
+          </p>
+        </>
+      )}
     </FormDialog>
   );
 }
@@ -419,6 +487,7 @@ function StaffMyIdCard() {
             onClose={() => setEditOpen(false)}
             currentAddress={card.address ?? null}
             currentNationalId={card.nationalIdNumber ?? null}
+            currentPhone={card.phone ?? null}
           />
           <div className="grid gap-6 lg:grid-cols-[280px_1fr] lg:items-start">
             {/* Profile panel — photo and quick actions live here, off to the
@@ -507,6 +576,7 @@ function EditMyStudentDetailsDialog({
   currentAddress: string | null; currentCity: string | null; currentBloodGroup: string | null;
   currentNationalId: string | null; nationalIdLabel: string;
 }) {
+  const [step, setStep] = useState<'edit' | 'confirm'>('edit');
   const [address, setAddress] = useState(currentAddress ?? '');
   const [city, setCity] = useState(currentCity ?? '');
   const [bloodGroup, setBloodGroup] = useState(currentBloodGroup ?? '');
@@ -518,6 +588,7 @@ function EditMyStudentDetailsDialog({
   // see EditMyStaffDetailsDialog's matching comment.
   useEffect(() => {
     if (open) {
+      setStep('edit');
       setAddress(currentAddress ?? '');
       setCity(currentCity ?? '');
       setBloodGroup(currentBloodGroup ?? '');
@@ -526,11 +597,27 @@ function EditMyStudentDetailsDialog({
     }
   }, [open, currentAddress, currentCity, currentBloodGroup, currentNationalId]);
 
-  const onSubmit = async () => {
+  const changes: FieldChange[] = [
+    { label: 'Address', before: currentAddress ?? '', after: address.trim() },
+    { label: 'City', before: currentCity ?? '', after: city.trim() },
+    { label: 'Blood Group', before: currentBloodGroup ?? '', after: bloodGroup },
+    { label: `${nationalIdLabel} Number`, before: currentNationalId ?? '', after: nationalId },
+  ].filter((c) => c.before !== c.after);
+
+  const handleReview = () => {
     if (nationalId && !/^\d{5}-\d{7}-\d$/.test(nationalId)) {
       setNationalIdError(`Enter a valid ${nationalIdLabel} number in the format 42101-1234567-1`);
       return;
     }
+    if (changes.length === 0) {
+      toast('No changes to save');
+      onClose();
+      return;
+    }
+    setStep('confirm');
+  };
+
+  const onConfirm = async () => {
     try {
       await updateContact({
         address: address.trim(),
@@ -549,45 +636,61 @@ function EditMyStudentDetailsDialog({
     <FormDialog
       open={open}
       onClose={onClose}
-      icon={MapPin}
-      title="Edit my details"
+      icon={step === 'confirm' ? Pencil : MapPin}
+      title={step === 'confirm' ? 'Review your changes' : 'Edit my details'}
       footer={
-        <>
-          <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
-          <Button size="sm" loading={saving} onClick={onSubmit}>Save</Button>
-        </>
+        step === 'confirm' ? (
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setStep('edit')}>Back</Button>
+            <Button size="sm" loading={saving} onClick={onConfirm}>Confirm & save</Button>
+          </>
+        ) : (
+          <>
+            <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
+            <Button size="sm" onClick={handleReview}>Review changes</Button>
+          </>
+        )
       }
     >
-      <div>
-        <Label htmlFor="edit-my-student-address">Address</Label>
-        <Input id="edit-my-student-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House #, street, area" />
-      </div>
-      <div>
-        <Label htmlFor="edit-my-student-city">City</Label>
-        <Input id="edit-my-student-city" value={city} onChange={(e) => setCity(e.target.value)} />
-      </div>
-      <div>
-        <Label>Blood Group</Label>
-        <Select value={bloodGroup} onValueChange={setBloodGroup}>
-          <SelectTrigger><SelectValue placeholder="Select blood group" /></SelectTrigger>
-          <SelectContent>{BLOOD_GROUPS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
-        </Select>
-      </div>
-      <div>
-        <Label htmlFor="edit-my-student-nid">{nationalIdLabel} Number</Label>
-        <Input
-          id="edit-my-student-nid"
-          dir="ltr"
-          placeholder="42101-1234567-1"
-          inputMode="numeric"
-          value={nationalId}
-          onChange={(e) => { setNationalId(formatNationalId(e.target.value)); setNationalIdError(null); }}
-        />
-        {nationalIdError && <p className="mt-1 text-xs text-danger">{nationalIdError}</p>}
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Class and roll number are managed by the school — ask your admin to update those.
-      </p>
+      {step === 'confirm' ? (
+        <>
+          <p className="text-sm text-muted-foreground">This is what will change on your profile and ID card:</p>
+          <ChangeSummary changes={changes} />
+        </>
+      ) : (
+        <>
+          <div>
+            <Label htmlFor="edit-my-student-address">Address</Label>
+            <Input id="edit-my-student-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House #, street, area" />
+          </div>
+          <div>
+            <Label htmlFor="edit-my-student-city">City</Label>
+            <Input id="edit-my-student-city" value={city} onChange={(e) => setCity(e.target.value)} />
+          </div>
+          <div>
+            <Label>Blood Group</Label>
+            <Select value={bloodGroup} onValueChange={setBloodGroup}>
+              <SelectTrigger><SelectValue placeholder="Select blood group" /></SelectTrigger>
+              <SelectContent>{BLOOD_GROUPS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="edit-my-student-nid">{nationalIdLabel} Number</Label>
+            <Input
+              id="edit-my-student-nid"
+              dir="ltr"
+              placeholder="42101-1234567-1"
+              inputMode="numeric"
+              value={nationalId}
+              onChange={(e) => { setNationalId(formatNationalId(e.target.value)); setNationalIdError(null); }}
+            />
+            {nationalIdError && <p className="mt-1 text-xs text-danger">{nationalIdError}</p>}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Class and roll number are managed by the school — ask your admin to update those.
+          </p>
+        </>
+      )}
     </FormDialog>
   );
 }
