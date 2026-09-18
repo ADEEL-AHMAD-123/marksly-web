@@ -671,14 +671,17 @@ export const StaffIdCardItem = memo(function StaffIdCardItem({
           ID_CARD_ROLE_COLORS), applied as inline backgroundColor so it
           can't be silently overridden by a conflicting Tailwind class. Text
           on this band is always plain text-white/text-white/85. */}
-      <div className="flex items-center gap-2 px-3 py-1.5" style={{ backgroundColor: style.bandColor }}>
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white">
+      <div className="flex items-center gap-2.5 px-3 py-2" style={{ backgroundColor: style.bandColor }}>
+        {/* Rounded-square, not a circle -- see IdCardsView.tsx's matching
+            comment: most institution logos aren't circular, so a circle
+            mask clips or squishes them. */}
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
           {logoUrl ? (
-            <div className="relative h-full w-full overflow-hidden rounded-full">
-              <Image src={logoUrl} alt="" fill sizes="28px" className="object-contain" unoptimized />
+            <div className="relative h-full w-full overflow-hidden rounded-lg">
+              <Image src={logoUrl} alt="" fill sizes="36px" className="object-contain" unoptimized />
             </div>
           ) : (
-            <GraduationCap size={15} style={{ color: style.bandColor }} />
+            <GraduationCap size={18} style={{ color: style.bandColor }} />
           )}
         </div>
         <div className="min-w-0">
@@ -687,7 +690,7 @@ export const StaffIdCardItem = memo(function StaffIdCardItem({
               {institution.name}
             </p>
           )}
-          <p className="mt-0.5 text-[8.5px] font-medium uppercase leading-tight tracking-wide text-white/85">
+          <p className="mt-0.5 text-[9.5px] font-medium uppercase leading-tight tracking-wide text-white/85">
             {roleSubtitle}
           </p>
         </div>
@@ -698,31 +701,33 @@ export const StaffIdCardItem = memo(function StaffIdCardItem({
           text into a 54mm-tall card. */}
       <div className="flex flex-1 gap-3 p-3">
         <div className="flex flex-1 flex-col gap-2 overflow-hidden">
+          {/* Photo is the dominant element — see IdCardsView.tsx's matching
+              comment on the student card. */}
           <div className="flex items-center gap-2.5">
             {member.profilePhoto ? (
-              <div className={cn('relative h-12 w-12 shrink-0 overflow-hidden rounded-full border-2', style.accent)}>
-                <Image src={member.profilePhoto} alt="" fill sizes="48px" className="object-cover" unoptimized />
+              <div className={cn('relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-2', style.accent)}>
+                <Image src={member.profilePhoto} alt="" fill sizes="64px" className="object-cover" unoptimized />
               </div>
             ) : (
               <div className="relative shrink-0">
                 <Avatar initials={`${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()} size="lg" />
                 <span
                   title="No photo on file"
-                  className="no-print absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-card bg-warning text-warning-foreground"
+                  className="no-print absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-card bg-warning text-warning-foreground"
                 >
-                  <ImageOff size={8} />
+                  <ImageOff size={9} />
                 </span>
               </div>
             )}
             <div className="min-w-0">
-              <p className="truncate text-[14px] font-bold leading-tight text-foreground">{member.name}</p>
-              <span className={cn('mt-0.5 inline-flex w-fit items-center gap-1 rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide', style.soft)}>
+              <p className="truncate text-[15.5px] font-bold leading-tight text-foreground">{member.name}</p>
+              <span className={cn('mt-1 inline-flex w-fit items-center gap-1 rounded-full px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-wide', style.soft)}>
                 <RoleIcon size={9} /> {style.label}
               </span>
             </div>
           </div>
 
-          <dl className="mt-auto grid grid-cols-2 gap-x-3 gap-y-1.5 text-[9.5px] leading-tight">
+          <dl className="mt-auto grid grid-cols-2 gap-x-3 gap-y-2 text-[10.5px] leading-tight">
             <Field label="Employee ID" value={member.systemId} />
             {member.phone && <Field label="Mobile" value={member.phone} />}
             {showNationalId && member.nationalIdNumber && (
@@ -730,21 +735,23 @@ export const StaffIdCardItem = memo(function StaffIdCardItem({
             )}
           </dl>
 
+          {/* Issue/expiry — see IdCardsView.tsx's matching comment on why
+              these get real weight now instead of an 8px afterthought. */}
           {(issued || expiry) && (
-            <p className="text-[8px] font-medium leading-tight text-foreground/80">
-              {issued ? `Issued ${issued}` : ''}{issued && expiry ? ' | ' : ''}{expiry ? `Valid until ${expiry}` : ''}
+            <p className="text-[10px] font-semibold leading-tight text-foreground/90">
+              {issued ? `Issued ${issued}` : ''}{issued && expiry ? '  ·  ' : ''}{expiry ? `Valid until ${expiry}` : ''}
             </p>
           )}
 
-          <div className="pt-1">
+          <div className="pt-0.5">
             <IdCardCredit />
           </div>
         </div>
 
         {/* QR side panel — same sizing/mechanics as student cards */}
         <div className="flex shrink-0 flex-col items-center justify-center gap-1 border-l border-border pl-3">
-          <QRCode value={member.qr} size={80} />
-          <p className="text-center text-[7px] font-medium leading-tight text-foreground/70">Scan to verify</p>
+          <QRCode value={member.qr} size={72} />
+          <p className="text-center text-[7.5px] font-medium leading-tight text-foreground/70">Scan to verify</p>
         </div>
       </div>
     </div>

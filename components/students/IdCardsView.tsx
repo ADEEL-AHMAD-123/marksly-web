@@ -662,16 +662,20 @@ export const IdCardItem = memo(function IdCardItem({
           a semantic token that could resolve light-on-light or otherwise
           get silently overridden by a conflicting utility class. */}
       <div
-        className="flex items-center gap-2 px-3 py-1.5"
+        className="flex items-center gap-2.5 px-3 py-2"
         style={{ backgroundColor: ID_CARD_ROLE_COLORS.student }}
       >
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white">
+        {/* Rounded-square, not a circle -- most institution logos aren't
+            circular, and forcing one into a circle mask clips or squishes
+            it. A square container with a little corner rounding shows the
+            logo intact instead. */}
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
           {logoUrl ? (
-            <div className="relative h-full w-full overflow-hidden rounded-full">
-              <Image src={logoUrl} alt="" fill sizes="28px" className="object-contain" unoptimized />
+            <div className="relative h-full w-full overflow-hidden rounded-lg">
+              <Image src={logoUrl} alt="" fill sizes="36px" className="object-contain" unoptimized />
             </div>
           ) : (
-            <GraduationCap size={15} style={{ color: ID_CARD_ROLE_COLORS.student }} />
+            <GraduationCap size={18} style={{ color: ID_CARD_ROLE_COLORS.student }} />
           )}
         </div>
         <div className="min-w-0">
@@ -680,7 +684,7 @@ export const IdCardItem = memo(function IdCardItem({
               {institution.name}
             </p>
           )}
-          <p className="mt-0.5 text-[8.5px] font-medium uppercase leading-tight tracking-wide text-white/85">
+          <p className="mt-0.5 text-[9.5px] font-medium uppercase leading-tight tracking-wide text-white/85">
             Student identity card{termName ? ` · ${termName}` : ` · ${termLabel}`}
           </p>
         </div>
@@ -694,34 +698,38 @@ export const IdCardItem = memo(function IdCardItem({
           as cramped rather than like an actual ID card. */}
       <div className="flex flex-1 gap-3 p-3">
         <div className="flex flex-1 flex-col gap-2 overflow-hidden">
+          {/* Photo is the dominant element here on purpose -- it's a bigger
+              circle than the QR code beside it, since the whole point of a
+              front face is "match this photo to the person in front of
+              you," not the QR (that's the back-up/verification path). */}
           <div className="flex items-center gap-2.5">
             {student.profilePhoto ? (
-              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-primary/20">
-                <Image src={student.profilePhoto} alt="" fill sizes="48px" className="object-cover" unoptimized />
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-primary/20">
+                <Image src={student.profilePhoto} alt="" fill sizes="64px" className="object-cover" unoptimized />
               </div>
             ) : (
               <div className="relative shrink-0">
                 <Avatar initials={`${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()} size="lg" />
                 <span
                   title="No photo on file"
-                  className="no-print absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-card bg-warning text-warning-foreground"
+                  className="no-print absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-card bg-warning text-warning-foreground"
                 >
-                  <ImageOff size={8} />
+                  <ImageOff size={9} />
                 </span>
               </div>
             )}
             <div className="min-w-0">
-              <p className="truncate text-[14px] font-bold leading-tight text-foreground">{student.name}</p>
-              <p className="truncate text-[10.5px] font-medium text-foreground">{className ?? '—'}{section ? ` · ${section}` : ''}</p>
+              <p className="truncate text-[15.5px] font-bold leading-tight text-foreground">{student.name}</p>
+              <p className="truncate text-[11.5px] font-medium text-foreground">{className ?? '—'}{section ? ` · ${section}` : ''}</p>
               {showBloodGroup && student.bloodGroup && (
-                <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-danger-soft px-1.5 py-0.5 text-[8px] font-semibold text-danger">
-                  <Droplet size={8} /> {student.bloodGroup}
+                <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-danger-soft px-1.5 py-0.5 text-[8.5px] font-semibold text-danger">
+                  <Droplet size={9} /> {student.bloodGroup}
                 </span>
               )}
             </div>
           </div>
 
-          <dl className="mt-auto grid grid-cols-2 gap-x-3 gap-y-1.5 text-[9.5px] leading-tight">
+          <dl className="mt-auto grid grid-cols-2 gap-x-3 gap-y-2 text-[10.5px] leading-tight">
             <Field label="Student ID" value={student.systemId} />
             <Field label="Roll No." value={student.rollNumber} />
             {showNationalId && student.nationalIdNumber && (
@@ -729,21 +737,27 @@ export const IdCardItem = memo(function IdCardItem({
             )}
           </dl>
 
+          {/* Issue/expiry — the two dates that make a card actually
+              checkable at a glance, so they get real weight (not a
+              barely-legible 8px afterthought) rather than competing with
+              the fine print below them. */}
           {(issued || expiry) && (
-            <p className="text-[8px] font-medium leading-tight text-foreground/80">
-              {issued ? `Issued ${issued}` : ''}{issued && expiry ? ' | ' : ''}{expiry ? `Valid until ${expiry}` : ''}
+            <p className="text-[10px] font-semibold leading-tight text-foreground/90">
+              {issued ? `Issued ${issued}` : ''}{issued && expiry ? '  ·  ' : ''}{expiry ? `Valid until ${expiry}` : ''}
             </p>
           )}
 
-          <div className="pt-1">
+          <div className="pt-0.5">
             <IdCardCredit />
           </div>
         </div>
 
-        {/* QR side panel — minimum ~2cm on-screen equivalent so it prints scannable at real card size */}
+        {/* QR side panel — a supporting element next to the photo, not the
+            visual focal point; still well above the ~2cm floor needed to
+            scan reliably at real card size. */}
         <div className="flex shrink-0 flex-col items-center justify-center gap-1 border-l border-border pl-3">
-          <QRCode value={student.qr} size={80} />
-          <p className="text-center text-[7px] font-medium leading-tight text-foreground/70">Scan to verify</p>
+          <QRCode value={student.qr} size={72} />
+          <p className="text-center text-[7.5px] font-medium leading-tight text-foreground/70">Scan to verify</p>
         </div>
       </div>
     </div>

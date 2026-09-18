@@ -96,10 +96,10 @@ export const ID_CARD_PRINT_CSS = `
  */
 export function idCardNameSizeClass(name: string): string {
   const len = name.trim().length;
-  if (len <= 22) return 'text-[13px]';
-  if (len <= 34) return 'text-[11.5px]';
-  if (len <= 48) return 'text-[10px]';
-  return 'text-[9px]';
+  if (len <= 22) return 'text-[14.5px]';
+  if (len <= 34) return 'text-[13px]';
+  if (len <= 48) return 'text-[11.5px]';
+  return 'text-[10.5px]';
 }
 
 /** Short date format for the "Issued {date} | Valid until {date}" line
