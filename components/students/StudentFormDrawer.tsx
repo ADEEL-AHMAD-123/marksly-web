@@ -90,26 +90,40 @@ const schema = baseSchema.refine((d) => !d.parentPhone || !!d.parentEmail, {
 
 /**
  * Cross-field "someone needs to be reachable" rule, mirroring the backend's
- * createStudentSchema: a guardian contact is unconditionally required, either
- * a brand-new one (parentEmail/parentPhone) or an already-linked one (only
- * possible when editing). Also enforces CNIC/Form-B as required — same
- * mirrored backend rule (createStudentSchema's own nationalIdNumber is now
- * required, see student.validator.ts) — UNLESS this is an edit of a student
- * who already has one on file with nothing entered here, in which case the
- * existing value stays as-is (this form only ever sends fields that
- * changed, so a blank input here doesn't erase a real stored value). A
- * brand-new student, or an edit of a legacy record with no CNIC yet, must
- * provide one. Kept as a factory since both "already has a guardian" and
- * "already has a CNIC" depend on the `student` prop, not just the form's
- * own fields.
+ * createStudentSchema: a guardian PHONE number is unconditionally required,
+ * either for a brand-new guardian or an already-linked one (only possible
+ * when editing) — UNLESS this is an edit of a student who already has one
+ * on file with nothing entered here.
+ *
+ * Phone, not email, is the field that's actually required here — mirrors a
+ * real backend fix (see student.validator.ts's createStudentSchema): a
+ * guardian only ever gets created/linked by phone (resolveOrCreateParent()
+ * looks the phone up and bails out with no guardian at all if it's blank),
+ * so an email-only submission used to pass this exact validation and then
+ * silently save a student with no guardian whatsoever — no error, no
+ * warning, just a guardian who was never actually created. Email is still
+ * collected and still required *whenever a phone is entered* (see `schema`
+ * above), since it's needed to send a brand-new guardian their welcome
+ * email — it just can't substitute for the phone number on its own anymore.
+ *
+ * Also enforces CNIC/Form-B as required — same mirrored backend rule
+ * (createStudentSchema's own nationalIdNumber is now required, see
+ * student.validator.ts) — UNLESS this is an edit of a student who already
+ * has one on file with nothing entered here, in which case the existing
+ * value stays as-is (this form only ever sends fields that changed, so a
+ * blank input here doesn't erase a real stored value). A brand-new
+ * student, or an edit of a legacy record with no CNIC yet, must provide
+ * one. Kept as a factory since both "already has a guardian" and "already
+ * has a CNIC" depend on the `student` prop, not just the form's own
+ * fields.
  */
 function makeSchema(hasExistingGuardian: boolean, hasExistingNationalId: boolean) {
   return schema
     .refine(
-      (d) => !!d.parentPhone || !!d.parentEmail || hasExistingGuardian,
+      (d) => !!d.parentPhone || hasExistingGuardian,
       {
-        message: "Add a parent/guardian's contact info so someone can be reached — students don't have their own login contact info.",
-        path: ['parentEmail'],
+        message: "Add a parent/guardian's phone number so someone can be reached — students don't have their own login contact info.",
+        path: ['parentPhone'],
       }
     )
     .refine((d) => !!d.nationalIdNumber || hasExistingNationalId, {
@@ -636,13 +650,13 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
                 <p className="mt-1 text-xs text-danger">{errors.nationalIdNumber.message}</p>
               )}
               <p className="mt-1 text-xs text-muted-foreground">
-                Can be corrected later from My ID Card if it&apos;s wrong.
+                Can be corrected later if it&apos;s wrong.
               </p>
             </div>
 
             <div className="border-t border-border pt-4">
               <p className="mb-2 text-sm font-bold uppercase tracking-wide text-foreground">
-                Parent / Guardian <span className="font-normal normal-case text-danger">* phone or email required</span>
+                Parent / Guardian
               </p>
               {isEdit && !originalGuardian && (
                 <p className="-mt-1 mb-2 text-xs text-muted-foreground">
@@ -651,7 +665,9 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="parentPhone">Parent phone</Label>
+                  <Label htmlFor="parentPhone">
+                    Parent phone {!originalGuardian && <span className="font-normal text-danger">*</span>}
+                  </Label>
                   <Controller
                     control={control}
                     name="parentPhone"
@@ -683,15 +699,16 @@ export function StudentFormDrawer({ open, onClose, student, classesOverride }: P
               </div>
               {!originalGuardian && (
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  If a parent with this phone already has an account here, this student is just added to it — one login, both kids show up in it.
-                  Otherwise a brand-new parent account is created and emailed its own login details — make sure this phone and email genuinely belong to the parent, since they&apos;ll use them to sign in.
+                  If this phone already has a parent account, the student is added to it. Otherwise a new account is
+                  created — make sure the phone and email really belong to the parent, since they&apos;ll sign in with them.
                 </p>
               )}
             </div>
 
             {!isEdit && (
               <p className="rounded-lg border border-border bg-muted/40 px-3.5 py-3 text-xs text-muted-foreground">
-                A student login is created automatically — a Login ID and PIN are both generated by the system, no setup needed. Both are shown once right after saving, and the Login ID also prints on their ID card. The student can change their own PIN later from their account, and you can always look up, edit or reset either one afterward from the Login IDs &amp; PINs page.
+                A Login ID and PIN are generated automatically and shown once after saving — no setup needed. You can
+                look up, edit or reset either one anytime from the Login IDs &amp; PINs page.
               </p>
             )}
 
