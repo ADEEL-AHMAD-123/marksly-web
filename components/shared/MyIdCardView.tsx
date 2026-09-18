@@ -25,7 +25,11 @@ import {
   useRemoveMyPhotoMutation,
 } from '@/store/api/usersApi';
 import { useGetMyStudentCardQuery, useUpdateMyStudentContactMutation, useChangeMyPinMutation } from '@/store/api/studentsApi';
-import { idCardFieldLabel, SELF_FIXABLE_MISSING_KEYS } from '@/lib/id-card-missing';
+import {
+  idCardFieldLabel, SELF_FIXABLE_MISSING_KEYS, staffCardMissingKeys, studentCardMissingKeys,
+  cardBlockingMissingKeys, REQUIRED_CARD_KEYS,
+} from '@/lib/id-card-missing';
+import { IdCardMissingFieldsBanner, type IdCardMissingFieldItem } from '@/components/shared/IdCardMissingFieldsBanner';
 import { ID_CARD_PRINT_CSS } from '@/components/shared/idCardPrint';
 import { IdCardBack } from '@/components/shared/IdCardBack';
 import { PhotoCropModal } from '@/components/shared/PhotoCropModal';
@@ -328,6 +332,23 @@ function StaffMyIdCard() {
 
   const initials = card ? card.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase() : '';
 
+  // Same "photo + national ID are required to issue, everything else is
+  // optional" rule the admin ID card views enforce (see lib/id-card-
+  // missing.ts) — computed the same way here so a self-printed card can
+  // never be more lenient than what an admin printing it on someone's
+  // behalf would allow.
+  const staffSettings = card?.institution?.settings?.idCard;
+  const staffMissingKeys = card ? staffCardMissingKeys(card, staffSettings) : [];
+  const staffMissingItems: IdCardMissingFieldItem[] = staffMissingKeys.map((key) => ({
+    key,
+    label: idCardFieldLabel(key, 'CNIC'),
+    required: REQUIRED_CARD_KEYS.has(key),
+    action: SELF_FIXABLE_MISSING_KEYS.has(key)
+      ? { type: 'cardDetails', onClick: () => setEditOpen(true) }
+      : { type: 'none' },
+  }));
+  const canIssue = cardBlockingMissingKeys(staffMissingKeys).length === 0;
+
   return (
     <div className="space-y-6">
       <style dangerouslySetInnerHTML={{ __html: ID_CARD_PRINT_CSS }} />
@@ -427,12 +448,33 @@ function StaffMyIdCard() {
                 <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
                   <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
                 </Button>
-                <Button size="sm" variant="outline" loading={downloading} onClick={handleDownload}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  loading={downloading}
+                  disabled={!canIssue}
+                  title={canIssue ? undefined : 'Add a photo and CNIC number before downloading your card'}
+                  onClick={handleDownload}
+                >
                   <Download size={15} /> Download my card
                 </Button>
-                <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print my card</Button>
+                <Button
+                  size="sm"
+                  disabled={!canIssue}
+                  title={canIssue ? undefined : 'Add a photo and CNIC number before printing your card'}
+                  onClick={() => window.print()}
+                >
+                  <Printer size={16} /> Print my card
+                </Button>
               </div>
-              <div id="id-card-print" className="flex justify-center rounded-2xl bg-muted/30 p-6 sm:p-10">
+              <IdCardMissingFieldsBanner items={staffMissingItems} />
+              <div
+                id="id-card-print"
+                className={cn(
+                  'flex justify-center rounded-2xl p-6 sm:p-10',
+                  canIssue ? 'bg-muted/30' : 'bg-danger-soft/50 ring-1 ring-inset ring-danger/30'
+                )}
+              >
                 <div className="w-full max-w-sm space-y-4">
                   <div ref={frontRef} className={cn(showBack ? 'hidden print:block' : 'block')}>
                     <StaffIdCardItem member={card} institution={card.institution} />
@@ -675,6 +717,20 @@ function StudentMyIdCard() {
 
   const initials = card ? card.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase() : '';
 
+  // Same "photo + national ID are required to issue" rule the admin ID
+  // card views enforce — see StaffMyIdCard's matching comment.
+  const studentSettings = card?.institution?.settings?.idCard;
+  const studentMissingKeys = card ? studentCardMissingKeys(card, studentSettings) : [];
+  const studentMissingItems: IdCardMissingFieldItem[] = studentMissingKeys.map((key) => ({
+    key,
+    label: idCardFieldLabel(key, nationalIdLabel),
+    required: REQUIRED_CARD_KEYS.has(key),
+    action: SELF_FIXABLE_MISSING_KEYS.has(key)
+      ? { type: 'cardDetails', onClick: () => setEditOpen(true) }
+      : { type: 'none' },
+  }));
+  const canIssue = cardBlockingMissingKeys(studentMissingKeys).length === 0;
+
   return (
     <div className="space-y-6">
       <style dangerouslySetInnerHTML={{ __html: ID_CARD_PRINT_CSS }} />
@@ -792,12 +848,33 @@ function StudentMyIdCard() {
                 <Button size="sm" variant="outline" onClick={() => setShowBack((v) => !v)}>
                   <RotateCw size={15} /> {showBack ? 'Show front' : 'Flip to back'}
                 </Button>
-                <Button size="sm" variant="outline" loading={downloading} onClick={handleDownload}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  loading={downloading}
+                  disabled={!canIssue}
+                  title={canIssue ? undefined : `Add a photo and ${nationalIdLabel} number before downloading your card`}
+                  onClick={handleDownload}
+                >
                   <Download size={15} /> Download my card
                 </Button>
-                <Button size="sm" onClick={() => window.print()}><Printer size={16} /> Print my card</Button>
+                <Button
+                  size="sm"
+                  disabled={!canIssue}
+                  title={canIssue ? undefined : `Add a photo and ${nationalIdLabel} number before printing your card`}
+                  onClick={() => window.print()}
+                >
+                  <Printer size={16} /> Print my card
+                </Button>
               </div>
-              <div id="id-card-print" className="flex justify-center rounded-2xl bg-muted/30 p-6 sm:p-10">
+              <IdCardMissingFieldsBanner items={studentMissingItems} />
+              <div
+                id="id-card-print"
+                className={cn(
+                  'flex justify-center rounded-2xl p-6 sm:p-10',
+                  canIssue ? 'bg-muted/30' : 'bg-danger-soft/50 ring-1 ring-inset ring-danger/30'
+                )}
+              >
                 <div className="w-full max-w-sm space-y-4">
                   <div ref={frontRef} className={cn(showBack ? 'hidden print:block' : 'block')}>
                     <IdCardItem
