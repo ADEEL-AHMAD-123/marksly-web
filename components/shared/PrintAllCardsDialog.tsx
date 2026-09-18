@@ -22,12 +22,18 @@ import { getErrorMessage } from '@/lib/get-error-message';
  * that's what the roster list right below it on each tab is for.
  */
 export function PrintAllCardsDialog<T>({
-  open, onClose, title, subtitle, items, renderCard, keyOf, downloadFileName,
+  open, onClose, title, subtitle, warning, items, renderCard, keyOf, downloadFileName,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   subtitle?: string;
+  /** Pre-flight heads-up shown above the grid when some items are missing
+   *  required card fields -- previously an admin could bulk-print a whole
+   *  roster with no warning that some cards would come out with blanks;
+   *  only the single-card preview flagged that. Omit when nothing's
+   *  missing. */
+  warning?: string;
   items: T[];
   renderCard: (item: T) => React.ReactNode;
   keyOf: (item: T) => string;
@@ -74,6 +80,9 @@ export function PrintAllCardsDialog<T>({
             <div className="min-w-0">
               <DialogPrimitive.Title className="truncate text-base font-semibold">{title}</DialogPrimitive.Title>
               {subtitle && <DialogPrimitive.Description className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</DialogPrimitive.Description>}
+              {warning && (
+                <p className="mt-1 text-xs font-medium text-warning">{warning}</p>
+              )}
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {downloadFileName && (

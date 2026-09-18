@@ -27,7 +27,7 @@ import { EditCardDetailsDialog } from '@/components/students/EditCardDetailsDial
 import { ReissueCardsConfirmDialog } from '@/components/students/ReissueCardsConfirmDialog';
 import { getErrorMessage } from '@/lib/get-error-message';
 import { IdCardMissingFieldsBanner, type IdCardMissingFieldItem } from '@/components/shared/IdCardMissingFieldsBanner';
-import { idCardFieldLabel } from '@/lib/id-card-missing';
+import { idCardFieldLabel, staffCardMissingKeys } from '@/lib/id-card-missing';
 import { PrintAllCardsDialog } from '@/components/shared/PrintAllCardsDialog';
 
 const ROLE_FILTERS: { value: StaffCardRole | 'all'; label: string }[] = [
@@ -176,7 +176,6 @@ export function StaffIdCardsView() {
             variant="ghost"
             size="sm"
             disabled={!canReissue || roster.length === 0}
-            title={!canReissue ? 'Pick a specific role (not "All roles") to re-issue cards' : undefined}
             onClick={() => setReissueOpen(true)}
           >
             <RefreshCw size={14} /> Re-issue this role
@@ -191,6 +190,11 @@ export function StaffIdCardsView() {
           </Button>
         </div>
       </div>
+      {!canReissue && (
+        <p className="text-xs text-muted-foreground no-print">
+          Pick a specific role above (not &quot;All roles&quot;) to re-issue cards for just that role.
+        </p>
+      )}
 
       {sheet && (
         <PrintAllCardsDialog
@@ -198,6 +202,10 @@ export function StaffIdCardsView() {
           onClose={() => setPrintAllOpen(false)}
           title={`Print all cards — ${roleCountLabel === 'staff' ? 'All roles' : ROLE_STYLE[roleParam as StaffCardRole]?.label ?? roleCountLabel}`}
           subtitle={`${roster.length} active member${roster.length === 1 ? '' : 's'}, front side only`}
+          warning={(() => {
+            const n = roster.filter((s) => staffCardMissingKeys(s, sheet.institution.settings?.idCard).length > 0).length;
+            return n > 0 ? `${n} of ${roster.length} member${roster.length === 1 ? '' : 's'} ${n === 1 ? 'is' : 'are'} missing card info (photo, address, or CNIC) — those cards will print with blanks.` : undefined;
+          })()}
           items={roster}
           keyOf={(s) => s.id}
           renderCard={(s) => <StaffIdCardItem member={s} institution={sheet.institution} />}
@@ -266,7 +274,7 @@ function StaffRosterList({
       <div className="divide-y divide-border">
         {roster.map((s) => {
           const style = ROLE_STYLE[s.role] ?? ROLE_STYLE.staff;
-          const missing = !s.address || ((settings?.showNationalId ?? true) && !s.nationalIdNumber);
+          const missing = staffCardMissingKeys(s, settings).length > 0;
           return (
             <button
               key={s.id}
@@ -344,16 +352,11 @@ function StaffIdCardPreview({
   // — no more routing address to the full staff profile page, since the
   // dialog covers address (and photo) directly and PATCHes the same
   // record either way (see EditCardDetailsDialog.tsx).
-  const missingItems: IdCardMissingFieldItem[] = [];
-  if (!member.address) {
-    missingItems.push({ key: 'address', label: idCardFieldLabel('address'), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
-  }
-  if ((settings?.showNationalId ?? true) && !member.nationalIdNumber) {
-    missingItems.push({ key: 'nationalId', label: idCardFieldLabel('nationalId', nationalIdLabel), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
-  }
-  if (!member.profilePhoto) {
-    missingItems.push({ key: 'photo', label: idCardFieldLabel('photo'), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
-  }
+  const missingItems: IdCardMissingFieldItem[] = staffCardMissingKeys(member, settings).map((key) => ({
+    key,
+    label: idCardFieldLabel(key, nationalIdLabel),
+    action: { type: 'cardDetails', onClick: () => setEditOpen(true) },
+  }));
 
   return (
     <>

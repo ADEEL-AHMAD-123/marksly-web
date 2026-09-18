@@ -27,7 +27,7 @@ import { EditCardDetailsDialog } from '@/components/students/EditCardDetailsDial
 import { ReissueCardsConfirmDialog } from '@/components/students/ReissueCardsConfirmDialog';
 import { getErrorMessage } from '@/lib/get-error-message';
 import { IdCardMissingFieldsBanner, type IdCardMissingFieldItem } from '@/components/shared/IdCardMissingFieldsBanner';
-import { idCardFieldLabel } from '@/lib/id-card-missing';
+import { idCardFieldLabel, studentCardMissingKeys } from '@/lib/id-card-missing';
 import { PrintAllCardsDialog } from '@/components/shared/PrintAllCardsDialog';
 
 export function IdCardsView() {
@@ -157,6 +157,10 @@ export function IdCardsView() {
           onClose={() => setPrintAllOpen(false)}
           title={`Print all cards — ${sheet.className ?? ''}${sheet.section ? ` — ${sheet.section}` : ''}`}
           subtitle={`${roster.length} active student${roster.length === 1 ? '' : 's'}, front side only`}
+          warning={(() => {
+            const n = roster.filter((s) => studentCardMissingKeys(s, sheet.institution.settings?.idCard).length > 0).length;
+            return n > 0 ? `${n} of ${roster.length} student${roster.length === 1 ? '' : 's'} ${n === 1 ? 'is' : 'are'} missing card info (photo, address, blood group, or ${nationalIdLabelForInstitutionType(sheet.institution.type)}) — those cards will print with blanks.` : undefined;
+          })()}
           items={roster}
           keyOf={(s) => s.id}
           renderCard={(s) => (
@@ -229,11 +233,7 @@ function StudentRosterList({
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm no-print">
       <div className="divide-y divide-border">
         {roster.map((s) => {
-          const missing =
-            ((settings?.showBloodGroup ?? true) && !s.bloodGroup) ||
-            (!s.address && !s.city) ||
-            !s.parentName ||
-            ((settings?.showNationalId ?? true) && !s.nationalIdNumber);
+          const missing = studentCardMissingKeys(s, settings).length > 0;
           return (
             <button
               key={s.id}
@@ -322,22 +322,11 @@ function StudentIdCardPreview({
   // parent/guardian info and photo alongside national ID/dates/blood
   // group, so there's no longer a separate "go edit the full profile"
   // detour: one dialog, one PATCH, the same record either way.
-  const missingItems: IdCardMissingFieldItem[] = [];
-  if ((settings?.showBloodGroup ?? true) && !student.bloodGroup) {
-    missingItems.push({ key: 'bloodGroup', label: idCardFieldLabel('bloodGroup'), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
-  }
-  if (!student.address && !student.city) {
-    missingItems.push({ key: 'address', label: idCardFieldLabel('address'), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
-  }
-  if (!student.parentName) {
-    missingItems.push({ key: 'parentInfo', label: idCardFieldLabel('parentInfo'), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
-  }
-  if ((settings?.showNationalId ?? true) && !student.nationalIdNumber) {
-    missingItems.push({ key: 'nationalId', label: idCardFieldLabel('nationalId', nationalIdLabel), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
-  }
-  if (!student.profilePhoto) {
-    missingItems.push({ key: 'photo', label: idCardFieldLabel('photo'), action: { type: 'cardDetails', onClick: () => setEditOpen(true) } });
-  }
+  const missingItems: IdCardMissingFieldItem[] = studentCardMissingKeys(student, settings).map((key) => ({
+    key,
+    label: idCardFieldLabel(key, nationalIdLabel),
+    action: { type: 'cardDetails', onClick: () => setEditOpen(true) },
+  }));
 
   return (
     <>
